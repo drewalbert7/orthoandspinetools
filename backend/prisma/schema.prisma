@@ -43,9 +43,14 @@ model User {
   comments          Comment[]
   communities       Community[] @relation("CommunityMembers")
   ownedCommunities  Community[] @relation("CommunityOwner")
+  moderatedCommunities CommunityModerator[]
   toolReviews       ToolReview[]
   connections       Connection[] @relation("UserConnections")
+  connectedUsers    Connection[] @relation("ConnectedUsers")
   connectionRequests ConnectionRequest[] @relation("ConnectionRequests")
+  connectionRequestsReceived ConnectionRequest[] @relation("ConnectionRequestsReceived")
+  postVotes         PostVote[]
+  commentVotes      CommentVote[]
   auditLogs         AuditLog[]
   
   @@map("users")

@@ -1,16 +1,15 @@
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { Toaster } from 'react-hot-toast';
 
 // Components
 import Header from './components/Header';
 import Sidebar from './components/Sidebar';
+import LoginForm from './components/LoginForm';
+import RegisterForm from './components/RegisterForm';
 
 // Pages
 import Home from './pages/Home';
-import Login from './pages/Login';
-import Register from './pages/Register';
 import PostDetail from './pages/PostDetail';
 import CreatePost from './pages/CreatePost';
 import Profile from './pages/Profile';
@@ -43,38 +42,14 @@ function App() {
               <main className="flex-1 p-6">
                 <Routes>
                   <Route path="/" element={<Home />} />
-                  <Route path="/login" element={<Login />} />
-                  <Route path="/register" element={<Register />} />
+                  <Route path="/login" element={<LoginForm />} />
+                  <Route path="/register" element={<RegisterForm />} />
                   <Route path="/post/:id" element={<PostDetail />} />
                   <Route path="/create-post" element={<CreatePost />} />
                   <Route path="/profile" element={<Profile />} />
                 </Routes>
               </main>
             </div>
-            <Toaster
-              position="top-right"
-              toastOptions={{
-                duration: 4000,
-                style: {
-                  background: '#363636',
-                  color: '#fff',
-                },
-                success: {
-                  duration: 3000,
-                  iconTheme: {
-                    primary: '#10B981',
-                    secondary: '#fff',
-                  },
-                },
-                error: {
-                  duration: 5000,
-                  iconTheme: {
-                    primary: '#EF4444',
-                    secondary: '#fff',
-                  },
-                },
-              }}
-            />
           </div>
         </Router>
       </AuthProvider>
