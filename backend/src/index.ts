@@ -70,6 +70,26 @@ app.use(morgan('combined', {
 }));
 
 // Health check endpoint
+app.get('/api/health', async (req, res) => {
+  try {
+    // Check database connection
+    await prisma.$queryRaw`SELECT 1`;
+    res.json({ 
+      status: 'healthy', 
+      timestamp: new Date().toISOString(),
+      service: 'orthoandspinetools-api',
+      version: '1.0.0',
+      uptime: process.uptime()
+    });
+  } catch (error) {
+    res.status(503).json({ 
+      status: 'unhealthy', 
+      error: 'Database connection failed',
+      timestamp: new Date().toISOString()
+    });
+  }
+});
+
 app.get('/health', (req, res) => {
   res.json({ 
     status: 'OK', 
