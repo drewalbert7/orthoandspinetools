@@ -1,0 +1,340 @@
+// Prisma Database Schema for OrthoAndSpineTools Medical Platform
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// User model for medical professionals
+model User {
+  id                String    @id @default(cuid())
+  email             String    @unique
+  username          String    @unique
+  firstName         String
+  lastName          String
+  passwordHash     String
+  isEmailVerified   Boolean   @default(false)
+  isActive          Boolean   @default(true)
+  
+  // Medical credentials
+  medicalLicense    String?
+  specialty         String?
+  subSpecialty      String?
+  institution       String?
+  yearsExperience   Int?
+  
+  // Profile information
+  bio               String?
+  profileImage      String?
+  location          String?
+  website           String?
+  
+  // Timestamps
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+  lastLoginAt       DateTime?
+  
+  // Relations
+  posts             Post[]
+  comments          Comment[]
+  communities       Community[] @relation("CommunityMembers")
+  ownedCommunities  Community[] @relation("CommunityOwner")
+  toolReviews       ToolReview[]
+  connections       Connection[] @relation("UserConnections")
+  connectionRequests ConnectionRequest[] @relation("ConnectionRequests")
+  auditLogs         AuditLog[]
+  
+  @@map("users")
+}
+
+// Community model for medical specialties
+model Community {
+  id                String    @id @default(cuid())
+  name              String    @unique
+  slug              String    @unique
+  description       String
+  rules             String?
+  isPrivate         Boolean   @default(false)
+  isActive          Boolean   @default(true)
+  
+  // Community settings
+  allowPosts        Boolean   @default(true)
+  allowComments     Boolean   @default(true)
+  requireApproval   Boolean   @default(false)
+  
+  // Timestamps
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+  
+  // Relations
+  ownerId           String
+  owner             User      @relation("CommunityOwner", fields: [ownerId], references: [id], onDelete: Cascade)
+  members           User[]    @relation("CommunityMembers")
+  posts             Post[]
+  moderators        CommunityModerator[]
+  
+  @@map("communities")
+}
+
+// Community moderator model
+model CommunityModerator {
+  id                String    @id @default(cuid())
+  communityId       String
+  userId            String
+  role              String    @default("moderator") // moderator, admin
+  
+  // Timestamps
+  createdAt         DateTime  @default(now())
+  
+  // Relations
+  community         Community @relation(fields: [communityId], references: [id], onDelete: Cascade)
+  user              User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  @@unique([communityId, userId])
+  @@map("community_moderators")
+}
+
+// Post model for discussions and case studies
+model Post {
+  id                String    @id @default(cuid())
+  title             String
+  content           String
+  type              String    @default("discussion") // discussion, case_study, tool_review, question
+  isPinned          Boolean   @default(false)
+  isLocked          Boolean   @default(false)
+  isDeleted         Boolean   @default(false)
+  
+  // Medical context
+  specialty         String?
+  caseType          String?
+  patientAge        Int?
+  procedureType     String?
+  
+  // Timestamps
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+  
+  // Relations
+  authorId          String
+  author            User      @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  communityId       String
+  community         Community @relation(fields: [communityId], references: [id], onDelete: Cascade)
+  comments          Comment[]
+  attachments       PostAttachment[]
+  votes             PostVote[]
+  
+  @@map("posts")
+}
+
+// Post attachment model
+model PostAttachment {
+  id                String    @id @default(cuid())
+  postId            String
+  filename          String
+  originalName      String
+  mimeType          String
+  size              Int
+  path              String
+  
+  // Timestamps
+  createdAt         DateTime  @default(now())
+  
+  // Relations
+  post              Post      @relation(fields: [postId], references: [id], onDelete: Cascade)
+  
+  @@map("post_attachments")
+}
+
+// Comment model for replies
+model Comment {
+  id                String    @id @default(cuid())
+  content           String
+  isDeleted         Boolean   @default(false)
+  
+  // Timestamps
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+  
+  // Relations
+  authorId          String
+  author            User      @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  postId            String
+  post              Post      @relation(fields: [postId], references: [id], onDelete: Cascade)
+  parentId          String?
+  parent            Comment?  @relation("CommentReplies", fields: [parentId], references: [id])
+  replies           Comment[] @relation("CommentReplies")
+  votes             CommentVote[]
+  
+  @@map("comments")
+}
+
+// Medical tool model
+model MedicalTool {
+  id                String    @id @default(cuid())
+  name              String
+  description       String
+  category          String
+  subCategory       String?
+  manufacturer      String
+  model             String?
+  specifications    Json?
+  
+  // Tool details
+  indications       String?
+  contraindications String?
+  complications     String?
+  costRange         String?
+  availability      String?
+  
+  // Timestamps
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+  
+  // Relations
+  reviews           ToolReview[]
+  
+  @@map("medical_tools")
+}
+
+// Tool review model
+model ToolReview {
+  id                String    @id @default(cuid())
+  rating            Int       // 1-5 stars
+  title             String
+  content           String
+  pros              String?
+  cons              String?
+  wouldRecommend    Boolean
+  
+  // Medical context
+  procedureType     String?
+  patientOutcome    String?
+  easeOfUse         Int?      // 1-5 rating
+  durability        Int?      // 1-5 rating
+  
+  // Timestamps
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+  
+  // Relations
+  authorId          String
+  author            User      @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  toolId            String
+  tool              MedicalTool @relation(fields: [toolId], references: [id], onDelete: Cascade)
+  
+  @@map("tool_reviews")
+}
+
+// Post vote model
+model PostVote {
+  id                String    @id @default(cuid())
+  postId            String
+  userId            String
+  type              String    // upvote, downvote
+  
+  // Timestamps
+  createdAt         DateTime  @default(now())
+  
+  // Relations
+  post              Post      @relation(fields: [postId], references: [id], onDelete: Cascade)
+  user              User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  @@unique([postId, userId])
+  @@map("post_votes")
+}
+
+// Comment vote model
+model CommentVote {
+  id                String    @id @default(cuid())
+  commentId         String
+  userId            String
+  type              String    // upvote, downvote
+  
+  // Timestamps
+  createdAt         DateTime  @default(now())
+  
+  // Relations
+  comment           Comment   @relation(fields: [commentId], references: [id], onDelete: Cascade)
+  user              User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  @@unique([commentId, userId])
+  @@map("comment_votes")
+}
+
+// User connections for professional networking
+model Connection {
+  id                String    @id @default(cuid())
+  userId            String
+  connectedUserId    String
+  status            String    @default("pending") // pending, accepted, blocked
+  
+  // Timestamps
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+  
+  // Relations
+  user              User      @relation("UserConnections", fields: [userId], references: [id], onDelete: Cascade)
+  connectedUser     User      @relation("ConnectedUsers", fields: [connectedUserId], references: [id], onDelete: Cascade)
+  
+  @@unique([userId, connectedUserId])
+  @@map("connections")
+}
+
+// Connection request model
+model ConnectionRequest {
+  id                String    @id @default(cuid())
+  fromUserId        String
+  toUserId          String
+  message           String?
+  status            String    @default("pending") // pending, accepted, declined
+  
+  // Timestamps
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+  
+  // Relations
+  fromUser          User      @relation("ConnectionRequests", fields: [fromUserId], references: [id], onDelete: Cascade)
+  toUser            User      @relation("ConnectionRequestsReceived", fields: [toUserId], references: [id], onDelete: Cascade)
+  
+  @@unique([fromUserId, toUserId])
+  @@map("connection_requests")
+}
+
+// Audit log model for HIPAA compliance
+model AuditLog {
+  id                String    @id @default(cuid())
+  userId            String?
+  action            String
+  resource          String
+  resourceId        String?
+  details           Json?
+  ipAddress         String?
+  userAgent         String?
+  
+  // Timestamps
+  createdAt         DateTime  @default(now())
+  
+  // Relations
+  user              User?     @relation(fields: [userId], references: [id], onDelete: SetNull)
+  
+  @@map("audit_logs")
+}
+
+// Session model for user sessions
+model Session {
+  id                String    @id @default(cuid())
+  userId            String
+  token             String    @unique
+  expiresAt         DateTime
+  isActive          Boolean   @default(true)
+  
+  // Timestamps
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+  
+  @@map("sessions")
+}
