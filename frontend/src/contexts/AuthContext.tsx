@@ -1,26 +1,13 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import { authService } from '../services/authService';
-import { User } from '../types/user';
+import { authService, LoginCredentials, RegisterData, User } from '../services/authService';
 
 interface AuthContextType {
   user: User | null;
   loading: boolean;
-  login: (email: string, password: string) => Promise<void>;
+  login: (credentials: LoginCredentials) => Promise<void>;
   register: (userData: RegisterData) => Promise<void>;
   logout: () => void;
   updateProfile: (userData: Partial<User>) => Promise<void>;
-}
-
-interface RegisterData {
-  email: string;
-  username: string;
-  firstName: string;
-  lastName: string;
-  password: string;
-  specialty?: string;
-  medicalLicense?: string;
-  institution?: string;
-  yearsExperience?: number;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -60,10 +47,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     initAuth();
   }, []);
 
-  const login = async (email: string, password: string) => {
+  const login = async (credentials: LoginCredentials) => {
     try {
-      const response = await authService.login(email, password);
-      localStorage.setItem('token', response.token);
+      const response = await authService.login(credentials);
       setUser(response.user);
     } catch (error) {
       throw error;
@@ -73,7 +59,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const register = async (userData: RegisterData) => {
     try {
       const response = await authService.register(userData);
-      localStorage.setItem('token', response.token);
       setUser(response.user);
     } catch (error) {
       throw error;
@@ -81,7 +66,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   };
 
   const logout = () => {
-    localStorage.removeItem('token');
     setUser(null);
     authService.logout();
   };
