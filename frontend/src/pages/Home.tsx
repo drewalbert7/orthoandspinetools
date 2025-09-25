@@ -68,16 +68,19 @@ const Home: React.FC = () => {
       {/* Featured Communities */}
       <div className="bg-white rounded-lg shadow p-6 mb-6">
         <h2 className="text-xl font-semibold text-gray-900 mb-4">
-          Featured Medical Communities
+          Featured Communities
         </h2>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {[
-            { name: 'Orthopedic Surgery', members: '1,250', icon: '🦴' },
-            { name: 'Spine Surgery', members: '890', icon: '🦴' },
-            { name: 'Sports Medicine', members: '650', icon: '🏃' },
-            { name: 'Trauma Surgery', members: '420', icon: '🚑' },
-            { name: 'Pediatric Orthopedics', members: '380', icon: '👶' },
-            { name: 'Hand Surgery', members: '320', icon: '✋' },
+            { name: 'Spine', members: '1,240', icon: '🦴' },
+            { name: 'Sports', members: '980', icon: '🏃' },
+            { name: 'Ortho Trauma', members: '750', icon: '🚑' },
+            { name: 'Ortho Peds', members: '420', icon: '👶' },
+            { name: 'Ortho Onc', members: '180', icon: '🎗️' },
+            { name: 'Foot & Ankle', members: '320', icon: '🦶' },
+            { name: 'Shoulder Elbow', members: '450', icon: '💪' },
+            { name: 'Hip & Knee Arthroplasty', members: '890', icon: '🦴' },
+            { name: 'Hand', members: '380', icon: '✋' },
           ].map((community) => (
             <div key={community.name} className="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow">
               <div className="flex items-center space-x-3 mb-2">
@@ -95,37 +98,9 @@ const Home: React.FC = () => {
         <h2 className="text-xl font-semibold text-gray-900 mb-4">
           Recent Activity
         </h2>
-        <div className="space-y-4">
-          {[
-            {
-              type: 'post',
-              title: 'New Technique for Minimally Invasive Spine Surgery',
-              author: 'Dr. Sarah Johnson',
-              community: 'Spine Surgery',
-              time: '2 hours ago',
-            },
-            {
-              type: 'tool',
-              title: 'Review: Latest Generation Hip Replacement Implant',
-              author: 'Dr. Michael Chen',
-              community: 'Joint Replacement',
-              time: '4 hours ago',
-            },
-            {
-              type: 'case',
-              title: 'Complex Pediatric Scoliosis Case Discussion',
-              author: 'Dr. Emily Rodriguez',
-              community: 'Pediatric Orthopedics',
-              time: '6 hours ago',
-            },
-          ].map((activity, index) => (
-            <div key={index} className="border-l-4 border-blue-500 pl-4 py-2">
-              <h3 className="font-semibold text-gray-900">{activity.title}</h3>
-              <p className="text-sm text-gray-600">
-                by {activity.author} in {activity.community} • {activity.time}
-              </p>
-            </div>
-          ))}
+        <div className="text-center py-8">
+          <p className="text-gray-500">No recent activity to display</p>
+          <p className="text-sm text-gray-400 mt-2">Join a community to see the latest discussions and posts</p>
         </div>
       </div>
     </div>
