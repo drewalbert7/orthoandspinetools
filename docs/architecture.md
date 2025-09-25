@@ -257,3 +257,4 @@ docker-compose up -d postgres
 ---
 
 This architecture ensures a robust, secure, and scalable platform for medical professionals while maintaining the flexibility and federation capabilities of the underlying Lemmy platform.
+
