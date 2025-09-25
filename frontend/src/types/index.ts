@@ -185,8 +185,6 @@ export interface PaginationInfo {
 
 export interface PaginatedResponse<T> {
   success: boolean;
-  data: {
-    [key: string]: T[];
-    pagination: PaginationInfo;
-  };
+  data: T[];
+  pagination: PaginationInfo;
 }
