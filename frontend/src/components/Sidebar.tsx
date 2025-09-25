@@ -7,15 +7,15 @@ const Sidebar: React.FC = () => {
   const location = useLocation();
 
   const communities = [
-    { id: 'orthopedic-surgery', name: 'Orthopedic Surgery', icon: '🦴', memberCount: 1250 },
-    { id: 'spine-surgery', name: 'Spine Surgery', icon: '🦴', memberCount: 890 },
-    { id: 'sports-medicine', name: 'Sports Medicine', icon: '🏃', memberCount: 650 },
-    { id: 'trauma-surgery', name: 'Trauma Surgery', icon: '🚑', memberCount: 420 },
-    { id: 'pediatric-orthopedics', name: 'Pediatric Orthopedics', icon: '👶', memberCount: 380 },
-    { id: 'hand-surgery', name: 'Hand Surgery', icon: '✋', memberCount: 320 },
-    { id: 'foot-ankle', name: 'Foot & Ankle', icon: '🦶', memberCount: 280 },
-    { id: 'joint-replacement', name: 'Joint Replacement', icon: '🦴', memberCount: 750 },
-    { id: 'spine-deformity', name: 'Spine Deformity', icon: '🦴', memberCount: 190 },
+    { id: 'spine', name: 'Spine', icon: '🦴', memberCount: 1240 },
+    { id: 'sports', name: 'Sports', icon: '🏃', memberCount: 980 },
+    { id: 'ortho-trauma', name: 'Ortho Trauma', icon: '🚑', memberCount: 750 },
+    { id: 'ortho-peds', name: 'Ortho Peds', icon: '👶', memberCount: 420 },
+    { id: 'ortho-onc', name: 'Ortho Onc', icon: '🎗️', memberCount: 180 },
+    { id: 'foot-ankle', name: 'Foot & Ankle', icon: '🦶', memberCount: 320 },
+    { id: 'shoulder-elbow', name: 'Shoulder Elbow', icon: '💪', memberCount: 450 },
+    { id: 'hip-knee-arthroplasty', name: 'Hip & Knee Arthroplasty', icon: '🦴', memberCount: 890 },
+    { id: 'hand', name: 'Hand', icon: '✋', memberCount: 380 },
   ];
 
   const isActive = (path: string) => {
@@ -80,7 +80,7 @@ const Sidebar: React.FC = () => {
         {/* Communities Section */}
         <div className="mb-6">
           <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-3">
-            Medical Communities
+            Communities
           </h3>
           <div className="space-y-1">
             {communities.map((community) => (
