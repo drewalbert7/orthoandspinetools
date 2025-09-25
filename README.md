@@ -1,10 +1,10 @@
 # OrthoAndSpineTools
 
-A medical-focused community platform built on Lemmy, designed specifically for orthopedic and spine professionals.
+A custom-built medical-focused community platform designed specifically for orthopedic and spine professionals.
 
 ## 🏥 Project Overview
 
-OrthoAndSpineTools is a specialized social platform that brings together medical professionals in orthopedic and spine specialties. Built on the robust Lemmy architecture, it provides a federated, self-hostable alternative to traditional medical forums.
+OrthoAndSpineTools is a specialized social platform that brings together medical professionals in orthopedic and spine specialties. Built from the ground up as a custom solution, it provides a secure, HIPAA-compliant platform for medical professionals to collaborate, share knowledge, and network.
 
 ## 🎯 Target Audience
 
@@ -19,17 +19,17 @@ OrthoAndSpineTools is a specialized social platform that brings together medical
 
 This project consists of three main components:
 
-### Backend (`orthoandspinetools-backend/`)
-- **Technology**: Rust + Actix + Diesel
-- **Base**: Lemmy backend fork
-- **Repository**: `git@github.com:drewalbert7/lemmy.git`
-- **Features**: Full API with medical community customizations
+### Backend (`orthoandspinetools-medical-platform/backend/`)
+- **Technology**: Node.js + TypeScript + Prisma ORM
+- **Features**: Custom medical API with specialty-specific endpoints
+- **Database**: PostgreSQL with medical-focused schema
+- **Security**: HIPAA-compliant data handling
 
-### Frontend (`orthoandspinetools-frontend/`)
-- **Technology**: TypeScript + Inferno + Webpack
-- **Base**: Lemmy UI fork
-- **Repository**: `git@github.com:drewalbert7/lemmy-ui.git`
-- **Features**: Medical specialty communities, custom UI components
+### Frontend (`orthoandspinetools-medical-platform/frontend/`)
+- **Technology**: React + Vite + TypeScript
+- **Features**: Modern medical community interface
+- **UI**: Custom medical specialty components and dashboards
+- **Responsive**: Mobile-optimized for medical workflows
 
 ### Documentation (`orthoandspinetools-main/`)
 - **Purpose**: Project documentation and deployment guides
@@ -53,20 +53,22 @@ The platform includes dedicated communities for 9 orthopedic specialties:
 
 ### Prerequisites
 - Docker and Docker Compose
-- Rust (for backend development)
-- Node.js and pnpm (for frontend development)
+- Node.js (for development)
+- PostgreSQL database
+- Redis cache (optional)
 
 ### Backend Setup
 ```bash
-cd ~/orthoandspinetools-backend
-cargo build
+cd ~/orthoandspinetools-medical-platform/backend
+npm install
+npm run dev
 ```
 
 ### Frontend Setup
 ```bash
-cd ~/orthoandspinetools-frontend
-pnpm install
-pnpm dev
+cd ~/orthoandspinetools-medical-platform/frontend
+npm install
+npm run dev
 ```
 
 ### Production Deployment
@@ -99,9 +101,10 @@ This project is licensed under the AGPL-3.0 License - see the [LICENSE](LICENSE)
 
 ## 🙏 Acknowledgments
 
-- Built on [Lemmy](https://github.com/LemmyNet/lemmy) - A link aggregator for the fediverse
 - Medical community inspiration from orthopedic professionals
 - Open source medical education initiatives
+- Healthcare technology innovation
+- Medical professional community feedback
 
 ---
 
