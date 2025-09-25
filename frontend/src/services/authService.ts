@@ -66,6 +66,10 @@ export interface RegisterData {
   credentials: string;
 }
 
+export interface RegisterFormData extends RegisterData {
+  confirmPassword: string;
+}
+
 export interface AuthResponse {
   token: string;
   user: User;
