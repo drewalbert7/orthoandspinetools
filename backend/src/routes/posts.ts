@@ -1,4 +1,4 @@
-import { Router, Request, Response, NextFunction } from 'express';
+import { Router, Request, Response } from 'express';
 import { authenticate, optionalAuth, AuthRequest } from '../middleware/auth';
 import { asyncHandler, AppError } from '../middleware/errorHandler';
 import { prisma } from '../index';
@@ -12,7 +12,7 @@ const validatePost = [
   body('title').trim().isLength({ min: 1, max: 200 }).withMessage('Title must be 1-200 characters'),
   body('content').trim().isLength({ min: 1, max: 10000 }).withMessage('Content must be 1-10000 characters'),
   body('type').isIn(['discussion', 'case_study', 'tool_review', 'question']).withMessage('Invalid post type'),
-  body('communityId').isUUID().withMessage('Invalid community ID'),
+  body('communityId').isString().withMessage('Invalid community ID'),
   body('specialty').optional().isString().withMessage('Specialty must be a string'),
   body('caseType').optional().isString().withMessage('Case type must be a string'),
   body('patientAge').optional().isInt({ min: 0, max: 120 }).withMessage('Patient age must be 0-120'),
@@ -20,7 +20,7 @@ const validatePost = [
 ];
 
 const validateVote = [
-  param('id').isUUID().withMessage('Invalid post ID'),
+  param('id').isString().withMessage('Invalid post ID'),
   body('type').isIn(['upvote', 'downvote']).withMessage('Vote type must be upvote or downvote'),
 ];
 
@@ -364,7 +364,7 @@ router.get('/:id', optionalAuth, [
     };
   });
 
-  res.json({
+  return res.json({
     success: true,
     data: {
       ...post,
@@ -490,7 +490,7 @@ router.post('/:id/vote', authenticate, validateVote, asyncHandler(async (req: Au
     }
   });
 
-  res.json({
+  return res.json({
     success: true,
     message: 'Vote recorded',
     data: { voteType: type }

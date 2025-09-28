@@ -92,8 +92,8 @@ router.post('/register', validateRegister, asyncHandler(async (req: Request, res
   // Generate JWT token
   const token = jwt.sign(
     { userId: user.id },
-    process.env.JWT_SECRET!,
-    { expiresIn: process.env.JWT_EXPIRES_IN || '7d' }
+    process.env.JWT_SECRET || 'changeme',
+    { expiresIn: (process.env.JWT_EXPIRES_IN as any) || '7d' }
   );
 
   // Log the registration for audit purposes
@@ -171,8 +171,8 @@ router.post('/login', validateLogin, asyncHandler(async (req: Request, res: Resp
   // Generate JWT token
   const token = jwt.sign(
     { userId: user.id },
-    process.env.JWT_SECRET!,
-    { expiresIn: process.env.JWT_EXPIRES_IN || '7d' }
+    process.env.JWT_SECRET || 'changeme',
+    { expiresIn: (process.env.JWT_EXPIRES_IN as any) || '7d' }
   );
 
   // Log the login for audit purposes

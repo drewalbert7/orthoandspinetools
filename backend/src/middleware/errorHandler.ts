@@ -1,18 +1,18 @@
 import { Request, Response, NextFunction } from 'express';
 import { logger } from '../utils/logger';
 
-export interface AppError extends Error {
+export interface AppErrorLike extends Error {
   statusCode?: number;
   isOperational?: boolean;
 }
 
 export const errorHandler = (
-  err: AppError,
+  err: AppErrorLike,
   req: Request,
   res: Response,
   next: NextFunction
 ) => {
-  let error = { ...err };
+  let error: AppErrorLike = Object.assign(new Error(err.message), err);
   error.message = err.message;
 
   // Log error
@@ -28,36 +28,36 @@ export const errorHandler = (
   // Mongoose bad ObjectId
   if (err.name === 'CastError') {
     const message = 'Resource not found';
-    error = { message, statusCode: 404 } as AppError;
+    error = { message, statusCode: 404 } as AppErrorLike;
   }
 
   // Mongoose duplicate key
   if (err.name === 'MongoError' && (err as any).code === 11000) {
     const message = 'Duplicate field value entered';
-    error = { message, statusCode: 400 } as AppError;
+    error = { message, statusCode: 400 } as AppErrorLike;
   }
 
   // Mongoose validation error
   if (err.name === 'ValidationError') {
     const message = Object.values((err as any).errors).map((val: any) => val.message).join(', ');
-    error = { message, statusCode: 400 } as AppError;
+    error = { message, statusCode: 400 } as AppErrorLike;
   }
 
   // Prisma errors
   if (err.name === 'PrismaClientKnownRequestError') {
     const message = 'Database operation failed';
-    error = { message, statusCode: 400 } as AppError;
+    error = { message, statusCode: 400 } as AppErrorLike;
   }
 
   // JWT errors
   if (err.name === 'JsonWebTokenError') {
     const message = 'Invalid token';
-    error = { message, statusCode: 401 } as AppError;
+    error = { message, statusCode: 401 } as AppErrorLike;
   }
 
   if (err.name === 'TokenExpiredError') {
     const message = 'Token expired';
-    error = { message, statusCode: 401 } as AppError;
+    error = { message, statusCode: 401 } as AppErrorLike;
   }
 
   res.status(error.statusCode || 500).json({

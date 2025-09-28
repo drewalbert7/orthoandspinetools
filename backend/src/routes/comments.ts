@@ -1,4 +1,4 @@
-import { Router, Request, Response, NextFunction } from 'express';
+import { Router, Request, Response } from 'express';
 import { authenticate, optionalAuth, AuthRequest } from '../middleware/auth';
 import { asyncHandler, AppError } from '../middleware/errorHandler';
 import { prisma } from '../index';
@@ -10,12 +10,12 @@ const router = Router();
 // Validation middleware
 const validateComment = [
   body('content').trim().isLength({ min: 1, max: 5000 }).withMessage('Content must be 1-5000 characters'),
-  body('postId').isUUID().withMessage('Invalid post ID'),
-  body('parentId').optional().isUUID().withMessage('Invalid parent comment ID'),
+  body('postId').isString().withMessage('Invalid post ID'),
+  body('parentId').optional().isString().withMessage('Invalid parent comment ID'),
 ];
 
 const validateCommentVote = [
-  param('id').isUUID().withMessage('Invalid comment ID'),
+  param('id').isString().withMessage('Invalid comment ID'),
   body('type').isIn(['upvote', 'downvote']).withMessage('Vote type must be upvote or downvote'),
 ];
 
@@ -418,7 +418,7 @@ router.get('/:id', optionalAuth, [
     };
   });
 
-  res.json({
+  return res.json({
     success: true,
     data: {
       ...comment,
@@ -544,7 +544,7 @@ router.post('/:id/vote', authenticate, validateCommentVote, asyncHandler(async (
     }
   });
 
-  res.json({
+  return res.json({
     success: true,
     message: 'Vote recorded',
     data: { voteType: type }
