@@ -44,16 +44,24 @@ export interface Post {
   content: string;
   authorId: string;
   communityId: string;
-  postType: 'discussion' | 'case_study' | 'tool_review';
+  type?: 'discussion' | 'case_study' | 'tool_review' | 'question';
+  postType?: 'discussion' | 'case_study' | 'tool_review';
+  specialty?: string;
   patientAge?: number;
   procedureType?: string;
   attachments: Attachment[];
   votes: Vote[];
-  comments: Comment[];
+  comments?: Comment[];
   createdAt: string;
   updatedAt: string;
   author: User;
   community: Community;
+  // Derived fields from API transforms
+  voteScore?: number;
+  upvotes?: number;
+  downvotes?: number;
+  userVote?: 'upvote' | 'downvote' | null;
+  _count?: { comments: number; votes: number };
 }
 
 export interface Comment {
@@ -67,6 +75,14 @@ export interface Comment {
   createdAt: string;
   updatedAt: string;
   author: User;
+  // Derived/optional fields used by UI
+  isDeleted?: boolean;
+  voteScore?: number;
+  upvotes?: number;
+  downvotes?: number;
+  userVote?: 'upvote' | 'downvote' | null;
+  _count?: { replies: number; votes: number };
+  post?: { id: string; title: string };
 }
 
 export interface Community {
@@ -99,6 +115,7 @@ export interface Vote {
   postId?: string;
   commentId?: string;
   value: 1 | -1; // 1 for upvote, -1 for downvote
+  type?: 'upvote' | 'downvote';
   createdAt: string;
 }
 
@@ -142,19 +159,15 @@ export interface ToolReview {
 
 class ApiService {
   // Posts
-  async getPosts(communityId?: string, page = 1, limit = 20): Promise<{ posts: Post[]; total: number }> {
+  async getPosts(params: { page?: number; limit?: number; sort?: string; community?: string } = {}): Promise<{ posts: Post[]; pagination: { page: number; pages: number } }> {
     try {
-      const params = new URLSearchParams({
-        page: page.toString(),
-        limit: limit.toString(),
-      });
-      
-      if (communityId) {
-        params.append('communityId', communityId);
-      }
-      
-      const response = await api.get(`/posts?${params}`);
-      return response.data;
+      const search = new URLSearchParams();
+      if (params.page) search.set('page', String(params.page));
+      if (params.limit) search.set('limit', String(params.limit));
+      if (params.sort) search.set('sort', params.sort);
+      if (params.community) search.set('community', params.community);
+      const response = await api.get(`/posts?${search.toString()}`);
+      return response.data.data ? response.data : response.data;
     } catch (error: any) {
       throw new Error(error.response?.data?.message || 'Failed to fetch posts');
     }
@@ -205,8 +218,8 @@ class ApiService {
   // Comments
   async getComments(postId: string): Promise<Comment[]> {
     try {
-      const response = await api.get(`/posts/${postId}/comments`);
-      return response.data;
+      const response = await api.get(`/comments/post/${postId}`);
+      return response.data.data?.comments || response.data;
     } catch (error: any) {
       throw new Error(error.response?.data?.message || 'Failed to fetch comments');
     }
@@ -244,7 +257,8 @@ class ApiService {
   // Voting
   async votePost(postId: string, value: 1 | -1): Promise<Vote> {
     try {
-      const response = await api.post(`/posts/${postId}/vote`, { value });
+      const type = value === 1 ? 'upvote' : 'downvote';
+      const response = await api.post(`/posts/${postId}/vote`, { type });
       return response.data;
     } catch (error: any) {
       throw new Error(error.response?.data?.message || 'Failed to vote on post');
@@ -253,7 +267,8 @@ class ApiService {
 
   async voteComment(commentId: string, value: 1 | -1): Promise<Vote> {
     try {
-      const response = await api.post(`/comments/${commentId}/vote`, { value });
+      const type = value === 1 ? 'upvote' : 'downvote';
+      const response = await api.post(`/comments/${commentId}/vote`, { type });
       return response.data;
     } catch (error: any) {
       throw new Error(error.response?.data?.message || 'Failed to vote on comment');

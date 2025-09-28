@@ -80,7 +80,7 @@ class AuthService {
   async login(credentials: LoginCredentials): Promise<AuthResponse> {
     try {
       const response = await api.post('/auth/login', credentials);
-      const { token, user } = response.data;
+      const { token, user } = response.data.data;
       
       // Store token and user data
       localStorage.setItem('token', token);
@@ -88,7 +88,7 @@ class AuthService {
       
       return { token, user };
     } catch (error: any) {
-      throw new Error(error.response?.data?.message || 'Login failed');
+      throw new Error(error.response?.data?.error || error.response?.data?.message || 'Login failed');
     }
   }
 
@@ -96,7 +96,7 @@ class AuthService {
   async register(userData: RegisterData): Promise<AuthResponse> {
     try {
       const response = await api.post('/auth/register', userData);
-      const { token, user } = response.data;
+      const { token, user } = response.data.data;
       
       // Store token and user data
       localStorage.setItem('token', token);
@@ -104,7 +104,7 @@ class AuthService {
       
       return { token, user };
     } catch (error: any) {
-      throw new Error(error.response?.data?.message || 'Registration failed');
+      throw new Error(error.response?.data?.error || error.response?.data?.message || 'Registration failed');
     }
   }
 

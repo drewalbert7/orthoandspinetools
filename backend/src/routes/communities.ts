@@ -1,10 +1,10 @@
-import { Router } from 'express';
+import { Router, Request, Response } from 'express';
 import { asyncHandler } from '../middleware/errorHandler';
 
 const router = Router();
 
 // Get all communities
-router.get('/', asyncHandler(async (req, res) => {
+router.get('/', asyncHandler(async (_req: Request, res: Response) => {
   const communities = [
     {
       id: 'spine',
@@ -114,8 +114,8 @@ router.get('/', asyncHandler(async (req, res) => {
 }));
 
 // Get single community by ID
-router.get('/:id', asyncHandler(async (req, res) => {
-  const { id } = req.params;
+router.get('/:id', asyncHandler(async (req: Request, res: Response) => {
+  const { id } = req.params as { id: string };
   
   const communities = [
     {
@@ -228,7 +228,7 @@ router.get('/:id', asyncHandler(async (req, res) => {
     });
   }
 
-  res.json({
+  return res.json({
     success: true,
     data: community
   });
