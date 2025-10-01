@@ -13,6 +13,8 @@ module.exports = {
           border: 'var(--reddit-border)',
           text: 'var(--reddit-text)',
           'text-muted': 'var(--reddit-text-muted)',
+          orange: 'var(--reddit-orange)',
+          blue: 'var(--reddit-blue)',
         },
       },
     },

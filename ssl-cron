@@ -1,0 +1,4 @@
+# SSL Certificate Auto-Renewal for OrthoAndSpineTools
+# Run every Monday at 2:30 AM
+30 2 * * 1 cd /home/dstrad/orthoandspinetools-main && ./update-ssl-certs.sh >> /home/dstrad/ssl-renewal.log 2>&1
+

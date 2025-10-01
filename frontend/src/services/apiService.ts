@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'https://orthoandspinetools.com/api';
 
 // Create axios instance with default config
 const api = axios.create({
@@ -102,9 +102,11 @@ export interface User {
   email: string;
   firstName: string;
   lastName: string;
-  specialty: string;
-  credentials: string;
-  verified: boolean;
+  specialty?: string;
+  medicalLicense?: string;
+  institution?: string;
+  yearsExperience?: number;
+  isEmailVerified: boolean;
   createdAt: string;
   updatedAt: string;
 }

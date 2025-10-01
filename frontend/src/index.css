@@ -2,6 +2,17 @@
 @tailwind components;
 @tailwind utilities;
 
+:root {
+  /* Reddit-style color scheme */
+  --reddit-bg: #1a1a1b;
+  --reddit-card: #ffffff;
+  --reddit-border: #e5e5e5;
+  --reddit-text: #1c1c1c;
+  --reddit-text-muted: #878a8c;
+  --reddit-orange: #ff4500;
+  --reddit-blue: #0079d3;
+}
+
 @layer base {
   html {
     font-family: 'Inter', system-ui, sans-serif;

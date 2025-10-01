@@ -14,7 +14,7 @@ const RegisterForm: React.FC = () => {
     firstName: '',
     lastName: '',
     specialty: '',
-    credentials: '',
+    medicalLicense: '',
   });
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
@@ -46,6 +46,7 @@ const RegisterForm: React.FC = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    console.log('Form submitted with data:', formData);
     setIsLoading(true);
     setError('');
 
@@ -65,9 +66,12 @@ const RegisterForm: React.FC = () => {
 
     try {
       const { confirmPassword, ...registerData } = formData;
+      console.log('Calling register with data:', registerData);
       await register(registerData);
+      console.log('Registration successful, navigating to home');
       navigate('/');
     } catch (err: any) {
+      console.error('Registration error:', err);
       setError(err.message || 'Registration failed');
     } finally {
       setIsLoading(false);
@@ -188,19 +192,19 @@ const RegisterForm: React.FC = () => {
               </select>
             </div>
 
-            {/* Credentials */}
+            {/* Medical License */}
             <div>
-              <label htmlFor="credentials" className="block text-sm font-medium text-reddit">
-                Medical Credentials (Optional)
+              <label htmlFor="medicalLicense" className="block text-sm font-medium text-reddit">
+                Medical License Number (Optional)
               </label>
               <input
-                id="credentials"
-                name="credentials"
+                id="medicalLicense"
+                name="medicalLicense"
                 type="text"
-                value={formData.credentials}
+                value={formData.medicalLicense}
                 onChange={handleChange}
                 className="mt-1 appearance-none relative block w-full px-3 py-2 border border-reddit placeholder-reddit-text-muted bg-reddit-card text-reddit rounded-md focus:outline-none focus:ring-reddit-blue focus:border-reddit-blue focus:z-10 sm:text-sm"
-                placeholder="MD, DO, PT, etc."
+                placeholder="Medical license number"
               />
             </div>
 

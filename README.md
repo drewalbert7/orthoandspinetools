@@ -1,16 +1,9 @@
 # OrthoAndSpineTools Medical Platform
 
-<<<<<<< HEAD
-A custom-built medical-focused community platform designed specifically for orthopedic and spine professionals.
-=======
 A Reddit-style community platform for orthopedic and spine professionals to share tools, hardware, X-rays, and discuss cases.
->>>>>>> ae62b1420f3b95e4e1cba4d93dbbf9d54abc835a
 
 ## 🏥 Medical Specialties Supported
 
-<<<<<<< HEAD
-OrthoAndSpineTools is a specialized social platform that brings together medical professionals in orthopedic and spine specialties. Built from the ground up as a custom solution, it provides a secure, HIPAA-compliant platform for medical professionals to collaborate, share knowledge, and network.
-=======
 - **Orthopedic Surgery** - General orthopedic procedures and tools
 - **Spine Surgery** - Spinal procedures, implants, and techniques
 - **Sports Medicine** - Athletic injury treatment and prevention
@@ -20,7 +13,6 @@ OrthoAndSpineTools is a specialized social platform that brings together medical
 - **Foot & Ankle** - Lower extremity orthopedic care
 - **Joint Replacement** - Hip, knee, and other joint procedures
 - **Spine Deformity** - Scoliosis and spinal deformity correction
->>>>>>> ae62b1420f3b95e4e1cba4d93dbbf9d54abc835a
 
 ## 🛠️ Tech Stack
 
@@ -40,22 +32,21 @@ OrthoAndSpineTools is a specialized social platform that brings together medical
 - **React Hook Form** for forms
 - **Axios** for API calls
 
-<<<<<<< HEAD
 This project consists of three main components:
 
-### Backend (`orthoandspinetools-medical-platform/backend/`)
+### Backend (`backend/`)
 - **Technology**: Node.js + TypeScript + Prisma ORM
 - **Features**: Custom medical API with specialty-specific endpoints
 - **Database**: PostgreSQL with medical-focused schema
 - **Security**: HIPAA-compliant data handling
 
-### Frontend (`orthoandspinetools-medical-platform/frontend/`)
+### Frontend (`frontend/`)
 - **Technology**: React + Vite + TypeScript
 - **Features**: Modern medical community interface
 - **UI**: Custom medical specialty components and dashboards
 - **Responsive**: Mobile-optimized for medical workflows
 
-### Documentation (`orthoandspinetools-main/`)
+### Documentation (`docs/`)
 - **Purpose**: Project documentation and deployment guides
 - **Repository**: `https://github.com/drewalbert7/orthoandspinetools.git`
 
