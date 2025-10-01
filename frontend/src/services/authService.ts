@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'https://orthoandspinetools.com/api';
 
 // Create axios instance with default config
 const api = axios.create({
@@ -44,9 +44,11 @@ export interface User {
   email: string;
   firstName: string;
   lastName: string;
-  specialty: string;
-  credentials: string;
-  verified: boolean;
+  specialty?: string;
+  medicalLicense?: string;
+  institution?: string;
+  yearsExperience?: number;
+  isEmailVerified: boolean;
   createdAt: string;
   updatedAt: string;
 }
@@ -62,8 +64,10 @@ export interface RegisterData {
   password: string;
   firstName: string;
   lastName: string;
-  specialty: string;
-  credentials: string;
+  specialty?: string;
+  medicalLicense?: string;
+  institution?: string;
+  yearsExperience?: number;
 }
 
 export interface RegisterFormData extends RegisterData {
@@ -95,7 +99,9 @@ class AuthService {
   // Register new user
   async register(userData: RegisterData): Promise<AuthResponse> {
     try {
+      console.log('authService.register called with:', userData);
       const response = await api.post('/auth/register', userData);
+      console.log('API response:', response.data);
       const { token, user } = response.data.data;
       
       // Store token and user data
@@ -104,6 +110,8 @@ class AuthService {
       
       return { token, user };
     } catch (error: any) {
+      console.error('authService.register error:', error);
+      console.error('error.response:', error.response);
       throw new Error(error.response?.data?.error || error.response?.data?.message || 'Registration failed');
     }
   }
