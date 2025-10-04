@@ -47,8 +47,23 @@ app.use(helmet({
 }));
 
 // CORS configuration
+const allowedOrigins = (process.env.CORS_ORIGINS?.split(',').map(o => o.trim()).filter(Boolean)) || [
+  'https://orthoandspinetools.com',
+  'https://www.orthoandspinetools.com',
+  'http://localhost:3000'
+];
+
 app.use(cors({
-  origin: process.env.CORS_ORIGIN || 'http://localhost:3000',
+  origin: (origin, callback) => {
+    // Allow requests with no origin (curl, server-to-server, or same-origin)
+    if (!origin) {
+      return callback(null, true);
+    }
+    if (allowedOrigins.includes(origin)) {
+      return callback(null, true);
+    }
+    return callback(null, false);
+  },
   credentials: true,
 }));
 
@@ -149,7 +164,7 @@ const PORT = process.env.PORT || 3001;
 server.listen(PORT, () => {
   logger.info(`🚀 OrthoAndSpineTools API server running on port ${PORT}`);
   logger.info(`📊 Environment: ${process.env.NODE_ENV || 'development'}`);
-  logger.info(`🔗 CORS Origin: ${process.env.CORS_ORIGIN || 'http://localhost:3000'}`);
+  logger.info(`🔗 CORS Origins: ${(process.env.CORS_ORIGINS || allowedOrigins.join(', '))}`);
   logger.info(`🔒 Trust Proxy: ${app.get('trust proxy')}`);
 });
 

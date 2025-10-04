@@ -94,6 +94,8 @@ export interface Community {
   specialty?: string;
   memberCount?: number;
   postCount?: number;
+  weeklyVisitors?: number;
+  weeklyContributions?: number;
   createdAt?: string;
   updatedAt?: string;
 }
