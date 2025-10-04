@@ -34,8 +34,8 @@ const Home: React.FC = () => {
               <p className="text-green-700 text-sm">Discover the latest medical tools and equipment</p>
             </div>
             <div className="bg-purple-50 p-4 rounded-lg">
-              <h3 className="font-semibold text-purple-900">Case Studies</h3>
-              <p className="text-purple-700 text-sm">Learn from real-world medical cases</p>
+              <h3 className="font-semibold text-purple-900">Medical Tools</h3>
+              <p className="text-purple-700 text-sm">Discover and review medical equipment</p>
             </div>
           </div>
         </div>
@@ -72,22 +72,21 @@ const Home: React.FC = () => {
         </h2>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {[
-            { name: 'Spine', members: '1,240', icon: '🦴' },
-            { name: 'Sports', members: '980', icon: '🏃' },
-            { name: 'Ortho Trauma', members: '750', icon: '🚑' },
-            { name: 'Ortho Peds', members: '420', icon: '👶' },
-            { name: 'Ortho Onc', members: '180', icon: '🎗️' },
-            { name: 'Foot & Ankle', members: '320', icon: '🦶' },
-            { name: 'Shoulder Elbow', members: '450', icon: '💪' },
-            { name: 'Hip & Knee Arthroplasty', members: '890', icon: '🦴' },
-            { name: 'Hand', members: '380', icon: '✋' },
+            { name: 'Spine', icon: '🦴' },
+            { name: 'Sports', icon: '🏃' },
+            { name: 'Ortho Trauma', icon: '🚑' },
+            { name: 'Ortho Peds', icon: '👶' },
+            { name: 'Ortho Onc', icon: '🎗️' },
+            { name: 'Foot & Ankle', icon: '🦶' },
+            { name: 'Shoulder Elbow', icon: '💪' },
+            { name: 'Hip & Knee Arthroplasty', icon: '🦴' },
+            { name: 'Hand', icon: '✋' },
           ].map((community) => (
             <div key={community.name} className="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow">
-              <div className="flex items-center space-x-3 mb-2">
+              <div className="flex items-center space-x-3">
                 <span className="text-2xl">{community.icon}</span>
                 <h3 className="font-semibold text-gray-900">{community.name}</h3>
               </div>
-              <p className="text-sm text-gray-600">{community.members} members</p>
             </div>
           ))}
         </div>

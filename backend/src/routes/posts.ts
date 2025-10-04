@@ -139,7 +139,7 @@ router.post('/', authenticate, validatePost, asyncHandler(async (req: AuthReques
 router.get('/', optionalAuth, [
   query('page').optional().isInt({ min: 1 }).withMessage('Page must be a positive integer'),
   query('limit').optional().isInt({ min: 1, max: 50 }).withMessage('Limit must be 1-50'),
-  query('community').optional().isUUID().withMessage('Invalid community ID'),
+  query('community').optional().isString().withMessage('Invalid community ID'),
   query('type').optional().isIn(['discussion', 'case_study', 'tool_review', 'question']).withMessage('Invalid post type'),
   query('specialty').optional().isString().withMessage('Specialty must be a string'),
   query('sort').optional().isIn(['newest', 'oldest', 'popular', 'controversial']).withMessage('Invalid sort option'),
@@ -160,7 +160,22 @@ router.get('/', optionalAuth, [
   };
 
   if (community) {
-    where.communityId = community;
+    // Check if community exists and get its ID
+    const communityRecord = await prisma.community.findFirst({
+      where: {
+        OR: [
+          { id: community as string },
+          { slug: community as string }
+        ]
+      },
+      select: { id: true }
+    });
+    
+    if (!communityRecord) {
+      throw new AppError('Community not found', 404);
+    }
+    
+    where.communityId = communityRecord.id;
   }
 
   if (type) {

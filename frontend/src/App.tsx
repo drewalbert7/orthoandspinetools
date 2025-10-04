@@ -12,6 +12,7 @@ import Home from './pages/Home';
 import PostDetail from './pages/PostDetail';
 import CreatePost from './pages/CreatePost';
 import Profile from './pages/Profile';
+import Community from './pages/Community';
 
 // Context
 import { AuthProvider } from './contexts/AuthContext';
@@ -34,7 +35,7 @@ function App() {
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
         <Router>
-          <div className="min-h-screen bg-gray-50">
+          <div className="min-h-screen bg-white">
             <Header />
             <div className="flex">
               <Sidebar />
@@ -46,6 +47,7 @@ function App() {
                   <Route path="/post/:id" element={<PostDetail />} />
                   <Route path="/create-post" element={<CreatePost />} />
                   <Route path="/profile" element={<Profile />} />
+                  <Route path="/community/:slug" element={<Community />} />
                 </Routes>
               </main>
             </div>

@@ -61,6 +61,7 @@ export interface Post {
   upvotes?: number;
   downvotes?: number;
   userVote?: 'upvote' | 'downvote' | null;
+  commentsCount?: number;
   _count?: { comments: number; votes: number };
 }
 
@@ -88,12 +89,13 @@ export interface Comment {
 export interface Community {
   id: string;
   name: string;
+  slug: string;
   description: string;
-  specialty: string;
-  memberCount: number;
-  postCount: number;
-  createdAt: string;
-  updatedAt: string;
+  specialty?: string;
+  memberCount?: number;
+  postCount?: number;
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 export interface User {
@@ -103,12 +105,30 @@ export interface User {
   firstName: string;
   lastName: string;
   specialty?: string;
+  subSpecialty?: string;
   medicalLicense?: string;
   institution?: string;
   yearsExperience?: number;
+  bio?: string;
+  profileImage?: string;
+  location?: string;
+  website?: string;
   isEmailVerified: boolean;
   createdAt: string;
   updatedAt: string;
+  lastLoginAt?: string;
+}
+
+export interface UserProfile {
+  user: User;
+  stats: {
+    karma: number;
+    postsCount: number;
+    commentsCount: number;
+    communitiesCount: number;
+  };
+  posts: Post[];
+  communities: Community[];
 }
 
 export interface Vote {
@@ -169,7 +189,7 @@ class ApiService {
       if (params.sort) search.set('sort', params.sort);
       if (params.community) search.set('community', params.community);
       const response = await api.get(`/posts?${search.toString()}`);
-      return response.data.data ? response.data : response.data;
+      return response.data.data;
     } catch (error: any) {
       throw new Error(error.response?.data?.message || 'Failed to fetch posts');
     }
@@ -193,7 +213,14 @@ class ApiService {
     procedureType?: string;
   }): Promise<Post> {
     try {
-      const response = await api.post('/posts', postData);
+      // Map postType to type for backend compatibility
+      const { postType, ...rest } = postData;
+      const backendData = {
+        ...rest,
+        type: postType,
+      };
+      
+      const response = await api.post('/posts', backendData);
       return response.data;
     } catch (error: any) {
       throw new Error(error.response?.data?.message || 'Failed to create post');
@@ -281,7 +308,7 @@ class ApiService {
   async getCommunities(): Promise<Community[]> {
     try {
       const response = await api.get('/communities');
-      return response.data;
+      return response.data.data || response.data;
     } catch (error: any) {
       throw new Error(error.response?.data?.message || 'Failed to fetch communities');
     }
@@ -290,9 +317,37 @@ class ApiService {
   async getCommunity(id: string): Promise<Community> {
     try {
       const response = await api.get(`/communities/${id}`);
-      return response.data;
+      return response.data.data || response.data;
     } catch (error: any) {
       throw new Error(error.response?.data?.message || 'Failed to fetch community');
+    }
+  }
+
+  // User Profile
+  async getUserProfile(): Promise<UserProfile> {
+    try {
+      const response = await api.get('/auth/profile');
+      return response.data.data;
+    } catch (error: any) {
+      throw new Error(error.response?.data?.message || 'Failed to fetch user profile');
+    }
+  }
+
+  async getUserCommunities(): Promise<Community[]> {
+    try {
+      const response = await api.get('/auth/communities');
+      return response.data.data;
+    } catch (error: any) {
+      throw new Error(error.response?.data?.message || 'Failed to fetch user communities');
+    }
+  }
+
+  async followCommunity(communityId: string): Promise<{ following: boolean; message: string }> {
+    try {
+      const response = await api.post(`/auth/communities/${communityId}/follow`);
+      return response.data;
+    } catch (error: any) {
+      throw new Error(error.response?.data?.message || 'Failed to follow/unfollow community');
     }
   }
 

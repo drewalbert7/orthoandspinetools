@@ -31,7 +31,7 @@ export const prisma = new PrismaClient();
 const app = express();
 const server = createServer(app);
 
-// Trust proxy for rate limiting behind nginx
+// Trust proxy for rate limiting behind nginx (only trust nginx)
 app.set('trust proxy', 1);
 
 // Security middleware
@@ -57,6 +57,10 @@ const limiter = rateLimit({
   windowMs: parseInt(process.env.RATE_LIMIT_WINDOW_MS || '900000'), // 15 minutes
   max: parseInt(process.env.RATE_LIMIT_MAX_REQUESTS || '100'), // limit each IP to 100 requests per windowMs
   message: 'Too many requests from this IP, please try again later.',
+  skip: (req) => {
+    // Skip rate limiting for health checks
+    return req.path === '/api/health' || req.path === '/health';
+  },
 });
 app.use(limiter);
 
@@ -146,6 +150,7 @@ server.listen(PORT, () => {
   logger.info(`🚀 OrthoAndSpineTools API server running on port ${PORT}`);
   logger.info(`📊 Environment: ${process.env.NODE_ENV || 'development'}`);
   logger.info(`🔗 CORS Origin: ${process.env.CORS_ORIGIN || 'http://localhost:3000'}`);
+  logger.info(`🔒 Trust Proxy: ${app.get('trust proxy')}`);
 });
 
 export default app;

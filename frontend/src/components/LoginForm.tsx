@@ -23,13 +23,17 @@ const LoginForm: React.FC = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    console.log('Login form submitted with data:', formData);
     setIsLoading(true);
     setError('');
 
     try {
+      console.log('Calling login function...');
       await login(formData);
-      navigate('/');
+      console.log('Login successful, navigating to profile...');
+      navigate('/profile');
     } catch (err: any) {
+      console.error('Login error:', err);
       setError(err.message || 'Login failed');
     } finally {
       setIsLoading(false);

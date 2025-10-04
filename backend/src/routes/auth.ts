@@ -97,21 +97,25 @@ router.post('/register', validateRegister, asyncHandler(async (req: Request, res
   );
 
   // Log the registration for audit purposes
-  await prisma.auditLog.create({
-    data: {
-      userId: user.id,
-      action: 'USER_REGISTER',
-      resource: 'user',
-      resourceId: user.id,
-      details: {
-        email: user.email,
-        username: user.username,
-        specialty: user.specialty,
-      },
-      ipAddress: req.ip,
-      userAgent: req.get('User-Agent'),
-    }
-  });
+  try {
+    await prisma.auditLog.create({
+      data: {
+        userId: user.id,
+        action: 'USER_REGISTER',
+        resource: 'user',
+        resourceId: user.id,
+        details: {
+          email: user.email,
+          username: user.username,
+          specialty: user.specialty,
+        },
+        ipAddress: req.ip,
+        userAgent: req.get('User-Agent'),
+      }
+    });
+  } catch (auditError) {
+    logger.error('Failed to create audit log for registration', { error: auditError, userId: user.id });
+  }
 
   res.status(201).json({
     success: true,
@@ -176,20 +180,24 @@ router.post('/login', validateLogin, asyncHandler(async (req: Request, res: Resp
   );
 
   // Log the login for audit purposes
-  await prisma.auditLog.create({
-    data: {
-      userId: user.id,
-      action: 'USER_LOGIN',
-      resource: 'user',
-      resourceId: user.id,
-      details: {
-        email: user.email,
-        username: user.username,
-      },
-      ipAddress: req.ip,
-      userAgent: req.get('User-Agent'),
-    }
-  });
+  try {
+    await prisma.auditLog.create({
+      data: {
+        userId: user.id,
+        action: 'USER_LOGIN',
+        resource: 'user',
+        resourceId: user.id,
+        details: {
+          email: user.email,
+          username: user.username,
+        },
+        ipAddress: req.ip,
+        userAgent: req.get('User-Agent'),
+      }
+    });
+  } catch (auditError) {
+    logger.error('Failed to create audit log for login', { error: auditError, userId: user.id });
+  }
 
   // Remove password hash from response
   const { passwordHash, ...userWithoutPassword } = user;
@@ -390,6 +398,220 @@ router.put('/change-password', authenticate, [
     success: true,
     message: 'Password changed successfully'
   });
+}));
+
+// Get user profile with posts and communities
+router.get('/profile', authenticate, asyncHandler(async (req: AuthRequest, res: Response) => {
+  const user = await prisma.user.findUnique({
+    where: { id: req.user!.id },
+    include: {
+      posts: {
+        take: 10,
+        orderBy: { createdAt: 'desc' },
+        include: {
+          community: {
+            select: {
+              id: true,
+              name: true,
+              slug: true,
+            }
+          },
+          votes: {
+            select: {
+              type: true,
+            }
+          },
+          _count: {
+            select: {
+              comments: true,
+            }
+          }
+        }
+      },
+      communities: {
+        select: {
+          id: true,
+          name: true,
+          slug: true,
+          description: true,
+        }
+      },
+      _count: {
+        select: {
+          posts: true,
+          comments: true,
+        }
+      }
+    }
+  });
+
+  if (!user) {
+    throw new AppError('User not found', 404);
+  }
+
+  // Calculate karma (upvotes - downvotes)
+  const posts = await prisma.post.findMany({
+    where: { authorId: user.id },
+    include: {
+      votes: {
+        select: {
+          type: true,
+        }
+      }
+    }
+  });
+
+  const comments = await prisma.comment.findMany({
+    where: { authorId: user.id },
+    include: {
+      votes: {
+        select: {
+          type: true,
+        }
+      }
+    }
+  });
+
+  let karma = 0;
+  [...posts, ...comments].forEach(item => {
+    item.votes.forEach(vote => {
+      karma += vote.type === 'upvote' ? 1 : -1;
+    });
+  });
+
+  res.json({
+    success: true,
+    data: {
+      user: {
+        id: user.id,
+        username: user.username,
+        email: user.email,
+        firstName: user.firstName,
+        lastName: user.lastName,
+        specialty: user.specialty,
+        subSpecialty: user.subSpecialty,
+        institution: user.institution,
+        bio: user.bio,
+        profileImage: user.profileImage,
+        location: user.location,
+        website: user.website,
+        yearsExperience: user.yearsExperience,
+        createdAt: user.createdAt,
+        updatedAt: user.updatedAt,
+        lastLoginAt: user.lastLoginAt,
+      },
+      stats: {
+        karma,
+        postsCount: user._count.posts,
+        commentsCount: user._count.comments,
+        communitiesCount: user.communities.length,
+      },
+      posts: user.posts.map(post => ({
+        id: post.id,
+        title: post.title,
+        content: post.content,
+        type: post.type,
+        specialty: post.specialty,
+        createdAt: post.createdAt,
+        community: post.community,
+        voteScore: post.votes.reduce((score, vote) => score + (vote.type === 'upvote' ? 1 : -1), 0),
+        commentsCount: post._count.comments,
+      })),
+      communities: user.communities.map(community => ({
+        ...community,
+        memberCount: 0, // We'll calculate this separately if needed
+      })),
+    }
+  });
+}));
+
+// Get user's followed communities
+router.get('/communities', authenticate, asyncHandler(async (req: AuthRequest, res: Response) => {
+  const user = await prisma.user.findUnique({
+    where: { id: req.user!.id },
+    include: {
+      communities: {
+        select: {
+          id: true,
+          name: true,
+          slug: true,
+          description: true,
+        }
+      }
+    }
+  });
+
+  if (!user) {
+    throw new AppError('User not found', 404);
+  }
+
+  res.json({
+    success: true,
+    data: user.communities.map(community => ({
+      ...community,
+      memberCount: 0, // We'll calculate this separately if needed
+    }))
+  });
+}));
+
+// Follow/Unfollow a community
+router.post('/communities/:communityId/follow', authenticate, asyncHandler(async (req: AuthRequest, res: Response) => {
+  const { communityId } = req.params;
+
+  // Check if community exists
+  const community = await prisma.community.findUnique({
+    where: { id: communityId }
+  });
+
+  if (!community) {
+    throw new AppError('Community not found', 404);
+  }
+
+  // Check if user is already following
+  const existingFollow = await prisma.user.findFirst({
+    where: {
+      id: req.user!.id,
+      communities: {
+        some: {
+          id: communityId
+        }
+      }
+    }
+  });
+
+  if (existingFollow) {
+    // Unfollow
+    await prisma.user.update({
+      where: { id: req.user!.id },
+      data: {
+        communities: {
+          disconnect: { id: communityId }
+        }
+      }
+    });
+
+    res.json({
+      success: true,
+      message: 'Community unfollowed',
+      following: false
+    });
+  } else {
+    // Follow
+    await prisma.user.update({
+      where: { id: req.user!.id },
+      data: {
+        communities: {
+          connect: { id: communityId }
+        }
+      }
+    });
+
+    res.json({
+      success: true,
+      message: 'Community followed',
+      following: true
+    });
+  }
 }));
 
 // Logout (client-side token removal, but we can log it)

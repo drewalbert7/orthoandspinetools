@@ -68,8 +68,8 @@ const RegisterForm: React.FC = () => {
       const { confirmPassword, ...registerData } = formData;
       console.log('Calling register with data:', registerData);
       await register(registerData);
-      console.log('Registration successful, navigating to home');
-      navigate('/');
+      console.log('Registration successful, navigating to profile');
+      navigate('/profile');
     } catch (err: any) {
       console.error('Registration error:', err);
       setError(err.message || 'Registration failed');
