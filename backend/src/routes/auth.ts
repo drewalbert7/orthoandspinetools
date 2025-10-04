@@ -25,6 +25,15 @@ const validateLogin = [
   body('password').notEmpty().withMessage('Password is required'),
 ];
 
+const validatePasswordReset = [
+  body('email').isEmail().normalizeEmail().withMessage('Valid email is required'),
+];
+
+const validatePasswordUpdate = [
+  body('token').notEmpty().withMessage('Reset token is required'),
+  body('password').isLength({ min: 8 }).withMessage('Password must be at least 8 characters'),
+];
+
 // Register new user
 router.post('/register', validateRegister, asyncHandler(async (req: Request, res: Response) => {
   const errors = validationResult(req);
@@ -135,10 +144,11 @@ router.post('/login', validateLogin, asyncHandler(async (req: Request, res: Resp
   }
 
   const { email, password } = req.body;
+  logger.info('AUTH: Login attempt received', { email });
 
-  // Find user by email
-  const user = await prisma.user.findUnique({
-    where: { email },
+  // Find user by email (case-insensitive to avoid UX issues)
+  const user = await prisma.user.findFirst({
+    where: { email: { equals: email, mode: 'insensitive' } },
     select: {
       id: true,
       email: true,
@@ -157,12 +167,14 @@ router.post('/login', validateLogin, asyncHandler(async (req: Request, res: Resp
   });
 
   if (!user || !user.isActive) {
+    logger.info('AUTH: User not found or inactive', { email });
     throw new AppError('Invalid credentials', 401);
   }
 
   // Check password
   const isPasswordValid = await bcrypt.compare(password, user.passwordHash);
   if (!isPasswordValid) {
+    logger.info('AUTH: Invalid password', { email, passwordLength: password?.length || 0 });
     throw new AppError('Invalid credentials', 401);
   }
 
@@ -180,6 +192,7 @@ router.post('/login', validateLogin, asyncHandler(async (req: Request, res: Resp
   );
 
   // Log the login for audit purposes
+  logger.info('AUTH: Login successful', { email });
   try {
     await prisma.auditLog.create({
       data: {
@@ -633,6 +646,107 @@ router.post('/logout', authenticate, asyncHandler(async (req: AuthRequest, res: 
     success: true,
     message: 'Logout successful'
   });
+}));
+
+// Request password reset
+router.post('/forgot-password', validatePasswordReset, asyncHandler(async (req: Request, res: Response) => {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    throw new AppError(`Validation failed: ${errors.array().map(e => e.msg).join(', ')}`, 400);
+  }
+
+  const { email } = req.body;
+
+  // Check if user exists
+  const user = await prisma.user.findUnique({
+    where: { email }
+  });
+
+  if (!user) {
+    // Don't reveal if user exists or not for security
+    res.json({
+      success: true,
+      message: 'If the email exists, a password reset link has been sent'
+    });
+    return;
+  }
+
+  // Generate reset token (in production, use crypto.randomBytes)
+  const resetToken = jwt.sign(
+    { userId: user.id, type: 'password-reset' },
+    process.env.JWT_SECRET || 'fallback-secret',
+    { expiresIn: '1h' }
+  );
+
+  // In production, send email with reset link
+  // For now, we'll log it (remove in production)
+  logger.info(`Password reset token for ${email}: ${resetToken}`);
+
+  res.json({
+    success: true,
+    message: 'If the email exists, a password reset link has been sent',
+    // Remove this in production - only for development
+    resetToken: process.env.NODE_ENV === 'development' ? resetToken : undefined
+  });
+}));
+
+// Reset password with token
+router.post('/reset-password', validatePasswordUpdate, asyncHandler(async (req: Request, res: Response) => {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    throw new AppError(`Validation failed: ${errors.array().map(e => e.msg).join(', ')}`, 400);
+  }
+
+  const { token, password } = req.body;
+
+  try {
+    // Verify token
+    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'fallback-secret') as any;
+    
+    if (decoded.type !== 'password-reset') {
+      throw new AppError('Invalid reset token', 400);
+    }
+
+    // Find user
+    const user = await prisma.user.findUnique({
+      where: { id: decoded.userId }
+    });
+
+    if (!user) {
+      throw new AppError('User not found', 404);
+    }
+
+    // Update password
+    const passwordHash = await bcrypt.hash(password, 10);
+    await prisma.user.update({
+      where: { id: user.id },
+      data: { passwordHash }
+    });
+
+    // Log password change
+    await prisma.auditLog.create({
+      data: {
+        userId: user.id,
+        action: 'password_reset',
+        resource: 'user',
+        resourceId: user.id,
+        details: { method: 'token_reset' },
+        ipAddress: req.ip,
+        userAgent: req.headers['user-agent']
+      }
+    });
+
+    res.json({
+      success: true,
+      message: 'Password reset successful'
+    });
+
+  } catch (error) {
+    if (error instanceof jwt.JsonWebTokenError) {
+      throw new AppError('Invalid or expired reset token', 400);
+    }
+    throw error;
+  }
 }));
 
 export default router;

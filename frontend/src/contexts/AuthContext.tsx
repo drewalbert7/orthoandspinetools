@@ -33,12 +33,19 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       try {
         const token = localStorage.getItem('token');
         if (token) {
-          const userData = await authService.getCurrentUser();
-          setUser(userData);
+          // Get user data from localStorage instead of API call
+          const userData = authService.getCurrentUser();
+          if (userData) {
+            setUser(userData);
+          } else {
+            // If no user data in localStorage, clear token
+            localStorage.removeItem('token');
+          }
         }
       } catch (error) {
         console.error('Auth initialization error:', error);
         localStorage.removeItem('token');
+        localStorage.removeItem('user');
       } finally {
         setLoading(false);
       }
@@ -49,9 +56,13 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   const login = async (credentials: LoginCredentials) => {
     try {
+      console.log('AuthContext: Starting login process...');
       const response = await authService.login(credentials);
+      console.log('AuthContext: Login successful, setting user:', response.user);
       setUser(response.user);
+      console.log('AuthContext: User state updated');
     } catch (error) {
+      console.error('AuthContext: Login error:', error);
       throw error;
     }
   };

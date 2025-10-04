@@ -1,11 +1,18 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { LoginCredentials } from '../services/authService';
 
 const LoginForm: React.FC = () => {
-  const { login } = useAuth();
+  const { login, user } = useAuth();
   const navigate = useNavigate();
+  // If already authenticated, redirect to profile immediately
+  useEffect(() => {
+    if (user) {
+      navigate('/profile');
+    }
+  }, [user, navigate]);
+
   const [formData, setFormData] = useState<LoginCredentials>({
     email: '',
     password: '',
@@ -32,6 +39,12 @@ const LoginForm: React.FC = () => {
       await login(formData);
       console.log('Login successful, navigating to profile...');
       navigate('/profile');
+      // Hard redirect fallback to ensure navigation in all browsers
+      setTimeout(() => {
+        if (window.location.pathname !== '/profile') {
+          window.location.assign('/profile');
+        }
+      }, 0);
     } catch (err: any) {
       console.error('Login error:', err);
       setError(err.message || 'Login failed');

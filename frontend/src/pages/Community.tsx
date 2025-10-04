@@ -300,6 +300,14 @@ const CommunityPage: React.FC = () => {
                 <span className="text-gray-500">Posts</span>
                 <span className="font-medium">{community.postCount || posts.length}</span>
               </div>
+              <div className="flex justify-between">
+                <span className="text-gray-500">Weekly Visitors</span>
+                <span className="font-medium text-blue-600">{community.weeklyVisitors || 0}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-gray-500">Weekly Contributions</span>
+                <span className="font-medium text-green-600">{community.weeklyContributions || 0}</span>
+              </div>
             </div>
           </div>
 

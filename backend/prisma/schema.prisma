@@ -52,6 +52,8 @@ model User {
   postVotes         PostVote[]
   commentVotes      CommentVote[]
   auditLogs         AuditLog[]
+  visitorLogs       CommunityVisitorLog[]
+  contributions     CommunityContribution[]
   
   @@map("users")
 }
@@ -81,6 +83,8 @@ model Community {
   members           User[]    @relation("CommunityMembers")
   posts             Post[]
   moderators        CommunityModerator[]
+  visitorLogs       CommunityVisitorLog[]
+  contributions     CommunityContribution[]
   
   @@map("communities")
 }
@@ -342,5 +346,38 @@ model Session {
   updatedAt         DateTime  @updatedAt
   
   @@map("sessions")
+}
+
+// Community visitor log model for tracking weekly visitors
+model CommunityVisitorLog {
+  id                String    @id @default(cuid())
+  communityId       String
+  userId            String?
+  ipAddress         String?
+  userAgent         String?
+  visitDate         DateTime  @default(now())
+  
+  // Relations
+  community         Community @relation(fields: [communityId], references: [id], onDelete: Cascade)
+  user              User?     @relation(fields: [userId], references: [id], onDelete: SetNull)
+  
+  @@map("community_visitor_logs")
+}
+
+// Community contribution tracking model for weekly contributions
+model CommunityContribution {
+  id                String    @id @default(cuid())
+  communityId       String
+  userId            String
+  contributionType  String    // 'post', 'comment', 'vote'
+  contributionId    String?   // ID of the post/comment/vote
+  points            Int       @default(1) // Points for this contribution
+  createdAt         DateTime  @default(now())
+  
+  // Relations
+  community         Community @relation(fields: [communityId], references: [id], onDelete: Cascade)
+  user              User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  @@map("community_contributions")
 }
 

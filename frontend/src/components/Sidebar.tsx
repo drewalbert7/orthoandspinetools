@@ -1,9 +1,7 @@
 import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { useAuth } from '../contexts/AuthContext';
 
 const Sidebar: React.FC = () => {
-  const { user } = useAuth();
   const location = useLocation();
 
   const communities = [
@@ -91,55 +89,6 @@ const Sidebar: React.FC = () => {
           </div>
         </div>
 
-        {/* User Info (if logged in) */}
-        {user && (
-          <div className="border-t border-gray-200 pt-4">
-            <div className="flex items-center space-x-3 px-3 py-2">
-              <div className="w-8 h-8 bg-gray-300 rounded-full flex items-center justify-center">
-                <span className="text-sm font-medium">
-                  {user.firstName.charAt(0)}{user.lastName.charAt(0)}
-                </span>
-              </div>
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium text-gray-900 truncate">
-                  {user.firstName} {user.lastName}
-                </p>
-                <p className="text-xs text-gray-500 truncate">
-                  {user.specialty}
-                </p>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Quick Actions */}
-        {user && (
-          <div className="border-t border-gray-200 pt-4 mt-4">
-            <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-3">
-              Quick Actions
-            </h3>
-            <div className="space-y-1">
-              <Link
-                to="/create-post"
-                className="flex items-center space-x-3 px-3 py-2 rounded-lg text-gray-700 hover:bg-gray-100 transition-colors"
-              >
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                </svg>
-                <span className="text-sm font-medium">Create Post</span>
-              </Link>
-              <Link
-                to="/my-posts"
-                className="flex items-center space-x-3 px-3 py-2 rounded-lg text-gray-700 hover:bg-gray-100 transition-colors"
-              >
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                </svg>
-                <span className="text-sm font-medium">My Posts</span>
-              </Link>
-            </div>
-          </div>
-        )}
       </div>
     </aside>
   );
