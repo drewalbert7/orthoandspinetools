@@ -62,15 +62,15 @@ const PostCard: React.FC<PostCardProps> = ({ post, onVote }) => {
   const netScore = upvotes - downvotes;
 
   return (
-    <div className="bg-reddit-card hover:bg-gray-800 border border-reddit rounded-md mb-2 overflow-hidden transition-colors">
+    <div className="bg-white hover:bg-gray-50 border border-gray-200 rounded-md mb-2 overflow-hidden transition-colors shadow-sm">
       <div className="flex">
         {/* Voting Section */}
-        <div className="flex flex-col items-center py-2 px-2 bg-gray-850 w-12">
+        <div className="flex flex-col items-center py-2 px-2 bg-gray-50 w-12">
           <button
             onClick={() => handleVote('upvote')}
             disabled={isVoting}
-            className={`p-1 rounded-md hover:bg-gray-700 transition-colors ${
-              post.userVote === 'upvote' ? 'text-orange-500' : 'text-gray-400 hover:text-orange-400'
+            className={`p-1 rounded-md hover:bg-gray-200 transition-colors ${
+              post.userVote === 'upvote' ? 'text-orange-500' : 'text-gray-600 hover:text-orange-400'
             }`}
           >
             <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
@@ -78,15 +78,15 @@ const PostCard: React.FC<PostCardProps> = ({ post, onVote }) => {
             </svg>
           </button>
           <span className={`text-xs font-bold py-1 ${
-            netScore > 0 ? 'text-orange-500' : netScore < 0 ? 'text-blue-500' : 'text-gray-400'
+            netScore > 0 ? 'text-orange-500' : netScore < 0 ? 'text-blue-500' : 'text-gray-600'
           }`}>
             {netScore > 1000 ? `${(netScore/1000).toFixed(1)}k` : netScore}
           </span>
           <button
             onClick={() => handleVote('downvote')}
             disabled={isVoting}
-            className={`p-1 rounded-md hover:bg-gray-700 transition-colors ${
-              post.userVote === 'downvote' ? 'text-blue-500' : 'text-gray-400 hover:text-blue-400'
+            className={`p-1 rounded-md hover:bg-gray-200 transition-colors ${
+              post.userVote === 'downvote' ? 'text-blue-500' : 'text-gray-600 hover:text-blue-400'
             }`}
           >
             <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
@@ -98,7 +98,7 @@ const PostCard: React.FC<PostCardProps> = ({ post, onVote }) => {
         {/* Content Section */}
         <div className="flex-1 p-3 md:p-4 min-w-0">
           {/* Header - Reddit Style */}
-          <div className="flex items-center space-x-2 text-xs text-gray-400 mb-2">
+          <div className="flex items-center space-x-2 text-xs text-gray-600 mb-2">
             <div className="w-5 h-5 bg-orange-500 rounded-full flex items-center justify-center">
               <span className="text-white text-xs font-bold">r</span>
             </div>
@@ -110,7 +110,7 @@ const PostCard: React.FC<PostCardProps> = ({ post, onVote }) => {
             </Link>
             <span>•</span>
             <span>Posted by</span>
-            <Link to={`/user/${post.author.username}`} className="hover:underline text-gray-300">
+            <Link to={`/user/${post.author.username}`} className="hover:underline text-gray-700">
               u/{post.author.username}
             </Link>
             <span>•</span>
@@ -131,7 +131,7 @@ const PostCard: React.FC<PostCardProps> = ({ post, onVote }) => {
 
           {/* Content Preview */}
           {post.content && (
-            <div className="text-sm text-gray-300 mb-3 md:mb-4 leading-relaxed">
+            <div className="text-sm text-gray-800 mb-3 md:mb-4 leading-relaxed">
               {post.content.length > 200 ? `${post.content.substring(0, 200)}...` : post.content}
             </div>
           )}
@@ -140,26 +140,26 @@ const PostCard: React.FC<PostCardProps> = ({ post, onVote }) => {
           <div className="flex items-center space-x-4 text-xs">
             <Link 
               to={`/post/${post.id}`}
-              className="flex items-center space-x-1 text-gray-400 hover:text-gray-200 hover:bg-gray-700 px-2 py-1 rounded-md transition-colors"
+              className="flex items-center space-x-1 text-gray-600 hover:text-blue-700 hover:bg-gray-100 px-2 py-1 rounded-md transition-colors"
             >
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
               </svg>
               <span>{post._count?.comments ?? 0} Comments</span>
             </Link>
-            <button className="flex items-center space-x-1 text-gray-400 hover:text-gray-200 hover:bg-gray-700 px-2 py-1 rounded-md transition-colors">
+            <button className="flex items-center space-x-1 text-gray-600 hover:text-blue-700 hover:bg-gray-100 px-2 py-1 rounded-md transition-colors">
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.367 2.684 3 3 0 00-5.367-2.684z" />
               </svg>
               <span>Share</span>
             </button>
-            <button className="flex items-center space-x-1 text-gray-400 hover:text-gray-200 hover:bg-gray-700 px-2 py-1 rounded-md transition-colors">
+            <button className="flex items-center space-x-1 text-gray-600 hover:text-blue-700 hover:bg-gray-100 px-2 py-1 rounded-md transition-colors">
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" />
               </svg>
               <span>Save</span>
             </button>
-            <button className="flex items-center space-x-1 text-gray-400 hover:text-gray-200 hover:bg-gray-700 px-2 py-1 rounded-md transition-colors">
+            <button className="flex items-center space-x-1 text-gray-600 hover:text-blue-700 hover:bg-gray-100 px-2 py-1 rounded-md transition-colors">
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z" />
               </svg>

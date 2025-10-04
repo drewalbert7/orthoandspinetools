@@ -8,7 +8,7 @@ module.exports = {
     extend: {
       colors: {
         reddit: {
-          dark: 'var(--reddit-bg)',
+          bg: 'var(--reddit-bg)',
           card: 'var(--reddit-card)',
           border: 'var(--reddit-border)',
           text: 'var(--reddit-text)',

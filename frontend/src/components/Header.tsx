@@ -13,9 +13,6 @@ const Header: React.FC = () => {
     navigate('/');
   };
 
-  // Mock notification count - in real app this would come from API
-  const notificationCount = 1;
-
   return (
     <header className="bg-white shadow-sm border-b border-gray-200 sticky top-0 z-40">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -52,56 +49,65 @@ const Header: React.FC = () => {
           <div className="flex items-center space-x-3">
             {user ? (
               <>
-                {/* Create Post Button */}
+                {/* Create Post Button - White background with black text */}
                 <Link
                   to="/create-post"
-                  className="flex items-center space-x-1 bg-reddit-orange text-white px-3 py-1.5 rounded-full hover:bg-orange-600 transition-colors text-sm font-medium"
+                  className="flex items-center space-x-1 bg-white text-black px-3 py-1.5 rounded-md hover:bg-gray-100 transition-colors text-sm font-medium border border-gray-200"
                 >
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
                   </svg>
-                  <span className="hidden sm:inline">Create</span>
+                  <span>Create</span>
                 </Link>
 
-                {/* Notification Icon */}
+                {/* Notification Bell Icon */}
                 <div className="relative">
                   <button
                     onClick={() => setIsNotificationOpen(!isNotificationOpen)}
-                    className="p-2 text-reddit-text-muted hover:text-reddit transition-colors"
+                    className="p-2 text-black hover:text-gray-600 transition-colors"
                   >
-                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-5 5v-5zM4.5 19.5a2.5 2.5 0 01-2.5-2.5V6a2.5 2.5 0 012.5-2.5h15A2.5 2.5 0 0122 6v11a2.5 2.5 0 01-2.5 2.5h-15z" />
+                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M15 17h5l-5 5v-5zM4.5 19.5a2.5 2.5 0 01-2.5-2.5V6a2.5 2.5 0 012.5-2.5h15A2.5 2.5 0 0122 6v11a2.5 2.5 0 01-2.5 2.5h-15z" />
                     </svg>
-                    {notificationCount > 0 && (
-                      <span className="absolute -top-1 -right-1 bg-reddit-orange text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">
-                        {notificationCount}
-                      </span>
-                    )}
+                    {/* Notification dot */}
+                    <div className="absolute -bottom-1 -right-1 w-2 h-2 bg-black rounded-full"></div>
                   </button>
 
                   {/* Notification Dropdown */}
                   {isNotificationOpen && (
-                    <div className="absolute right-0 mt-2 w-80 bg-white rounded-md shadow-lg py-1 z-50 border border-reddit">
-                      <div className="px-4 py-2 border-b border-reddit">
-                        <h3 className="text-sm font-medium text-reddit">Notifications</h3>
+                    <div className="absolute right-0 mt-2 w-80 bg-white rounded-md shadow-lg py-1 z-50 border border-gray-200">
+                      <div className="px-4 py-2 border-b border-gray-200">
+                        <h3 className="text-sm font-medium text-gray-900">Notifications</h3>
                       </div>
-                      <div className="px-4 py-3 text-sm text-reddit-text-muted">
+                      <div className="px-4 py-3 text-sm text-gray-500">
                         No new notifications
                       </div>
                     </div>
                   )}
                 </div>
 
-                {/* User Avatar */}
+                {/* Hexagonal User Avatar */}
                 <div className="relative">
                   <button
                     onClick={() => setIsMenuOpen(!isMenuOpen)}
-                    className="flex items-center space-x-2 text-reddit hover:text-reddit-text transition-colors"
+                    className="flex items-center transition-colors"
                   >
-                    <div className="w-8 h-8 bg-gradient-to-br from-reddit-orange to-orange-600 rounded-full flex items-center justify-center border-2 border-reddit">
-                      <span className="text-white text-sm font-bold">
-                        {user.firstName.charAt(0)}{user.lastName.charAt(0)}
-                      </span>
+                    {/* Hexagonal avatar container */}
+                    <div className="w-8 h-8 relative">
+                      {/* Hexagon shape using CSS clip-path */}
+                      <div 
+                        className="w-full h-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center"
+                        style={{
+                          clipPath: 'polygon(30% 0%, 70% 0%, 100% 50%, 70% 100%, 30% 100%, 0% 50%)'
+                        }}
+                      >
+                        {/* Avatar content - simplified version */}
+                        <div className="w-6 h-6 bg-yellow-300 rounded-full flex items-center justify-center">
+                          <div className="w-4 h-4 bg-black rounded-full flex items-center justify-center">
+                            <div className="w-2 h-2 bg-white rounded-full"></div>
+                          </div>
+                        </div>
+                      </div>
                     </div>
                   </button>
 

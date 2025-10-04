@@ -1,29 +1,72 @@
-import React from 'react';
-import { useParams } from 'react-router-dom';
-import { useQuery } from '@tanstack/react-query';
-import { apiService } from '../services/apiService';
+import React, { useState } from 'react';
+import { useParams, Link } from 'react-router-dom';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { apiService, Post, Community } from '../services/apiService';
+import { useAuth } from '../contexts/AuthContext';
 
-const Community: React.FC = () => {
-  const { id } = useParams<{ id: string }>();
+const CommunityPage: React.FC = () => {
+  const { slug } = useParams<{ slug: string }>();
+  const { user } = useAuth();
+  const queryClient = useQueryClient();
+  const [sortBy, setSortBy] = useState<'newest' | 'oldest' | 'popular' | 'controversial'>('newest');
 
   // Fetch community details
-  const { data: communityData, isLoading: communityLoading } = useQuery({
-    queryKey: ['community', id],
-    queryFn: () => apiService.getCommunity(id!),
-    enabled: !!id,
+  const { data: communityData, isLoading: communityLoading } = useQuery<Community>({
+    queryKey: ['community', slug],
+    queryFn: () => apiService.getCommunity(slug!),
+    enabled: !!slug,
   });
 
   // Fetch posts for this community
-  const { data: postsData, isLoading: postsLoading } = useQuery({
-    queryKey: ['posts', 'community', id],
-    queryFn: () => apiService.getPosts({ community: id! }).then((res) => res.posts),
-    enabled: !!id,
+  const { data: postsData, isLoading: postsLoading } = useQuery<Post[]>({
+    queryKey: ['posts', 'community', slug, sortBy],
+    queryFn: () => apiService.getPosts({ community: slug!, sort: sortBy }).then((res) => res.posts),
+    enabled: !!slug,
   });
+
+  // Vote mutation
+  const voteMutation = useMutation({
+    mutationFn: ({ postId, value }: { postId: string; value: 1 | -1 }) => 
+      apiService.votePost(postId, value),
+    onSuccess: () => {
+      // Invalidate and refetch posts
+      queryClient.invalidateQueries({ queryKey: ['posts', 'community', slug, sortBy] });
+    },
+  });
+
+  const handleVote = (postId: string, value: 1 | -1) => {
+    if (!user) {
+      // Redirect to login if not authenticated
+      window.location.href = '/login';
+      return;
+    }
+    voteMutation.mutate({ postId, value });
+  };
+
+  const formatDate = (dateString: string) => {
+    const date = new Date(dateString);
+    const now = new Date();
+    const diffInHours = Math.floor((now.getTime() - date.getTime()) / (1000 * 60 * 60));
+    
+    if (diffInHours < 1) return 'now';
+    if (diffInHours < 24) return `${diffInHours} hr. ago`;
+    const diffInDays = Math.floor(diffInHours / 24);
+    if (diffInDays < 7) return `${diffInDays} days ago`;
+    return date.toLocaleDateString();
+  };
+
+  const formatVoteScore = (score: number) => {
+    if (score >= 1000) return `${(score / 1000).toFixed(1)}k`;
+    return score.toString();
+  };
 
   if (communityLoading || postsLoading) {
     return (
-      <div className="flex items-center justify-center min-h-64">
-        <div className="text-gray-500">Loading community...</div>
+      <div className="max-w-6xl mx-auto">
+        <div className="flex items-center justify-center min-h-64">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+          <span className="ml-3 text-gray-600">Loading community...</span>
+        </div>
       </div>
     );
   }
@@ -31,57 +74,263 @@ const Community: React.FC = () => {
   const community = communityData;
   const posts = postsData || [];
 
+  if (!community) {
+    return (
+      <div className="max-w-6xl mx-auto">
+        <div className="text-center py-12">
+          <h1 className="text-2xl font-bold text-gray-900 mb-4">Community not found</h1>
+          <p className="text-gray-600 mb-4">The community "r/{slug}" doesn't exist.</p>
+          <Link to="/" className="text-blue-600 hover:text-blue-800">
+            Go back to home
+          </Link>
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <div className="max-w-4xl mx-auto">
-      {/* Community Header */}
-      <div className="bg-white border border-gray-200 rounded-md p-6 mb-4">
-        <div className="flex items-center space-x-4">
-          <div className="w-16 h-16 bg-orange-500 rounded-full flex items-center justify-center">
-            <span className="text-white font-bold text-2xl">
-              {(community as any)?.icon || '🦴'}
-            </span>
+    <div className="max-w-6xl mx-auto">
+      <div className="flex gap-6">
+        {/* Main Content */}
+        <div className="flex-1">
+          {/* Community Header */}
+          <div className="bg-white border border-gray-200 rounded-md mb-4">
+            {/* Banner */}
+            <div className="h-32 bg-gradient-to-r from-blue-500 to-purple-600 relative">
+              <div className="absolute bottom-0 left-6 transform translate-y-1/2">
+                <div className="w-20 h-20 bg-white rounded-full border-4 border-white flex items-center justify-center">
+                  <div className="w-16 h-16 bg-blue-600 rounded-full flex items-center justify-center">
+                    <span className="text-white font-bold text-xl">r/</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+            
+            {/* Community Info */}
+            <div className="pt-12 pb-4 px-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h1 className="text-2xl font-bold text-gray-900">r/{community.name}</h1>
+                  <p className="text-gray-600">{community.description}</p>
+                </div>
+                <div className="flex items-center space-x-3">
+                  <Link 
+                    to="/create-post" 
+                    className="px-4 py-2 bg-blue-600 text-white rounded-full hover:bg-blue-700 transition-colors font-medium"
+                  >
+                    + Create Post
+                  </Link>
+                  <button className="px-4 py-2 border border-gray-300 rounded-full hover:bg-gray-50 transition-colors">
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-5 5v-5zM4.5 19.5a2.5 2.5 0 01-2.5-2.5V6a2.5 2.5 0 012.5-2.5h15A2.5 2.5 0 0122 6v11a2.5 2.5 0 01-2.5 2.5h-15z" />
+                    </svg>
+                  </button>
+                  <button className="px-4 py-2 bg-blue-600 text-white rounded-full hover:bg-blue-700 transition-colors font-medium">
+                    Joined
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            {/* Feed Controls */}
+            <div className="px-6 py-3 border-t border-gray-200 flex items-center justify-between">
+              <div className="flex items-center space-x-4">
+                <select 
+                  value={sortBy} 
+                  onChange={(e) => setSortBy(e.target.value as any)}
+                  className="px-3 py-1 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="newest">New</option>
+                  <option value="oldest">Oldest</option>
+                  <option value="popular">Popular</option>
+                  <option value="controversial">Controversial</option>
+                </select>
+                <div className="flex items-center space-x-1">
+                  <button className="p-1 hover:bg-gray-100 rounded">
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 10h16M4 14h16M4 18h16" />
+                    </svg>
+                  </button>
+                  <button className="p-1 hover:bg-gray-100 rounded">
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" />
+                    </svg>
+                  </button>
+                </div>
+              </div>
+            </div>
           </div>
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900">r/{community?.name || id}</h1>
-            <p className="text-gray-600">
-              {(community as any)?.memberCount?.toLocaleString() || '0'} members
-            </p>
-            {community?.description && (
-              <p className="text-gray-700 mt-2">{community.description}</p>
+
+          {/* Posts Feed */}
+          <div className="space-y-4">
+            {posts.length === 0 ? (
+              <div className="bg-white border border-gray-200 rounded-md p-8 text-center">
+                <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <svg className="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                  </svg>
+                </div>
+                <h3 className="text-lg font-semibold text-gray-900 mb-2">No posts yet</h3>
+                <p className="text-gray-600 mb-4">Be the first to share something in r/{community.name}!</p>
+                <Link 
+                  to="/create-post" 
+                  className="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
+                >
+                  <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                  </svg>
+                  Create Post
+                </Link>
+              </div>
+            ) : (
+              posts.map((post) => (
+                <div key={post.id} className="bg-white border border-gray-200 rounded-md overflow-hidden">
+                  {/* Post Header */}
+                  <div className="px-4 py-3 border-b border-gray-100">
+                    <div className="flex items-center space-x-2 text-sm text-gray-500">
+                      <div className="w-6 h-6 bg-blue-600 rounded-full flex items-center justify-center">
+                        <span className="text-white text-xs font-bold">r/</span>
+                      </div>
+                      <span>r/{community.name}</span>
+                      <span>•</span>
+                      <span>Posted by u/{post.author?.username || 'Unknown'}</span>
+                      <span>•</span>
+                      <span>{formatDate(post.createdAt)}</span>
+                    </div>
+                  </div>
+
+                  {/* Post Content */}
+                  <div className="px-4 py-4">
+                    <h2 className="text-xl font-semibold text-gray-900 mb-3 hover:text-blue-600 cursor-pointer">
+                      <Link to={`/post/${post.id}`}>{post.title}</Link>
+                    </h2>
+                    {post.content && (
+                      <div className="text-gray-700 mb-4">
+                        {post.content.length > 300 ? (
+                          <>
+                            {post.content.substring(0, 300)}...
+                            <Link to={`/post/${post.id}`} className="text-blue-600 hover:text-blue-800 ml-1">
+                              read more
+                            </Link>
+                          </>
+                        ) : (
+                          post.content
+                        )}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Post Actions */}
+                  <div className="px-4 py-3 bg-gray-50 flex items-center space-x-6 text-sm">
+                    <div className="flex items-center space-x-1">
+                      <button 
+                        onClick={() => handleVote(post.id, 1)}
+                        disabled={voteMutation.isPending}
+                        className={`p-1 hover:bg-gray-200 rounded ${
+                          post.userVote === 'upvote' ? 'text-orange-500' : 'text-gray-500'
+                        } ${voteMutation.isPending ? 'opacity-50 cursor-not-allowed' : ''}`}
+                      >
+                        <svg className="w-5 h-5" fill={post.userVote === 'upvote' ? 'currentColor' : 'none'} stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" />
+                        </svg>
+                      </button>
+                      <span className="text-gray-700 font-medium">{formatVoteScore(post.voteScore || 0)}</span>
+                      <button 
+                        onClick={() => handleVote(post.id, -1)}
+                        disabled={voteMutation.isPending}
+                        className={`p-1 hover:bg-gray-200 rounded ${
+                          post.userVote === 'downvote' ? 'text-blue-500' : 'text-gray-500'
+                        } ${voteMutation.isPending ? 'opacity-50 cursor-not-allowed' : ''}`}
+                      >
+                        <svg className="w-5 h-5" fill={post.userVote === 'downvote' ? 'currentColor' : 'none'} stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                        </svg>
+                      </button>
+                    </div>
+                    <button className="flex items-center space-x-1 text-gray-500 hover:text-gray-700">
+                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+                      </svg>
+                      <span>{post.commentsCount || post._count?.comments || 0} comments</span>
+                    </button>
+                    <button className="flex items-center space-x-1 text-gray-500 hover:text-gray-700">
+                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.367 2.684 3 3 0 00-5.367-2.684z" />
+                      </svg>
+                      <span>Share</span>
+                    </button>
+                    <button className="flex items-center space-x-1 text-gray-500 hover:text-gray-700">
+                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" />
+                      </svg>
+                      <span>Save</span>
+                    </button>
+                  </div>
+                </div>
+              ))
             )}
           </div>
         </div>
-      </div>
 
-      {/* Posts */}
-      <div className="space-y-4">
-        {posts.length === 0 ? (
-          <div className="bg-white border border-gray-200 rounded-md p-8 text-center">
-            <p className="text-gray-500">No posts in this community yet.</p>
-            <p className="text-sm text-gray-400 mt-2">Be the first to share something!</p>
-          </div>
-        ) : (
-          posts.map((post: any) => (
-            <div key={post.id} className="bg-white border border-gray-200 rounded-md p-4">
-              <div className="flex items-center space-x-2 text-sm text-gray-500 mb-2">
-                <span>Posted by u/{post.author?.username || 'Unknown'}</span>
-                <span>•</span>
-                <span>{new Date(post.createdAt).toLocaleDateString()}</span>
+        {/* Right Sidebar */}
+        <div className="w-80">
+          {/* Community Info */}
+          <div className="bg-white border border-gray-200 rounded-md p-4 mb-4">
+            <h3 className="font-semibold text-gray-900 mb-3">{community.description}</h3>
+            <div className="space-y-2 text-sm text-gray-500 mb-4">
+              <div className="flex items-center space-x-2">
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                </svg>
+                <span>Created {new Date(community.createdAt || '').toLocaleDateString()}</span>
               </div>
-              <h2 className="text-lg font-semibold text-gray-900 mb-2">{post.title}</h2>
-              {post.content && (
-                <p className="text-gray-700 mb-3">{post.content}</p>
-              )}
-              <div className="flex items-center space-x-4 text-sm text-gray-500">
-                <span>{post._count?.comments || 0} comments</span>
-                <span>{post.voteScore || 0} votes</span>
+              <div className="flex items-center space-x-2">
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                <span>Public</span>
               </div>
             </div>
-          ))
-        )}
+            <div className="space-y-2 text-sm">
+              <div className="flex justify-between">
+                <span className="text-gray-500">Members</span>
+                <span className="font-medium">{community.memberCount || 0}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-gray-500">Posts</span>
+                <span className="font-medium">{community.postCount || posts.length}</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Community Rules */}
+          <div className="bg-white border border-gray-200 rounded-md p-4">
+            <h3 className="font-semibold text-gray-900 mb-3">r/{community.name} RULES</h3>
+            <div className="space-y-2 text-sm">
+              <div className="flex items-center justify-between">
+                <span className="text-gray-700">1. Be respectful</span>
+                <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                </svg>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-gray-700">2. Stay on topic</span>
+                <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                </svg>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-gray-700">3. No spam</span>
+                <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                </svg>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   );
 };
 
-export default Community;
+export default CommunityPage;
