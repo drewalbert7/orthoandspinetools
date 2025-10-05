@@ -16,6 +16,7 @@ import postRoutes from './routes/posts';
 import commentRoutes from './routes/comments';
 import toolRoutes from './routes/tools';
 import uploadRoutes from './routes/upload';
+import karmaRoutes from './routes/karma';
 
 // Import middleware
 import { errorHandler } from './middleware/errorHandler';
@@ -128,6 +129,7 @@ app.use('/api/posts', postRoutes);
 app.use('/api/comments', commentRoutes);
 app.use('/api/tools', toolRoutes);
 app.use('/api/upload', uploadRoutes);
+app.use('/api/karma', karmaRoutes);
 
 // Error handling middleware
 app.use(errorHandler);

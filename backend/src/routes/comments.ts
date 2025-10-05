@@ -4,6 +4,7 @@ import { asyncHandler, AppError } from '../middleware/errorHandler';
 import { prisma } from '../index';
 import { logger } from '../utils/logger';
 import { body, param, query, validationResult } from 'express-validator';
+import { updateUserKarma, calculateKarmaChange } from '../utils/karmaService';
 
 const router = Router();
 
@@ -156,7 +157,7 @@ router.post('/', authenticate, validateComment, asyncHandler(async (req: AuthReq
 
 // Get comments for a post
 router.get('/post/:postId', optionalAuth, [
-  param('postId').isUUID().withMessage('Invalid post ID'),
+  param('postId').isString().isLength({ min: 1 }).withMessage('Invalid post ID'),
   query('page').optional().isInt({ min: 1 }).withMessage('Page must be a positive integer'),
   query('limit').optional().isInt({ min: 1, max: 100 }).withMessage('Limit must be 1-100'),
 ], asyncHandler(async (req: AuthRequest, res: Response) => {
@@ -305,7 +306,7 @@ router.get('/post/:postId', optionalAuth, [
 
 // Get single comment
 router.get('/:id', optionalAuth, [
-  param('id').isUUID().withMessage('Invalid comment ID'),
+  param('id').isString().isLength({ min: 1 }).withMessage('Invalid comment ID'),
 ], asyncHandler(async (req: AuthRequest, res: Response) => {
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
@@ -467,6 +468,12 @@ router.post('/:id/vote', authenticate, validateCommentVote, asyncHandler(async (
         where: { id: existingVote.id }
       });
 
+      // Update karma for comment author
+      const karmaChange = calculateKarmaChange(existingVote.type, 'remove');
+      if (karmaChange !== 0) {
+        await updateUserKarma(comment.authorId, 'comment', karmaChange);
+      }
+
       // Log the vote removal
       await prisma.auditLog.create({
         data: {
@@ -477,6 +484,7 @@ router.post('/:id/vote', authenticate, validateCommentVote, asyncHandler(async (
           details: {
             commentId: id,
             voteType: type,
+            karmaChange,
           },
           ipAddress: req.ip,
           userAgent: req.get('User-Agent'),
@@ -495,6 +503,12 @@ router.post('/:id/vote', authenticate, validateCommentVote, asyncHandler(async (
         data: { type }
       });
 
+      // Update karma for comment author
+      const karmaChange = calculateKarmaChange(existingVote.type, type);
+      if (karmaChange !== 0) {
+        await updateUserKarma(comment.authorId, 'comment', karmaChange);
+      }
+
       // Log the vote update
       await prisma.auditLog.create({
         data: {
@@ -505,6 +519,7 @@ router.post('/:id/vote', authenticate, validateCommentVote, asyncHandler(async (
           details: {
             commentId: id,
             voteType: type,
+            karmaChange,
           },
           ipAddress: req.ip,
           userAgent: req.get('User-Agent'),
@@ -528,6 +543,12 @@ router.post('/:id/vote', authenticate, validateCommentVote, asyncHandler(async (
     }
   });
 
+  // Update karma for comment author
+  const karmaChange = calculateKarmaChange(null, type);
+  if (karmaChange !== 0) {
+    await updateUserKarma(comment.authorId, 'comment', karmaChange);
+  }
+
   // Log the vote creation
   await prisma.auditLog.create({
     data: {
@@ -538,6 +559,7 @@ router.post('/:id/vote', authenticate, validateCommentVote, asyncHandler(async (
       details: {
         commentId: id,
         voteType: type,
+        karmaChange,
       },
       ipAddress: req.ip,
       userAgent: req.get('User-Agent'),
@@ -553,7 +575,7 @@ router.post('/:id/vote', authenticate, validateCommentVote, asyncHandler(async (
 
 // Update comment
 router.put('/:id', authenticate, [
-  param('id').isUUID().withMessage('Invalid comment ID'),
+  param('id').isString().isLength({ min: 1 }).withMessage('Invalid comment ID'),
   body('content').trim().isLength({ min: 1, max: 5000 }).withMessage('Content must be 1-5000 characters'),
 ], asyncHandler(async (req: AuthRequest, res: Response) => {
   const errors = validationResult(req);
@@ -630,7 +652,7 @@ router.put('/:id', authenticate, [
 
 // Delete comment
 router.delete('/:id', authenticate, [
-  param('id').isUUID().withMessage('Invalid comment ID'),
+  param('id').isString().isLength({ min: 1 }).withMessage('Invalid comment ID'),
 ], asyncHandler(async (req: AuthRequest, res: Response) => {
   const errors = validationResult(req);
   if (!errors.isEmpty()) {

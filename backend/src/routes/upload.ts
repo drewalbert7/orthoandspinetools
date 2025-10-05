@@ -251,4 +251,174 @@ router.get('/:filename', asyncHandler(async (req: Request, res: Response) => {
   }
 }));
 
+// Upload community profile image
+router.post('/community-image', authenticate, uploadSingle('image'), asyncHandler(async (req: AuthRequest, res: Response) => {
+  if (!req.file) {
+    throw new AppError('No file uploaded', 400);
+  }
+
+  const fileUrl = getFileUrl(req, req.file.filename, 'images');
+  
+  // Log the upload for audit purposes
+  await prisma.auditLog.create({
+    data: {
+      userId: req.user!.id,
+      action: 'UPLOAD_COMMUNITY_IMAGE',
+      resource: 'community_image',
+      resourceId: req.file.filename,
+      details: {
+        filename: req.file.originalname,
+        size: req.file.size,
+        mimetype: req.file.mimetype,
+      },
+      ipAddress: req.ip,
+      userAgent: req.get('User-Agent'),
+    },
+  });
+
+  logger.info(`Community image uploaded by user ${req.user!.id}: ${req.file.filename}`);
+
+  res.json({
+    success: true,
+    data: {
+      imageUrl: fileUrl,
+      filename: req.file.filename,
+      originalName: req.file.originalname,
+      size: req.file.size,
+      mimetype: req.file.mimetype,
+    },
+  });
+}));
+
+// Upload community banner image
+router.post('/community-banner', authenticate, uploadSingle('banner'), asyncHandler(async (req: AuthRequest, res: Response) => {
+  if (!req.file) {
+    throw new AppError('No file uploaded', 400);
+  }
+
+  const fileUrl = getFileUrl(req, req.file.filename, 'images');
+  
+  // Log the upload for audit purposes
+  await prisma.auditLog.create({
+    data: {
+      userId: req.user!.id,
+      action: 'UPLOAD_COMMUNITY_BANNER',
+      resource: 'community_banner',
+      resourceId: req.file.filename,
+      details: {
+        filename: req.file.originalname,
+        size: req.file.size,
+        mimetype: req.file.mimetype,
+      },
+      ipAddress: req.ip,
+      userAgent: req.get('User-Agent'),
+    },
+  });
+
+  logger.info(`Community banner uploaded by user ${req.user!.id}: ${req.file.filename}`);
+
+  res.json({
+    success: true,
+    data: {
+      imageUrl: fileUrl,
+      filename: req.file.filename,
+      originalName: req.file.originalname,
+      size: req.file.size,
+      mimetype: req.file.mimetype,
+    },
+  });
+}));
+
+// Upload post images
+router.post('/post-images', authenticate, uploadMultiple('images', 10), asyncHandler(async (req: AuthRequest, res: Response) => {
+  if (!req.files || (req.files as Express.Multer.File[]).length === 0) {
+    throw new AppError('No files uploaded', 400);
+  }
+
+  const files = req.files as Express.Multer.File[];
+  const uploadedFiles = [];
+
+  for (const file of files) {
+    const fileUrl = getFileUrl(req, file.filename, 'images');
+    
+    // Log the upload for audit purposes
+    await prisma.auditLog.create({
+      data: {
+        userId: req.user!.id,
+        action: 'UPLOAD_POST_IMAGE',
+        resource: 'post_image',
+        resourceId: file.filename,
+        details: {
+          filename: file.originalname,
+          size: file.size,
+          mimetype: file.mimetype,
+        },
+        ipAddress: req.ip,
+        userAgent: req.get('User-Agent'),
+      },
+    });
+
+    uploadedFiles.push({
+      filename: file.filename,
+      originalName: file.originalname,
+      url: fileUrl,
+      size: file.size,
+      mimetype: file.mimetype,
+    });
+  }
+
+  logger.info(`Post images uploaded by user ${req.user!.id}: ${uploadedFiles.length} files`);
+
+  res.json({
+    success: true,
+    data: uploadedFiles,
+  });
+}));
+
+// Upload post videos
+router.post('/post-videos', authenticate, uploadMultiple('videos', 5), asyncHandler(async (req: AuthRequest, res: Response) => {
+  if (!req.files || (req.files as Express.Multer.File[]).length === 0) {
+    throw new AppError('No files uploaded', 400);
+  }
+
+  const files = req.files as Express.Multer.File[];
+  const uploadedFiles = [];
+
+  for (const file of files) {
+    const fileUrl = getFileUrl(req, file.filename, 'videos');
+    
+    // Log the upload for audit purposes
+    await prisma.auditLog.create({
+      data: {
+        userId: req.user!.id,
+        action: 'UPLOAD_POST_VIDEO',
+        resource: 'post_video',
+        resourceId: file.filename,
+        details: {
+          filename: file.originalname,
+          size: file.size,
+          mimetype: file.mimetype,
+        },
+        ipAddress: req.ip,
+        userAgent: req.get('User-Agent'),
+      },
+    });
+
+    uploadedFiles.push({
+      filename: file.filename,
+      originalName: file.originalname,
+      url: fileUrl,
+      size: file.size,
+      mimetype: file.mimetype,
+    });
+  }
+
+  logger.info(`Post videos uploaded by user ${req.user!.id}: ${uploadedFiles.length} files`);
+
+  res.json({
+    success: true,
+    data: uploadedFiles,
+  });
+}));
+
 export default router;

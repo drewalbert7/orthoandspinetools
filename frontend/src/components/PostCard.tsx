@@ -106,7 +106,7 @@ const PostCard: React.FC<PostCardProps> = ({ post, onVote }) => {
               to={`/community/${post.community.id}`}
               className="font-semibold hover:underline text-white text-sm"
             >
-              r/{post.community.name}
+              o/{post.community.name}
             </Link>
             <span>•</span>
             <span>Posted by</span>

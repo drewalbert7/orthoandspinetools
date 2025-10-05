@@ -1,7 +1,7 @@
 import React from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { apiService, Post } from '../services/apiService';
 import { Link } from 'react-router-dom';
+import { apiService, Post } from '../services/apiService';
 
 // PostCard component for displaying individual posts
 const PostCard: React.FC<{ post: Post }> = ({ post }) => {
@@ -55,9 +55,20 @@ const PostCard: React.FC<{ post: Post }> = ({ post }) => {
         <div className="flex items-center space-x-1 text-xs text-gray-500 mb-1">
           <Link 
             to={`/community/${post.community.slug}`}
-            className="font-medium text-gray-900 hover:underline"
+            className="font-medium text-gray-900 hover:underline flex items-center space-x-1"
           >
-            r/{post.community.name}
+            {post.community.profileImage ? (
+              <img 
+                src={post.community.profileImage} 
+                alt={post.community.name}
+                className="w-4 h-4 rounded-full object-cover"
+              />
+            ) : (
+              <div className="w-4 h-4 bg-blue-600 rounded-full flex items-center justify-center">
+                <span className="text-white text-xs font-bold">o</span>
+              </div>
+            )}
+            <span>o/{post.community.name}</span>
           </Link>
           <span>•</span>
           <span>Posted by u/{post.author.username}</span>
@@ -97,12 +108,15 @@ const PostCard: React.FC<{ post: Post }> = ({ post }) => {
           </button>
 
           {/* Comments */}
-          <button className="flex items-center space-x-1 px-2 py-1 rounded-md border border-gray-200 hover:border-gray-300 bg-gray-50 hover:bg-gray-100 transition-colors">
+          <Link 
+            to={`/post/${post.id}`}
+            className="flex items-center space-x-1 px-2 py-1 rounded-md border border-gray-200 hover:border-gray-300 bg-gray-50 hover:bg-gray-100 transition-colors"
+          >
             <svg className="w-4 h-4 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
             </svg>
             <span className="text-sm font-medium text-gray-700">{post._count?.comments || 0}</span>
-          </button>
+          </Link>
 
           {/* Awards */}
           <button className="flex items-center justify-center w-8 h-8 rounded-full border border-gray-200 hover:border-gray-300 bg-gray-50 hover:bg-gray-100 transition-colors">

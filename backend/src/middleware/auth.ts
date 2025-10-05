@@ -9,6 +9,7 @@ export interface AuthRequest extends Request {
     email: string;
     username: string;
     specialty?: string;
+    isAdmin?: boolean;
   };
 }
 
@@ -30,6 +31,7 @@ export const authenticate = async (req: AuthRequest, res: Response, next: NextFu
         username: true,
         specialty: true,
         isActive: true,
+        isAdmin: true,
       }
     });
 

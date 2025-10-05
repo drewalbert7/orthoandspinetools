@@ -91,6 +91,10 @@ export interface Community {
   name: string;
   slug: string;
   description: string;
+  profileImage?: string;
+  bannerImage?: string;
+  ownerId?: string;
+  moderators?: Array<{ userId: string; role: string }>;
   specialty?: string;
   memberCount?: number;
   postCount?: number;
@@ -106,6 +110,7 @@ export interface User {
   email: string;
   firstName: string;
   lastName: string;
+  isAdmin?: boolean;
   specialty?: string;
   subSpecialty?: string;
   medicalLicense?: string;
@@ -125,6 +130,10 @@ export interface UserProfile {
   user: User;
   stats: {
     karma: number;
+    postKarma: number;
+    commentKarma: number;
+    awardKarma: number;
+    totalKarma: number;
     postsCount: number;
     commentsCount: number;
     communitiesCount: number;
@@ -200,7 +209,7 @@ class ApiService {
   async getPost(id: string): Promise<Post> {
     try {
       const response = await api.get(`/posts/${id}`);
-      return response.data;
+      return response.data.data;
     } catch (error: any) {
       throw new Error(error.response?.data?.message || 'Failed to fetch post');
     }
@@ -322,6 +331,63 @@ class ApiService {
       return response.data.data || response.data;
     } catch (error: any) {
       throw new Error(error.response?.data?.message || 'Failed to fetch community');
+    }
+  }
+
+  async updateCommunity(id: string, data: { profileImage?: string; bannerImage?: string; description?: string }): Promise<Community> {
+    try {
+      const response = await api.put(`/communities/${id}`, data);
+      return response.data.data;
+    } catch (error: any) {
+      throw new Error(error.response?.data?.message || 'Failed to update community');
+    }
+  }
+
+  async uploadCommunityBanner(file: File): Promise<{ imageUrl: string }> {
+    try {
+      const formData = new FormData();
+      formData.append('banner', file);
+      
+      const response = await api.post('/upload/community-banner', formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+      });
+      return response.data.data;
+    } catch (error: any) {
+      throw new Error(error.response?.data?.message || 'Failed to upload banner');
+    }
+  }
+
+  async uploadPostImages(files: File[]): Promise<Array<{ url: string; filename: string; originalName: string; size: number; mimetype: string }>> {
+    try {
+      const formData = new FormData();
+      files.forEach(file => formData.append('images', file));
+      
+      const response = await api.post('/upload/post-images', formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+      });
+      return response.data.data;
+    } catch (error: any) {
+      throw new Error(error.response?.data?.message || 'Failed to upload images');
+    }
+  }
+
+  async uploadPostVideos(files: File[]): Promise<Array<{ url: string; filename: string; originalName: string; size: number; mimetype: string }>> {
+    try {
+      const formData = new FormData();
+      files.forEach(file => formData.append('videos', file));
+      
+      const response = await api.post('/upload/post-videos', formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+      });
+      return response.data.data;
+    } catch (error: any) {
+      throw new Error(error.response?.data?.message || 'Failed to upload videos');
     }
   }
 

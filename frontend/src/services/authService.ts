@@ -44,6 +44,7 @@ export interface User {
   email: string;
   firstName: string;
   lastName: string;
+  isAdmin?: boolean;
   specialty?: string;
   medicalLicense?: string;
   institution?: string;
