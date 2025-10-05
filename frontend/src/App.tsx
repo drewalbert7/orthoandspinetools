@@ -13,6 +13,7 @@ import PostDetail from './pages/PostDetail';
 import CreatePost from './pages/CreatePost';
 import Profile from './pages/Profile';
 import Community from './pages/Community';
+import CommunitySettings from './pages/CommunitySettings';
 
 // Context
 import { AuthProvider } from './contexts/AuthContext';
@@ -48,6 +49,7 @@ function App() {
                   <Route path="/create-post" element={<CreatePost />} />
                   <Route path="/profile" element={<Profile />} />
                   <Route path="/community/:slug" element={<Community />} />
+                  <Route path="/community/:slug/settings" element={<CommunitySettings />} />
                 </Routes>
               </main>
             </div>

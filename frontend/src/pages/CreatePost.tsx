@@ -18,6 +18,8 @@ const CreatePost: React.FC = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState('');
   const [showCommunityDropdown, setShowCommunityDropdown] = useState(false);
+  const [uploadedMedia, setUploadedMedia] = useState<Array<{ url: string; filename: string; originalName: string; type: 'image' | 'video' }>>([]);
+  const [isUploading, setIsUploading] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   // Fetch communities
@@ -49,37 +51,38 @@ const CreatePost: React.FC = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!title.trim() || !selectedCommunity) return;
-    
+
     setIsSubmitting(true);
     setError('');
-    
+
     try {
-      // Map frontend post types to backend post types
-      const backendPostType = postType === 'text' ? 'discussion' : 
-                             postType === 'images' ? 'case_study' : 
-                             postType === 'link' ? 'tool_review' : 'discussion';
-      
+      // Map postType to backend format
+      const getPostType = (type: PostType): 'discussion' | 'case_study' | 'tool_review' => {
+        switch (type) {
+          case 'text':
+          case 'link':
+          case 'poll':
+            return 'discussion';
+          case 'images':
+            return 'case_study';
+          default:
+            return 'discussion';
+        }
+      };
+
       const postData = {
         title: title.trim(),
-        content: postType === 'link' ? linkUrl : body.trim(),
-        postType: backendPostType as 'discussion' | 'case_study' | 'tool_review',
+        content: body.trim(),
         communityId: selectedCommunity,
-        specialty: user.specialty,
+        postType: getPostType(postType),
+        ...(postType === 'link' && { linkUrl }),
+        ...(postType === 'images' && { media: uploadedMedia }),
       };
-      
-      console.log('Creating post:', postData);
+
       await apiService.createPost(postData);
-      
-      // Navigate to the community page or home
-      const selectedCommunityData = communities?.find(c => c.id === selectedCommunity);
-      if (selectedCommunityData) {
-        navigate(`/community/${selectedCommunityData.slug || selectedCommunityData.id}`);
-      } else {
-        navigate('/');
-      }
-    } catch (err: any) {
-      console.error('Error creating post:', err);
-      setError(err.message || 'Failed to create post');
+      navigate('/');
+    } catch (error: any) {
+      setError(error.message || 'Failed to create post');
     } finally {
       setIsSubmitting(false);
     }
@@ -90,13 +93,51 @@ const CreatePost: React.FC = () => {
     console.log('Saving draft...');
   };
 
+  const handleMediaUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(event.target.files || []);
+    if (files.length === 0) return;
+
+    setIsUploading(true);
+    try {
+      // Separate images and videos
+      const imageFiles = files.filter(file => file.type.startsWith('image/'));
+      const videoFiles = files.filter(file => file.type.startsWith('video/'));
+
+      const uploadedFiles: Array<{ url: string; filename: string; originalName: string; type: 'image' | 'video' }> = [];
+
+      // Upload images if any
+      if (imageFiles.length > 0) {
+        const uploadedImages = await apiService.uploadPostImages(imageFiles);
+        uploadedFiles.push(...uploadedImages.map(img => ({ ...img, type: 'image' as const })));
+      }
+
+      // Upload videos if any
+      if (videoFiles.length > 0) {
+        const uploadedVideos = await apiService.uploadPostVideos(videoFiles);
+        uploadedFiles.push(...uploadedVideos.map(vid => ({ ...vid, type: 'video' as const })));
+      }
+
+      setUploadedMedia(prev => [...prev, ...uploadedFiles]);
+    } catch (error) {
+      console.error('Error uploading media:', error);
+      alert('Failed to upload media. Please try again.');
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
+  const removeMedia = (filename: string) => {
+    setUploadedMedia(prev => prev.filter(media => media.filename !== filename));
+  };
+
   const isPostDisabled = !title.trim() || !selectedCommunity;
 
+
   return (
-    <div className="max-w-4xl mx-auto bg-white">
+    <div className="max-w-4xl mx-auto bg-white min-h-screen">
       <div className="p-6">
         {/* Header */}
-        <div className="flex justify-between items-center mb-6">
+        <div className="flex items-center justify-between mb-8">
           <h1 className="text-2xl font-bold text-gray-900">Create post</h1>
           <button className="text-blue-600 hover:text-blue-800 font-medium">
             Drafts
@@ -113,49 +154,46 @@ const CreatePost: React.FC = () => {
         {/* Community Selection */}
         <div className="mb-6">
           <div className="relative" ref={dropdownRef}>
-            <button 
+            <button
               onClick={() => setShowCommunityDropdown(!showCommunityDropdown)}
-              className="flex items-center space-x-2 px-4 py-2 border border-gray-300 rounded-md hover:border-gray-400 transition-colors w-full"
+              className="w-full px-4 py-3 border border-gray-300 rounded-full bg-white text-left focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             >
-              <div className="w-6 h-6 bg-blue-600 rounded-full flex items-center justify-center">
-                <span className="text-white text-xs font-bold">r/</span>
+              <div className="flex items-center space-x-3">
+                <div className="w-8 h-8 bg-gradient-to-br from-purple-500 to-pink-500 rounded-full flex items-center justify-center">
+                  <span className="text-white font-bold text-sm">A</span>
+                </div>
+                <span className="text-gray-700">
+                  {selectedCommunity ? `o/${communities?.find(c => c.slug === selectedCommunity)?.name || selectedCommunity}` : 'Choose a community'}
+                </span>
+                <svg className="w-5 h-5 text-gray-400 ml-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                </svg>
               </div>
-              <span className="text-gray-700 flex-1 text-left">
-                {selectedCommunity ? 
-                  communities?.find(c => c.id === selectedCommunity)?.name || 'Unknown Community' : 
-                  'Select a community'
-                }
-              </span>
-              <svg className="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-              </svg>
             </button>
-            
+
             {showCommunityDropdown && (
-              <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-300 rounded-md shadow-lg z-50 max-h-60 overflow-y-auto">
+              <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg max-h-60 overflow-y-auto">
                 {communitiesLoading ? (
-                  <div className="px-4 py-2 text-gray-500">Loading communities...</div>
-                ) : communities && communities.length > 0 ? (
-                  communities.map((community) => (
+                  <div className="p-3 text-center text-gray-500">Loading communities...</div>
+                ) : (
+                  communities?.map((community) => (
                     <button
                       key={community.id}
                       onClick={() => {
-                        setSelectedCommunity(community.id);
+                        setSelectedCommunity(community.slug);
                         setShowCommunityDropdown(false);
                       }}
-                      className="w-full px-4 py-2 text-left hover:bg-gray-100 flex items-center space-x-2"
+                      className="w-full px-4 py-3 text-left hover:bg-gray-50 flex items-center space-x-3"
                     >
-                      <div className="w-6 h-6 bg-blue-600 rounded-full flex items-center justify-center">
-                        <span className="text-white text-xs font-bold">r/</span>
+                      <div className="w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center">
+                        <span className="text-white font-bold text-sm">o/</span>
                       </div>
                       <div>
-                        <div className="font-medium text-gray-900">r/{community.name}</div>
+                        <div className="font-medium text-gray-900">o/{community.name}</div>
                         <div className="text-sm text-gray-500">{community.description}</div>
                       </div>
                     </button>
                   ))
-                ) : (
-                  <div className="px-4 py-2 text-gray-500">No communities available</div>
                 )}
               </div>
             )}
@@ -174,12 +212,11 @@ const CreatePost: React.FC = () => {
               <button
                 key={tab.id}
                 onClick={() => setPostType(tab.id as PostType)}
-                className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
+                className={`px-4 py-2 text-sm font-medium ${
                   postType === tab.id
-                    ? 'border-blue-600 text-blue-600'
-                    : 'border-transparent text-gray-500 hover:text-gray-700'
-                } ${tab.id === 'poll' ? 'opacity-50 cursor-not-allowed' : ''}`}
-                disabled={tab.id === 'poll'}
+                    ? 'text-blue-600 border-b-2 border-blue-600'
+                    : 'text-gray-500 hover:text-gray-700'
+                }`}
               >
                 {tab.label}
               </button>
@@ -188,104 +225,130 @@ const CreatePost: React.FC = () => {
         </div>
 
         {/* Title Input */}
-        <div className="mb-4">
-          <input
-            type="text"
-            value={title}
-            onChange={(e) => setTitle(e.target.value)}
-            placeholder="Title*"
-            className="w-full px-4 py-3 text-lg border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-            maxLength={300}
-          />
-          <div className="flex justify-end mt-1">
-            <span className="text-sm text-gray-500">{title.length}/300</span>
+        <div className="mb-6">
+          <div className="relative">
+            <input
+              type="text"
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              placeholder="Title*"
+              maxLength={300}
+              className="w-full px-4 py-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-lg"
+            />
+            <div className="absolute bottom-2 right-3 text-xs text-gray-400">
+              {title.length}/300
+            </div>
           </div>
         </div>
 
-        {/* Tags Section */}
-        <div className="mb-4">
-          <button className="px-4 py-2 bg-gray-100 text-gray-600 rounded-md hover:bg-gray-200 transition-colors">
+        {/* Add Tags Button */}
+        <div className="mb-6">
+          <button className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 transition-colors">
             Add tags
           </button>
         </div>
 
-        {/* Content Area */}
+        {/* Content based on post type */}
         {postType === 'text' && (
           <div className="mb-6">
-            {/* Rich Text Editor Toolbar */}
-            <div className="flex items-center space-x-2 p-2 border border-gray-300 border-b-0 rounded-t-md bg-gray-50">
-              <button className="p-1 hover:bg-gray-200 rounded">
-                <span className="font-bold text-sm">B</span>
-              </button>
-              <button className="p-1 hover:bg-gray-200 rounded">
-                <span className="italic text-sm">i</span>
-              </button>
-              <button className="p-1 hover:bg-gray-200 rounded">
-                <span className="line-through text-sm">S</span>
-              </button>
-              <button className="p-1 hover:bg-gray-200 rounded">
-                <span className="text-sm">X²</span>
-              </button>
-              <button className="p-1 hover:bg-gray-200 rounded">
-                <span className="text-sm">T</span>
-              </button>
-              <div className="w-px h-6 bg-gray-300"></div>
-              <button className="p-1 hover:bg-gray-200 rounded">
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
-                </svg>
-              </button>
-              <button className="p-1 hover:bg-gray-200 rounded">
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                </svg>
-              </button>
-              <button className="p-1 hover:bg-gray-200 rounded">
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.828 14.828a4 4 0 01-5.656 0M9 10h1m4 0h1m-6 4h1m4 0h1m-6-8h8a2 2 0 012 2v8a2 2 0 01-2 2H8a2 2 0 01-2-2V6a2 2 0 012-2z" />
-                </svg>
-              </button>
-              <div className="w-px h-6 bg-gray-300"></div>
-              <button className="p-1 hover:bg-gray-200 rounded">
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 10h16M4 14h16M4 18h16" />
-                </svg>
-              </button>
-              <button className="p-1 hover:bg-gray-200 rounded">
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
-                </svg>
-              </button>
-              <button className="p-1 hover:bg-gray-200 rounded">
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 8h10M7 12h4m1 8l-4-4H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-3l-4 4z" />
-                </svg>
-              </button>
-              <button className="p-1 hover:bg-gray-200 rounded">
-                <span className="text-sm">99</span>
-              </button>
-              <button className="p-1 hover:bg-gray-200 rounded">
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z" />
-                </svg>
-              </button>
-              <div className="flex-1"></div>
+            {/* Formatting Toolbar */}
+            <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center space-x-1">
+                {/* Bold */}
+                <button className="p-2 hover:bg-gray-100 rounded-md" title="Bold">
+                  <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+                    <path d="M15.6 10.79c.97-.67 1.65-1.77 1.65-2.79 0-2.26-1.75-4-4-4H7v14h7.04c2.09 0 3.71-1.7 3.71-3.79 0-1.52-.86-2.82-2.15-3.42zM10 6.5h3c.83 0 1.5.67 1.5 1.5s-.67 1.5-1.5 1.5h-3v-3zm3.5 9H10v-3h3.5c.83 0 1.5.67 1.5 1.5s-.67 1.5-1.5 1.5z"/>
+                  </svg>
+                </button>
+                {/* Italic */}
+                <button className="p-2 hover:bg-gray-100 rounded-md" title="Italic">
+                  <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+                    <path d="M10 4v3h2.21l-3.42 8H6v3h8v-3h-2.21l3.42-8H18V4h-8z"/>
+                  </svg>
+                </button>
+                {/* Strikethrough */}
+                <button className="p-2 hover:bg-gray-100 rounded-md" title="Strikethrough">
+                  <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+                    <path d="M10 19h4v-3h-4v3zM5 4v3h5v3h4V4h5V2H5v2zm2.5 7c-.83 0-1.5-.67-1.5-1.5S6.67 8 7.5 8s1.5.67 1.5 1.5-.67 1.5-1.5 1.5zm9 0c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5z"/>
+                  </svg>
+                </button>
+                {/* Superscript */}
+                <button className="p-2 hover:bg-gray-100 rounded-md" title="Superscript">
+                  <span className="text-sm font-bold">X²</span>
+                </button>
+                {/* Code */}
+                <button className="p-2 hover:bg-gray-100 rounded-md" title="Code">
+                  <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+                    <path d="M9.4 16.6L4.8 12l4.6-4.6L8 6l-6 6 6 6 1.4-1.4zm5.2 0L19.2 12l-4.6-4.6L16 6l6 6-6 6-1.4-1.4z"/>
+                  </svg>
+                </button>
+                {/* Link */}
+                <button className="p-2 hover:bg-gray-100 rounded-md" title="Link">
+                  <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+                    <path d="M3.9 12c0-1.71 1.39-3.1 3.1-3.1h4V7H7c-2.76 0-5 2.24-5 5s2.24 5 5 5h4v-1.9H7c-1.71 0-3.1-1.39-3.1-3.1zM8 13h8v-2H8v2zm9-6h-4v1.9h4c1.71 0 3.1 1.39 3.1 3.1s-1.39 3.1-3.1 3.1h-4V17h4c2.76 0 5-2.24 5-5s-2.24-5-5-5z"/>
+                  </svg>
+                </button>
+                {/* Image */}
+                <button className="p-2 hover:bg-gray-100 rounded-md" title="Image">
+                  <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+                    <path d="M21 19V5c0-1.1-.9-2-2-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2zM8.5 13.5l2.5 3.01L14.5 12l4.5 6H5l3.5-4.5z"/>
+                  </svg>
+                </button>
+                {/* Video */}
+                <button className="p-2 hover:bg-gray-100 rounded-md" title="Video">
+                  <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+                    <path d="M17 10.5V7c0-.55-.45-1-1-1H4c-.55 0-1 .45-1 1v10c0 .55.45 1 1 1h12c.55 0 1-.45 1-1v-3.5l4 4v-11l-4 4z"/>
+                  </svg>
+                </button>
+                {/* Bullet List */}
+                <button className="p-2 hover:bg-gray-100 rounded-md" title="Bullet List">
+                  <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+                    <path d="M4 10.5c-.83 0-1.5.67-1.5 1.5s.67 1.5 1.5 1.5 1.5-.67 1.5-1.5-.67-1.5-1.5-1.5zm0-6c-.83 0-1.5.67-1.5 1.5S3.17 7.5 4 7.5 5.5 6.83 5.5 6 4.83 4.5 4 4.5zm0 12c-.83 0-1.5.68-1.5 1.5s.68 1.5 1.5 1.5 1.5-.68 1.5-1.5-.67-1.5-1.5-1.5zM7 19h14v-2H7v2zm0-6h14v-2H7v2zm0-8v2h14V5H7z"/>
+                  </svg>
+                </button>
+                {/* Numbered List */}
+                <button className="p-2 hover:bg-gray-100 rounded-md" title="Numbered List">
+                  <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+                    <path d="M2 17h2v.5H3v1h1v.5H2v1h3v-4H2v1zm1-9h1V4H2v1h1v3zm-1 3h1.8L2 13.1v.9h3v-1H3.2L5 10.9V10H2v1zm5-6v2h14V5H7zm0 14h14v-2H7v2zm0-6h14v-2H7v2z"/>
+                  </svg>
+                </button>
+                {/* Quote */}
+                <button className="p-2 hover:bg-gray-100 rounded-md" title="Quote">
+                  <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+                    <path d="M6 17h3l2-4V7H5v6h3zm8 0h3l2-4V7h-6v6h3z"/>
+                  </svg>
+                </button>
+                {/* More */}
+                <button className="p-2 hover:bg-gray-100 rounded-md" title="More">
+                  <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+                    <path d="M12 8c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm0 2c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm0 6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z"/>
+                  </svg>
+                </button>
+              </div>
               <button
                 onClick={() => setIsMarkdownMode(!isMarkdownMode)}
-                className="px-3 py-1 text-sm text-blue-600 hover:text-blue-800 font-medium"
+                className="text-sm text-blue-600 hover:text-blue-800"
               >
                 Switch to Markdown Editor
               </button>
             </div>
-
+            
             {/* Text Area */}
-            <textarea
-              value={body}
-              onChange={(e) => setBody(e.target.value)}
-              placeholder="Body text (optional)"
-              className="w-full px-4 py-3 border border-gray-300 border-t-0 rounded-b-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
-              rows={12}
-            />
+            <div className="relative">
+              <textarea
+                value={body}
+                onChange={(e) => setBody(e.target.value)}
+                placeholder="Body text (optional)"
+                rows={12}
+                className="w-full px-4 py-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
+              />
+              {/* Resize handle */}
+              <div className="absolute bottom-2 right-2 w-3 h-3">
+                <svg className="w-3 h-3 text-gray-400" fill="currentColor" viewBox="0 0 24 24">
+                  <path d="M22 22H20V20H22V22ZM22 18H20V16H22V18ZM18 22H16V20H18V22ZM18 18H16V16H18V18ZM14 22H12V20H14V22ZM22 14H20V12H22V14Z"/>
+                </svg>
+              </div>
+            </div>
           </div>
         )}
 
@@ -295,7 +358,7 @@ const CreatePost: React.FC = () => {
               type="url"
               value={linkUrl}
               onChange={(e) => setLinkUrl(e.target.value)}
-              placeholder="Url"
+              placeholder="URL"
               className="w-full px-4 py-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             />
           </div>
@@ -303,11 +366,173 @@ const CreatePost: React.FC = () => {
 
         {postType === 'images' && (
           <div className="mb-6">
-            <div className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center">
-              <svg className="mx-auto h-12 w-12 text-gray-400" stroke="currentColor" fill="none" viewBox="0 0 48 48">
-                <path d="M28 8H12a4 4 0 00-4 4v20m32-12v8m0 0v8a4 4 0 01-4 4H12a4 4 0 01-4-4v-4m32-4l-3.172-3.172a4 4 0 00-5.656 0L28 28M8 32l9.172-9.172a4 4 0 015.656 0L28 28m0 0l4 4m4-24h8m-4-4v8m-12 4h.02" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
+            <div className="space-y-6">
+              {/* Upload Area */}
+              <div className="space-y-4">
+                <div className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center hover:border-gray-400 transition-colors">
+                  <svg className="mx-auto h-12 w-12 text-gray-400" stroke="currentColor" fill="none" viewBox="0 0 48 48">
+                    <path d="M28 8H12a4 4 0 00-4 4v20m32-12v8m0 0v8a4 4 0 01-4 4H12a4 4 0 01-4-4v-4m32-4l-3.172-3.172a4 4 0 00-5.656 0L28 28M8 32l9.172-9.172a4 4 0 015.656 0L28 28m0 0l4 4m4-24h8m-4-4v8m-12 4h.02" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
+                  </svg>
+                  <p className="mt-2 text-sm text-gray-600">Drag and Drop or upload media</p>
+                  <input
+                    type="file"
+                    accept="image/*,video/*"
+                    multiple
+                    onChange={handleMediaUpload}
+                    disabled={isUploading}
+                    className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                  />
+                  {isUploading && (
+                    <div className="mt-4 flex items-center justify-center">
+                      <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600 mr-2"></div>
+                      <span className="text-sm text-gray-600">Uploading media...</span>
+                    </div>
+                  )}
+                </div>
+
+                {/* Uploaded Media Preview */}
+                {uploadedMedia.length > 0 && (
+                  <div className="space-y-3">
+                    <h4 className="text-sm font-medium text-gray-700">Uploaded Media ({uploadedMedia.length})</h4>
+                    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                      {uploadedMedia.map((media, index) => (
+                        <div key={index} className="relative group">
+                          {media.type === 'image' ? (
+                            <img
+                              src={media.url}
+                              alt={media.originalName}
+                              className="w-full h-32 object-cover rounded-md border border-gray-200"
+                            />
+                          ) : (
+                            <video
+                              src={media.url}
+                              className="w-full h-32 object-cover rounded-md border border-gray-200"
+                              controls
+                            />
+                          )}
+                          <button
+                            onClick={() => removeMedia(media.filename)}
+                            className="absolute top-2 right-2 p-1 bg-red-500 text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
+                            title="Remove media"
+                          >
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                            </svg>
+                          </button>
+                          <p className="text-xs text-gray-500 mt-1 truncate">{media.originalName}</p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Text Editor Section */}
+              <div className="space-y-3">
+                {/* Formatting Toolbar */}
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center space-x-1">
+                    {/* Bold */}
+                    <button className="p-2 hover:bg-gray-100 rounded-md" title="Bold">
+                      <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+                        <path d="M15.6 10.79c.97-.67 1.65-1.77 1.65-2.79 0-2.26-1.75-4-4-4H7v14h7.04c2.09 0 3.71-1.7 3.71-3.79 0-1.52-.86-2.82-2.15-3.42zM10 6.5h3c.83 0 1.5.67 1.5 1.5s-.67 1.5-1.5 1.5h-3v-3zm3.5 9H10v-3h3.5c.83 0 1.5.67 1.5 1.5s-.67 1.5-1.5 1.5z"/>
+                      </svg>
+                    </button>
+                    {/* Italic */}
+                    <button className="p-2 hover:bg-gray-100 rounded-md" title="Italic">
+                      <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+                        <path d="M10 4v3h2.21l-3.42 8H6v3h8v-3h-2.21l3.42-8H18V4h-8z"/>
+                      </svg>
+                    </button>
+                    {/* Strikethrough */}
+                    <button className="p-2 hover:bg-gray-100 rounded-md" title="Strikethrough">
+                      <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+                        <path d="M10 19h4v-3h-4v3zM5 4v3h5v3h4V4h5V2H5v2zm2.5 7c-.83 0-1.5-.67-1.5-1.5S6.67 8 7.5 8s1.5.67 1.5 1.5-.67 1.5-1.5 1.5zm9 0c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5z"/>
+                      </svg>
+                    </button>
+                    {/* Superscript */}
+                    <button className="p-2 hover:bg-gray-100 rounded-md" title="Superscript">
+                      <span className="text-sm font-bold">X²</span>
+                    </button>
+                    {/* Text Color */}
+                    <button className="p-2 hover:bg-gray-100 rounded-md" title="Text Color">
+                      <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+                        <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
+                      </svg>
+                    </button>
+                    {/* Link */}
+                    <button className="p-2 hover:bg-gray-100 rounded-md" title="Link">
+                      <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+                        <path d="M3.9 12c0-1.71 1.39-3.1 3.1-3.1h4V7H7c-2.76 0-5 2.24-5 5s2.24 5 5 5h4v-1.9H7c-1.71 0-3.1-1.39-3.1-3.1zM8 13h8v-2H8v2zm9-6h-4v1.9h4c1.71 0 3.1 1.39 3.1 3.1s-1.39 3.1-3.1 3.1h-4V17h4c2.76 0 5-2.24 5-5s-2.24-5-5-5z"/>
+                      </svg>
+                    </button>
+                    {/* Bullet List */}
+                    <button className="p-2 hover:bg-gray-100 rounded-md" title="Bullet List">
+                      <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+                        <path d="M4 10.5c-.83 0-1.5.67-1.5 1.5s.67 1.5 1.5 1.5 1.5-.67 1.5-1.5-.67-1.5-1.5-1.5zm0-6c-.83 0-1.5.67-1.5 1.5S3.17 7.5 4 7.5 5.5 6.83 5.5 6 4.83 4.5 4 4.5zm0 12c-.83 0-1.5.68-1.5 1.5s.68 1.5 1.5 1.5 1.5-.68 1.5-1.5-.67-1.5-1.5-1.5zM7 19h14v-2H7v2zm0-6h14v-2H7v2zm0-8v2h14V5H7z"/>
+                      </svg>
+                    </button>
+                    {/* Numbered List */}
+                    <button className="p-2 hover:bg-gray-100 rounded-md" title="Numbered List">
+                      <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+                        <path d="M2 17h2v.5H3v1h1v.5H2v1h3v-4H2v1zm1-9h1V4H2v1h1v3zm-1 3h1.8L2 13.1v.9h3v-1H3.2L5 10.9V10H2v1zm5-6v2h14V5H7zm0 14h14v-2H7v2zm0-6h14v-2H7v2z"/>
+                      </svg>
+                    </button>
+                    {/* Quote */}
+                    <button className="p-2 hover:bg-gray-100 rounded-md" title="Quote">
+                      <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+                        <path d="M6 17h3l2-4V7H5v6h3zm8 0h3l2-4V7h-6v6h3z"/>
+                      </svg>
+                    </button>
+                    {/* Code Block */}
+                    <button className="p-2 hover:bg-gray-100 rounded-md" title="Code Block">
+                      <span className="text-sm font-bold">99</span>
+                    </button>
+                    {/* Inline Code */}
+                    <button className="p-2 hover:bg-gray-100 rounded-md" title="Inline Code">
+                      <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+                        <path d="M9.4 16.6L4.8 12l4.6-4.6L8 6l-6 6 6 6 1.4-1.4zm5.2 0L19.2 12l-4.6-4.6L16 6l6 6-6 6-1.4-1.4z"/>
+                      </svg>
+                    </button>
+                    {/* Table */}
+                    <button className="p-2 hover:bg-gray-100 rounded-md" title="Table">
+                      <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+                        <path d="M3 3h18v2H3V3zm0 4h18v2H3V7zm0 4h18v2H3v-2zm0 4h18v2H3v-2z"/>
+                      </svg>
+                    </button>
+                  </div>
+                  <button
+                    onClick={() => setIsMarkdownMode(!isMarkdownMode)}
+                    className="text-sm text-blue-600 hover:text-blue-800"
+                  >
+                    Switch to Markdown Editor
+                  </button>
+                </div>
+                
+                {/* Text Area */}
+                <div className="relative">
+                  <textarea
+                    value={body}
+                    onChange={(e) => setBody(e.target.value)}
+                    placeholder="Body text (optional)"
+                    rows={8}
+                    className="w-full px-4 py-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
+                  />
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+
+        {postType === 'poll' && (
+          <div className="mb-6">
+            <div className="text-center py-8 text-gray-500">
+              <svg className="mx-auto h-12 w-12 text-gray-400 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
               </svg>
-              <p className="mt-2 text-sm text-gray-600">Drag and drop images here, or click to select</p>
+              <p className="text-lg font-medium">Poll functionality coming soon</p>
+              <p className="text-sm">This feature is under development</p>
             </div>
           </div>
         )}
@@ -330,14 +555,7 @@ const CreatePost: React.FC = () => {
                 : 'bg-blue-600 text-white hover:bg-blue-700'
             }`}
           >
-            {isSubmitting ? (
-              <div className="flex items-center space-x-2">
-                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                <span>Posting...</span>
-              </div>
-            ) : (
-              'Post'
-            )}
+            {isSubmitting ? 'Posting...' : 'Post'}
           </button>
         </div>
       </div>

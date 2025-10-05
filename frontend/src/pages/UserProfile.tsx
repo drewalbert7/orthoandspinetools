@@ -160,7 +160,7 @@ const UserProfile: React.FC = () => {
                   {posts.map((post: any) => (
                     <div key={post.id} className="border border-gray-200 rounded-md p-4">
                       <div className="flex items-center space-x-2 text-sm text-gray-500 mb-2">
-                        <span>Posted in r/{post.community?.name}</span>
+                        <span>Posted in o/{post.community?.name}</span>
                         <span>•</span>
                         <span>{formatDistanceToNow(new Date(post.createdAt))} ago</span>
                       </div>
@@ -202,7 +202,7 @@ const UserProfile: React.FC = () => {
                         >
                           {comment.post?.title}
                         </a>
-                        <span>in r/{comment.post?.community?.name}</span>
+                        <span>in o/{comment.post?.community?.name}</span>
                         <span>•</span>
                         <span>{formatDistanceToNow(new Date(comment.createdAt))} ago</span>
                       </div>

@@ -138,8 +138,16 @@ const Profile: React.FC = () => {
             {/* Stats */}
             <div className="flex items-center space-x-6 mt-4 pt-4 border-t border-gray-200">
               <div className="text-center">
-                <div className="text-lg font-semibold text-gray-900">{stats.karma}</div>
-                <div className="text-sm text-gray-500">Karma</div>
+                <div className="text-lg font-semibold text-gray-900">{stats.totalKarma}</div>
+                <div className="text-sm text-gray-500">Total Karma</div>
+              </div>
+              <div className="text-center">
+                <div className="text-lg font-semibold text-gray-900">{stats.postKarma}</div>
+                <div className="text-sm text-gray-500">Post Karma</div>
+              </div>
+              <div className="text-center">
+                <div className="text-lg font-semibold text-gray-900">{stats.commentKarma}</div>
+                <div className="text-sm text-gray-500">Comment Karma</div>
               </div>
               <div className="text-center">
                 <div className="text-lg font-semibold text-gray-900">{stats.postsCount + stats.commentsCount}</div>
@@ -213,7 +221,7 @@ const Profile: React.FC = () => {
                     posts.map((post) => (
                       <div key={post.id} className="border border-gray-200 rounded-md p-4">
                         <div className="flex items-center space-x-2 text-sm text-gray-500 mb-2">
-                          <span>{profileUser.username} posted in r/{post.community?.name}</span>
+                          <span>{profileUser.username} posted in o/{post.community?.name}</span>
                           <span>•</span>
                           <span>{formatDate(post.createdAt)}</span>
                         </div>
@@ -269,7 +277,7 @@ const Profile: React.FC = () => {
                     posts.map((post) => (
                       <div key={post.id} className="border border-gray-200 rounded-md p-4">
                         <div className="flex items-center space-x-2 text-sm text-gray-500 mb-2">
-                          <span>Posted in r/{post.community?.name}</span>
+                          <span>Posted in o/{post.community?.name}</span>
                           <span>•</span>
                           <span>{formatDate(post.createdAt)}</span>
                         </div>
@@ -381,7 +389,16 @@ const Profile: React.FC = () => {
 
             <div className="space-y-2 text-sm text-gray-500 mb-4">
               <div className="flex justify-between">
-                <span>{stats.karma} Karma</span>
+                <span>{stats.totalKarma} Total Karma</span>
+              </div>
+              <div className="flex justify-between">
+                <span>{stats.postKarma} Post Karma</span>
+              </div>
+              <div className="flex justify-between">
+                <span>{stats.commentKarma} Comment Karma</span>
+              </div>
+              <div className="flex justify-between">
+                <span>{stats.awardKarma} Award Karma</span>
               </div>
               <div className="flex justify-between">
                 <span>{stats.postsCount + stats.commentsCount} Contributions</span>
@@ -439,12 +456,20 @@ const Profile: React.FC = () => {
               {communities.length > 0 ? (
                 communities.map((community) => (
                   <div key={community.id} className="flex items-center space-x-3">
-                    <div className="w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center">
-                      <span className="text-white text-xs font-bold">r/</span>
-                    </div>
+                    {community.profileImage ? (
+                      <img 
+                        src={community.profileImage} 
+                        alt={community.name}
+                        className="w-8 h-8 rounded-full object-cover"
+                      />
+                    ) : (
+                      <div className="w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center">
+                        <span className="text-white text-xs font-bold">o/</span>
+                      </div>
+                    )}
                     <div className="flex-1">
                       <Link to={`/community/${community.slug || community.id}`} className="text-sm font-medium text-gray-900 hover:text-blue-600">
-                        r/{community.name}
+                        o/{community.name}
                       </Link>
                       <p className="text-xs text-gray-500">{community.memberCount || 0} members</p>
                     </div>

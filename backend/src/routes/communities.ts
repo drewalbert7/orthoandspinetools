@@ -1,7 +1,9 @@
 import { Router, Request, Response } from 'express';
-import { asyncHandler } from '../middleware/errorHandler';
+import { asyncHandler, AppError } from '../middleware/errorHandler';
 import { trackCommunityVisitor } from '../middleware/visitorTracking';
+import { authenticate, AuthRequest } from '../middleware/auth';
 import { PrismaClient } from '@prisma/client';
+import { body, param, validationResult } from 'express-validator';
 
 const router = Router();
 const prisma = new PrismaClient();
@@ -367,7 +369,9 @@ router.get('/:id', trackCommunityVisitor, asyncHandler(async (req: Request, res:
         isPrivate: community.isPrivate,
         allowPosts: community.allowPosts,
         allowComments: community.allowComments,
-        rules: community.rules
+        rules: community.rules,
+        profileImage: community.profileImage,
+        bannerImage: community.bannerImage
       };
 
       return res.json({
@@ -393,7 +397,9 @@ router.get('/:id', trackCommunityVisitor, asyncHandler(async (req: Request, res:
         isPrivate: community.isPrivate,
         allowPosts: community.allowPosts,
         allowComments: community.allowComments,
-        rules: community.rules
+        rules: community.rules,
+        profileImage: community.profileImage,
+        bannerImage: community.bannerImage
       };
 
       return res.json({
@@ -548,6 +554,92 @@ router.get('/:id', trackCommunityVisitor, asyncHandler(async (req: Request, res:
       data: community
     });
   }
+}));
+
+// Update community (owner/moderator only)
+router.put('/:id', authenticate, [
+  param('id').isString().isLength({ min: 1 }).withMessage('Invalid community ID'),
+  body('profileImage').optional().isString().withMessage('Profile image must be a string'),
+  body('bannerImage').optional().isString().withMessage('Banner image must be a string'),
+  body('description').optional().isString().isLength({ min: 1, max: 500 }).withMessage('Description must be between 1 and 500 characters'),
+], asyncHandler(async (req: AuthRequest, res: Response) => {
+  // Check validation results
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    throw new AppError(`Validation failed: ${errors.array().map(e => e.msg).join(', ')}`, 400);
+  }
+
+  const { id } = req.params;
+  const { profileImage, bannerImage, description } = req.body;
+
+  // Check if community exists
+  const community = await prisma.community.findUnique({
+    where: { id },
+    include: {
+      moderators: {
+        select: {
+          userId: true,
+          role: true
+        }
+      }
+    }
+  });
+
+  if (!community) {
+    throw new AppError('Community not found', 404);
+  }
+
+  // Check if user has permission to update
+  const isOwner = community.ownerId === req.user!.id;
+  const isModerator = community.moderators.some(mod => mod.userId === req.user!.id);
+  const isAdmin = req.user!.isAdmin;
+
+  if (!isOwner && !isModerator && !isAdmin) {
+    throw new AppError('You do not have permission to update this community', 403);
+  }
+
+      // Update community
+      const updatedCommunity = await prisma.community.update({
+        where: { id },
+        data: {
+          ...(profileImage !== undefined && { profileImage }),
+          ...(bannerImage !== undefined && { bannerImage }),
+          ...(description !== undefined && { description }),
+          updatedAt: new Date(),
+        },
+    include: {
+      _count: {
+        select: {
+          members: true,
+          posts: {
+            where: {
+              isDeleted: false
+            }
+          }
+        }
+      },
+      owner: {
+        select: {
+          id: true,
+          username: true,
+          firstName: true,
+          lastName: true,
+          specialty: true
+        }
+      },
+      moderators: {
+        select: {
+          userId: true,
+          role: true
+        }
+      }
+    }
+  });
+
+  res.json({
+    success: true,
+    data: updatedCommunity
+  });
 }));
 
 export default router;

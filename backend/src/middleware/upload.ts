@@ -88,7 +88,7 @@ export const deleteFile = (filePath: string) => {
 };
 
 // Utility function to get file URL
-export const getFileUrl = (req: Request, filename: string, type: 'images' | 'xrays' = 'images') => {
+export const getFileUrl = (req: Request, filename: string, type: 'images' | 'xrays' | 'videos' = 'images') => {
   const baseUrl = `${req.protocol}://${req.get('host')}`;
   return `${baseUrl}/uploads/${type}/${filename}`;
 };

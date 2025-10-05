@@ -19,6 +19,7 @@ model User {
   passwordHash     String
   isEmailVerified   Boolean   @default(false)
   isActive          Boolean   @default(true)
+  isAdmin           Boolean   @default(false) @map("is_admin")  // Admin privileges
   
   // Medical credentials
   medicalLicense    String?
@@ -54,6 +55,7 @@ model User {
   auditLogs         AuditLog[]
   visitorLogs       CommunityVisitorLog[]
   contributions     CommunityContribution[]
+  karma             UserKarma?
   
   @@map("users")
 }
@@ -65,6 +67,8 @@ model Community {
   slug              String    @unique
   description       String
   rules             String?
+  profileImage      String?   @map("profile_image") // Community profile picture URL
+  bannerImage       String?   @map("banner_image")  // Community banner image URL
   isPrivate         Boolean   @default(false)
   isActive          Boolean   @default(true)
   
@@ -379,5 +383,24 @@ model CommunityContribution {
   user              User      @relation(fields: [userId], references: [id], onDelete: Cascade)
   
   @@map("community_contributions")
+}
+
+// User karma tracking model for Reddit-style karma system
+model UserKarma {
+  id                String    @id @default(cuid())
+  userId            String    @unique @map("user_id")
+  postKarma         Int       @default(0) @map("post_karma") // Karma from posts
+  commentKarma      Int       @default(0) @map("comment_karma") // Karma from comments
+  awardKarma         Int       @default(0) @map("award_karma") // Karma from awards/endorsements
+  totalKarma         Int       @default(0) @map("total_karma") // Total karma (post + comment + award)
+  
+  // Timestamps
+  createdAt         DateTime  @default(now()) @map("created_at")
+  updatedAt         DateTime  @updatedAt @map("updated_at")
+  
+  // Relations
+  user              User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  @@map("user_karma")
 }
 

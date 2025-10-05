@@ -4,6 +4,7 @@ import { asyncHandler, AppError } from '../middleware/errorHandler';
 import { prisma } from '../index';
 import { logger } from '../utils/logger';
 import { body, param, query, validationResult } from 'express-validator';
+import { updateUserKarma, calculateKarmaChange } from '../utils/karmaService';
 
 const router = Router();
 
@@ -20,7 +21,7 @@ const validatePost = [
 ];
 
 const validateVote = [
-  param('id').isString().withMessage('Invalid post ID'),
+  param('id').isString().isLength({ min: 1 }).withMessage('Invalid post ID'),
   body('type').isIn(['upvote', 'downvote']).withMessage('Vote type must be upvote or downvote'),
 ];
 
@@ -275,7 +276,7 @@ router.get('/', optionalAuth, [
 
 // Get single post
 router.get('/:id', optionalAuth, [
-  param('id').isUUID().withMessage('Invalid post ID'),
+  param('id').isString().isLength({ min: 1 }).withMessage('Invalid post ID'),
 ], asyncHandler(async (req: AuthRequest, res: Response) => {
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
@@ -428,6 +429,12 @@ router.post('/:id/vote', authenticate, validateVote, asyncHandler(async (req: Au
         where: { id: existingVote.id }
       });
 
+      // Update karma for post author
+      const karmaChange = calculateKarmaChange(existingVote.type, 'remove');
+      if (karmaChange !== 0) {
+        await updateUserKarma(post.authorId, 'post', karmaChange);
+      }
+
       // Log the vote removal
       await prisma.auditLog.create({
         data: {
@@ -438,6 +445,7 @@ router.post('/:id/vote', authenticate, validateVote, asyncHandler(async (req: Au
           details: {
             postId: id,
             voteType: type,
+            karmaChange,
           },
           ipAddress: req.ip,
           userAgent: req.get('User-Agent'),
@@ -456,6 +464,12 @@ router.post('/:id/vote', authenticate, validateVote, asyncHandler(async (req: Au
         data: { type }
       });
 
+      // Update karma for post author
+      const karmaChange = calculateKarmaChange(existingVote.type, type);
+      if (karmaChange !== 0) {
+        await updateUserKarma(post.authorId, 'post', karmaChange);
+      }
+
       // Log the vote update
       await prisma.auditLog.create({
         data: {
@@ -466,6 +480,7 @@ router.post('/:id/vote', authenticate, validateVote, asyncHandler(async (req: Au
           details: {
             postId: id,
             voteType: type,
+            karmaChange,
           },
           ipAddress: req.ip,
           userAgent: req.get('User-Agent'),
@@ -489,6 +504,12 @@ router.post('/:id/vote', authenticate, validateVote, asyncHandler(async (req: Au
     }
   });
 
+  // Update karma for post author
+  const karmaChange = calculateKarmaChange(null, type);
+  if (karmaChange !== 0) {
+    await updateUserKarma(post.authorId, 'post', karmaChange);
+  }
+
   // Log the vote creation
   await prisma.auditLog.create({
     data: {
@@ -499,6 +520,7 @@ router.post('/:id/vote', authenticate, validateVote, asyncHandler(async (req: Au
       details: {
         postId: id,
         voteType: type,
+        karmaChange,
       },
       ipAddress: req.ip,
       userAgent: req.get('User-Agent'),
@@ -514,7 +536,7 @@ router.post('/:id/vote', authenticate, validateVote, asyncHandler(async (req: Au
 
 // Update post
 router.put('/:id', authenticate, [
-  param('id').isUUID().withMessage('Invalid post ID'),
+  param('id').isString().isLength({ min: 1 }).withMessage('Invalid post ID'),
   body('title').optional().trim().isLength({ min: 1, max: 200 }).withMessage('Title must be 1-200 characters'),
   body('content').optional().trim().isLength({ min: 1, max: 10000 }).withMessage('Content must be 1-10000 characters'),
 ], asyncHandler(async (req: AuthRequest, res: Response) => {
@@ -597,7 +619,7 @@ router.put('/:id', authenticate, [
 
 // Delete post
 router.delete('/:id', authenticate, [
-  param('id').isUUID().withMessage('Invalid post ID'),
+  param('id').isString().isLength({ min: 1 }).withMessage('Invalid post ID'),
 ], asyncHandler(async (req: AuthRequest, res: Response) => {
   const errors = validationResult(req);
   if (!errors.isEmpty()) {

@@ -162,6 +162,7 @@ router.post('/login', validateLogin, asyncHandler(async (req: Request, res: Resp
       yearsExperience: true,
       isActive: true,
       isEmailVerified: true,
+      isAdmin: true,
       lastLoginAt: true,
     }
   });
@@ -215,11 +216,17 @@ router.post('/login', validateLogin, asyncHandler(async (req: Request, res: Resp
   // Remove password hash from response
   const { passwordHash, ...userWithoutPassword } = user;
 
+  console.log('User object:', user);
+  console.log('isAdmin field:', user.isAdmin);
+
   res.json({
     success: true,
     message: 'Login successful',
     data: {
-      user: userWithoutPassword,
+      user: {
+        ...userWithoutPassword,
+        isAdmin: user.isAdmin || false
+      },
       token
     }
   });
@@ -245,6 +252,7 @@ router.get('/me', authenticate, asyncHandler(async (req: AuthRequest, res: Respo
       location: true,
       website: true,
       isEmailVerified: true,
+      isAdmin: true,
       createdAt: true,
       updatedAt: true,
       lastLoginAt: true,
@@ -462,35 +470,12 @@ router.get('/profile', authenticate, asyncHandler(async (req: AuthRequest, res: 
     throw new AppError('User not found', 404);
   }
 
-  // Calculate karma (upvotes - downvotes)
-  const posts = await prisma.post.findMany({
-    where: { authorId: user.id },
-    include: {
-      votes: {
-        select: {
-          type: true,
-        }
-      }
-    }
+  // Get real karma data from UserKarma table
+  const userKarma = await prisma.userKarma.findUnique({
+    where: { userId: user.id }
   });
 
-  const comments = await prisma.comment.findMany({
-    where: { authorId: user.id },
-    include: {
-      votes: {
-        select: {
-          type: true,
-        }
-      }
-    }
-  });
-
-  let karma = 0;
-  [...posts, ...comments].forEach(item => {
-    item.votes.forEach(vote => {
-      karma += vote.type === 'upvote' ? 1 : -1;
-    });
-  });
+  const karma = userKarma?.totalKarma || 0;
 
   res.json({
     success: true,
@@ -501,6 +486,7 @@ router.get('/profile', authenticate, asyncHandler(async (req: AuthRequest, res: 
         email: user.email,
         firstName: user.firstName,
         lastName: user.lastName,
+        isAdmin: user.isAdmin,
         specialty: user.specialty,
         subSpecialty: user.subSpecialty,
         institution: user.institution,
@@ -515,6 +501,10 @@ router.get('/profile', authenticate, asyncHandler(async (req: AuthRequest, res: 
       },
       stats: {
         karma,
+        postKarma: userKarma?.postKarma || 0,
+        commentKarma: userKarma?.commentKarma || 0,
+        awardKarma: userKarma?.awardKarma || 0,
+        totalKarma: karma,
         postsCount: user._count.posts,
         commentsCount: user._count.comments,
         communitiesCount: user.communities.length,

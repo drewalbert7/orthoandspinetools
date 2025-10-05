@@ -79,7 +79,7 @@ const CommunityPage: React.FC = () => {
       <div className="max-w-6xl mx-auto">
         <div className="text-center py-12">
           <h1 className="text-2xl font-bold text-gray-900 mb-4">Community not found</h1>
-          <p className="text-gray-600 mb-4">The community "r/{slug}" doesn't exist.</p>
+          <p className="text-gray-600 mb-4">The community "o/{slug}" doesn't exist.</p>
           <Link to="/" className="text-blue-600 hover:text-blue-800">
             Go back to home
           </Link>
@@ -96,12 +96,29 @@ const CommunityPage: React.FC = () => {
           {/* Community Header */}
           <div className="bg-white border border-gray-200 rounded-md mb-4">
             {/* Banner */}
-            <div className="h-32 bg-gradient-to-r from-blue-500 to-purple-600 relative">
+            <div className="h-32 relative">
+              {community.bannerImage ? (
+                <img 
+                  src={community.bannerImage} 
+                  alt={`${community.name} banner`}
+                  className="w-full h-32 object-cover"
+                />
+              ) : (
+                <div className="h-32 bg-gradient-to-r from-blue-500 to-purple-600"></div>
+              )}
               <div className="absolute bottom-0 left-6 transform translate-y-1/2">
                 <div className="w-20 h-20 bg-white rounded-full border-4 border-white flex items-center justify-center">
-                  <div className="w-16 h-16 bg-blue-600 rounded-full flex items-center justify-center">
-                    <span className="text-white font-bold text-xl">r/</span>
-                  </div>
+                  {community.profileImage ? (
+                    <img 
+                      src={community.profileImage} 
+                      alt={community.name}
+                      className="w-16 h-16 rounded-full object-cover"
+                    />
+                  ) : (
+                    <div className="w-16 h-16 bg-blue-600 rounded-full flex items-center justify-center">
+                      <span className="text-white font-bold text-xl">o/</span>
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
@@ -110,7 +127,7 @@ const CommunityPage: React.FC = () => {
             <div className="pt-12 pb-4 px-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <h1 className="text-2xl font-bold text-gray-900">r/{community.name}</h1>
+                  <h1 className="text-2xl font-bold text-gray-900">o/{community.name}</h1>
                   <p className="text-gray-600">{community.description}</p>
                 </div>
                 <div className="flex items-center space-x-3">
@@ -125,6 +142,19 @@ const CommunityPage: React.FC = () => {
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-5 5v-5zM4.5 19.5a2.5 2.5 0 01-2.5-2.5V6a2.5 2.5 0 012.5-2.5h15A2.5 2.5 0 0122 6v11a2.5 2.5 0 01-2.5 2.5h-15z" />
                     </svg>
                   </button>
+                  {/* Settings button for community owners/moderators/admins */}
+                  {user && (community.ownerId === user.id || community.moderators?.some(mod => mod.userId === user.id) || user.isAdmin) && (
+                    <Link 
+                      to={`/community/${community.slug}/settings`}
+                      className="px-4 py-2 border border-gray-300 rounded-full hover:bg-gray-50 transition-colors"
+                      title="Community Settings"
+                    >
+                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                      </svg>
+                    </Link>
+                  )}
                   <button className="px-4 py-2 bg-blue-600 text-white rounded-full hover:bg-blue-700 transition-colors font-medium">
                     Joined
                   </button>
@@ -171,7 +201,7 @@ const CommunityPage: React.FC = () => {
                   </svg>
                 </div>
                 <h3 className="text-lg font-semibold text-gray-900 mb-2">No posts yet</h3>
-                <p className="text-gray-600 mb-4">Be the first to share something in r/{community.name}!</p>
+                <p className="text-gray-600 mb-4">Be the first to share something in o/{community.name}!</p>
                 <Link 
                   to="/create-post" 
                   className="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
@@ -189,9 +219,9 @@ const CommunityPage: React.FC = () => {
                   <div className="px-4 py-3 border-b border-gray-100">
                     <div className="flex items-center space-x-2 text-sm text-gray-500">
                       <div className="w-6 h-6 bg-blue-600 rounded-full flex items-center justify-center">
-                        <span className="text-white text-xs font-bold">r/</span>
+                        <span className="text-white text-xs font-bold">o/</span>
                       </div>
-                      <span>r/{community.name}</span>
+                      <span>o/{community.name}</span>
                       <span>•</span>
                       <span>Posted by u/{post.author?.username || 'Unknown'}</span>
                       <span>•</span>
@@ -294,26 +324,26 @@ const CommunityPage: React.FC = () => {
             <div className="space-y-2 text-sm">
               <div className="flex justify-between">
                 <span className="text-gray-500">Members</span>
-                <span className="font-medium">{community.memberCount || 0}</span>
+                <span className="font-medium">{community.memberCount ? community.memberCount.toLocaleString() : '0'}</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-gray-500">Posts</span>
-                <span className="font-medium">{community.postCount || posts.length}</span>
+                <span className="font-medium">{community.postCount ? community.postCount.toLocaleString() : '0'}</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-gray-500">Weekly Visitors</span>
-                <span className="font-medium text-blue-600">{community.weeklyVisitors || 0}</span>
+                <span className="font-medium text-blue-600">{community.weeklyVisitors ? community.weeklyVisitors.toLocaleString() : '0'}</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-gray-500">Weekly Contributions</span>
-                <span className="font-medium text-green-600">{community.weeklyContributions || 0}</span>
+                <span className="font-medium text-green-600">{community.weeklyContributions ? community.weeklyContributions.toLocaleString() : '0'}</span>
               </div>
             </div>
           </div>
 
           {/* Community Rules */}
           <div className="bg-white border border-gray-200 rounded-md p-4">
-            <h3 className="font-semibold text-gray-900 mb-3">r/{community.name} RULES</h3>
+            <h3 className="font-semibold text-gray-900 mb-3">o/{community.name} RULES</h3>
             <div className="space-y-2 text-sm">
               <div className="flex items-center justify-between">
                 <span className="text-gray-700">1. Be respectful</span>
