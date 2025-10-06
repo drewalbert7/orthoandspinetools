@@ -19,7 +19,7 @@ export const trackCommunityVisitor = async (req: Request, res: Response, next: N
         
         // Log the visit (don't await to avoid blocking the request)
         prisma.$executeRaw`
-          INSERT INTO community_visitor_logs (community_id, user_id, ip_address, user_agent, visit_date)
+          INSERT INTO community_visitor_logs ("communityId", "userId", "ipAddress", "userAgent", "visitDate")
           VALUES (${communityId}, ${userId}, ${ipAddress}, ${userAgent}, NOW())
           ON CONFLICT DO NOTHING
         `.catch(error => {
@@ -37,7 +37,7 @@ export const trackCommunityVisitor = async (req: Request, res: Response, next: N
 export const trackContribution = async (communityId: string, userId: string, contributionType: 'post' | 'comment' | 'vote', contributionId?: string) => {
   try {
     await prisma.$executeRaw`
-      INSERT INTO community_contributions (community_id, user_id, contribution_type, contribution_id, points, created_at)
+      INSERT INTO community_contributions ("communityId", "userId", "contributionType", "contributionId", "points", "createdAt")
       VALUES (${communityId}, ${userId}, ${contributionType}, ${contributionId || null}, 1, NOW())
     `;
   } catch (error) {

@@ -48,11 +48,11 @@ router.get('/', asyncHandler(async (_req: Request, res: Response) => {
         try {
           // Calculate weekly visitors (unique users who visited in the last 7 days)
           const weeklyVisitors = await prisma.$queryRaw`
-            SELECT COUNT(DISTINCT user_id) as count
+            SELECT COUNT(DISTINCT "userId") as count
             FROM community_visitor_logs 
-            WHERE community_id = ${community.id} 
-            AND visit_date >= ${oneWeekAgo}
-            AND user_id IS NOT NULL
+            WHERE "communityId" = ${community.id} 
+            AND "visitDate" >= ${oneWeekAgo}
+            AND "userId" IS NOT NULL
           ` as [{ count: bigint }];
 
           // Calculate weekly contributions (posts + comments + votes in the last 7 days)
@@ -309,11 +309,11 @@ router.get('/:id', trackCommunityVisitor, asyncHandler(async (req: Request, res:
     try {
       // Calculate weekly visitors (unique users who visited in the last 7 days)
       const weeklyVisitors = await prisma.$queryRaw`
-        SELECT COUNT(DISTINCT user_id) as count
+        SELECT COUNT(DISTINCT "userId") as count
         FROM community_visitor_logs 
-        WHERE community_id = ${community.id} 
-        AND visit_date >= ${oneWeekAgo}
-        AND user_id IS NOT NULL
+        WHERE "communityId" = ${community.id} 
+        AND "visitDate" >= ${oneWeekAgo}
+        AND "userId" IS NOT NULL
       ` as [{ count: bigint }];
 
       // Calculate weekly contributions (posts + comments + votes in the last 7 days)

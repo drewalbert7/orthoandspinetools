@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiService, Comment } from '../services/apiService';
+import VoteButton from '../components/VoteButton';
 import { useAuth } from '../contexts/AuthContext';
 
 const PostDetail: React.FC = () => {
@@ -37,14 +38,6 @@ const PostDetail: React.FC = () => {
     enabled: !!post?.community?.id,
   });
 
-  // Vote mutation
-  const voteMutation = useMutation({
-    mutationFn: ({ postId, voteType }: { postId: string; voteType: 'upvote' | 'downvote' }) =>
-      apiService.votePost(postId, voteType === 'upvote' ? 1 : -1),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['post', id] });
-    },
-  });
 
   // Create comment mutation
   const createCommentMutation = useMutation({
@@ -65,13 +58,6 @@ const PostDetail: React.FC = () => {
     },
   });
 
-  const handleVote = (voteType: 'upvote' | 'downvote') => {
-    if (!user) {
-      navigate('/login');
-      return;
-    }
-    voteMutation.mutate({ postId: id!, voteType });
-  };
 
   const handleCommentVote = (commentId: string, voteType: 'upvote' | 'downvote') => {
     if (!user) {
@@ -279,9 +265,6 @@ const PostDetail: React.FC = () => {
     );
   }
 
-  const upvotes = post.upvotes ?? (post.votes?.filter(v => v.type === 'upvote').length || 0);
-  const downvotes = post.downvotes ?? (post.votes?.filter(v => v.type === 'downvote').length || 0);
-  const netScore = upvotes - downvotes;
 
   return (
     <div className="max-w-6xl mx-auto px-4 py-6">
@@ -391,35 +374,12 @@ const PostDetail: React.FC = () => {
             {/* Actions */}
             <div className="flex items-center space-x-4 text-sm">
               {/* Voting Section */}
-              <div className="flex items-center bg-gray-50 border border-gray-200 rounded-md px-3 py-2">
-                <button
-                  onClick={() => handleVote('upvote')}
-                  disabled={voteMutation.isPending}
-                  className={`p-1 rounded-md hover:bg-gray-200 transition-colors ${
-                    post.userVote === 'upvote' ? 'text-orange-500' : 'text-gray-600 hover:text-orange-400'
-                  }`}
-                >
-                  <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-                    <path fillRule="evenodd" d="M14.707 12.707a1 1 0 01-1.414 0L10 9.414l-3.293 3.293a1 1 0 01-1.414-1.414l4-4a1 1 0 011.414 0l4 4a1 1 0 010 1.414z" clipRule="evenodd" />
-                  </svg>
-                </button>
-                <span className={`text-sm font-bold px-2 ${
-                  netScore > 0 ? 'text-orange-500' : netScore < 0 ? 'text-blue-500' : 'text-gray-600'
-                }`}>
-                  {netScore > 1000 ? `${(netScore/1000).toFixed(1)}k` : netScore}
-                </span>
-                <button
-                  onClick={() => handleVote('downvote')}
-                  disabled={voteMutation.isPending}
-                  className={`p-1 rounded-md hover:bg-gray-200 transition-colors ${
-                    post.userVote === 'downvote' ? 'text-blue-500' : 'text-gray-600 hover:text-blue-400'
-                  }`}
-                >
-                  <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-                    <path fillRule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd" />
-                  </svg>
-                </button>
-              </div>
+              <VoteButton
+                postId={post.id}
+                initialVoteScore={post.voteScore || 0}
+                initialUserVote={post.userVote || null}
+                size="md"
+              />
 
               {/* Comments */}
               <button className="flex items-center space-x-1 px-2 py-1 rounded-md border border-gray-200 hover:border-gray-300 bg-gray-50 hover:bg-gray-100 transition-colors">

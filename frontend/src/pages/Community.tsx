@@ -1,13 +1,13 @@
 import React, { useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQuery } from '@tanstack/react-query';
 import { apiService, Post, Community } from '../services/apiService';
+import VoteButton from '../components/VoteButton';
 import { useAuth } from '../contexts/AuthContext';
 
 const CommunityPage: React.FC = () => {
   const { slug } = useParams<{ slug: string }>();
   const { user } = useAuth();
-  const queryClient = useQueryClient();
   const [sortBy, setSortBy] = useState<'newest' | 'oldest' | 'popular' | 'controversial'>('newest');
 
   // Fetch community details
@@ -24,24 +24,6 @@ const CommunityPage: React.FC = () => {
     enabled: !!slug,
   });
 
-  // Vote mutation
-  const voteMutation = useMutation({
-    mutationFn: ({ postId, value }: { postId: string; value: 1 | -1 }) => 
-      apiService.votePost(postId, value),
-    onSuccess: () => {
-      // Invalidate and refetch posts
-      queryClient.invalidateQueries({ queryKey: ['posts', 'community', slug, sortBy] });
-    },
-  });
-
-  const handleVote = (postId: string, value: 1 | -1) => {
-    if (!user) {
-      // Redirect to login if not authenticated
-      window.location.href = '/login';
-      return;
-    }
-    voteMutation.mutate({ postId, value });
-  };
 
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
@@ -55,10 +37,6 @@ const CommunityPage: React.FC = () => {
     return date.toLocaleDateString();
   };
 
-  const formatVoteScore = (score: number) => {
-    if (score >= 1000) return `${(score / 1000).toFixed(1)}k`;
-    return score.toString();
-  };
 
   if (communityLoading || postsLoading) {
     return (
@@ -252,31 +230,12 @@ const CommunityPage: React.FC = () => {
 
                   {/* Post Actions */}
                   <div className="px-4 py-3 bg-gray-50 flex items-center space-x-6 text-sm">
-                    <div className="flex items-center space-x-1">
-                      <button 
-                        onClick={() => handleVote(post.id, 1)}
-                        disabled={voteMutation.isPending}
-                        className={`p-1 hover:bg-gray-200 rounded ${
-                          post.userVote === 'upvote' ? 'text-orange-500' : 'text-gray-500'
-                        } ${voteMutation.isPending ? 'opacity-50 cursor-not-allowed' : ''}`}
-                      >
-                        <svg className="w-5 h-5" fill={post.userVote === 'upvote' ? 'currentColor' : 'none'} stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" />
-                        </svg>
-                      </button>
-                      <span className="text-gray-700 font-medium">{formatVoteScore(post.voteScore || 0)}</span>
-                      <button 
-                        onClick={() => handleVote(post.id, -1)}
-                        disabled={voteMutation.isPending}
-                        className={`p-1 hover:bg-gray-200 rounded ${
-                          post.userVote === 'downvote' ? 'text-blue-500' : 'text-gray-500'
-                        } ${voteMutation.isPending ? 'opacity-50 cursor-not-allowed' : ''}`}
-                      >
-                        <svg className="w-5 h-5" fill={post.userVote === 'downvote' ? 'currentColor' : 'none'} stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                        </svg>
-                      </button>
-                    </div>
+                    <VoteButton
+                      postId={post.id}
+                      initialVoteScore={post.voteScore || 0}
+                      initialUserVote={post.userVote || null}
+                      size="md"
+                    />
                     <button className="flex items-center space-x-1 text-gray-500 hover:text-gray-700">
                       <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />

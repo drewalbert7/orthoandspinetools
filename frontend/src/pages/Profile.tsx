@@ -100,8 +100,8 @@ const Profile: React.FC = () => {
       <div className="flex gap-6">
         {/* Main Content */}
         <div className="flex-1">
-          {/* User Header */}
-          <div className="bg-white border border-gray-200 rounded-md p-6 mb-4">
+              {/* User Header */}
+              <div className="bg-white border border-gray-200 rounded-md p-6 mb-4">
             <div className="flex items-start space-x-4">
               <div className="w-20 h-20 bg-gradient-to-br from-yellow-400 to-orange-500 rounded-full flex items-center justify-center relative border-4 border-orange-400">
                 <div className="w-16 h-16 bg-yellow-300 rounded-full flex items-center justify-center">

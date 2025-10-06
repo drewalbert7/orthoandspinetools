@@ -3,6 +3,21 @@ import { useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { apiService, Community } from '../services/apiService';
 import { useAuth } from '../contexts/AuthContext';
+import { 
+  Bold, 
+  Italic, 
+  Strikethrough, 
+  Superscript, 
+  Underline, 
+  Link, 
+  List, 
+  ListOrdered, 
+  AlertTriangle, 
+  Quote, 
+  Code, 
+  Maximize2, 
+  Grid3X3 
+} from 'lucide-react';
 
 type PostType = 'text' | 'images' | 'link' | 'poll';
 
@@ -14,13 +29,16 @@ const CreatePost: React.FC = () => {
   const [title, setTitle] = useState('');
   const [body, setBody] = useState('');
   const [linkUrl, setLinkUrl] = useState('');
-  const [isMarkdownMode, setIsMarkdownMode] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState('');
   const [showCommunityDropdown, setShowCommunityDropdown] = useState(false);
   const [uploadedMedia, setUploadedMedia] = useState<Array<{ url: string; filename: string; originalName: string; type: 'image' | 'video' }>>([]);
   const [isUploading, setIsUploading] = useState(false);
+  const [isMarkdownMode, setIsMarkdownMode] = useState(false);
+  const [isFullscreen, setIsFullscreen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   // Fetch communities
   const { data: communities, isLoading: communitiesLoading } = useQuery<Community[]>({
@@ -130,8 +148,228 @@ const CreatePost: React.FC = () => {
     setUploadedMedia(prev => prev.filter(media => media.filename !== filename));
   };
 
+  // Rich text editor functions
+  const insertText = (before: string, after: string = '') => {
+    const textarea = textareaRef.current;
+    if (!textarea) return;
+
+    const start = textarea.selectionStart;
+    const end = textarea.selectionEnd;
+    const selectedText = body.substring(start, end);
+    const newText = body.substring(0, start) + before + selectedText + after + body.substring(end);
+    
+    setBody(newText);
+    
+    // Restore cursor position
+    setTimeout(() => {
+      textarea.focus();
+      textarea.setSelectionRange(start + before.length, end + before.length);
+    }, 0);
+  };
+
+  const formatText = (format: string) => {
+    switch (format) {
+      case 'bold':
+        insertText('**', '**');
+        break;
+      case 'italic':
+        insertText('*', '*');
+        break;
+      case 'strikethrough':
+        insertText('~~', '~~');
+        break;
+      case 'underline':
+        insertText('<u>', '</u>');
+        break;
+      case 'code':
+        insertText('`', '`');
+        break;
+      case 'codeblock':
+        insertText('```\n', '\n```');
+        break;
+      case 'quote':
+        insertText('> ', '');
+        break;
+      case 'link':
+        insertText('[', '](url)');
+        break;
+      case 'list':
+        insertText('- ', '');
+        break;
+      case 'orderedlist':
+        insertText('1. ', '');
+        break;
+      case 'alert':
+        insertText('> [!WARNING]\n> ', '');
+        break;
+      case 'table':
+        insertText('| Header 1 | Header 2 |\n|----------|----------|\n| Cell 1   | Cell 2   |', '');
+        break;
+    }
+  };
+
+  const toggleFullscreen = () => {
+    setIsFullscreen(!isFullscreen);
+  };
+
   const isPostDisabled = !title.trim() || !selectedCommunity;
 
+  // Rich Text Editor Toolbar Component
+  const RichTextToolbar = () => (
+    <div className="flex items-center space-x-1 p-2 border-b border-gray-200 bg-gray-50 rounded-t-md">
+      {/* Bold */}
+      <button
+        type="button"
+        onClick={() => formatText('bold')}
+        className="p-2 hover:bg-gray-200 rounded transition-colors"
+        title="Bold"
+      >
+        <Bold size={16} />
+      </button>
+      
+      {/* Italic */}
+      <button
+        type="button"
+        onClick={() => formatText('italic')}
+        className="p-2 hover:bg-gray-200 rounded transition-colors"
+        title="Italic"
+      >
+        <Italic size={16} />
+      </button>
+      
+      {/* Strikethrough */}
+      <button
+        type="button"
+        onClick={() => formatText('strikethrough')}
+        className="p-2 hover:bg-gray-200 rounded transition-colors"
+        title="Strikethrough"
+      >
+        <Strikethrough size={16} />
+      </button>
+      
+      {/* Superscript */}
+      <button
+        type="button"
+        onClick={() => insertText('^', '')}
+        className="p-2 hover:bg-gray-200 rounded transition-colors"
+        title="Superscript"
+      >
+        <Superscript size={16} />
+      </button>
+      
+      {/* Underline */}
+      <button
+        type="button"
+        onClick={() => formatText('underline')}
+        className="p-2 hover:bg-gray-200 rounded transition-colors"
+        title="Underline"
+      >
+        <Underline size={16} />
+      </button>
+      
+      {/* Separator */}
+      <div className="w-px h-6 bg-gray-300 mx-1"></div>
+      
+      {/* Link */}
+      <button
+        type="button"
+        onClick={() => formatText('link')}
+        className="p-2 hover:bg-gray-200 rounded transition-colors"
+        title="Link"
+      >
+        <Link size={16} />
+      </button>
+      
+      {/* Unordered List */}
+      <button
+        type="button"
+        onClick={() => formatText('list')}
+        className="p-2 hover:bg-gray-200 rounded transition-colors"
+        title="Unordered List"
+      >
+        <List size={16} />
+      </button>
+      
+      {/* Ordered List */}
+      <button
+        type="button"
+        onClick={() => formatText('orderedlist')}
+        className="p-2 hover:bg-gray-200 rounded transition-colors"
+        title="Ordered List"
+      >
+        <ListOrdered size={16} />
+      </button>
+      
+      {/* Separator */}
+      <div className="w-px h-6 bg-gray-300 mx-1"></div>
+      
+      {/* Alert */}
+      <button
+        type="button"
+        onClick={() => formatText('alert')}
+        className="p-2 hover:bg-gray-200 rounded transition-colors"
+        title="Alert"
+      >
+        <AlertTriangle size={16} />
+      </button>
+      
+      {/* Quote */}
+      <button
+        type="button"
+        onClick={() => formatText('quote')}
+        className="p-2 hover:bg-gray-200 rounded transition-colors"
+        title="Quote"
+      >
+        <Quote size={16} />
+      </button>
+      
+      {/* Code */}
+      <button
+        type="button"
+        onClick={() => formatText('code')}
+        className="p-2 hover:bg-gray-200 rounded transition-colors"
+        title="Code"
+      >
+        <Code size={16} />
+      </button>
+      
+      {/* Fullscreen */}
+      <button
+        type="button"
+        onClick={toggleFullscreen}
+        className="p-2 hover:bg-gray-200 rounded transition-colors"
+        title="Fullscreen"
+      >
+        <Maximize2 size={16} />
+      </button>
+      
+      {/* Table */}
+      <button
+        type="button"
+        onClick={() => formatText('table')}
+        className="p-2 hover:bg-gray-200 rounded transition-colors"
+        title="Table"
+      >
+        <Grid3X3 size={16} />
+      </button>
+      
+      {/* Separator */}
+      <div className="w-px h-6 bg-gray-300 mx-1"></div>
+      
+      {/* Markdown Toggle */}
+      <button
+        type="button"
+        onClick={() => setIsMarkdownMode(!isMarkdownMode)}
+        className={`px-3 py-1 text-sm rounded transition-colors ${
+          isMarkdownMode 
+            ? 'bg-blue-100 text-blue-700 border border-blue-200' 
+            : 'bg-gray-100 text-gray-700 border border-gray-200 hover:bg-gray-200'
+        }`}
+      >
+        Switch to Markdown Editor
+      </button>
+    </div>
+  );
 
   return (
     <div className="max-w-4xl mx-auto bg-white min-h-screen">
@@ -241,112 +479,28 @@ const CreatePost: React.FC = () => {
           </div>
         </div>
 
-        {/* Add Tags Button */}
-        <div className="mb-6">
-          <button className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 transition-colors">
-            Add tags
-          </button>
-        </div>
 
         {/* Content based on post type */}
         {postType === 'text' && (
           <div className="mb-6">
-            {/* Formatting Toolbar */}
-            <div className="flex items-center justify-between mb-3">
-              <div className="flex items-center space-x-1">
-                {/* Bold */}
-                <button className="p-2 hover:bg-gray-100 rounded-md" title="Bold">
-                  <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
-                    <path d="M15.6 10.79c.97-.67 1.65-1.77 1.65-2.79 0-2.26-1.75-4-4-4H7v14h7.04c2.09 0 3.71-1.7 3.71-3.79 0-1.52-.86-2.82-2.15-3.42zM10 6.5h3c.83 0 1.5.67 1.5 1.5s-.67 1.5-1.5 1.5h-3v-3zm3.5 9H10v-3h3.5c.83 0 1.5.67 1.5 1.5s-.67 1.5-1.5 1.5z"/>
+            <div className={`border border-gray-300 rounded-md ${isFullscreen ? 'fixed inset-4 z-50 bg-white' : ''}`}>
+              <RichTextToolbar />
+              <div className="relative">
+                <textarea
+                  ref={textareaRef}
+                  value={body}
+                  onChange={(e) => setBody(e.target.value)}
+                  placeholder="Body text (optional)"
+                  rows={isFullscreen ? 20 : 12}
+                  className={`w-full px-4 py-3 border-0 focus:outline-none resize-y ${isFullscreen ? 'min-h-screen' : 'min-h-48'}`}
+                  style={{ resize: 'vertical' }}
+                />
+                {/* Resize handle indicator */}
+                <div className="absolute bottom-2 right-2 text-gray-400 pointer-events-none">
+                  <svg width="12" height="12" viewBox="0 0 12 12" fill="currentColor">
+                    <path d="M11 11L1 1M11 11H6M11 11V6" stroke="currentColor" strokeWidth="1" fill="none"/>
                   </svg>
-                </button>
-                {/* Italic */}
-                <button className="p-2 hover:bg-gray-100 rounded-md" title="Italic">
-                  <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
-                    <path d="M10 4v3h2.21l-3.42 8H6v3h8v-3h-2.21l3.42-8H18V4h-8z"/>
-                  </svg>
-                </button>
-                {/* Strikethrough */}
-                <button className="p-2 hover:bg-gray-100 rounded-md" title="Strikethrough">
-                  <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
-                    <path d="M10 19h4v-3h-4v3zM5 4v3h5v3h4V4h5V2H5v2zm2.5 7c-.83 0-1.5-.67-1.5-1.5S6.67 8 7.5 8s1.5.67 1.5 1.5-.67 1.5-1.5 1.5zm9 0c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5z"/>
-                  </svg>
-                </button>
-                {/* Superscript */}
-                <button className="p-2 hover:bg-gray-100 rounded-md" title="Superscript">
-                  <span className="text-sm font-bold">X²</span>
-                </button>
-                {/* Code */}
-                <button className="p-2 hover:bg-gray-100 rounded-md" title="Code">
-                  <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
-                    <path d="M9.4 16.6L4.8 12l4.6-4.6L8 6l-6 6 6 6 1.4-1.4zm5.2 0L19.2 12l-4.6-4.6L16 6l6 6-6 6-1.4-1.4z"/>
-                  </svg>
-                </button>
-                {/* Link */}
-                <button className="p-2 hover:bg-gray-100 rounded-md" title="Link">
-                  <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
-                    <path d="M3.9 12c0-1.71 1.39-3.1 3.1-3.1h4V7H7c-2.76 0-5 2.24-5 5s2.24 5 5 5h4v-1.9H7c-1.71 0-3.1-1.39-3.1-3.1zM8 13h8v-2H8v2zm9-6h-4v1.9h4c1.71 0 3.1 1.39 3.1 3.1s-1.39 3.1-3.1 3.1h-4V17h4c2.76 0 5-2.24 5-5s-2.24-5-5-5z"/>
-                  </svg>
-                </button>
-                {/* Image */}
-                <button className="p-2 hover:bg-gray-100 rounded-md" title="Image">
-                  <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
-                    <path d="M21 19V5c0-1.1-.9-2-2-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2zM8.5 13.5l2.5 3.01L14.5 12l4.5 6H5l3.5-4.5z"/>
-                  </svg>
-                </button>
-                {/* Video */}
-                <button className="p-2 hover:bg-gray-100 rounded-md" title="Video">
-                  <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
-                    <path d="M17 10.5V7c0-.55-.45-1-1-1H4c-.55 0-1 .45-1 1v10c0 .55.45 1 1 1h12c.55 0 1-.45 1-1v-3.5l4 4v-11l-4 4z"/>
-                  </svg>
-                </button>
-                {/* Bullet List */}
-                <button className="p-2 hover:bg-gray-100 rounded-md" title="Bullet List">
-                  <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
-                    <path d="M4 10.5c-.83 0-1.5.67-1.5 1.5s.67 1.5 1.5 1.5 1.5-.67 1.5-1.5-.67-1.5-1.5-1.5zm0-6c-.83 0-1.5.67-1.5 1.5S3.17 7.5 4 7.5 5.5 6.83 5.5 6 4.83 4.5 4 4.5zm0 12c-.83 0-1.5.68-1.5 1.5s.68 1.5 1.5 1.5 1.5-.68 1.5-1.5-.67-1.5-1.5-1.5zM7 19h14v-2H7v2zm0-6h14v-2H7v2zm0-8v2h14V5H7z"/>
-                  </svg>
-                </button>
-                {/* Numbered List */}
-                <button className="p-2 hover:bg-gray-100 rounded-md" title="Numbered List">
-                  <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
-                    <path d="M2 17h2v.5H3v1h1v.5H2v1h3v-4H2v1zm1-9h1V4H2v1h1v3zm-1 3h1.8L2 13.1v.9h3v-1H3.2L5 10.9V10H2v1zm5-6v2h14V5H7zm0 14h14v-2H7v2zm0-6h14v-2H7v2z"/>
-                  </svg>
-                </button>
-                {/* Quote */}
-                <button className="p-2 hover:bg-gray-100 rounded-md" title="Quote">
-                  <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
-                    <path d="M6 17h3l2-4V7H5v6h3zm8 0h3l2-4V7h-6v6h3z"/>
-                  </svg>
-                </button>
-                {/* More */}
-                <button className="p-2 hover:bg-gray-100 rounded-md" title="More">
-                  <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
-                    <path d="M12 8c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm0 2c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm0 6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z"/>
-                  </svg>
-                </button>
-              </div>
-              <button
-                onClick={() => setIsMarkdownMode(!isMarkdownMode)}
-                className="text-sm text-blue-600 hover:text-blue-800"
-              >
-                Switch to Markdown Editor
-              </button>
-            </div>
-            
-            {/* Text Area */}
-            <div className="relative">
-              <textarea
-                value={body}
-                onChange={(e) => setBody(e.target.value)}
-                placeholder="Body text (optional)"
-                rows={12}
-                className="w-full px-4 py-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
-              />
-              {/* Resize handle */}
-              <div className="absolute bottom-2 right-2 w-3 h-3">
-                <svg className="w-3 h-3 text-gray-400" fill="currentColor" viewBox="0 0 24 24">
-                  <path d="M22 22H20V20H22V22ZM22 18H20V16H22V18ZM18 22H16V20H18V22ZM18 18H16V16H18V18ZM14 22H12V20H14V22ZM22 14H20V12H22V14Z"/>
-                </svg>
+                </div>
               </div>
             </div>
           </div>
@@ -369,19 +523,29 @@ const CreatePost: React.FC = () => {
             <div className="space-y-6">
               {/* Upload Area */}
               <div className="space-y-4">
-                <div className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center hover:border-gray-400 transition-colors">
+                <div
+                  className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center hover:border-gray-400 transition-colors relative cursor-pointer"
+                  onClick={() => {
+                    if (!isUploading && postType === 'images') {
+                      fileInputRef.current?.click();
+                    }
+                  }}
+                >
                   <svg className="mx-auto h-12 w-12 text-gray-400" stroke="currentColor" fill="none" viewBox="0 0 48 48">
                     <path d="M28 8H12a4 4 0 00-4 4v20m32-12v8m0 0v8a4 4 0 01-4 4H12a4 4 0 01-4-4v-4m32-4l-3.172-3.172a4 4 0 00-5.656 0L28 28M8 32l9.172-9.172a4 4 0 015.656 0L28 28m0 0l4 4m4-24h8m-4-4v8m-12 4h.02" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
                   </svg>
                   <p className="mt-2 text-sm text-gray-600">Drag and Drop or upload media</p>
-                  <input
-                    type="file"
-                    accept="image/*,video/*"
-                    multiple
-                    onChange={handleMediaUpload}
-                    disabled={isUploading}
-                    className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
-                  />
+                  {postType === 'images' && (
+                    <input
+                      ref={fileInputRef}
+                      type="file"
+                      accept="image/*,video/*"
+                      multiple
+                      onChange={handleMediaUpload}
+                      disabled={isUploading}
+                      className="hidden"
+                    />
+                  )}
                   {isUploading && (
                     <div className="mt-4 flex items-center justify-center">
                       <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600 mr-2"></div>
@@ -427,97 +591,24 @@ const CreatePost: React.FC = () => {
                 )}
               </div>
 
-              {/* Text Editor Section */}
-              <div className="space-y-3">
-                {/* Formatting Toolbar */}
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center space-x-1">
-                    {/* Bold */}
-                    <button className="p-2 hover:bg-gray-100 rounded-md" title="Bold">
-                      <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
-                        <path d="M15.6 10.79c.97-.67 1.65-1.77 1.65-2.79 0-2.26-1.75-4-4-4H7v14h7.04c2.09 0 3.71-1.7 3.71-3.79 0-1.52-.86-2.82-2.15-3.42zM10 6.5h3c.83 0 1.5.67 1.5 1.5s-.67 1.5-1.5 1.5h-3v-3zm3.5 9H10v-3h3.5c.83 0 1.5.67 1.5 1.5s-.67 1.5-1.5 1.5z"/>
-                      </svg>
-                    </button>
-                    {/* Italic */}
-                    <button className="p-2 hover:bg-gray-100 rounded-md" title="Italic">
-                      <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
-                        <path d="M10 4v3h2.21l-3.42 8H6v3h8v-3h-2.21l3.42-8H18V4h-8z"/>
-                      </svg>
-                    </button>
-                    {/* Strikethrough */}
-                    <button className="p-2 hover:bg-gray-100 rounded-md" title="Strikethrough">
-                      <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
-                        <path d="M10 19h4v-3h-4v3zM5 4v3h5v3h4V4h5V2H5v2zm2.5 7c-.83 0-1.5-.67-1.5-1.5S6.67 8 7.5 8s1.5.67 1.5 1.5-.67 1.5-1.5 1.5zm9 0c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5z"/>
-                      </svg>
-                    </button>
-                    {/* Superscript */}
-                    <button className="p-2 hover:bg-gray-100 rounded-md" title="Superscript">
-                      <span className="text-sm font-bold">X²</span>
-                    </button>
-                    {/* Text Color */}
-                    <button className="p-2 hover:bg-gray-100 rounded-md" title="Text Color">
-                      <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
-                        <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
-                      </svg>
-                    </button>
-                    {/* Link */}
-                    <button className="p-2 hover:bg-gray-100 rounded-md" title="Link">
-                      <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
-                        <path d="M3.9 12c0-1.71 1.39-3.1 3.1-3.1h4V7H7c-2.76 0-5 2.24-5 5s2.24 5 5 5h4v-1.9H7c-1.71 0-3.1-1.39-3.1-3.1zM8 13h8v-2H8v2zm9-6h-4v1.9h4c1.71 0 3.1 1.39 3.1 3.1s-1.39 3.1-3.1 3.1h-4V17h4c2.76 0 5-2.24 5-5s-2.24-5-5-5z"/>
-                      </svg>
-                    </button>
-                    {/* Bullet List */}
-                    <button className="p-2 hover:bg-gray-100 rounded-md" title="Bullet List">
-                      <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
-                        <path d="M4 10.5c-.83 0-1.5.67-1.5 1.5s.67 1.5 1.5 1.5 1.5-.67 1.5-1.5-.67-1.5-1.5-1.5zm0-6c-.83 0-1.5.67-1.5 1.5S3.17 7.5 4 7.5 5.5 6.83 5.5 6 4.83 4.5 4 4.5zm0 12c-.83 0-1.5.68-1.5 1.5s.68 1.5 1.5 1.5 1.5-.68 1.5-1.5-.67-1.5-1.5-1.5zM7 19h14v-2H7v2zm0-6h14v-2H7v2zm0-8v2h14V5H7z"/>
-                      </svg>
-                    </button>
-                    {/* Numbered List */}
-                    <button className="p-2 hover:bg-gray-100 rounded-md" title="Numbered List">
-                      <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
-                        <path d="M2 17h2v.5H3v1h1v.5H2v1h3v-4H2v1zm1-9h1V4H2v1h1v3zm-1 3h1.8L2 13.1v.9h3v-1H3.2L5 10.9V10H2v1zm5-6v2h14V5H7zm0 14h14v-2H7v2zm0-6h14v-2H7v2z"/>
-                      </svg>
-                    </button>
-                    {/* Quote */}
-                    <button className="p-2 hover:bg-gray-100 rounded-md" title="Quote">
-                      <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
-                        <path d="M6 17h3l2-4V7H5v6h3zm8 0h3l2-4V7h-6v6h3z"/>
-                      </svg>
-                    </button>
-                    {/* Code Block */}
-                    <button className="p-2 hover:bg-gray-100 rounded-md" title="Code Block">
-                      <span className="text-sm font-bold">99</span>
-                    </button>
-                    {/* Inline Code */}
-                    <button className="p-2 hover:bg-gray-100 rounded-md" title="Inline Code">
-                      <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
-                        <path d="M9.4 16.6L4.8 12l4.6-4.6L8 6l-6 6 6 6 1.4-1.4zm5.2 0L19.2 12l-4.6-4.6L16 6l6 6-6 6-1.4-1.4z"/>
-                      </svg>
-                    </button>
-                    {/* Table */}
-                    <button className="p-2 hover:bg-gray-100 rounded-md" title="Table">
-                      <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
-                        <path d="M3 3h18v2H3V3zm0 4h18v2H3V7zm0 4h18v2H3v-2zm0 4h18v2H3v-2z"/>
-                      </svg>
-                    </button>
-                  </div>
-                  <button
-                    onClick={() => setIsMarkdownMode(!isMarkdownMode)}
-                    className="text-sm text-blue-600 hover:text-blue-800"
-                  >
-                    Switch to Markdown Editor
-                  </button>
-                </div>
-                
-                {/* Text Area */}
+              {/* Optional Text */}
+              <div className="border border-gray-300 rounded-md">
+                <RichTextToolbar />
                 <div className="relative">
                   <textarea
                     value={body}
                     onChange={(e) => setBody(e.target.value)}
                     placeholder="Body text (optional)"
-                    rows={8}
-                    className="w-full px-4 py-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
+                    rows={6}
+                    className="w-full px-4 py-3 border-0 focus:outline-none resize-y min-h-32"
+                    style={{ resize: 'vertical' }}
                   />
+                  {/* Resize handle indicator */}
+                  <div className="absolute bottom-2 right-2 text-gray-400 pointer-events-none">
+                    <svg width="12" height="12" viewBox="0 0 12 12" fill="currentColor">
+                      <path d="M11 11L1 1M11 11H6M11 11V6" stroke="currentColor" strokeWidth="1" fill="none"/>
+                    </svg>
+                  </div>
                 </div>
               </div>
             </div>
