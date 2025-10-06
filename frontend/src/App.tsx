@@ -1,5 +1,6 @@
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { useState } from 'react';
 
 // Components
 import Header from './components/Header';
@@ -32,14 +33,26 @@ const queryClient = new QueryClient({
 });
 
 function App() {
+  const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
+
+  const toggleMobileSidebar = () => {
+    setIsMobileSidebarOpen(!isMobileSidebarOpen);
+  };
+
   return (
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
         <Router>
           <div className="min-h-screen bg-white">
-            <Header />
+            <Header 
+              isMobileSidebarOpen={isMobileSidebarOpen}
+              onMobileSidebarToggle={toggleMobileSidebar}
+            />
             <div className="flex">
-              <Sidebar />
+              <Sidebar 
+                isMobileOpen={isMobileSidebarOpen}
+                onMobileClose={() => setIsMobileSidebarOpen(false)}
+              />
               <main className="flex-1 p-6">
                 <Routes>
                   <Route path="/" element={<Home />} />

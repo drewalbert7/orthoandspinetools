@@ -2,49 +2,22 @@ import React from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
 import { apiService, Post } from '../services/apiService';
+import VoteButton from '../components/VoteButton';
 
 // PostCard component for displaying individual posts
 const PostCard: React.FC<{ post: Post }> = ({ post }) => {
-  const [voteScore, setVoteScore] = React.useState(post.voteScore || 0);
-  const [userVote, setUserVote] = React.useState(post.userVote);
-  const [isVoting, setIsVoting] = React.useState(false);
-
-  const formatDate = (dateString: string) => {
-    const date = new Date(dateString);
+  const formatTimeAgo = (date: Date) => {
     const now = new Date();
-    const diffInHours = Math.floor((now.getTime() - date.getTime()) / (1000 * 60 * 60));
+    const diffInMs = now.getTime() - date.getTime();
+    const diffInMinutes = Math.floor(diffInMs / (1000 * 60));
+    const diffInHours = Math.floor(diffInMinutes / 60);
     
-    if (diffInHours < 1) return 'now';
+    if (diffInMinutes < 1) return 'now';
+    if (diffInMinutes < 60) return `${diffInMinutes}m`;
     if (diffInHours < 24) return `${diffInHours}h`;
     const diffInDays = Math.floor(diffInHours / 24);
     if (diffInDays < 7) return `${diffInDays}d`;
     return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-  };
-
-  const handleVote = async (voteType: 'upvote' | 'downvote') => {
-    if (isVoting) return;
-    
-    setIsVoting(true);
-    try {
-      // Optimistic update
-      const newVote = userVote === voteType ? null : voteType;
-      const voteChange = newVote === 'upvote' ? 1 : newVote === 'downvote' ? -1 : 0;
-      const previousVoteChange = userVote === 'upvote' ? -1 : userVote === 'downvote' ? 1 : 0;
-      const totalChange = voteChange - previousVoteChange;
-      
-      setVoteScore(prev => prev + totalChange);
-      setUserVote(newVote);
-
-      // Make API call
-      await apiService.votePost(post.id, voteType === 'upvote' ? 1 : -1);
-    } catch (error) {
-      // Revert on error
-      console.error('Vote failed:', error);
-      setVoteScore(post.voteScore || 0);
-      setUserVote(post.userVote);
-    } finally {
-      setIsVoting(false);
-    }
   };
 
   return (
@@ -73,7 +46,7 @@ const PostCard: React.FC<{ post: Post }> = ({ post }) => {
           <span>•</span>
           <span>Posted by u/{post.author.username}</span>
           <span>•</span>
-          <span>{formatDate(post.createdAt)}</span>
+          <span>{formatTimeAgo(new Date(post.createdAt))}</span>
         </div>
 
         {/* Post Title and Content */}
@@ -88,24 +61,13 @@ const PostCard: React.FC<{ post: Post }> = ({ post }) => {
 
         {/* Action Bar with Voting - Reddit Style */}
         <div className="flex items-center space-x-2 text-xs text-gray-500 pt-2 border-t border-gray-100">
-          {/* Voting Section - Combined Button */}
-          <button 
-            onClick={() => handleVote('upvote')}
-            disabled={isVoting}
-            className={`flex items-center space-x-1 px-2 py-1 rounded-md border border-gray-200 hover:border-gray-300 transition-colors ${
-              userVote === 'upvote' ? 'bg-orange-50 border-orange-200' : 'bg-gray-50 hover:bg-gray-100'
-            }`}
-          >
-            <svg className={`w-4 h-4 ${userVote === 'upvote' ? 'text-orange-500' : 'text-gray-600'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" />
-            </svg>
-            <span className={`text-sm font-medium ${userVote === 'upvote' ? 'text-orange-600' : 'text-gray-700'}`}>
-              {voteScore}
-            </span>
-            <svg className={`w-4 h-4 ${userVote === 'downvote' ? 'text-blue-500' : 'text-gray-600'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-            </svg>
-          </button>
+          {/* Voting Section - Using VoteButton Component */}
+          <VoteButton
+            postId={post.id}
+            initialVoteScore={post.voteScore || 0}
+            initialUserVote={post.userVote || null}
+            size="sm"
+          />
 
           {/* Comments */}
           <Link 
@@ -149,7 +111,7 @@ const Home: React.FC = () => {
   const posts = postsData?.posts || [];
 
   return (
-    <div className="max-w-4xl mx-auto bg-gray-100 min-h-screen">
+    <div className="max-w-4xl mx-auto">
       {/* Posts Feed */}
       <div className="space-y-2 p-4">
         {postsLoading ? (
