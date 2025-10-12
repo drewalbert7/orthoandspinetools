@@ -371,6 +371,83 @@ const PostDetail: React.FC = () => {
                 </div>
               )}
 
+              {/* Attachments - Reddit Style Full Display */}
+              {post.attachments && post.attachments.length > 0 && (
+                <div className="mb-6">
+                  {post.attachments.map((attachment) => (
+                    <div key={attachment.id} className="mb-6">
+                      {attachment.mimeType.startsWith('image/') ? (
+                        <div className="relative bg-gray-100 rounded-lg overflow-hidden">
+                          <img
+                            src={attachment.cloudinaryUrl || attachment.path}
+                            alt={attachment.originalName}
+                            className="w-full h-auto cursor-pointer hover:opacity-95 transition-opacity"
+                            style={{ 
+                              maxHeight: '80vh',
+                              width: '100%',
+                              objectFit: 'contain'
+                            }}
+                            onClick={() => {
+                              // Open image in full screen modal or new tab
+                              window.open(attachment.cloudinaryUrl || attachment.path, '_blank');
+                            }}
+                          />
+                          {/* Image overlay with filename and expand indicator */}
+                          <div className="absolute bottom-4 right-4 bg-black bg-opacity-70 text-white text-sm px-3 py-2 rounded-lg">
+                            <div className="flex items-center space-x-2">
+                              <span>{attachment.originalName}</span>
+                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4" />
+                              </svg>
+                            </div>
+                          </div>
+                          <div className="absolute top-4 right-4 bg-black bg-opacity-70 text-white text-xs px-2 py-1 rounded">
+                            Click to expand
+                          </div>
+                        </div>
+                      ) : attachment.mimeType.startsWith('video/') ? (
+                        <div className="relative bg-gray-100 rounded-lg overflow-hidden">
+                          <video
+                            src={attachment.cloudinaryUrl || attachment.path}
+                            controls
+                            className="w-full h-auto"
+                            style={{ 
+                              maxHeight: '80vh',
+                              width: '100%',
+                              objectFit: 'contain'
+                            }}
+                          />
+                          <div className="absolute bottom-4 right-4 bg-black bg-opacity-70 text-white text-sm px-3 py-2 rounded-lg">
+                            {attachment.originalName}
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="border border-gray-200 rounded-lg p-6 bg-gray-50">
+                          <div className="flex items-center space-x-4">
+                            <svg className="w-12 h-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
+                            </svg>
+                            <div className="flex-1">
+                              <p className="text-lg font-medium text-gray-900">{attachment.originalName}</p>
+                              <p className="text-sm text-gray-500">
+                                {(attachment.size / 1024).toFixed(1)} KB
+                              </p>
+                            </div>
+                            <a
+                              href={attachment.path}
+                              download={attachment.originalName}
+                              className="px-4 py-2 bg-blue-600 text-white text-sm rounded-md hover:bg-blue-700 transition-colors"
+                            >
+                              Download
+                            </a>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+
             {/* Actions */}
             <div className="flex items-center space-x-4 text-sm">
               {/* Voting Section */}

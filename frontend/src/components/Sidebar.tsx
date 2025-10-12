@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiService } from '../services/apiService';
@@ -14,6 +14,9 @@ const Sidebar: React.FC<SidebarProps> = ({ isMobileOpen, onMobileClose }) => {
   const location = useLocation();
   const { user } = useAuth();
   const queryClient = useQueryClient();
+  
+  // Local state for optimistic updates
+  const [optimisticFollows, setOptimisticFollows] = useState<Set<string>>(new Set());
 
   // Fetch all communities
   const { data: communities, isLoading: communitiesLoading, error: communitiesError } = useQuery({
@@ -42,22 +45,20 @@ const Sidebar: React.FC<SidebarProps> = ({ isMobileOpen, onMobileClose }) => {
       queryClient.setQueryData(['user-communities'], (old: any) => {
         if (!old) return old;
         
-        const isCurrentlyFollowed = old.data.some((c: any) => c.id === communityId);
+        // Handle both direct array and wrapped response formats
+        const communitiesArray = Array.isArray(old) ? old : old.data;
+        const isCurrentlyFollowed = communitiesArray.some((c: any) => c.id === communityId);
         
         if (isCurrentlyFollowed) {
           // Remove from followed communities
-          return {
-            ...old,
-            data: old.data.filter((c: any) => c.id !== communityId)
-          };
+          const newCommunities = communitiesArray.filter((c: any) => c.id !== communityId);
+          return Array.isArray(old) ? newCommunities : { ...old, data: newCommunities };
         } else {
           // Add to followed communities
           const community = communities?.find(c => c.id === communityId);
           if (community) {
-            return {
-              ...old,
-              data: [...old.data, community]
-            };
+            const newCommunities = [...communitiesArray, community];
+            return Array.isArray(old) ? newCommunities : { ...old, data: newCommunities };
           }
         }
         return old;
@@ -81,6 +82,25 @@ const Sidebar: React.FC<SidebarProps> = ({ isMobileOpen, onMobileClose }) => {
   });
 
   const followedCommunityIds = new Set(followedCommunities?.map(c => c.id) || []);
+  
+  // Sync optimistic follows with actual data
+  useEffect(() => {
+    if (followedCommunities) {
+      setOptimisticFollows(new Set(followedCommunities.map(c => c.id)));
+    }
+  }, [followedCommunities]);
+  
+  // Combined followed state (actual + optimistic)
+  const combinedFollowedIds = new Set([...followedCommunityIds, ...optimisticFollows]);
+  
+  // Debug logging
+  console.log('🔍 Debug Info:', {
+    followedCommunities: followedCommunities,
+    followedCommunityIds: Array.from(followedCommunityIds),
+    optimisticFollows: Array.from(optimisticFollows),
+    combinedFollowedIds: Array.from(combinedFollowedIds),
+    communities: communities?.map(c => ({ id: c.id, name: c.name }))
+  });
 
   const handleToggleFollow = (communityId: string, event: React.MouseEvent) => {
     event.preventDefault(); // Prevent navigation when clicking star
@@ -89,7 +109,23 @@ const Sidebar: React.FC<SidebarProps> = ({ isMobileOpen, onMobileClose }) => {
       console.log('User not authenticated, cannot follow/unfollow');
       return;
     }
-    console.log('Toggling follow for community:', communityId);
+    
+    const isCurrentlyFollowed = combinedFollowedIds.has(communityId);
+    console.log('⭐ Toggling follow for community:', communityId);
+    console.log('⭐ Current followed IDs:', Array.from(combinedFollowedIds));
+    console.log('⭐ Is currently followed:', isCurrentlyFollowed);
+    
+    // Immediate optimistic update
+    setOptimisticFollows(prev => {
+      const newSet = new Set(prev);
+      if (isCurrentlyFollowed) {
+        newSet.delete(communityId);
+      } else {
+        newSet.add(communityId);
+      }
+      return newSet;
+    });
+    
     followMutation.mutate(communityId);
   };
 
@@ -192,7 +228,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isMobileOpen, onMobileClose }) => {
               ))
             ) : communities && communities.length > 0 ? (
               communities.map((community) => {
-                const isFollowed = followedCommunityIds.has(community.id);
+                const isFollowed = combinedFollowedIds.has(community.id);
                 console.log(`⭐ Community ${community.name} (${community.id}) is followed: ${isFollowed} - Star should be ${isFollowed ? 'GOLD' : 'GRAY'}`);
                 return (
                   <div

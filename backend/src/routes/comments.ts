@@ -1,7 +1,7 @@
 import { Router, Request, Response } from 'express';
 import { authenticate, optionalAuth, AuthRequest } from '../middleware/auth';
 import { asyncHandler, AppError } from '../middleware/errorHandler';
-import { prisma } from '../index';
+import { prisma } from '../lib/prisma';
 import { logger } from '../utils/logger';
 import { body, param, query, validationResult } from 'express-validator';
 import { updateUserKarma, calculateKarmaChange } from '../utils/karmaService';

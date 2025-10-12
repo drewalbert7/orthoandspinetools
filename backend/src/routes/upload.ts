@@ -1,9 +1,13 @@
 import { Router, Request, Response, NextFunction } from 'express';
-import { uploadSingle, uploadMultiple, uploadMixed, getFileUrl, deleteFile, anonymizeXray } from '../middleware/upload';
+import { uploadSingle, uploadMultiple, uploadMultipleMemoryImages, uploadMultipleMemoryVideos, uploadMixed, getFileUrl, deleteFile, anonymizeXray } from '../middleware/upload';
 import { authenticate, AuthRequest } from '../middleware/auth';
 import { asyncHandler, AppError } from '../middleware/errorHandler';
-import { prisma } from '../index';
+import { uploadRateLimit, checkStorageLimits, validateFileSecurity, logUploadAttempt } from '../middleware/uploadSecurity';
+import { validateAvatarUpload, validateVideoDuration } from '../middleware/avatarValidation';
+import { prisma } from '../lib/prisma';
 import { logger } from '../utils/logger';
+import { uploadToCloudinary, deleteFromCloudinary, getOptimizedImageUrl, getThumbnailUrl } from '../services/cloudinaryService';
+import { virusScanService } from '../services/virusScanService';
 
 const router = Router();
 
@@ -420,5 +424,260 @@ router.post('/post-videos', authenticate, uploadMultiple('videos', 5), asyncHand
     data: uploadedFiles,
   });
 }));
+
+// Upload post images to Cloudinary
+router.post('/post-images-cloudinary', 
+  authenticate, 
+  uploadRateLimit, 
+  checkStorageLimits, 
+  uploadMultipleMemoryImages('images', 10), 
+  validateFileSecurity,
+  logUploadAttempt,
+  asyncHandler(async (req: AuthRequest, res: Response) => {
+  if (!req.files || (req.files as Express.Multer.File[]).length === 0) {
+    throw new AppError('No files uploaded', 400);
+  }
+
+  const files = req.files as Express.Multer.File[];
+  const uploadedFiles = [];
+
+  for (const file of files) {
+    try {
+      // Virus scan the file
+      const scanResult = await virusScanService.scanFile(file.buffer, file.originalname);
+      if (!scanResult.clean) {
+        logger.warn(`Virus scan failed for ${file.originalname}: ${scanResult.threat}`, {
+          userId: req.user!.id,
+          ipAddress: req.ip,
+          userAgent: req.get('User-Agent')
+        });
+        throw new AppError(`File security scan failed: ${scanResult.threat}`, 400);
+      }
+
+      // Upload to Cloudinary
+      const cloudinaryResult = await uploadToCloudinary(file.buffer, file.originalname, 'orthoandspinetools/posts');
+      
+      // Log the upload for audit purposes
+      await prisma.auditLog.create({
+        data: {
+          userId: req.user!.id,
+          action: 'UPLOAD_POST_IMAGE_CLOUDINARY',
+          resource: 'post_image',
+          resourceId: cloudinaryResult.public_id,
+          details: {
+            filename: file.originalname,
+            size: file.size,
+            mimetype: file.mimetype,
+            cloudinary_url: cloudinaryResult.secure_url,
+            public_id: cloudinaryResult.public_id,
+          },
+          ipAddress: req.ip,
+          userAgent: req.get('User-Agent'),
+        },
+      });
+
+      uploadedFiles.push({
+        filename: cloudinaryResult.public_id,
+        originalName: file.originalname,
+        url: cloudinaryResult.secure_url,
+        size: cloudinaryResult.bytes,
+        mimetype: file.mimetype,
+        cloudinaryPublicId: cloudinaryResult.public_id,
+        optimizedUrl: getOptimizedImageUrl(cloudinaryResult.public_id),
+        thumbnailUrl: getThumbnailUrl(cloudinaryResult.public_id),
+        width: cloudinaryResult.width,
+        height: cloudinaryResult.height,
+      });
+    } catch (error) {
+      logger.error(`Failed to upload ${file.originalname} to Cloudinary:`, error);
+      throw new AppError(`Failed to upload ${file.originalname}`, 500);
+    }
+  }
+
+  logger.info(`Post images uploaded to Cloudinary by user ${req.user!.id}: ${uploadedFiles.length} files`);
+
+  res.json({
+    success: true,
+    data: uploadedFiles,
+  });
+}));
+
+// Upload post videos to Cloudinary
+router.post('/post-videos-cloudinary', 
+  authenticate, 
+  uploadRateLimit, 
+  checkStorageLimits, 
+  uploadMultipleMemoryVideos('videos', 5), 
+  validateFileSecurity,
+  validateVideoDuration,
+  logUploadAttempt,
+  asyncHandler(async (req: AuthRequest, res: Response) => {
+  if (!req.files || (req.files as Express.Multer.File[]).length === 0) {
+    throw new AppError('No files uploaded', 400);
+  }
+
+  const files = req.files as Express.Multer.File[];
+  const uploadedFiles = [];
+
+  for (const file of files) {
+    try {
+      // Virus scan the file
+      const scanResult = await virusScanService.scanFile(file.buffer, file.originalname);
+      if (!scanResult.clean) {
+        logger.warn(`Virus scan failed for ${file.originalname}: ${scanResult.threat}`, {
+          userId: req.user!.id,
+          ipAddress: req.ip,
+          userAgent: req.get('User-Agent')
+        });
+        throw new AppError(`File security scan failed: ${scanResult.threat}`, 400);
+      }
+
+      // Upload to Cloudinary
+      const cloudinaryResult = await uploadToCloudinary(file.buffer, file.originalname, 'orthoandspinetools/posts');
+      
+      // Log the upload for audit purposes
+      await prisma.auditLog.create({
+        data: {
+          userId: req.user!.id,
+          action: 'UPLOAD_POST_VIDEO_CLOUDINARY',
+          resource: 'post_video',
+          resourceId: cloudinaryResult.public_id,
+          details: {
+            filename: file.originalname,
+            size: file.size,
+            mimetype: file.mimetype,
+            cloudinary_url: cloudinaryResult.secure_url,
+            public_id: cloudinaryResult.public_id,
+            duration: cloudinaryResult.duration,
+          },
+          ipAddress: req.ip,
+          userAgent: req.get('User-Agent'),
+        },
+      });
+
+      uploadedFiles.push({
+        filename: cloudinaryResult.public_id,
+        originalName: file.originalname,
+        url: cloudinaryResult.secure_url,
+        size: cloudinaryResult.bytes,
+        mimetype: file.mimetype,
+        cloudinaryPublicId: cloudinaryResult.public_id,
+        duration: cloudinaryResult.duration,
+        width: cloudinaryResult.width,
+        height: cloudinaryResult.height,
+      });
+    } catch (error) {
+      logger.error(`Failed to upload ${file.originalname} to Cloudinary:`, error);
+      throw new AppError(`Failed to upload ${file.originalname}`, 500);
+    }
+  }
+
+  logger.info(`Post videos uploaded to Cloudinary by user ${req.user!.id}: ${uploadedFiles.length} files`);
+
+  res.json({
+    success: true,
+    data: uploadedFiles,
+  });
+}));
+
+// Delete file from Cloudinary
+router.delete('/cloudinary/:publicId', authenticate, asyncHandler(async (req: AuthRequest, res: Response) => {
+  const { publicId } = req.params;
+
+  if (!publicId) {
+    throw new AppError('Public ID is required', 400);
+  }
+
+  try {
+    await deleteFromCloudinary(publicId);
+    
+    // Log the deletion for audit purposes
+      await prisma.auditLog.create({
+        data: {
+          userId: req.user!.id,
+          action: 'DELETE_CLOUDINARY_FILE',
+          resource: 'cloudinary_file',
+          resourceId: publicId,
+          details: {
+            public_id: publicId,
+          },
+          ipAddress: req.ip,
+          userAgent: req.get('User-Agent'),
+        },
+      });
+
+      res.json({
+        success: true,
+        message: 'File deleted successfully',
+      });
+  } catch (error) {
+    logger.error(`Failed to delete Cloudinary file ${publicId}:`, error);
+    throw new AppError('Failed to delete file', 500);
+  }
+}));
+
+// Upload profile avatar to Cloudinary
+router.post('/avatar-cloudinary', 
+  authenticate, 
+  uploadRateLimit, 
+  uploadSingle('avatar'), 
+  validateAvatarUpload,
+  logUploadAttempt,
+  asyncHandler(async (req: AuthRequest, res: Response) => {
+    if (!req.file) {
+      throw new AppError('No avatar file uploaded', 400);
+    }
+
+    const file = req.file;
+
+    try {
+      // Virus scan the avatar
+      const scanResult = await virusScanService.scanFile(file.buffer, file.originalname);
+      if (!scanResult.clean) {
+        logger.warn(`Virus scan failed for avatar ${file.originalname}: ${scanResult.threat}`, {
+          userId: req.user!.id,
+          ipAddress: req.ip,
+          userAgent: req.get('User-Agent')
+        });
+        throw new AppError(`Avatar security scan failed: ${scanResult.threat}`, 400);
+      }
+
+      // Upload to Cloudinary with avatar-specific settings
+      const cloudinaryResult = await uploadToCloudinary(
+        file.buffer, 
+        file.originalname, 
+        'orthoandspinetools/avatars',
+        { isAvatar: true, autoConvert: true }
+      );
+
+      logger.info(`Avatar uploaded by user ${req.user!.id}: ${file.originalname}`, {
+        userId: req.user!.id,
+        fileName: file.originalname,
+        fileSize: file.size,
+        cloudinaryId: cloudinaryResult.public_id
+      });
+
+      res.json({
+        success: true,
+        data: {
+          filename: cloudinaryResult.public_id,
+          originalName: file.originalname,
+          url: cloudinaryResult.secure_url,
+          size: cloudinaryResult.bytes,
+          mimetype: file.mimetype,
+          cloudinaryPublicId: cloudinaryResult.public_id,
+          cloudinaryUrl: cloudinaryResult.secure_url,
+          optimizedUrl: getOptimizedImageUrl(cloudinaryResult.public_id, { width: 256, height: 256 }),
+          thumbnailUrl: getThumbnailUrl(cloudinaryResult.public_id, 64),
+          width: cloudinaryResult.width,
+          height: cloudinaryResult.height
+        }
+      });
+    } catch (error: any) {
+      logger.error(`Failed to upload avatar ${file.originalname}:`, error);
+      throw new AppError(error.message || 'Failed to upload avatar', 500);
+    }
+  })
+);
 
 export default router;

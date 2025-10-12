@@ -1,7 +1,7 @@
 import { Router, Request, Response } from 'express';
 import { authenticate, optionalAuth, AuthRequest } from '../middleware/auth';
 import { asyncHandler, AppError } from '../middleware/errorHandler';
-import { prisma } from '../index';
+import { prisma } from '../lib/prisma';
 import { logger } from '../utils/logger';
 import { body, param, query, validationResult } from 'express-validator';
 import { updateUserKarma, calculateKarmaChange } from '../utils/karmaService';
@@ -72,6 +72,14 @@ router.post('/', authenticate, validatePost, asyncHandler(async (req: AuthReques
           mimeType: attachment.mimetype,
           size: attachment.size,
           path: attachment.url,
+          // Cloudinary fields
+          cloudinaryPublicId: attachment.cloudinaryPublicId,
+          cloudinaryUrl: attachment.url,
+          optimizedUrl: attachment.optimizedUrl,
+          thumbnailUrl: attachment.thumbnailUrl,
+          width: attachment.width,
+          height: attachment.height,
+          duration: attachment.duration,
         }))
       } : undefined,
     },
@@ -136,6 +144,195 @@ router.post('/', authenticate, validatePost, asyncHandler(async (req: AuthReques
   });
 }));
 
+// Get feed posts from followed communities (Reddit-style)
+router.get('/feed', authenticate, [
+  query('page').optional().isInt({ min: 1 }).withMessage('Page must be a positive integer'),
+  query('limit').optional().isInt({ min: 1, max: 50 }).withMessage('Limit must be 1-50'),
+  query('sort').optional().isIn(['newest', 'oldest', 'popular', 'controversial', 'best', 'top', 'rising']).withMessage('Invalid sort option'),
+], asyncHandler(async (req: AuthRequest, res: Response) => {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    throw new AppError(`Validation failed: ${errors.array().map(e => e.msg).join(', ')}`, 400);
+  }
+
+  const page = parseInt(req.query.page as string) || 1;
+  const limit = parseInt(req.query.limit as string) || 20;
+  const sort = req.query.sort as string || 'newest';
+  const offset = (page - 1) * limit;
+
+  // Get user's followed communities
+  const user = await prisma.user.findUnique({
+    where: { id: req.user!.id },
+    include: {
+      communities: {
+        select: { id: true }
+      }
+    }
+  });
+
+  if (!user) {
+    throw new AppError('User not found', 404);
+  }
+
+  const followedCommunityIds = user.communities.map(c => c.id);
+
+  if (followedCommunityIds.length === 0) {
+    // If user follows no communities, return empty feed
+    return res.json({
+      success: true,
+      data: {
+        posts: [],
+        pagination: {
+          page,
+          limit,
+          total: 0,
+          pages: 0,
+        }
+      }
+    });
+  }
+
+  // Build sort order
+  let orderBy: any = {};
+  switch (sort) {
+    case 'oldest':
+      orderBy = { createdAt: 'asc' };
+      break;
+    case 'popular':
+    case 'hot':
+      orderBy = { voteScore: 'desc' };
+      break;
+    case 'top':
+      orderBy = { voteScore: 'desc' };
+      break;
+    case 'best':
+      orderBy = { voteScore: 'desc' };
+      break;
+    case 'rising':
+      orderBy = { votes: { _count: 'desc' } };
+      break;
+    case 'controversial':
+      orderBy = { _count: { votes: 'desc' } };
+      break;
+    default: // newest, new
+      orderBy = { createdAt: 'desc' };
+  }
+
+  // Get posts from followed communities
+  const posts = await prisma.post.findMany({
+    where: {
+      communityId: { in: followedCommunityIds },
+      isDeleted: false,
+    },
+    include: {
+      author: {
+        select: {
+          id: true,
+          username: true,
+          firstName: true,
+          lastName: true,
+          specialty: true,
+          profileImage: true,
+        }
+      },
+      community: {
+        select: {
+          id: true,
+          name: true,
+          slug: true,
+        }
+      },
+      votes: {
+        select: {
+          id: true,
+          type: true,
+          userId: true,
+          createdAt: true,
+          user: {
+            select: {
+              id: true,
+              username: true,
+            }
+          }
+        }
+      },
+      _count: {
+        select: {
+          comments: true,
+          votes: true,
+        }
+      }
+    },
+    orderBy,
+    skip: offset,
+    take: limit,
+  });
+
+  // Calculate vote scores and user votes
+  const postsWithVotes = posts.map(post => {
+    const upvotes = post.votes.filter(vote => vote.type === 'upvote').length;
+    const downvotes = post.votes.filter(vote => vote.type === 'downvote').length;
+    const voteScore = upvotes - downvotes;
+    
+    // Check if current user has voted
+    let userVote: 'upvote' | 'downvote' | null = null;
+    if (req.user) {
+      const userVoteRecord = post.votes.find(vote => vote.userId === req.user!.id);
+      if (userVoteRecord) {
+        userVote = userVoteRecord.type as 'upvote' | 'downvote';
+      }
+    }
+
+    return {
+      id: post.id,
+      title: post.title,
+      content: post.content,
+      type: post.type,
+      isPinned: post.isPinned,
+      isLocked: post.isLocked,
+      isDeleted: post.isDeleted,
+      specialty: post.specialty,
+      caseType: post.caseType,
+      patientAge: post.patientAge,
+      procedureType: post.procedureType,
+      createdAt: post.createdAt,
+      updatedAt: post.updatedAt,
+      authorId: post.authorId,
+      communityId: post.communityId,
+      author: post.author,
+      community: post.community,
+      attachments: [] as any[],
+      votes: post.votes,
+      _count: post._count,
+      voteScore,
+      upvotes,
+      downvotes,
+      userVote,
+    };
+  });
+
+  // Get total count for pagination
+  const total = await prisma.post.count({
+    where: {
+      communityId: { in: followedCommunityIds },
+      isDeleted: false,
+    }
+  });
+
+  return res.json({
+    success: true,
+    data: {
+      posts: postsWithVotes,
+      pagination: {
+        page,
+        limit,
+        total,
+        pages: Math.ceil(total / limit),
+      }
+    }
+  });
+}));
+
 // Get posts with pagination and filtering
 router.get('/', optionalAuth, [
   query('page').optional().isInt({ min: 1 }).withMessage('Page must be a positive integer'),
@@ -143,7 +340,7 @@ router.get('/', optionalAuth, [
   query('community').optional().isString().withMessage('Invalid community ID'),
   query('type').optional().isIn(['discussion', 'case_study', 'tool_review', 'question']).withMessage('Invalid post type'),
   query('specialty').optional().isString().withMessage('Specialty must be a string'),
-  query('sort').optional().isIn(['newest', 'oldest', 'popular', 'controversial']).withMessage('Invalid sort option'),
+  query('sort').optional().isIn(['newest', 'oldest', 'popular', 'controversial', 'best', 'top', 'rising']).withMessage('Invalid sort option'),
 ], asyncHandler(async (req: AuthRequest, res: Response) => {
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
@@ -192,10 +389,23 @@ router.get('/', optionalAuth, [
   
   if (sort === 'oldest') {
     orderBy = { createdAt: 'asc' };
-  } else if (sort === 'popular') {
+  } else if (sort === 'popular' || sort === 'hot') {
+    // Hot/Popular: Posts with most votes
+    orderBy = { votes: { _count: 'desc' } };
+  } else if (sort === 'top') {
+    // Top: Posts with most votes (proxy for vote score)
+    orderBy = { votes: { _count: 'desc' } };
+  } else if (sort === 'best') {
+    // Best: Posts with most votes (proxy for Reddit's algorithm)
+    orderBy = { votes: { _count: 'desc' } };
+  } else if (sort === 'rising') {
+    // Rising: Posts gaining traction quickly (most votes)
     orderBy = { votes: { _count: 'desc' } };
   } else if (sort === 'controversial') {
-    // This would need a more complex query to calculate controversy score
+    // Controversial: Posts with high engagement
+    orderBy = { votes: { _count: 'desc' } };
+  } else if (sort === 'newest' || sort === 'new') {
+    // New: Most recent posts
     orderBy = { createdAt: 'desc' };
   }
 
