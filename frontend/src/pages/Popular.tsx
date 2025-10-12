@@ -1,8 +1,7 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
 import { apiService, Post } from '../services/apiService';
-import { useAuth } from '../contexts/AuthContext';
 import VoteButton from '../components/VoteButton';
 
 // PostCard component for displaying individual posts
@@ -176,23 +175,100 @@ const PostCard: React.FC<{ post: Post }> = ({ post }) => {
   );
 };
 
-const Home: React.FC = () => {
-  const { user } = useAuth();
+type SortOption = 'best' | 'hot' | 'newest' | 'top' | 'rising';
 
-  // Fetch posts from followed communities (feed) or all communities
+const Popular: React.FC = () => {
+  const [sortBy, setSortBy] = useState<SortOption>('best');
+  const [selectedCommunity, setSelectedCommunity] = useState<string>('all');
+
+  // Fetch all communities for the filter dropdown
+  const { data: communities } = useQuery({
+    queryKey: ['communities'],
+    queryFn: () => apiService.getCommunities(),
+  });
+
+  // Fetch posts based on sort and community filter
   const { data: postsData, isLoading: postsLoading } = useQuery({
-    queryKey: user ? ['feed', 'home'] : ['posts', 'home'],
-    queryFn: () => user 
-      ? apiService.getFeed({ limit: 20, sort: 'newest' })
-      : apiService.getPosts({ limit: 20, sort: 'newest' }),
-    staleTime: 30 * 1000, // 30 seconds - shorter cache for vote freshness
-    refetchOnWindowFocus: true, // Refetch when user switches back to tab
+    queryKey: ['popular-posts', sortBy, selectedCommunity],
+    queryFn: () => {
+      const params: any = { 
+        limit: 25, 
+        sort: sortBy 
+      };
+      
+      if (selectedCommunity !== 'all') {
+        params.community = selectedCommunity;
+      }
+      
+      return apiService.getPosts(params);
+    },
+    staleTime: 30 * 1000, // 30 seconds
+    refetchOnWindowFocus: true,
   });
 
   const posts = postsData?.posts || [];
 
+  const sortOptions: { value: SortOption; label: string }[] = [
+    { value: 'best', label: 'Best' },
+    { value: 'hot', label: 'Hot' },
+    { value: 'newest', label: 'New' },
+    { value: 'top', label: 'Top' },
+    { value: 'rising', label: 'Rising' },
+  ];
+
   return (
     <div className="max-w-4xl mx-auto">
+      {/* Header with Sort Options */}
+      <div className="bg-white border border-gray-200 p-4 mb-4">
+        <div className="flex items-center justify-between">
+          <h1 className="text-xl font-semibold text-gray-900">Popular</h1>
+          
+          {/* Sort Dropdown */}
+          <div className="flex items-center space-x-4">
+            {/* Community Filter */}
+            <div className="relative">
+              <select
+                value={selectedCommunity}
+                onChange={(e) => setSelectedCommunity(e.target.value)}
+                className="appearance-none bg-white border border-gray-300 rounded-md px-3 py-2 pr-8 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              >
+                <option value="all">All Communities</option>
+                {communities?.map((community) => (
+                  <option key={community.id} value={community.id}>
+                    {community.name}
+                  </option>
+                ))}
+              </select>
+              <div className="absolute inset-y-0 right-0 flex items-center pr-2 pointer-events-none">
+                <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                </svg>
+              </div>
+            </div>
+
+            {/* Sort Dropdown */}
+            <div className="relative">
+              <select
+                value={sortBy}
+                onChange={(e) => setSortBy(e.target.value as SortOption)}
+                className="appearance-none bg-white border border-gray-300 rounded-md px-3 py-2 pr-8 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              >
+                {sortOptions.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+              <div className="absolute inset-y-0 right-0 flex items-center pr-2 pointer-events-none">
+                <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                </svg>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
       {/* Posts Feed */}
       <div className="space-y-2 p-4">
         {postsLoading ? (
@@ -206,8 +282,13 @@ const Home: React.FC = () => {
           ))
         ) : (
           <div className="bg-white border border-gray-200 p-6 text-center">
-            <p className="text-gray-500">No posts available yet</p>
-            <p className="text-sm text-gray-400 mt-2">Be the first to share something with the community!</p>
+            <p className="text-gray-500">No posts available</p>
+            <p className="text-sm text-gray-400 mt-2">
+              {selectedCommunity !== 'all' 
+                ? 'No posts in this community yet'
+                : 'No posts available yet'
+              }
+            </p>
           </div>
         )}
       </div>
@@ -215,4 +296,4 @@ const Home: React.FC = () => {
   );
 };
 
-export default Home;
+export default Popular;

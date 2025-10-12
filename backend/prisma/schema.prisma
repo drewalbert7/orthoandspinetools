@@ -153,6 +153,15 @@ model PostAttachment {
   size              Int
   path              String
   
+  // Cloudinary fields
+  cloudinaryPublicId String?
+  cloudinaryUrl     String?
+  optimizedUrl      String?
+  thumbnailUrl      String?
+  width             Int?
+  height            Int?
+  duration          Int?      // for videos
+  
   // Timestamps
   createdAt         DateTime  @default(now())
   

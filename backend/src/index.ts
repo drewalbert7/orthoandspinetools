@@ -5,7 +5,6 @@ import compression from 'compression';
 import morgan from 'morgan';
 import rateLimit from 'express-rate-limit';
 import dotenv from 'dotenv';
-import { PrismaClient } from '@prisma/client';
 import { createServer } from 'http';
 
 // Import routes
@@ -20,13 +19,12 @@ import karmaRoutes from './routes/karma';
 
 // Import middleware
 import { errorHandler } from './middleware/errorHandler';
+import { securityHeaders, apiRateLimit, sanitizeInput, validateUploadSecurity } from './middleware/security';
 import { logger } from './utils/logger';
+import { prisma } from './lib/prisma';
 
 // Load environment variables
 dotenv.config();
-
-// Initialize Prisma client
-export const prisma = new PrismaClient();
 
 // Create Express app
 const app = express();
@@ -42,10 +40,18 @@ app.use(helmet({
       defaultSrc: ["'self'"],
       styleSrc: ["'self'", "'unsafe-inline'"],
       scriptSrc: ["'self'"],
-      imgSrc: ["'self'", "data:", "https:"],
+      imgSrc: ["'self'", "data:", "https://res.cloudinary.com", "https://*.cloudinary.com"],
+      mediaSrc: ["'self'", "https://res.cloudinary.com", "https://*.cloudinary.com"],
+      connectSrc: ["'self'", "https://api.cloudinary.com"],
+      frameAncestors: ["'none'"],
     },
   },
 }));
+
+// Enhanced security middleware
+app.use(securityHeaders);
+app.use(sanitizeInput);
+app.use(apiRateLimit(100, 15 * 60 * 1000)); // 100 requests per 15 minutes
 
 // CORS configuration
 const allowedOrigins = (process.env.CORS_ORIGINS?.split(',').map(o => o.trim()).filter(Boolean)) || [
@@ -120,6 +126,9 @@ app.get('/health', (req, res) => {
     uptime: process.uptime()
   });
 });
+
+// Static file serving for uploads
+app.use('/uploads', express.static('uploads'));
 
 // API routes
 app.use('/api/auth', authRoutes);

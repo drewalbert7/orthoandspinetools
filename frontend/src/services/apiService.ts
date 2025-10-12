@@ -158,9 +158,17 @@ export interface Attachment {
   originalName: string;
   mimeType: string;
   size: number;
-  url: string;
+  path: string;
   postId: string;
   createdAt: string;
+  // Cloudinary fields
+  cloudinaryPublicId?: string;
+  cloudinaryUrl?: string;
+  optimizedUrl?: string;
+  thumbnailUrl?: string;
+  width?: number;
+  height?: number;
+  duration?: number;
 }
 
 export interface MedicalTool {
@@ -206,6 +214,19 @@ class ApiService {
     }
   }
 
+  async getFeed(params: { page?: number; limit?: number; sort?: string } = {}): Promise<{ posts: Post[]; pagination: { page: number; pages: number } }> {
+    try {
+      const search = new URLSearchParams();
+      if (params.page) search.set('page', String(params.page));
+      if (params.limit) search.set('limit', String(params.limit));
+      if (params.sort) search.set('sort', params.sort);
+      const response = await api.get(`/posts/feed?${search.toString()}`);
+      return response.data.data;
+    } catch (error: any) {
+      throw new Error(error.response?.data?.message || 'Failed to fetch feed');
+    }
+  }
+
   async getPost(id: string): Promise<Post> {
     try {
       const response = await api.get(`/posts/${id}`);
@@ -222,6 +243,7 @@ class ApiService {
     postType: 'discussion' | 'case_study' | 'tool_review';
     patientAge?: number;
     procedureType?: string;
+    attachments?: Array<{ path: string; filename: string; originalName: string; type: 'image' | 'video' }>;
   }): Promise<Post> {
     try {
       // Map postType to type for backend compatibility
@@ -359,35 +381,72 @@ class ApiService {
     }
   }
 
-  async uploadPostImages(files: File[]): Promise<Array<{ url: string; filename: string; originalName: string; size: number; mimetype: string }>> {
+  async uploadPostImages(files: File[]): Promise<Array<{ path: string; filename: string; originalName: string; size: number; mimetype: string }>> {
     try {
       const formData = new FormData();
       files.forEach(file => formData.append('images', file));
       
-      const response = await api.post('/upload/post-images', formData, {
+      const response = await api.post('/upload/post-images-cloudinary', formData, {
         headers: {
           'Content-Type': 'multipart/form-data',
         },
       });
-      return response.data.data;
+      return response.data.data.map((item: any) => ({
+        path: item.url || item.path,
+        filename: item.filename,
+        originalName: item.originalName,
+        size: item.size,
+        mimetype: item.mimetype
+      }));
     } catch (error: any) {
       throw new Error(error.response?.data?.message || 'Failed to upload images');
     }
   }
 
-  async uploadPostVideos(files: File[]): Promise<Array<{ url: string; filename: string; originalName: string; size: number; mimetype: string }>> {
+  async uploadPostVideos(files: File[]): Promise<Array<{ path: string; filename: string; originalName: string; size: number; mimetype: string }>> {
     try {
       const formData = new FormData();
       files.forEach(file => formData.append('videos', file));
       
-      const response = await api.post('/upload/post-videos', formData, {
+      const response = await api.post('/upload/post-videos-cloudinary', formData, {
         headers: {
           'Content-Type': 'multipart/form-data',
         },
       });
-      return response.data.data;
+      return response.data.data.map((item: any) => ({
+        path: item.url || item.path,
+        filename: item.filename,
+        originalName: item.originalName,
+        size: item.size,
+        mimetype: item.mimetype
+      }));
     } catch (error: any) {
       throw new Error(error.response?.data?.message || 'Failed to upload videos');
+    }
+  }
+
+  async uploadAvatar(file: File): Promise<{ path: string; filename: string; originalName: string; size: number; mimetype: string; width: number; height: number }> {
+    try {
+      const formData = new FormData();
+      formData.append('avatar', file);
+      
+      const response = await api.post('/upload/avatar-cloudinary', formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+      });
+      const item = response.data.data;
+      return {
+        path: item.url || item.path,
+        filename: item.filename,
+        originalName: item.originalName,
+        size: item.size,
+        mimetype: item.mimetype,
+        width: item.width,
+        height: item.height
+      };
+    } catch (error: any) {
+      throw new Error(error.response?.data?.message || 'Failed to upload avatar');
     }
   }
 

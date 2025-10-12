@@ -1,121 +1,162 @@
-# 🚀 Quick Deployment Guide for orthoandspinetools.com
+# 🚀 **Deployment Guide - Voting System Protection**
 
-## Current Status
-- ✅ **Backend API**: Fully functional (95% complete)
-- ✅ **Frontend**: Core components ready (60% complete)  
-- ✅ **Database**: PostgreSQL schema complete
-- ✅ **Authentication**: JWT-based auth system
-- ✅ **Docker**: Production-ready configuration
-- ❌ **Domain**: orthoandspinetools.com showing 502 Bad Gateway
+## ⚠️ **CRITICAL: Always Run Pre-Deployment Checks**
 
-## The Problem
-The domain `orthoandspinetools.com` is pointing to a server that doesn't have our new medical platform running. It's likely pointing to:
-- An old server with the previous Lemmy implementation
-- A placeholder server
-- A misconfigured server
-
-## Solutions
-
-### Option 1: Deploy to Current Server (Recommended)
-If you have access to the server where orthoandspinetools.com is pointing:
+Before deploying any changes that might affect the voting system, **ALWAYS** run:
 
 ```bash
-# 1. SSH into your server
-ssh user@your-server-ip
-
-# 2. Clone the repository
-git clone https://github.com/drewalbert7/orthoandspinetools.git
-cd orthoandspinetools
-
-# 3. Run the deployment script
-./deploy.sh
+cd /home/dstrad/orthoandspinetools-main
+./scripts/pre-deployment-checklist.sh
 ```
 
-### Option 2: Deploy to New Server
-If you need a new server:
+## 📋 **Pre-Deployment Checklist**
 
-1. **Get a VPS/Cloud Server** (DigitalOcean, AWS, Linode, etc.)
-2. **Point DNS** to the new server IP
-3. **Run deployment script**
+### ✅ **Required Checks**
+1. **VoteButton Component**: Must have proper upvote/downvote handlers
+2. **Database Columns**: All raw SQL queries must use camelCase (`"userId"`, `"communityId"`, `"visitDate"`)
+3. **Vote Usage**: VoteButton must be used in Home.tsx, Community.tsx, and PostDetail.tsx
+4. **API Endpoints**: Communities and Posts APIs must be responding
+5. **Build Status**: Source files must be compiled (backend and frontend)
 
-### Option 3: Use a Platform Service
-Deploy to a platform like:
-- **Vercel** (for frontend)
-- **Railway** (for full-stack)
-- **Heroku** (for full-stack)
-- **DigitalOcean App Platform**
+### 🚨 **Common Issues & Fixes**
 
-## Quick Fix Steps
-
-### 1. Check Current DNS
+#### **Issue: Database Column Errors**
 ```bash
-# Check where the domain is pointing
-nslookup orthoandspinetools.com
-dig orthoandspinetools.com
+# Error: column "user_id" does not exist
+# Fix: Rebuild backend
+docker-compose build backend
+docker-compose up -d backend
 ```
 
-### 2. Deploy Our Application
+#### **Issue: VoteButton Not Working**
 ```bash
-# On your server, run:
-cd /home/dstrad/orthoandspinetools-medical-platform
-./deploy.sh
+# Fix: Rebuild frontend
+docker-compose build frontend
+docker-compose up -d frontend
 ```
 
-### 3. Update DNS (if needed)
-Point `orthoandspinetools.com` to your server's IP address.
-
-### 4. Get SSL Certificate
+#### **Issue: Source Files Newer Than Compiled**
 ```bash
-# Install certbot
-sudo apt install certbot
-
-# Get SSL certificate
-sudo certbot certonly --standalone -d orthoandspinetools.com
-
-# Copy certificates
-sudo cp /etc/letsencrypt/live/orthoandspinetools.com/fullchain.pem nginx/ssl/cert.pem
-sudo cp /etc/letsencrypt/live/orthoandspinetools.com/privkey.pem nginx/ssl/key.pem
+# Fix: Rebuild both services
+docker-compose build backend frontend
+docker-compose up -d backend frontend
 ```
 
-## What's Ready to Deploy
+## 🔄 **Deployment Process**
 
-### ✅ Backend Features
-- User authentication (login/register)
-- Medical professional profiles
-- Posts and comments system
-- Voting system (upvotes/downvotes)
-- Image upload for tools and X-rays
-- Medical communities
-- HIPAA compliance features
-- Audit logging
+### **Step 1: Pre-Deployment Check**
+```bash
+./scripts/pre-deployment-checklist.sh
+```
+**Must pass all checks before proceeding!**
 
-### ✅ Frontend Features
-- Professional medical UI
-- Login/Register forms
-- Community navigation
-- Responsive design
-- Medical specialty selection
+### **Step 2: Deploy Changes**
+```bash
+# If backend changes
+docker-compose build backend
+docker-compose up -d backend
 
-### ✅ Infrastructure
-- Docker containerization
-- Nginx reverse proxy
-- SSL/TLS support
-- Security headers
-- Rate limiting
-- Health checks
+# If frontend changes  
+docker-compose build frontend
+docker-compose up -d frontend
 
-## Expected Result
-After deployment, `orthoandspinetools.com` will show:
-- Professional medical community platform
-- Login/Register functionality
-- Medical specialty communities
-- Tool sharing capabilities
-- Case discussion features
+# If both changed
+docker-compose build backend frontend
+docker-compose up -d backend frontend
+```
 
-## Need Help?
-If you need assistance with deployment:
-1. **Check server access** - Do you have SSH access to the server?
-2. **Check DNS settings** - Where is the domain pointing?
-3. **Check server resources** - Does the server have Docker installed?
+### **Step 3: Post-Deployment Verification**
+```bash
+# Test voting functionality
+curl -X POST https://orthoandspinetools.com/api/posts/post2/vote \
+  -H "Authorization: Bearer YOUR_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"type":"upvote"}'
 
-The application is ready to go live - we just need to deploy it to the right server! 🚀
+# Should return: {"success":true,"message":"Vote recorded","data":{"voteType":"upvote"}}
+```
+
+### **Step 4: Manual Testing**
+1. **Home Page**: Test voting on posts
+2. **Community Page**: Test voting on community posts  
+3. **Post Detail Page**: Test voting on individual posts
+4. **Verify**: Upvote adds +1, downvote adds -1
+
+## 🛡️ **Prevention Measures**
+
+### **Database Column Names**
+- ✅ **Correct**: `"userId"`, `"communityId"`, `"visitDate"`
+- ❌ **Wrong**: `user_id`, `community_id`, `visit_date`
+
+### **VoteButton Component**
+- ✅ **Must Have**: `handleVote('upvote')` and `handleVote('downvote')`
+- ✅ **Must Have**: `voteType === 'upvote' ? 1 : -1` logic
+- ✅ **Must Have**: Proper visual feedback (orange/blue highlights)
+
+### **API Contract**
+- ✅ **Frontend**: Sends `{"type":"upvote"}` or `{"type":"downvote"}`
+- ✅ **Backend**: Processes as `value: 1` or `value: -1`
+
+## 🚨 **Emergency Procedures**
+
+### **If Voting System Breaks After Deployment:**
+
+1. **Immediate Rollback**:
+   ```bash
+   # Revert to previous working version
+   git checkout HEAD~1
+   docker-compose build backend frontend
+   docker-compose up -d backend frontend
+   ```
+
+2. **Identify Issue**:
+   ```bash
+   # Check logs
+   docker-compose logs backend --tail=50
+   docker-compose logs frontend --tail=50
+   
+   # Run health check
+   ./scripts/voting-health-check.sh --verbose
+   ```
+
+3. **Fix and Redeploy**:
+   ```bash
+   # Fix the issue
+   # Then rebuild and redeploy
+   docker-compose build backend frontend
+   docker-compose up -d backend frontend
+   ```
+
+## 📊 **Success Indicators**
+
+### **Voting System is Healthy When:**
+- ✅ Pre-deployment checklist passes
+- ✅ API endpoints respond correctly
+- ✅ VoteButton component has proper handlers
+- ✅ Database queries use correct column names
+- ✅ Upvote adds +1, downvote adds -1
+- ✅ Toggle functionality works (click same vote to remove)
+- ✅ Switch functionality works (upvote to downvote)
+
+### **Monitoring Commands:**
+```bash
+# Check system health
+./scripts/voting-health-check.sh
+
+# Check recent logs
+docker-compose logs backend --tail=20
+docker-compose logs frontend --tail=20
+
+# Test API
+curl -s https://orthoandspinetools.com/api/communities | head -5
+```
+
+## 📞 **Support**
+
+If voting system issues persist:
+1. Check `docs/VOTING_SYSTEM_PREVENTION.md` for detailed troubleshooting
+2. Review backend logs for specific error messages
+3. Verify all prevention measures are in place
+4. Consider rolling back to last working version
+
+**Remember**: The voting system is critical for user engagement. Always prioritize its stability over new features.

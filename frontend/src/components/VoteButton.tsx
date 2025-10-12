@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { apiService } from '../services/apiService';
 
 interface VoteButtonProps {
@@ -18,9 +19,16 @@ const VoteButton: React.FC<VoteButtonProps> = ({
   disabled = false,
   size = 'md'
 }) => {
+  const queryClient = useQueryClient();
   const [voteScore, setVoteScore] = useState(initialVoteScore);
   const [userVote, setUserVote] = useState(initialUserVote);
   const [isVoting, setIsVoting] = useState(false);
+
+  // Sync state with props when they change (e.g., after page reload)
+  useEffect(() => {
+    setVoteScore(initialVoteScore);
+    setUserVote(initialUserVote);
+  }, [initialVoteScore, initialUserVote]);
 
   const handleVote = async (voteType: 'upvote' | 'downvote') => {
     if (isVoting || disabled) return;
@@ -39,6 +47,9 @@ const VoteButton: React.FC<VoteButtonProps> = ({
 
       // Make API call
       await apiService.votePost(postId, voteType === 'upvote' ? 1 : -1);
+      
+      // Invalidate posts cache to refresh vote data across all devices
+      queryClient.invalidateQueries({ queryKey: ['posts'] });
       
       // Notify parent component
       if (onVoteChange) {

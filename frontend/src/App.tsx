@@ -10,6 +10,7 @@ import RegisterForm from './components/RegisterForm';
 
 // Pages
 import Home from './pages/Home';
+import Popular from './pages/Popular';
 import PostDetail from './pages/PostDetail';
 import CreatePost from './pages/CreatePost';
 import Profile from './pages/Profile';
@@ -56,6 +57,7 @@ function App() {
               <main className="flex-1 p-6">
                 <Routes>
                   <Route path="/" element={<Home />} />
+                  <Route path="/popular" element={<Popular />} />
                   <Route path="/login" element={<LoginForm />} />
                   <Route path="/register" element={<RegisterForm />} />
                   <Route path="/post/:id" element={<PostDetail />} />

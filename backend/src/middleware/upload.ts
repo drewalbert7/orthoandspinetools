@@ -37,27 +37,92 @@ const storage = multer.diskStorage({
   }
 });
 
-// File filter for image types
-const fileFilter = (req: Request, file: Express.Multer.File, cb: multer.FileFilterCallback) => {
-  // Allow only image files
-  const allowedTypes = /jpeg|jpg|png|gif|webp|dicom/;
-  const extname = allowedTypes.test(path.extname(file.originalname).toLowerCase());
-  const mimetype = allowedTypes.test(file.mimetype);
+// Memory storage for Cloudinary uploads
+const memoryStorage = multer.memoryStorage();
 
-  if (mimetype && extname) {
-    return cb(null, true);
-  } else {
-    cb(new AppError('Only image files are allowed!', 400));
-  }
+// Strict MIME type whitelist for security
+const ALLOWED_MIME_TYPES = {
+  images: [
+    'image/jpeg',
+    'image/jpg', 
+    'image/png',
+    'image/gif',
+    'image/webp'
+  ],
+  videos: [
+    'video/mp4',
+    'video/webm',
+    'video/quicktime'
+  ]
 };
 
-// Configure multer
+// Allowed file extensions (must match MIME types)
+const ALLOWED_EXTENSIONS = {
+  images: ['.jpg', '.jpeg', '.png', '.gif', '.webp'],
+  videos: ['.mp4', '.webm', '.mov']
+};
+
+// File size limits (in bytes) - Reddit-compatible
+const FILE_SIZE_LIMITS = {
+  images: 20 * 1024 * 1024, // 20MB (Reddit standard)
+  videos: 1024 * 1024 * 1024, // 1GB (Reddit standard)
+  avatars: 500 * 1024 // 500KB for profile avatars
+};
+
+// Enhanced file filter with strict validation
+const createFileFilter = (fileType: 'images' | 'videos') => {
+  return (req: Request, file: Express.Multer.File, cb: multer.FileFilterCallback) => {
+    const allowedMimeTypes = ALLOWED_MIME_TYPES[fileType];
+    const allowedExtensions = ALLOWED_EXTENSIONS[fileType];
+    
+    // Get file extension
+    const ext = path.extname(file.originalname).toLowerCase();
+    
+    // Check MIME type whitelist
+    const isValidMimeType = allowedMimeTypes.includes(file.mimetype);
+    
+    // Check extension whitelist
+    const isValidExtension = allowedExtensions.includes(ext);
+    
+    // Security: Reject if MIME type and extension don't match
+    if (!isValidMimeType || !isValidExtension) {
+      return cb(new AppError(
+        `Invalid file type. Allowed ${fileType}: ${allowedExtensions.join(', ')}`, 
+        400
+      ));
+    }
+    
+    // Additional security: Check for suspicious file names
+    const suspiciousPatterns = [
+      /\.(exe|bat|cmd|scr|pif|com)$/i,
+      /\.(php|asp|jsp|cgi)$/i,
+      /\.(js|vbs|wsf)$/i,
+      /\.(zip|rar|7z|tar|gz)$/i
+    ];
+    
+    if (suspiciousPatterns.some(pattern => pattern.test(file.originalname))) {
+      return cb(new AppError('Suspicious file type detected', 400));
+    }
+    
+    cb(null, true);
+  };
+};
+
+// File filter for images
+const imageFileFilter = createFileFilter('images');
+
+// File filter for videos  
+const videoFileFilter = createFileFilter('videos');
+
+// Configure multer with enhanced security
 export const upload = multer({
   storage: storage,
   limits: {
-    fileSize: parseInt(process.env.MAX_FILE_SIZE || '10485760'), // 10MB default
+    fileSize: FILE_SIZE_LIMITS.images, // 10MB for images
+    files: 5, // Max 5 files per request
+    fieldSize: 1024 * 1024, // 1MB field size limit
   },
-  fileFilter: fileFilter
+  fileFilter: imageFileFilter
 });
 
 // Middleware for single image upload
@@ -66,6 +131,35 @@ export const uploadSingle = (fieldName: string) => upload.single(fieldName);
 // Middleware for multiple image uploads
 export const uploadMultiple = (fieldName: string, maxCount: number = 5) => 
   upload.array(fieldName, maxCount);
+
+// Memory-based upload for Cloudinary with enhanced security
+const uploadMemoryImages = multer({
+  storage: memoryStorage,
+  limits: {
+    fileSize: FILE_SIZE_LIMITS.images, // 10MB for images
+    files: 10, // Max 10 images per request
+    fieldSize: 1024 * 1024, // 1MB field size limit
+  },
+  fileFilter: imageFileFilter
+});
+
+const uploadMemoryVideos = multer({
+  storage: memoryStorage,
+  limits: {
+    fileSize: FILE_SIZE_LIMITS.videos, // 500MB for videos
+    files: 5, // Max 5 videos per request
+    fieldSize: 1024 * 1024, // 1MB field size limit
+  },
+  fileFilter: videoFileFilter
+});
+
+// Middleware for Cloudinary image uploads (memory storage)
+export const uploadMultipleMemoryImages = (fieldName: string, maxCount: number = 10) => 
+  uploadMemoryImages.array(fieldName, maxCount);
+
+// Middleware for Cloudinary video uploads (memory storage)
+export const uploadMultipleMemoryVideos = (fieldName: string, maxCount: number = 5) => 
+  uploadMemoryVideos.array(fieldName, maxCount);
 
 // Middleware for mixed uploads (tools and xrays)
 export const uploadMixed = upload.fields([
@@ -111,4 +205,3 @@ export const anonymizeXray = (filePath: string) => {
     resolve(filePath);
   });
 };
-

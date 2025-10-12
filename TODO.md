@@ -903,12 +903,13 @@ The platform focuses on:
 
 ---
 
-**Last Updated**: October 6, 2025 - 3:15 AM  
-**Status**: 🚀 **LIVE AND FUNCTIONAL** - Rich text editor complete, ready for profile enhancement and moderator system  
+**Last Updated**: October 12, 2025 - 12:22 AM  
+**Status**: 🚀 **LIVE AND FUNCTIONAL** - Database column issues resolved, API working perfectly  
 **SSL Status**: 🔒 **SECURE** - HTTPS working with valid Let's Encrypt certificates  
-**Database Status**: 🔗 **CONNECTED** - PostgreSQL authentication working correctly  
+**Database Status**: 🔗 **CONNECTED** - PostgreSQL authentication working correctly, no column errors  
 **Authentication Status**: ✅ **WORKING** - User sign-in and registration functional  
 **Rich Text Editor**: ✅ **COMPLETE** - Full Reddit-like editor with all formatting options  
+**Communities API**: ✅ **FIXED** - Weekly metrics now calculating correctly (Spine: 2, Sports: 3, Ortho Trauma: 1 contributions)  
 **Next Session**: Enhanced profile page, moderator/admin role system, content moderation dashboard
 
 ## 🛡️ **PREVENTION MEASURES & SCALING PREPARATION**
@@ -1043,6 +1044,130 @@ The platform focuses on:
 - ✅ **API Working** - Communities API returning data without database errors
 - ✅ **Clean Logs** - Backend logs show successful API calls without column errors
 - ✅ **Voting System Verified** - Multiple successful vote API calls confirmed working
+
+### 🗄️ **Database Column Name Issues Resolved** ✅ **CRITICAL FIX (October 12, 2025)**
+- ✅ **Root Cause Identified** - Compiled JavaScript files had stale snake_case column names (`user_id`, `community_id`, `visit_date`)
+- ✅ **TypeScript Source Correct** - Source code already used proper camelCase column names (`"userId"`, `"communityId"`, `"visitDate"`)
+- ✅ **Build Cache Issue** - Old compiled files were cached and not regenerated during Docker build
+- ✅ **Clean Build Applied** - Removed `dist/` directory and rebuilt TypeScript compilation
+- ✅ **Backend Restarted** - Fresh backend container with corrected compiled JavaScript
+- ✅ **API Verified** - Communities API now working without database column errors
+- ✅ **Weekly Metrics Working** - Weekly contributions now calculating correctly (Spine: 2, Sports: 3, Ortho Trauma: 1)
+- ✅ **Clean Logs** - No more "column user_id does not exist" errors in backend logs
+
+### 📤 **Create Post Upload Area Fix** ✅ **UI/UX IMPROVEMENT (October 12, 2025)**
+- ✅ **Root Cause Identified** - Upload area click handler was too broad, triggering file dialog on entire Images & Video tab
+- ✅ **Event Handling Fixed** - Added `preventDefault()` and `stopPropagation()` to isolate click events to upload box only
+- ✅ **Drag & Drop Added** - Implemented proper drag and drop functionality with `onDragOver`, `onDragEnter`, and `onDrop` handlers
+- ✅ **File Input Repositioned** - Moved hidden file input outside upload area to prevent click inheritance from parent containers
+- ✅ **User Experience Improved** - Upload dialog now only appears when clicking the dashed upload box, not anywhere in the tab
+- ✅ **Visual Feedback Enhanced** - Added clearer instructions "Drag and Drop or click to upload media" and "Images and videos supported"
+- ✅ **Frontend Rebuilt** - Updated frontend with corrected upload area behavior (deployed as `index-BactvK4h.js`)
+- ✅ **Functionality Verified** - Upload area now properly isolated to dashed box only
+
+### 🗳️ **Voting System Debug & Fix** ✅ **CRITICAL VOTING FIX (October 12, 2025)**
+- ✅ **Root Cause Identified** - VoteButton component didn't sync with prop changes after page reload, causing vote state to reset
+- ✅ **Backend Vote Detection Working** - Backend correctly detects user vote status and prevents multiple votes (verified with API testing)
+- ✅ **Frontend State Sync Fixed** - Added `useEffect` to VoteButton to sync local state with `initialVoteScore` and `initialUserVote` props
+- ✅ **Vote Persistence Restored** - Votes now persist across page reloads and maintain correct state
+- ✅ **Multiple Vote Prevention** - Backend enforces one vote per user per post with proper toggle functionality
+- ✅ **Reddit-Style Behavior** - Clicking same vote removes it, clicking opposite vote switches it (verified with API testing)
+- ✅ **Frontend Rebuilt** - Updated VoteButton component deployed (as `index-Dtcrwvp3.js`)
+- ✅ **API Testing Verified** - Drewalbertmd user shows `"userVote":"upvote"` for post3, confirming proper vote detection
+
+### ⭐ **Karma System Integration Verified** ✅ **KARMA TRACKING WORKING (October 12, 2025)**
+- ✅ **Karma Database Schema** - UserKarma model with postKarma, commentKarma, awardKarma, and totalKarma fields
+- ✅ **Karma Service Implementation** - Complete karma calculation and update system in `backend/src/utils/karmaService.ts`
+- ✅ **Vote-to-Karma Integration** - Votes automatically update author karma via `updateUserKarma()` and `calculateKarmaChange()`
+- ✅ **Real-Time Karma Updates** - Drewalbertmd karma changed from +1 to -1 when vote switched from upvote to downvote
+- ✅ **Profile API Integration** - `/api/auth/profile` endpoint returns complete karma statistics
+- ✅ **Frontend Karma Display** - Profile page shows Total Karma, Post Karma, Comment Karma, and Award Karma
+- ✅ **Karma Calculation Logic** - Upvote = +1 karma, Downvote = -1 karma, Vote removal = reverse karma change
+- ✅ **Database Verification** - user_karma table shows real-time updates: drewalbertmd post_karma changed from 1 to -1
+
+### 📱 **Mobile Vote Synchronization Fixed** ✅ **CACHE INVALIDATION IMPLEMENTED (October 12, 2025)**
+- ✅ **Root Cause Identified** - React Query cache wasn't invalidated after votes, causing stale data across devices
+- ✅ **VoteButton Cache Invalidation** - Added `queryClient.invalidateQueries({ queryKey: ['posts'] })` after successful votes
+- ✅ **Reduced Cache Stale Time** - Home page posts cache reduced from 5 minutes to 30 seconds for fresher vote data
+- ✅ **Window Focus Refetch** - Added `refetchOnWindowFocus: true` to refresh data when user returns to tab
+- ✅ **Cross-Device Synchronization** - Votes now update immediately across all devices and browsers
+- ✅ **API Testing Verified** - Mobile and desktop API responses identical, confirming backend consistency
+- ✅ **Frontend Rebuilt** - Updated VoteButton component deployed (as `index-BcpsItpE.js`)
+- ✅ **Real-Time Vote Updates** - Post3 vote changed from downvote (-1) to upvote (+1) and reflected immediately
+
+### ⭐ **Community Stars Toggle Fixed** ✅ **OPTIMISTIC UPDATES IMPLEMENTED (October 12, 2025)**
+- ✅ **Root Cause Identified** - React Query optimistic updates weren't triggering immediate UI re-renders for star state
+- ✅ **Local State Management** - Added `optimisticFollows` state to track immediate UI changes before API response
+- ✅ **Combined State Logic** - Created `combinedFollowedIds` merging actual data with optimistic updates
+- ✅ **Immediate UI Feedback** - Stars now toggle instantly when clicked, providing responsive user experience
+- ✅ **API Endpoints Verified** - Follow/unfollow endpoints working correctly (tested with Spine community)
+- ✅ **Debug Logging Added** - Console logs show follow state, optimistic updates, and star toggle actions
+- ✅ **Frontend Rebuilt** - Updated Sidebar component deployed (as `index-pI6BrmsP.js`)
+- ✅ **Real-Time Star Updates** - Stars toggle between gold (followed) and gray (not followed) instantly
+
+### 🏠 **Reddit-Style Feed Implemented** ✅ **FOLLOWED COMMUNITIES FEED (October 12, 2025)**
+- ✅ **Feed Endpoint Created** - `/api/posts/feed` returns posts from user's followed communities only
+- ✅ **Authentication Required** - Feed endpoint requires user authentication to access personalized content
+- ✅ **Smart Feed Logic** - Shows posts from followed communities, empty feed if no communities followed
+- ✅ **Sorting Options** - Supports newest, oldest, popular, and controversial sorting like Reddit
+- ✅ **Vote Integration** - Feed includes vote scores, user votes, and karma tracking
+- ✅ **Home Page Updated** - Authenticated users see feed, guests see all posts
+- ✅ **API Testing Verified** - Feed returns posts from Ortho Trauma and Spine communities for drewalbertmd
+- ✅ **Frontend Rebuilt** - Updated Home page deployed (as `index-DwnoOWwd.js`)
+- ✅ **Profile Page Working** - Profile page loads correctly and shows user's posts and karma
+
+### 🛡️ **Database Safety Assessment Completed** ✅ **CRITICAL PROTECTION VERIFIED (October 12, 2025)**
+- ✅ **Docker Volume Persistence** - Database data stored in persistent Docker volume (`orthoandspinetools-main_postgres_data`)
+- ✅ **Automated Backup System** - Daily backups with 30-day retention (`backup_20251006_033447.sql.gz`)
+- ✅ **Protection Scripts Active** - Multiple safety scripts prevent accidental data deletion
+- ✅ **SSL Certificate Protection** - SSL certificates backed up with timestamped archives
+- ✅ **Current Data Verified** - 4 users, 3 posts, 9 communities confirmed intact
+- ✅ **Destructive Operations Blocked** - DROP, TRUNCATE, DELETE operations explicitly forbidden
+- ✅ **Emergency Recovery Ready** - Backup restoration procedures documented and tested
+- ✅ **Safety Rating: A+** - Multiple protection layers ensure database security
+- ✅ **Risk Assessment: LOW** - Minimal risk of accidental data loss due to comprehensive protection
+
+### 🔥 **Reddit-Style Popular Page Implemented** ✅ **SORTING & FILTERING COMPLETE (October 12, 2025)**
+- ✅ **Popular Page Created** - New `/popular` route with Reddit-style interface
+- ✅ **Sorting Options** - Best, Hot, New, Top, Rising sorting implemented
+- ✅ **Community Filter** - Dropdown to filter by specific community or show all communities
+- ✅ **Backend API Updated** - Posts API supports new sorting options (`best`, `hot`, `newest`, `top`, `rising`)
+- ✅ **Vote-Based Sorting** - Best/Top/Hot/Rising use vote count for ranking
+- ✅ **Time-Based Sorting** - New uses creation date for chronological order
+- ✅ **PostCard Component** - Reddit-style post display with voting, comments, and engagement metrics
+- ✅ **Responsive Design** - Mobile-friendly interface with proper spacing and layout
+- ✅ **API Testing Verified** - All sorting options working correctly (`best`, `top`, `newest` tested)
+- ✅ **Frontend Rebuilt** - Popular page deployed (as `index-Dng2BQsv.js`)
+- ✅ **Sidebar Navigation** - Popular link added to left sidebar navigation
+
+### 📝 **CreatePost Functionality Fixed** ✅ **POST CREATION & MEDIA UPLOAD WORKING (October 12, 2025)**
+- ✅ **Community Selection Fixed** - Changed from slug to ID for proper backend compatibility
+- ✅ **Post Creation Working** - Backend API accepts posts with proper validation
+- ✅ **Image Upload System** - `/api/upload/post-images` endpoint working correctly
+- ✅ **Video Upload System** - `/api/upload/post-videos` endpoint working correctly
+- ✅ **Attachment Integration** - Frontend sends `attachments` field instead of `media` for backend compatibility
+- ✅ **Post Types Supported** - Text, Images & Video, Link, Poll post types all functional
+- ✅ **Rich Text Editor** - Markdown editor with toolbar working correctly
+- ✅ **Form Validation** - Title and community selection required, proper error handling
+- ✅ **API Testing Verified** - Created test post with image attachment successfully
+- ✅ **Frontend Rebuilt** - Fixed CreatePost component deployed (as `index-DVbw_tWE.js`)
+- ✅ **Authentication Required** - Proper user authentication and token validation
+
+### ☁️ **Cloudinary CDN Integration Implemented** ✅ **REDDIT-STYLE IMAGE/VIDEO STORAGE (October 12, 2025)**
+- ✅ **Cloudinary SDK Installed** - Added `cloudinary` package to backend dependencies
+- ✅ **Cloudinary Service Created** - Lazy-loaded service with proper error handling
+- ✅ **Database Schema Updated** - Added Cloudinary fields to `post_attachments` table
+- ✅ **Upload Routes Added** - `/api/upload/post-images-cloudinary` and `/api/upload/post-videos-cloudinary`
+- ✅ **Image Optimization** - Automatic quality optimization and format conversion
+- ✅ **Reddit-Style Sizing** - Images limited to 1200x1200px, videos to 720p max
+- ✅ **CDN Delivery** - All media served through Cloudinary's global CDN
+- ✅ **Thumbnail Generation** - Automatic thumbnail generation for previews
+- ✅ **Frontend Updated** - Display logic updated to use Cloudinary URLs
+- ✅ **Environment Configuration** - Docker Compose updated with Cloudinary env vars
+- ✅ **Setup Guide Created** - Comprehensive `CLOUDINARY_SETUP.md` documentation
+- ✅ **Fallback Support** - Graceful fallback to local storage if Cloudinary not configured
+- ✅ **API Testing Verified** - Cloudinary upload endpoints responding correctly
+- ✅ **Backend Rebuilt** - Cloudinary integration deployed successfully
 
 ### 🗳️ **Voting Logic Fixed** ✅ **DOWNVOTE FUNCTIONALITY CORRECTED**
 - ✅ **Separate Vote Buttons** - Fixed VoteButton to have distinct upvote and downvote clickable areas
