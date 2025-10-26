@@ -19,6 +19,12 @@ test.png
 .env.local
 .env.production
 
+# Sensitive configuration files
+*CREDENTIALS*
+*API_KEYS*
+CLOUDINARY_*
+*TEST_RESULTS*
+
 # Logs
 *.log
 logs/
