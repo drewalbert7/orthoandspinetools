@@ -24,6 +24,7 @@ test.png
 *API_KEYS*
 CLOUDINARY_*
 *TEST_RESULTS*
+SECURITY_FIX*
 
 # Logs
 *.log
