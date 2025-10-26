@@ -1075,6 +1075,14 @@ The platform focuses on:
 - ✅ **Frontend Rebuilt** - Updated VoteButton component deployed (as `index-Dtcrwvp3.js`)
 - ✅ **API Testing Verified** - Drewalbertmd user shows `"userVote":"upvote"` for post3, confirming proper vote detection
 
+### 🔧 **Registration Form Fix** ✅ **REDDIT DARK THEME & API URL FIX (October 12, 2025)**
+- ✅ **Form Styling Updated** - Changed all RegisterForm inputs to Reddit dark theme (`bg-reddit-card`, `text-reddit`, `border-reddit`)
+- ✅ **API Base URL Fixed** - Updated authService.ts and apiService.ts to use `https://orthoandspinetools.com/api` instead of `localhost:3001`
+- ✅ **Button Styling** - Changed submit button from blue to Reddit orange (`bg-reddit-orange`)
+- ✅ **Debug Logging Added** - Console logs for debugging registration flow
+- ✅ **Frontend Rebuilt** - Registration form updated with new styling and API configuration
+- ✅ **Status**: Ready for user testing - registration should work properly now
+
 ### ⭐ **Karma System Integration Verified** ✅ **KARMA TRACKING WORKING (October 12, 2025)**
 - ✅ **Karma Database Schema** - UserKarma model with postKarma, commentKarma, awardKarma, and totalKarma fields
 - ✅ **Karma Service Implementation** - Complete karma calculation and update system in `backend/src/utils/karmaService.ts`
