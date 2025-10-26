@@ -30,10 +30,10 @@ services:
       JWT_SECRET: your-super-secret-jwt-key-change-this-in-production
       JWT_EXPIRES_IN: 7d
       CORS_ORIGIN: http://localhost:3000
-      # Cloudinary Configuration (Replace with your actual credentials)
-      CLOUDINARY_CLOUD_NAME: ${CLOUDINARY_CLOUD_NAME:-your-cloud-name}
-      CLOUDINARY_API_KEY: ${CLOUDINARY_API_KEY:-your-api-key}
-      CLOUDINARY_API_SECRET: ${CLOUDINARY_API_SECRET:-your-api-secret}
+      # Cloudinary Configuration (use environment variables!)
+      CLOUDINARY_CLOUD_NAME: ${CLOUDINARY_CLOUD_NAME}
+      CLOUDINARY_API_KEY: ${CLOUDINARY_API_KEY}
+      CLOUDINARY_API_SECRET: ${CLOUDINARY_API_SECRET}
     ports:
       - "3001:3001"
     depends_on:
