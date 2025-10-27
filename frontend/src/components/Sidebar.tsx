@@ -34,50 +34,16 @@ const Sidebar: React.FC<SidebarProps> = ({ isMobileOpen, onMobileClose }) => {
   // Follow/unfollow community mutation
   const followMutation = useMutation({
     mutationFn: (communityId: string) => apiService.followCommunity(communityId),
-    onMutate: async (communityId) => {
-      // Cancel any outgoing refetches
-      await queryClient.cancelQueries({ queryKey: ['user-communities'] });
-      
-      // Snapshot the previous value
-      const previousCommunities = queryClient.getQueryData(['user-communities']);
-      
-      // Optimistically update the cache
-      queryClient.setQueryData(['user-communities'], (old: any) => {
-        if (!old) return old;
-        
-        // Handle both direct array and wrapped response formats
-        const communitiesArray = Array.isArray(old) ? old : old.data;
-        const isCurrentlyFollowed = communitiesArray.some((c: any) => c.id === communityId);
-        
-        if (isCurrentlyFollowed) {
-          // Remove from followed communities
-          const newCommunities = communitiesArray.filter((c: any) => c.id !== communityId);
-          return Array.isArray(old) ? newCommunities : { ...old, data: newCommunities };
-        } else {
-          // Add to followed communities
-          const community = communities?.find(c => c.id === communityId);
-          if (community) {
-            const newCommunities = [...communitiesArray, community];
-            return Array.isArray(old) ? newCommunities : { ...old, data: newCommunities };
-          }
-        }
-        return old;
-      });
-      
-      return { previousCommunities };
-    },
     onSuccess: () => {
-      // Invalidate and refetch user communities
+      // Invalidate and refetch user communities after successful mutation
       queryClient.invalidateQueries({ queryKey: ['user-communities'] });
       // Also invalidate communities to refresh any cached data
       queryClient.invalidateQueries({ queryKey: ['communities'] });
     },
-    onError: (error, _communityId, context) => {
-      // Revert the optimistic update on error
-      if (context?.previousCommunities) {
-        queryClient.setQueryData(['user-communities'], context.previousCommunities);
-      }
+    onError: (error) => {
       console.error('Follow/unfollow error:', error);
+      // Revert optimistic update on error
+      queryClient.invalidateQueries({ queryKey: ['user-communities'] });
     },
   });
 
@@ -111,17 +77,22 @@ const Sidebar: React.FC<SidebarProps> = ({ isMobileOpen, onMobileClose }) => {
     
     const isCurrentlyFollowed = combinedFollowedIds.has(communityId);
     
-    // Immediate optimistic update
-    setOptimisticFollows(prev => {
-      const newSet = new Set(prev);
-      if (isCurrentlyFollowed) {
+    // Immediate optimistic update for instant visual feedback
+    if (isCurrentlyFollowed) {
+      setOptimisticFollows(prev => {
+        const newSet = new Set(prev);
         newSet.delete(communityId);
-      } else {
+        return newSet;
+      });
+    } else {
+      setOptimisticFollows(prev => {
+        const newSet = new Set(prev);
         newSet.add(communityId);
-      }
-      return newSet;
-    });
+        return newSet;
+      });
+    }
     
+    // Trigger API call
     followMutation.mutate(communityId);
   };
 
