@@ -17,6 +17,12 @@ const PostAttachments: React.FC<PostAttachmentsProps> = ({ attachments }) => {
     return null;
   }
 
+  // Debug logging
+  console.log('PostAttachments rendering:', { 
+    count: attachments.length, 
+    first: attachments[0] 
+  });
+
   return (
     <div className="mb-3">
       {attachments.slice(0, 1).map((attachment) => (

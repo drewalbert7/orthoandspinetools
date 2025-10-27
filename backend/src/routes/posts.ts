@@ -242,6 +242,7 @@ router.get('/feed', authenticate, [
           slug: true,
         }
       },
+      attachments: true,
       votes: {
         select: {
           id: true,
@@ -301,7 +302,7 @@ router.get('/feed', authenticate, [
       communityId: post.communityId,
       author: post.author,
       community: post.community,
-      attachments: [] as any[],
+      attachments: post.attachments,
       votes: post.votes,
       _count: post._count,
       voteScore,
