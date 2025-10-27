@@ -3,9 +3,10 @@ import React from 'react';
 interface PostAttachmentsProps {
   attachments?: Array<{
     id: string;
-    path: string;
+    filename: string;
     originalName: string;
     mimeType: string;
+    path?: string;
     cloudinaryUrl?: string;
     size: number;
   }>;
@@ -23,10 +24,10 @@ const PostAttachments: React.FC<PostAttachmentsProps> = ({ attachments }) => {
           {attachment.mimeType.startsWith('image/') ? (
             <div className="relative bg-gray-100 rounded-md overflow-hidden">
               <img
-                src={attachment.cloudinaryUrl || attachment.path}
+                src={attachment.cloudinaryUrl || attachment.path || attachment.filename}
                 alt={attachment.originalName}
                 className="w-full max-h-96 object-contain cursor-pointer hover:opacity-95 transition-opacity"
-                onClick={() => window.open(attachment.cloudinaryUrl || attachment.path, '_blank')}
+                onClick={() => window.open(attachment.cloudinaryUrl || attachment.path || attachment.filename, '_blank')}
                 style={{ 
                   maxHeight: '400px',
                   width: '100%',
@@ -45,7 +46,7 @@ const PostAttachments: React.FC<PostAttachmentsProps> = ({ attachments }) => {
           ) : attachment.mimeType.startsWith('video/') ? (
             <div className="relative bg-gray-100 rounded-md overflow-hidden">
               <video
-                src={attachment.cloudinaryUrl || attachment.path}
+                src={attachment.cloudinaryUrl || attachment.path || attachment.filename}
                 className="w-full max-h-96 object-contain"
                 controls
                 style={{ 
@@ -71,7 +72,7 @@ const PostAttachments: React.FC<PostAttachmentsProps> = ({ attachments }) => {
                   </p>
                 </div>
                 <a
-                  href={attachment.path}
+                  href={attachment.path || attachment.filename}
                   download={attachment.originalName}
                   className="px-3 py-1 bg-blue-600 text-white text-xs rounded hover:bg-blue-700 transition-colors"
                 >
