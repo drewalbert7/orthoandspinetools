@@ -22,42 +22,27 @@ const PostAttachments: React.FC<PostAttachmentsProps> = ({ attachments }) => {
       {attachments.slice(0, 1).map((attachment) => (
         <div key={attachment.id} className="relative">
           {attachment.mimeType.startsWith('image/') ? (
-            <div className="relative bg-gray-100 rounded-md overflow-hidden">
+            <div className="relative bg-gray-100 rounded-md overflow-hidden" onClick={() => window.open(attachment.cloudinaryUrl || attachment.path || attachment.filename, '_blank')}>
               <img
                 src={attachment.cloudinaryUrl || attachment.path || attachment.filename}
                 alt={attachment.originalName}
-                className="w-full max-h-96 object-contain cursor-pointer hover:opacity-95 transition-opacity"
-                onClick={() => window.open(attachment.cloudinaryUrl || attachment.path || attachment.filename, '_blank')}
-                style={{ 
-                  maxHeight: '400px',
-                  width: '100%',
-                  objectFit: 'contain'
-                }}
+                className="w-full h-auto max-h-[400px] object-cover cursor-pointer hover:opacity-95 transition-opacity rounded-md"
               />
-              {/* Image overlay with filename */}
-              <div className="absolute bottom-2 right-2 bg-black bg-opacity-60 text-white text-xs px-2 py-1 rounded">
-                {attachment.originalName}
-              </div>
               {/* Click to expand indicator */}
-              <div className="absolute top-2 right-2 bg-black bg-opacity-60 text-white text-xs px-2 py-1 rounded">
-                Click to expand
+              <div className="absolute top-2 right-2 bg-black bg-opacity-75 text-white text-xs px-2 py-1 rounded flex items-center space-x-1">
+                <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4" />
+                </svg>
+                <span>Expand</span>
               </div>
             </div>
           ) : attachment.mimeType.startsWith('video/') ? (
             <div className="relative bg-gray-100 rounded-md overflow-hidden">
               <video
                 src={attachment.cloudinaryUrl || attachment.path || attachment.filename}
-                className="w-full max-h-96 object-contain"
+                className="w-full h-auto max-h-[400px] object-cover rounded-md"
                 controls
-                style={{ 
-                  maxHeight: '400px',
-                  width: '100%',
-                  objectFit: 'contain'
-                }}
               />
-              <div className="absolute bottom-2 right-2 bg-black bg-opacity-60 text-white text-xs px-2 py-1 rounded">
-                {attachment.originalName}
-              </div>
             </div>
           ) : (
             <div className="border border-gray-200 rounded-md p-4 bg-gray-50">
