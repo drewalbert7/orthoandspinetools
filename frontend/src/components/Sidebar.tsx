@@ -93,27 +93,23 @@ const Sidebar: React.FC<SidebarProps> = ({ isMobileOpen, onMobileClose }) => {
   // Combined followed state (actual + optimistic)
   const combinedFollowedIds = new Set([...followedCommunityIds, ...optimisticFollows]);
   
-  // Debug logging
-  console.log('🔍 Debug Info:', {
-    followedCommunities: followedCommunities,
-    followedCommunityIds: Array.from(followedCommunityIds),
-    optimisticFollows: Array.from(optimisticFollows),
-    combinedFollowedIds: Array.from(combinedFollowedIds),
-    communities: communities?.map(c => ({ id: c.id, name: c.name }))
-  });
+  // Debug logging (reduced verbosity)
+  // console.log('🔍 Debug Info:', {
+  //   followedCommunities: followedCommunities,
+  //   followedCommunityIds: Array.from(followedCommunityIds),
+  //   optimisticFollows: Array.from(optimisticFollows),
+  //   combinedFollowedIds: Array.from(combinedFollowedIds),
+  //   communities: communities?.map(c => ({ id: c.id, name: c.name }))
+  // });
 
   const handleToggleFollow = (communityId: string, event: React.MouseEvent) => {
     event.preventDefault(); // Prevent navigation when clicking star
     event.stopPropagation();
     if (!user) {
-      console.log('User not authenticated, cannot follow/unfollow');
       return;
     }
     
     const isCurrentlyFollowed = combinedFollowedIds.has(communityId);
-    console.log('⭐ Toggling follow for community:', communityId);
-    console.log('⭐ Current followed IDs:', Array.from(combinedFollowedIds));
-    console.log('⭐ Is currently followed:', isCurrentlyFollowed);
     
     // Immediate optimistic update
     setOptimisticFollows(prev => {
@@ -229,7 +225,6 @@ const Sidebar: React.FC<SidebarProps> = ({ isMobileOpen, onMobileClose }) => {
             ) : communities && communities.length > 0 ? (
               communities.map((community) => {
                 const isFollowed = combinedFollowedIds.has(community.id);
-                console.log(`⭐ Community ${community.name} (${community.id}) is followed: ${isFollowed} - Star should be ${isFollowed ? 'GOLD' : 'GRAY'}`);
                 return (
                   <div
                     key={community.id}
