@@ -3,6 +3,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { Link } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiService, UserProfile } from '../services/apiService';
+import PostAttachments from '../components/PostAttachments';
 
 type TabType = 'overview' | 'posts' | 'comments' | 'saved' | 'history' | 'upvoted' | 'downvoted';
 
@@ -231,6 +232,7 @@ const Profile: React.FC = () => {
                         {post.content && (
                           <p className="text-gray-700 mb-3">{post.content}</p>
                         )}
+                        <PostAttachments attachments={post.attachments} />
                         <div className="flex items-center space-x-4 text-sm text-gray-500">
                           <div className="flex items-center space-x-1">
                             <button 
@@ -287,6 +289,7 @@ const Profile: React.FC = () => {
                         {post.content && (
                           <p className="text-gray-700 mb-3">{post.content}</p>
                         )}
+                        <PostAttachments attachments={post.attachments} />
                         <div className="flex items-center space-x-4 text-sm text-gray-500">
                           <div className="flex items-center space-x-1">
                             <button 

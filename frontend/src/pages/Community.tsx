@@ -4,6 +4,7 @@ import { useQuery } from '@tanstack/react-query';
 import { apiService, Post, Community } from '../services/apiService';
 import VoteButton from '../components/VoteButton';
 import { useAuth } from '../contexts/AuthContext';
+import PostAttachments from '../components/PostAttachments';
 
 const CommunityPage: React.FC = () => {
   const { slug } = useParams<{ slug: string }>();
@@ -226,6 +227,9 @@ const CommunityPage: React.FC = () => {
                         )}
                       </div>
                     )}
+                    
+                    {/* Attachments Preview - Reddit Style */}
+                    <PostAttachments attachments={post.attachments} />
                   </div>
 
                   {/* Post Actions */}
