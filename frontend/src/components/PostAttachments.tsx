@@ -17,12 +17,6 @@ const PostAttachments: React.FC<PostAttachmentsProps> = ({ attachments }) => {
     return null;
   }
 
-  // Debug logging
-  console.log('PostAttachments rendering:', { 
-    count: attachments.length, 
-    first: attachments[0] 
-  });
-
   return (
     <div className="mb-3">
       {attachments.slice(0, 1).map((attachment) => (
@@ -32,7 +26,8 @@ const PostAttachments: React.FC<PostAttachmentsProps> = ({ attachments }) => {
               <img
                 src={attachment.cloudinaryUrl || attachment.path || attachment.filename}
                 alt={attachment.originalName}
-                className="w-full h-auto max-h-[400px] object-cover cursor-pointer hover:opacity-95 transition-opacity rounded-md"
+                className="w-full h-auto object-contain cursor-pointer hover:opacity-95 transition-opacity rounded-md"
+                style={{ maxHeight: '600px' }}
               />
               {/* Click to expand indicator */}
               <div className="absolute top-2 right-2 bg-black bg-opacity-75 text-white text-xs px-2 py-1 rounded flex items-center space-x-1">
@@ -46,8 +41,9 @@ const PostAttachments: React.FC<PostAttachmentsProps> = ({ attachments }) => {
             <div className="relative bg-gray-100 rounded-md overflow-hidden">
               <video
                 src={attachment.cloudinaryUrl || attachment.path || attachment.filename}
-                className="w-full h-auto max-h-[400px] object-cover rounded-md"
+                className="w-full h-auto object-contain rounded-md"
                 controls
+                style={{ maxHeight: '600px' }}
               />
             </div>
           ) : (
