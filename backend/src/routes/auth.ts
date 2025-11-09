@@ -427,24 +427,31 @@ router.get('/profile', authenticate, asyncHandler(async (req: AuthRequest, res: 
     where: { id: req.user!.id },
     include: {
       posts: {
-        take: 10,
+        take: 50, // Increased limit for profile page
         orderBy: { createdAt: 'desc' },
+        where: {
+          isDeleted: false,
+        },
         include: {
           community: {
             select: {
               id: true,
               name: true,
               slug: true,
+              profileImage: true,
             }
           },
           votes: {
             select: {
               type: true,
+              userId: true,
             }
           },
+          attachments: true,
           _count: {
             select: {
               comments: true,
+              votes: true,
             }
           }
         }
@@ -455,6 +462,40 @@ router.get('/profile', authenticate, asyncHandler(async (req: AuthRequest, res: 
           name: true,
           slug: true,
           description: true,
+        }
+      },
+      comments: {
+        take: 50, // Get user's comments
+        orderBy: { createdAt: 'desc' },
+        where: {
+          isDeleted: false,
+        },
+        include: {
+          post: {
+            select: {
+              id: true,
+              title: true,
+              community: {
+                select: {
+                  id: true,
+                  name: true,
+                  slug: true,
+                }
+              }
+            }
+          },
+          votes: {
+            select: {
+              type: true,
+              userId: true,
+            }
+          },
+          _count: {
+            select: {
+              replies: true,
+              votes: true,
+            }
+          }
         }
       },
       _count: {
@@ -505,25 +546,92 @@ router.get('/profile', authenticate, asyncHandler(async (req: AuthRequest, res: 
         commentKarma: userKarma?.commentKarma || 0,
         awardKarma: userKarma?.awardKarma || 0,
         totalKarma: karma,
-        postsCount: user._count.posts,
-        commentsCount: user._count.comments,
-        communitiesCount: user.communities.length,
+        postsCount: (user as any)._count?.posts || 0,
+        commentsCount: (user as any)._count?.comments || 0,
+        communitiesCount: ((user as any).communities as any[])?.length || 0,
       },
-      posts: user.posts.map(post => ({
-        id: post.id,
-        title: post.title,
-        content: post.content,
-        type: post.type,
-        specialty: post.specialty,
-        createdAt: post.createdAt,
-        community: post.community,
-        voteScore: post.votes.reduce((score, vote) => score + (vote.type === 'upvote' ? 1 : -1), 0),
-        commentsCount: post._count.comments,
-      })),
-      communities: user.communities.map(community => ({
+      posts: ((user as any).posts as any[]).map((post: any) => {
+        // Calculate user's vote for this post
+        const userVote = post.votes.find((v: any) => v.userId === user.id);
+        
+        return {
+          id: post.id,
+          title: post.title,
+          content: post.content,
+          type: post.type,
+          specialty: post.specialty,
+          createdAt: post.createdAt,
+          updatedAt: post.updatedAt,
+          authorId: user.id,
+          communityId: post.community.id,
+          community: post.community,
+          author: {
+            id: user.id,
+            username: user.username,
+            firstName: user.firstName,
+            lastName: user.lastName,
+            specialty: user.specialty,
+            profileImage: user.profileImage,
+          },
+          attachments: post.attachments || [],
+          votes: post.votes.map((v: any) => ({
+            id: v.id || '',
+            postId: post.id,
+            userId: v.userId,
+            type: v.type,
+          })),
+          voteScore: post.votes.reduce((score: number, vote: any) => score + (vote.type === 'upvote' ? 1 : -1), 0),
+          userVote: userVote ? (userVote.type === 'upvote' ? 'upvote' : 'downvote') : null,
+          commentsCount: post._count.comments,
+          _count: {
+            comments: post._count.comments,
+            votes: post._count.votes || post.votes.length,
+          },
+          isLocked: post.isLocked || false,
+          isPinned: post.isPinned || false,
+          isDeleted: post.isDeleted || false,
+        };
+      }),
+      communities: ((user as any).communities as any[]).map((community: any) => ({
         ...community,
         memberCount: 0, // We'll calculate this separately if needed
       })),
+      comments: ((user as any).comments as any[]).map((comment: any) => {
+        // Calculate user's vote for this comment
+        const userVote = comment.votes.find((v: any) => v.userId === user.id);
+        
+        return {
+          id: comment.id,
+          content: comment.content,
+          authorId: user.id,
+          postId: comment.postId,
+          createdAt: comment.createdAt,
+          updatedAt: comment.updatedAt,
+          post: comment.post,
+          author: {
+            id: user.id,
+            username: user.username,
+            firstName: user.firstName,
+            lastName: user.lastName,
+            specialty: user.specialty,
+            profileImage: user.profileImage,
+          },
+          votes: comment.votes.map((v: any) => ({
+            id: v.id || '',
+            commentId: comment.id,
+            userId: v.userId,
+            type: v.type,
+          })),
+          voteScore: comment.votes.reduce((score: number, vote: any) => score + (vote.type === 'upvote' ? 1 : -1), 0),
+          userVote: userVote ? (userVote.type === 'upvote' ? 'upvote' : 'downvote') : null,
+          _count: {
+            replies: comment._count.replies,
+            votes: comment._count.votes || comment.votes.length,
+          },
+          isDeleted: false,
+          replies: [] as any[],
+        };
+      }),
     }
   });
 }));

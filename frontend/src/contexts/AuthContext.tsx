@@ -8,6 +8,7 @@ interface AuthContextType {
   register: (userData: RegisterData) => Promise<void>;
   logout: () => void;
   updateProfile: (userData: Partial<User>) => Promise<void>;
+  refreshUser: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -90,6 +91,16 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     }
   };
 
+  const refreshUser = async () => {
+    try {
+      const refreshedUser = await authService.refreshUser();
+      setUser(refreshedUser);
+    } catch (error) {
+      console.error('Failed to refresh user:', error);
+      // Don't throw - just log the error
+    }
+  };
+
   const value: AuthContextType = {
     user,
     loading,
@@ -97,6 +108,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     register,
     logout,
     updateProfile,
+    refreshUser,
   };
 
   return (

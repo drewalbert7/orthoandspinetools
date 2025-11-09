@@ -31,9 +31,9 @@ RUN mkdir -p uploads/images uploads/xrays
 # Expose port
 EXPOSE 3001
 
-# Health check
-HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
-  CMD curl -f http://localhost:3001/api/auth/me || exit 1
+# Health check - verify database connection
+HEALTHCHECK --interval=30s --timeout=3s --start-period=10s --retries=3 \
+  CMD curl -f http://localhost:3001/api/health || exit 1
 
 # Start the application
 CMD ["npm", "start"]

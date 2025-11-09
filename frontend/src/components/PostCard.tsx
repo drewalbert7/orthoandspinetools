@@ -1,7 +1,9 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
-
-import { Post } from '../services/apiService';
+import { useQueryClient } from '@tanstack/react-query';
+import { Post, apiService } from '../services/apiService';
+import ModerationMenu from './ModerationMenu';
+import toast from 'react-hot-toast';
 
 interface PostCardProps {
   post: Post;
@@ -10,6 +12,7 @@ interface PostCardProps {
 
 const PostCard: React.FC<PostCardProps> = ({ post, onVote }) => {
   const [isVoting, setIsVoting] = useState(false);
+  const queryClient = useQueryClient();
 
   const handleVote = async (voteType: 'upvote' | 'downvote') => {
     if (isVoting) return;
@@ -159,11 +162,21 @@ const PostCard: React.FC<PostCardProps> = ({ post, onVote }) => {
               </svg>
               <span>Save</span>
             </button>
-            <button className="flex items-center space-x-1 text-gray-600 hover:text-blue-700 hover:bg-gray-100 px-2 py-1 rounded-md transition-colors">
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z" />
-              </svg>
-            </button>
+            <ModerationMenu
+              postId={post.id}
+              communityId={post.community.id || post.communityId}
+              isLocked={post.isLocked}
+              isPinned={post.isPinned}
+              onDelete={async () => {
+                try {
+                  await apiService.deletePost(post.id);
+                  queryClient.invalidateQueries({ queryKey: ['posts'] });
+                  toast.success('Post deleted');
+                } catch (error: any) {
+                  toast.error(error.message || 'Failed to delete post');
+                }
+              }}
+            />
           </div>
         </div>
       </div>

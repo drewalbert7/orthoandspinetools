@@ -29,6 +29,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isMobileOpen, onMobileClose }) => {
     queryKey: ['user-communities'],
     queryFn: () => apiService.getUserCommunities(),
     enabled: !!user,
+    retry: false, // Don't retry if it fails (e.g., user not logged in)
   });
 
   // Follow/unfollow community mutation
@@ -226,31 +227,36 @@ const Sidebar: React.FC<SidebarProps> = ({ isMobileOpen, onMobileClose }) => {
                       </div>
                     </Link>
                     
-                    {/* Star Icon for Follow/Unfollow */}
-                    {user && (
-                      <button
-                        onClick={(e) => handleToggleFollow(community.id, e)}
-                        disabled={followMutation.isPending}
-                        className={`p-1 rounded-md transition-colors ${
-                          followMutation.isPending ? 'opacity-50 cursor-not-allowed' : 'hover:bg-gray-200'
-                        }`}
+                    {/* Star Icon for Follow/Unfollow - Always visible, clickable only when logged in */}
+                    <button
+                      onClick={(e) => {
+                        if (user) {
+                          handleToggleFollow(community.id, e);
+                        }
+                      }}
+                      disabled={!user || followMutation.isPending}
+                      className={`p-1 rounded-md transition-colors ${
+                        !user || followMutation.isPending 
+                          ? 'opacity-50 cursor-not-allowed' 
+                          : 'hover:bg-gray-200'
+                      }`}
+                      title={!user ? 'Sign in to follow communities' : isFollowed ? 'Unfollow' : 'Follow'}
+                    >
+                      <svg 
+                        className={`w-4 h-4 ${isFollowed ? 'text-yellow-500 fill-current' : 'text-gray-400'}`} 
+                        fill={isFollowed ? 'currentColor' : 'none'} 
+                        stroke="currentColor" 
+                        viewBox="0 0 24 24"
+                        style={{ filter: isFollowed ? 'drop-shadow(0 0 2px rgba(251, 191, 36, 0.5))' : 'none' }}
                       >
-                        <svg 
-                          className={`w-4 h-4 ${isFollowed ? 'text-yellow-500 fill-current' : 'text-gray-400'}`} 
-                          fill={isFollowed ? 'currentColor' : 'none'} 
-                          stroke="currentColor" 
-                          viewBox="0 0 24 24"
-                          style={{ filter: isFollowed ? 'drop-shadow(0 0 2px rgba(251, 191, 36, 0.5))' : 'none' }}
-                        >
-                          <path 
-                            strokeLinecap="round" 
-                            strokeLinejoin="round" 
-                            strokeWidth={2} 
-                            d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z" 
-                          />
-                        </svg>
-                      </button>
-                    )}
+                        <path 
+                          strokeLinecap="round" 
+                          strokeLinejoin="round" 
+                          strokeWidth={2} 
+                          d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z" 
+                        />
+                      </svg>
+                    </button>
                   </div>
                 );
               })

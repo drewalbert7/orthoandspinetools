@@ -15,14 +15,20 @@ export const errorHandler = (
   let error: AppErrorLike = Object.assign(new Error(err.message), err);
   error.message = err.message;
 
-  // Log error
+  // Log error with proper serialization
   logger.error({
-    error: err.message,
+    error: err.message || 'Unknown error',
+    name: err.name,
     stack: err.stack,
+    statusCode: err.statusCode,
     url: req.url,
     method: req.method,
     ip: req.ip,
     userAgent: req.get('User-Agent'),
+    // Include full error details for Prisma errors
+    ...(err.name === 'PrismaClientInitializationError' || err.name === 'PrismaClientKnownRequestError' ? {
+      prismaError: JSON.stringify(err, Object.getOwnPropertyNames(err))
+    } : {}),
   });
 
   // Mongoose bad ObjectId

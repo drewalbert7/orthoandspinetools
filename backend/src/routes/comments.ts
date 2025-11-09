@@ -1,5 +1,6 @@
 import { Router, Request, Response } from 'express';
 import { authenticate, optionalAuth, AuthRequest } from '../middleware/auth';
+import { requireCommentModeration, canModerateComment } from '../middleware/authorization';
 import { asyncHandler, AppError } from '../middleware/errorHandler';
 import { prisma } from '../lib/prisma';
 import { logger } from '../utils/logger';
@@ -10,9 +11,21 @@ const router = Router();
 
 // Validation middleware
 const validateComment = [
-  body('content').trim().isLength({ min: 1, max: 5000 }).withMessage('Content must be 1-5000 characters'),
-  body('postId').isString().withMessage('Invalid post ID'),
-  body('parentId').optional().isString().withMessage('Invalid parent comment ID'),
+  body('content')
+    .trim()
+    .notEmpty()
+    .withMessage('Content is required')
+    .isLength({ min: 1, max: 5000 })
+    .withMessage('Content must be 1-5000 characters'),
+  body('postId')
+    .notEmpty()
+    .withMessage('Post ID is required')
+    .isString()
+    .withMessage('Post ID must be a string'),
+  body('parentId')
+    .optional()
+    .isString()
+    .withMessage('Parent comment ID must be a string'),
 ];
 
 const validateCommentVote = [
@@ -24,18 +37,35 @@ const validateCommentVote = [
 router.post('/', authenticate, validateComment, asyncHandler(async (req: AuthRequest, res: Response) => {
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
-    throw new AppError(`Validation failed: ${errors.array().map(e => e.msg).join(', ')}`, 400);
+    const errorMessages = errors.array().map(e => {
+      const param = 'param' in e ? e.param : 'unknown';
+      return `${param}: ${e.msg}`;
+    }).join(', ');
+    throw new AppError(`Validation failed: ${errorMessages}`, 400);
   }
 
   const { content, postId, parentId } = req.body;
 
-  // Check if post exists
+  // Check if post exists and is not locked/deleted
   const post = await prisma.post.findUnique({
-    where: { id: postId }
+    where: { id: postId },
+    select: {
+      id: true,
+      isLocked: true,
+      isDeleted: true,
+    }
   });
 
   if (!post) {
     throw new AppError('Post not found', 404);
+  }
+
+  if (post.isDeleted) {
+    throw new AppError('Cannot comment on deleted post', 400);
+  }
+
+  if (post.isLocked) {
+    throw new AppError('This post is locked. Comments are disabled.', 403);
   }
 
   // If parentId is provided, check if parent comment exists
@@ -114,13 +144,10 @@ router.post('/', authenticate, validateComment, asyncHandler(async (req: AuthReq
         orderBy: { createdAt: 'asc' }
       },
       votes: {
-        include: {
-          user: {
-            select: {
-              id: true,
-              username: true,
-            }
-          }
+        select: {
+          id: true,
+          type: true,
+          userId: true,
         }
       },
       _count: {
@@ -131,6 +158,44 @@ router.post('/', authenticate, validateComment, asyncHandler(async (req: AuthReq
       }
     }
   });
+
+  // Calculate vote score for the comment
+  const upvotes = (comment.votes as any[]).filter((vote: any) => vote.type === 'upvote').length;
+  const downvotes = (comment.votes as any[]).filter((vote: any) => vote.type === 'downvote').length;
+  const userVote = (comment.votes as any[]).find((vote: any) => vote.userId === req.user!.id);
+
+  // Transform comment to match frontend interface
+  const commentResponse = {
+    ...comment,
+    voteScore: upvotes - downvotes,
+    upvotes,
+    downvotes,
+    userVote: userVote ? userVote.type : null,
+    replies: (comment.replies as any[]).map((reply: any) => {
+      const replyUpvotes = (reply.votes || []).filter((v: any) => v.type === 'upvote').length;
+      const replyDownvotes = (reply.votes || []).filter((v: any) => v.type === 'downvote').length;
+      const replyUserVote = (reply.votes || []).find((v: any) => v.userId === req.user!.id);
+      return {
+        ...reply,
+        voteScore: replyUpvotes - replyDownvotes,
+        upvotes: replyUpvotes,
+        downvotes: replyDownvotes,
+        userVote: replyUserVote ? replyUserVote.type : null,
+        votes: (reply.votes || []).map((v: any) => ({
+          id: v.id,
+          commentId: reply.id,
+          userId: v.userId,
+          type: v.type,
+        })),
+      };
+    }),
+    votes: (comment.votes as any[]).map((v: any) => ({
+      id: v.id,
+      commentId: comment.id,
+      userId: v.userId,
+      type: v.type,
+    })),
+  };
 
   // Log the comment creation for audit purposes
   await prisma.auditLog.create({
@@ -151,7 +216,7 @@ router.post('/', authenticate, validateComment, asyncHandler(async (req: AuthReq
 
   res.status(201).json({
     success: true,
-    data: comment
+    data: commentResponse
   });
 }));
 
@@ -650,7 +715,7 @@ router.put('/:id', authenticate, [
   });
 }));
 
-// Delete comment
+// Delete comment (author, moderator, or admin)
 router.delete('/:id', authenticate, [
   param('id').isString().isLength({ min: 1 }).withMessage('Invalid comment ID'),
 ], asyncHandler(async (req: AuthRequest, res: Response) => {
@@ -661,7 +726,7 @@ router.delete('/:id', authenticate, [
 
   const { id } = req.params;
 
-  // Check if comment exists and user owns it
+  // Check if comment exists
   const comment = await prisma.comment.findUnique({
     where: { id }
   });
@@ -670,9 +735,13 @@ router.delete('/:id', authenticate, [
     throw new AppError('Comment not found', 404);
   }
 
-  if (comment.authorId !== req.user!.id) {
+  // Check if user can delete (author, moderator, or admin)
+  const canDelete = await canModerateComment(id, req.user!.id);
+  if (!canDelete) {
     throw new AppError('Not authorized to delete this comment', 403);
   }
+
+  const isModeratorAction = comment.authorId !== req.user!.id;
 
   // Soft delete the comment
   await prisma.comment.update({
@@ -684,11 +753,13 @@ router.delete('/:id', authenticate, [
   await prisma.auditLog.create({
     data: {
       userId: req.user!.id,
-      action: 'DELETE_COMMENT',
+      action: isModeratorAction ? 'MODERATOR_DELETE_COMMENT' : 'DELETE_COMMENT',
       resource: 'comment',
       resourceId: id,
       details: {
         contentLength: comment.content.length,
+        authorId: comment.authorId,
+        isModeratorAction,
       },
       ipAddress: req.ip,
       userAgent: req.get('User-Agent'),

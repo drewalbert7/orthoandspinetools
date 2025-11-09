@@ -1,6 +1,7 @@
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { useState } from 'react';
+import { Toaster } from 'react-hot-toast';
 
 // Components
 import Header from './components/Header';
@@ -14,8 +15,10 @@ import Popular from './pages/Popular';
 import PostDetail from './pages/PostDetail';
 import CreatePost from './pages/CreatePost';
 import Profile from './pages/Profile';
+import ProfileSettings from './pages/ProfileSettings';
 import Community from './pages/Community';
 import CommunitySettings from './pages/CommunitySettings';
+import AdminDashboard from './pages/AdminDashboard';
 
 // Context
 import { AuthProvider } from './contexts/AuthContext';
@@ -63,6 +66,8 @@ function App() {
                   <Route path="/post/:id" element={<PostDetail />} />
                   <Route path="/create-post" element={<CreatePost />} />
                   <Route path="/profile" element={<Profile />} />
+                  <Route path="/profile/settings" element={<ProfileSettings />} />
+                  <Route path="/admin" element={<AdminDashboard />} />
                   <Route path="/community/:slug" element={<Community />} />
                   <Route path="/community/:slug/settings" element={<CommunitySettings />} />
                 </Routes>
@@ -71,6 +76,7 @@ function App() {
           </div>
         </Router>
       </AuthProvider>
+      <Toaster position="top-right" />
     </QueryClientProvider>
   );
 }

@@ -1,16 +1,107 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { Link } from 'react-router-dom';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { apiService, UserProfile } from '../services/apiService';
+import { useQuery } from '@tanstack/react-query';
+import { apiService, UserProfile, Post, Comment } from '../services/apiService';
+import VoteButton from '../components/VoteButton';
 import PostAttachments from '../components/PostAttachments';
+import { formatDistanceToNow } from 'date-fns';
 
 type TabType = 'overview' | 'posts' | 'comments' | 'saved' | 'history' | 'upvoted' | 'downvoted';
+type SortOption = 'hot' | 'new' | 'top' | 'controversial';
+
+// PostCard component for displaying posts (Reddit-style)
+const PostCard: React.FC<{ post: Post }> = ({ post }) => {
+  const formatTimeAgo = (date: Date) => {
+    const now = new Date();
+    const diffInMs = now.getTime() - date.getTime();
+    const diffInMinutes = Math.floor(diffInMs / (1000 * 60));
+    const diffInHours = Math.floor(diffInMinutes / 60);
+    
+    if (diffInMinutes < 1) return 'now';
+    if (diffInMinutes < 60) return `${diffInMinutes}m`;
+    if (diffInHours < 24) return `${diffInHours}h`;
+    const diffInDays = Math.floor(diffInHours / 24);
+    if (diffInDays < 7) return `${diffInDays}d`;
+    return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+  };
+
+  return (
+    <div className="bg-white border border-gray-200 hover:border-gray-300 transition-colors mb-2">
+      <div className="p-3">
+        {/* Post Header */}
+        <div className="flex items-center space-x-1 text-xs text-gray-500 mb-1">
+          <Link 
+            to={`/community/${post.community?.slug || post.communityId}`}
+            className="font-medium text-gray-900 hover:underline flex items-center space-x-1"
+          >
+            {post.community?.profileImage ? (
+              <img 
+                src={post.community.profileImage} 
+                alt={post.community.name}
+                className="w-4 h-4 rounded-full object-cover"
+              />
+            ) : (
+              <div className="w-4 h-4 bg-blue-600 rounded-full flex items-center justify-center">
+                <span className="text-white text-xs font-bold">o</span>
+              </div>
+            )}
+            <span>o/{post.community?.name || 'Unknown'}</span>
+          </Link>
+          <span>•</span>
+          <span>Posted by u/{post.author?.username || 'Unknown'}</span>
+          <span>•</span>
+          <span>{formatTimeAgo(new Date(post.createdAt))}</span>
+        </div>
+
+        {/* Post Title and Content */}
+        <Link to={`/post/${post.id}`} className="block">
+          <h3 className="text-lg font-medium text-gray-900 mb-2 hover:text-blue-600 transition-colors leading-tight">
+            {post.title}
+          </h3>
+          {post.content && (
+            <p className="text-gray-800 text-sm leading-relaxed mb-3 line-clamp-3">
+              {post.content}
+            </p>
+          )}
+        </Link>
+
+        {/* Attachments Preview */}
+        <PostAttachments attachments={post.attachments || []} />
+
+        {/* Action Bar with Voting */}
+        <div className="flex items-center space-x-2 text-xs text-gray-500 pt-2 border-t border-gray-100">
+          <VoteButton
+            postId={post.id}
+            initialVoteScore={post.voteScore || 0}
+            initialUserVote={post.userVote || null}
+            size="sm"
+          />
+          <Link 
+            to={`/post/${post.id}`}
+            className="flex items-center space-x-1 px-2 py-1 rounded-md border border-gray-200 hover:border-gray-300 bg-gray-50 hover:bg-gray-100 transition-colors"
+          >
+            <svg className="w-4 h-4 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+            </svg>
+            <span className="text-sm font-medium text-gray-700">{post._count?.comments || post.commentsCount || 0}</span>
+          </Link>
+          <button className="flex items-center space-x-1 px-2 py-1 rounded-md border border-gray-200 hover:border-gray-300 bg-gray-50 hover:bg-gray-100 transition-colors">
+            <svg className="w-4 h-4 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.632-2.684 3 3 0 00-5.632 2.684zm0 9.316a3 3 0 105.632 2.684 3 3 0 00-5.632-2.684z" />
+            </svg>
+            <span className="text-sm font-medium text-gray-700">Share</span>
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
 
 const Profile: React.FC = () => {
   const { user } = useAuth();
-  const queryClient = useQueryClient();
   const [activeTab, setActiveTab] = useState<TabType>('overview');
+  const [sortOption, setSortOption] = useState<SortOption>('new');
 
   // Fetch user profile data
   const { data: profileData, isLoading, error } = useQuery<UserProfile>({
@@ -19,22 +110,33 @@ const Profile: React.FC = () => {
     enabled: !!user,
   });
 
-  // Vote mutation
-  const voteMutation = useMutation({
-    mutationFn: ({ postId, value }: { postId: string; value: 1 | -1 }) => 
-      apiService.votePost(postId, value),
-    onSuccess: () => {
-      // Invalidate and refetch profile data
-      queryClient.invalidateQueries({ queryKey: ['user-profile', user?.id] });
-    },
-  });
-
-  const handleVote = (postId: string, value: 1 | -1) => {
-    if (!user) {
-      return;
+  // Sort posts based on selected option
+  const sortedPosts = useMemo(() => {
+    if (!profileData?.posts) return [];
+    const posts = [...profileData.posts];
+    
+    switch (sortOption) {
+      case 'hot':
+        // Sort by vote score + recency (posts from last 24 hours weighted higher)
+        return posts.sort((a, b) => {
+          const aScore = (a.voteScore || 0) + (new Date(a.createdAt).getTime() > Date.now() - 86400000 ? 10 : 0);
+          const bScore = (b.voteScore || 0) + (new Date(b.createdAt).getTime() > Date.now() - 86400000 ? 10 : 0);
+          return bScore - aScore;
+        });
+      case 'top':
+        return posts.sort((a, b) => (b.voteScore || 0) - (a.voteScore || 0));
+      case 'controversial':
+        // Sort by posts with votes close to zero (most controversial)
+        return posts.sort((a, b) => {
+          const aControversy = Math.abs((a.voteScore || 0));
+          const bControversy = Math.abs((b.voteScore || 0));
+          return aControversy - bControversy;
+        });
+      case 'new':
+      default:
+        return posts.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
     }
-    voteMutation.mutate({ postId, value });
-  };
+  }, [profileData?.posts, sortOption]);
 
   if (!user) {
     return (
@@ -87,13 +189,14 @@ const Profile: React.FC = () => {
     );
   }
 
-  const { user: profileUser, stats, posts, communities } = profileData;
+  const { user: profileUser, stats, communities, comments = [] } = profileData;
 
-  const formatDate = (dateString: string) => {
-    const date = new Date(dateString);
-    const now = new Date();
-    const diffInYears = Math.floor((now.getTime() - date.getTime()) / (1000 * 60 * 60 * 24 * 365));
-    return `${diffInYears} yr. ago`;
+  const formatAccountAge = (dateString: string) => {
+    return formatDistanceToNow(new Date(dateString), { addSuffix: false });
+  };
+
+  const getInitials = (firstName: string, lastName: string) => {
+    return `${firstName?.[0] || ''}${lastName?.[0] || ''}`.toUpperCase() || 'U';
   };
 
   return (
@@ -104,34 +207,48 @@ const Profile: React.FC = () => {
               {/* User Header */}
               <div className="bg-white border border-gray-200 rounded-md p-6 mb-4">
             <div className="flex items-start space-x-4">
-              <div className="w-20 h-20 bg-gradient-to-br from-yellow-400 to-orange-500 rounded-full flex items-center justify-center relative border-4 border-orange-400">
-                <div className="w-16 h-16 bg-yellow-300 rounded-full flex items-center justify-center">
-                  <div className="w-12 h-12 bg-red-500 rounded-full flex items-center justify-center">
-                    <div className="w-8 h-8 bg-white rounded-full flex items-center justify-center">
-                      <div className="w-4 h-4 bg-black rounded-full"></div>
-                    </div>
-                  </div>
+              {/* Profile Avatar */}
+              {profileUser.profileImage ? (
+                <img
+                  src={profileUser.profileImage}
+                  alt={`${profileUser.firstName} ${profileUser.lastName}`}
+                  className="w-20 h-20 rounded-full object-cover border-2 border-gray-200"
+                />
+              ) : (
+                <div className="w-20 h-20 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center border-2 border-gray-200">
+                  <span className="text-white font-bold text-2xl">
+                    {getInitials(profileUser.firstName, profileUser.lastName)}
+                  </span>
                 </div>
-                {/* Stars decoration */}
-                <div className="absolute -top-1 -right-1 w-3 h-3 bg-yellow-400 transform rotate-45"></div>
-                <div className="absolute -bottom-1 -left-1 w-2 h-2 bg-yellow-400 transform rotate-45"></div>
-              </div>
+              )}
               <div className="flex-1">
-                <h1 className="text-2xl font-bold text-gray-900">
-                  {profileUser.firstName} {profileUser.lastName}
-                </h1>
-                <p className="text-gray-600">u/{profileUser.username}</p>
-                {profileUser.specialty && (
-                  <p className="text-sm text-gray-500 mt-1">
-                    {profileUser.specialty}
-                  </p>
-                )}
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h1 className="text-2xl font-bold text-gray-900">
+                      {profileUser.firstName} {profileUser.lastName}
+                    </h1>
+                    <p className="text-gray-600">u/{profileUser.username}</p>
+                    {profileUser.specialty && (
+                      <p className="text-sm text-gray-500 mt-1">
+                        {profileUser.specialty}
+                        {profileUser.subSpecialty && ` - ${profileUser.subSpecialty}`}
+                      </p>
+                    )}
+                  </div>
+                  <Link
+                    to="/profile/settings"
+                    className="px-4 py-2 text-sm bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
+                  >
+                    Edit Profile
+                  </Link>
+                </div>
                 {profileUser.bio && (
                   <p className="text-gray-700 mt-3">{profileUser.bio}</p>
                 )}
                 <div className="flex items-center space-x-4 mt-3 text-sm text-gray-500">
-                  <span>Joined {formatDate(profileUser.createdAt)} ago</span>
+                  <span>Joined {formatAccountAge(profileUser.createdAt)} ago</span>
                   {profileUser.institution && <span>• {profileUser.institution}</span>}
+                  {profileUser.location && <span>• {profileUser.location}</span>}
                 </div>
               </div>
             </div>
@@ -155,8 +272,8 @@ const Profile: React.FC = () => {
                 <div className="text-sm text-gray-500">Contributions</div>
               </div>
               <div className="text-center">
-                <div className="text-lg font-semibold text-gray-900">{formatDate(profileUser.createdAt)}</div>
-                <div className="text-sm text-gray-500">Reddit Age</div>
+                <div className="text-lg font-semibold text-gray-900">{formatAccountAge(profileUser.createdAt)}</div>
+                <div className="text-sm text-gray-500">Account Age</div>
               </div>
               <div className="text-center">
                 <div className="text-lg font-semibold text-gray-900">{stats.communitiesCount}</div>
@@ -191,78 +308,46 @@ const Profile: React.FC = () => {
               ))}
             </div>
 
-            {/* Content Filter */}
-            <div className="px-6 py-3 border-b border-gray-200 flex items-center justify-between">
-              <div className="flex items-center space-x-2 text-sm text-gray-500">
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                </svg>
-                <span>Showing all content</span>
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                </svg>
+            {/* Content Filter & Sort */}
+            {(activeTab === 'overview' || activeTab === 'posts') && (
+              <div className="px-6 py-3 border-b border-gray-200 flex items-center justify-between">
+                <div className="flex items-center space-x-4">
+                  {/* Sort Options */}
+                  <div className="flex items-center space-x-2">
+                    <span className="text-sm text-gray-500">Sort by:</span>
+                    {(['hot', 'new', 'top', 'controversial'] as SortOption[]).map((sort) => (
+                      <button
+                        key={sort}
+                        onClick={() => setSortOption(sort)}
+                        className={`px-3 py-1 text-sm rounded-md transition-colors ${
+                          sortOption === sort
+                            ? 'bg-blue-100 text-blue-700 font-medium'
+                            : 'text-gray-600 hover:bg-gray-100'
+                        }`}
+                      >
+                        {sort.charAt(0).toUpperCase() + sort.slice(1)}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <Link to="/create-post" className="flex items-center space-x-1 px-3 py-1 bg-blue-600 text-white rounded-md text-sm hover:bg-blue-700 transition-colors">
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                    </svg>
+                    <span>Create Post</span>
+                  </Link>
+                </div>
               </div>
-              <div className="flex items-center space-x-2">
-                <Link to="/create-post" className="flex items-center space-x-1 px-3 py-1 bg-blue-600 text-white rounded-md text-sm">
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                  </svg>
-                  <span>Create Post</span>
-                </Link>
-                <button className="px-3 py-1 text-gray-600 border border-gray-300 rounded-md text-sm">New</button>
-              </div>
-            </div>
+            )}
 
             {/* Content */}
             <div className="p-6">
               {activeTab === 'overview' && (
-                <div className="space-y-4">
-                  {posts.length > 0 ? (
-                    posts.map((post) => (
-                      <div key={post.id} className="border border-gray-200 rounded-md p-4">
-                        <div className="flex items-center space-x-2 text-sm text-gray-500 mb-2">
-                          <span>{profileUser.username} posted in o/{post.community?.name}</span>
-                          <span>•</span>
-                          <span>{formatDate(post.createdAt)}</span>
-                        </div>
-                        <h3 className="text-lg font-semibold text-gray-900 mb-2">
-                          {post.title}
-                        </h3>
-                        {post.content && (
-                          <p className="text-gray-700 mb-3">{post.content}</p>
-                        )}
-                        <PostAttachments attachments={post.attachments} />
-                        <div className="flex items-center space-x-4 text-sm text-gray-500">
-                          <div className="flex items-center space-x-1">
-                            <button 
-                              onClick={() => handleVote(post.id, 1)}
-                              disabled={voteMutation.isPending}
-                              className={`p-1 hover:bg-gray-200 rounded ${
-                                post.userVote === 'upvote' ? 'text-orange-500' : 'text-gray-500'
-                              } ${voteMutation.isPending ? 'opacity-50 cursor-not-allowed' : ''}`}
-                            >
-                              <svg className="w-4 h-4" fill={post.userVote === 'upvote' ? 'currentColor' : 'none'} stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" />
-                              </svg>
-                            </button>
-                            <span className="text-gray-700 font-medium">{post.voteScore || 0}</span>
-                            <button 
-                              onClick={() => handleVote(post.id, -1)}
-                              disabled={voteMutation.isPending}
-                              className={`p-1 hover:bg-gray-200 rounded ${
-                                post.userVote === 'downvote' ? 'text-blue-500' : 'text-gray-500'
-                              } ${voteMutation.isPending ? 'opacity-50 cursor-not-allowed' : ''}`}
-                            >
-                              <svg className="w-4 h-4" fill={post.userVote === 'downvote' ? 'currentColor' : 'none'} stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                              </svg>
-                            </button>
-                          </div>
-                          <span>{post.commentsCount || post._count?.comments || 0} comments</span>
-                          <button className="text-blue-600 hover:text-blue-800">Share</button>
-                        </div>
-                      </div>
+                <div className="space-y-2">
+                  {sortedPosts.length > 0 ? (
+                    sortedPosts.map((post) => (
+                      <PostCard key={post.id} post={post} />
                     ))
                   ) : (
                     <div className="text-center py-8 text-gray-500">
@@ -274,51 +359,10 @@ const Profile: React.FC = () => {
               )}
 
               {activeTab === 'posts' && (
-                <div className="space-y-4">
-                  {posts.length > 0 ? (
-                    posts.map((post) => (
-                      <div key={post.id} className="border border-gray-200 rounded-md p-4">
-                        <div className="flex items-center space-x-2 text-sm text-gray-500 mb-2">
-                          <span>Posted in o/{post.community?.name}</span>
-                          <span>•</span>
-                          <span>{formatDate(post.createdAt)}</span>
-                        </div>
-                        <h3 className="text-lg font-semibold text-gray-900 mb-2">
-                          {post.title}
-                        </h3>
-                        {post.content && (
-                          <p className="text-gray-700 mb-3">{post.content}</p>
-                        )}
-                        <PostAttachments attachments={post.attachments} />
-                        <div className="flex items-center space-x-4 text-sm text-gray-500">
-                          <div className="flex items-center space-x-1">
-                            <button 
-                              onClick={() => handleVote(post.id, 1)}
-                              disabled={voteMutation.isPending}
-                              className={`p-1 hover:bg-gray-200 rounded ${
-                                post.userVote === 'upvote' ? 'text-orange-500' : 'text-gray-500'
-                              } ${voteMutation.isPending ? 'opacity-50 cursor-not-allowed' : ''}`}
-                            >
-                              <svg className="w-4 h-4" fill={post.userVote === 'upvote' ? 'currentColor' : 'none'} stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" />
-                              </svg>
-                            </button>
-                            <span className="text-gray-700 font-medium">{post.voteScore || 0}</span>
-                            <button 
-                              onClick={() => handleVote(post.id, -1)}
-                              disabled={voteMutation.isPending}
-                              className={`p-1 hover:bg-gray-200 rounded ${
-                                post.userVote === 'downvote' ? 'text-blue-500' : 'text-gray-500'
-                              } ${voteMutation.isPending ? 'opacity-50 cursor-not-allowed' : ''}`}
-                            >
-                              <svg className="w-4 h-4" fill={post.userVote === 'downvote' ? 'currentColor' : 'none'} stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                              </svg>
-                            </button>
-                          </div>
-                          <span>{post.commentsCount || post._count?.comments || 0} comments</span>
-                        </div>
-                      </div>
+                <div className="space-y-2">
+                  {sortedPosts.length > 0 ? (
+                    sortedPosts.map((post) => (
+                      <PostCard key={post.id} post={post} />
                     ))
                   ) : (
                     <div className="text-center py-8 text-gray-500">
@@ -330,9 +374,64 @@ const Profile: React.FC = () => {
               )}
 
               {activeTab === 'comments' && (
-                <div className="text-center py-8 text-gray-500">
-                  <p>No comments yet.</p>
-                  <p className="text-sm mt-1">You haven't commented on anything.</p>
+                <div className="space-y-4">
+                  {comments.length > 0 ? (
+                    comments.map((comment: Comment) => (
+                      <div key={comment.id} className="border border-gray-200 rounded-md p-4 hover:border-gray-300 transition-colors">
+                        <div className="flex items-center space-x-2 text-xs text-gray-500 mb-2">
+                          <span>Commented on</span>
+                          <Link 
+                            to={`/post/${comment.postId}`}
+                            className="text-blue-600 hover:text-blue-800 font-medium"
+                          >
+                            {comment.post?.title || 'Post'}
+                          </Link>
+                          {comment.post?.community && (
+                            <>
+                              <span>in</span>
+                              <Link 
+                                to={`/community/${comment.post.community.slug || comment.post.community.id}`}
+                                className="text-blue-600 hover:text-blue-800"
+                              >
+                                o/{comment.post.community.name}
+                              </Link>
+                            </>
+                          )}
+                          <span>•</span>
+                          <span>{formatDistanceToNow(new Date(comment.createdAt), { addSuffix: true })}</span>
+                        </div>
+                        <p className="text-gray-800 text-sm leading-relaxed mb-3">{comment.content}</p>
+                        <div className="flex items-center space-x-4 text-xs text-gray-500 pt-2 border-t border-gray-100">
+                          <div className="flex items-center space-x-1">
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" />
+                            </svg>
+                            <span className="font-medium">{comment.voteScore || 0}</span>
+                          </div>
+                          <Link 
+                            to={`/post/${comment.postId}#comment-${comment.id}`}
+                            className="flex items-center space-x-1 text-gray-600 hover:text-blue-600"
+                          >
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+                            </svg>
+                            <span>{comment._count?.replies || 0} replies</span>
+                          </Link>
+                          <Link 
+                            to={`/post/${comment.postId}`}
+                            className="text-blue-600 hover:text-blue-800 font-medium"
+                          >
+                            View post →
+                          </Link>
+                        </div>
+                      </div>
+                    ))
+                  ) : (
+                    <div className="text-center py-8 text-gray-500">
+                      <p>No comments yet.</p>
+                      <p className="text-sm mt-1">Comments you make will appear here.</p>
+                    </div>
+                  )}
                 </div>
               )}
 
@@ -407,7 +506,7 @@ const Profile: React.FC = () => {
                 <span>{stats.postsCount + stats.commentsCount} Contributions</span>
               </div>
               <div className="flex justify-between">
-                <span>{formatDate(profileUser.createdAt)} Reddit Age</span>
+                <span>{formatAccountAge(profileUser.createdAt)} Account Age</span>
               </div>
               <div className="flex justify-between">
                 <span>{stats.communitiesCount} Active in</span>
@@ -421,34 +520,17 @@ const Profile: React.FC = () => {
               <p>0 Gold earned</p>
             </div>
 
-            <div className="border-t border-gray-200 pt-4">
-              <h4 className="font-semibold text-gray-900 mb-2">ACHIEVEMENTS</h4>
-              <div className="flex items-center space-x-2 mb-2">
-                <div className="flex space-x-1">
-                  <div className="w-4 h-4 bg-yellow-400 rounded-full"></div>
-                  <div className="w-4 h-4 bg-yellow-400 rounded-full"></div>
-                  <div className="w-4 h-4 bg-yellow-400 rounded-full"></div>
-                </div>
-                <span className="text-sm text-gray-600">Banana Enthusiast, Banana Beginner, Banana Baby, +9 more</span>
-              </div>
-              <div className="flex justify-between items-center">
-                <span className="text-sm text-gray-500">12 unlocked</span>
-                <button className="text-sm text-blue-600 hover:text-blue-800">View All</button>
-              </div>
-            </div>
-
             <div className="border-t border-gray-200 pt-4 mt-4">
-              <h4 className="font-semibold text-gray-900 mb-2">SETTINGS</h4>
-              <div className="flex items-center space-x-2 mb-2">
-                <div className="w-6 h-6 bg-gray-300 rounded-full"></div>
-                <div>
-                  <p className="text-sm font-medium text-gray-900">Profile</p>
-                  <p className="text-xs text-gray-500">Customize your profile</p>
-                </div>
-              </div>
-              <button className="w-full mt-2 px-3 py-1 bg-blue-600 text-white rounded-md text-sm">
-                Update
-              </button>
+              <h4 className="font-semibold text-gray-900 mb-2">PROFILE SETTINGS</h4>
+              <Link
+                to="/profile/settings"
+                className="w-full mt-2 px-3 py-2 bg-blue-600 text-white rounded-md text-sm hover:bg-blue-700 transition-colors flex items-center justify-center space-x-2"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                </svg>
+                <span>Edit Profile</span>
+              </Link>
             </div>
           </div>
 

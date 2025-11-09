@@ -4,6 +4,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiService, Comment } from '../services/apiService';
 import VoteButton from '../components/VoteButton';
 import { useAuth } from '../contexts/AuthContext';
+import toast from 'react-hot-toast';
 
 const PostDetail: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -39,13 +40,52 @@ const PostDetail: React.FC = () => {
   });
 
 
-  // Create comment mutation
+  // Create comment mutation with optimistic updates (Reddit-style)
   const createCommentMutation = useMutation({
-    mutationFn: ({ content, parentId }: { content: string; parentId?: string }) =>
-      apiService.createComment(id!, content, parentId),
+    mutationFn: ({ content, parentId }: { content: string; parentId?: string }) => {
+      console.log('🔄 Mutation function called:', { postId: id, content, contentLength: content.length, parentId });
+      if (!id) {
+        throw new Error('Post ID is required');
+      }
+      console.log('📤 Calling apiService.createComment...');
+      return apiService.createComment(id, content, parentId);
+    },
+    onMutate: async () => {
+      // Cancel any outgoing refetches to avoid overwriting optimistic update
+      await queryClient.cancelQueries({ queryKey: ['comments', id] });
+      await queryClient.cancelQueries({ queryKey: ['post', id] });
+      
+      // Snapshot the previous value for rollback
+      const previousComments = queryClient.getQueryData(['comments', id]);
+      
+      // Return context with the previous value
+      return { previousComments };
+    },
     onSuccess: () => {
+      // Invalidate and refetch to get the real comment from server
       queryClient.invalidateQueries({ queryKey: ['comments', id] });
+      queryClient.invalidateQueries({ queryKey: ['post', id] }); // Refresh post to update comment count
+      
+      // Clear form
       setNewComment('');
+      setReplyingTo(null);
+      setReplyContent('');
+      
+      // Show success message
+      toast.success('Comment posted!');
+    },
+    onError: (error: any, _variables, context) => {
+      console.error('❌ Error creating comment:', error);
+      console.error('❌ Error details:', {
+        message: error.message,
+        response: error.response?.data,
+        status: error.response?.status,
+      });
+      // Rollback optimistic update on error
+      if (context?.previousComments) {
+        queryClient.setQueryData(['comments', id], context.previousComments);
+      }
+      toast.error(error.message || 'Failed to create comment. Please try again.');
     },
   });
 
@@ -55,6 +95,10 @@ const PostDetail: React.FC = () => {
       apiService.voteComment(commentId, voteType === 'upvote' ? 1 : -1),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['comments', id] });
+    },
+    onError: (error: any) => {
+      console.error('Error voting on comment:', error);
+      toast.error(error.message || 'Failed to vote on comment');
     },
   });
 
@@ -67,14 +111,48 @@ const PostDetail: React.FC = () => {
     voteCommentMutation.mutate({ commentId, voteType });
   };
 
-  const handleSubmitComment = () => {
+  const handleSubmitComment = (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+    
+    console.log('🚀 Form submitted!', {
+      hasUser: !!user,
+      newComment: newComment,
+      trimmedLength: newComment.trim().length,
+      postId: id,
+      isPending: createCommentMutation.isPending,
+    });
+    
+    // Validation checks
     if (!user) {
+      toast.error('Please sign in to comment');
       navigate('/login');
       return;
     }
-    if (!newComment.trim()) return;
     
-    createCommentMutation.mutate({ content: newComment.trim() });
+    const trimmedContent = newComment.trim();
+    if (!trimmedContent) {
+      toast.error('Please enter a comment');
+      return;
+    }
+    
+    if (!id) {
+      toast.error('Post ID is missing');
+      return;
+    }
+    
+    console.log('✅ All validations passed, calling mutation...');
+    
+    // Submit the comment (Reddit-style: simple and direct)
+    try {
+      createCommentMutation.mutate({ 
+        content: trimmedContent 
+      });
+      console.log('✅ Mutation.mutate() called');
+    } catch (error) {
+      console.error('❌ Error in mutation:', error);
+      toast.error('Failed to submit comment');
+    }
   };
 
   const handleSubmitReply = (parentId: string) => {
@@ -484,9 +562,9 @@ const PostDetail: React.FC = () => {
             </div>
           </div>
 
-          {/* Comment Input */}
-          {user && (
-            <div className="bg-white border border-gray-200 rounded-md p-4 mb-4">
+          {/* Comment Input - Reddit Style */}
+          {user && post && !post.isLocked && (
+            <form onSubmit={handleSubmitComment} className="bg-white border border-gray-200 rounded-md p-4 mb-4">
               <div className="flex items-start space-x-3">
                 <div className="w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center flex-shrink-0">
                   <span className="text-white text-sm font-bold">
@@ -497,21 +575,54 @@ const PostDetail: React.FC = () => {
                   <textarea
                     value={newComment}
                     onChange={(e) => setNewComment(e.target.value)}
-                    placeholder="Share your thoughts"
+                    placeholder="What are your thoughts?"
                     className="w-full p-3 border border-gray-300 rounded-md resize-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    rows={3}
+                    rows={4}
+                    onKeyDown={(e) => {
+                      // Allow Ctrl/Cmd+Enter to submit (Reddit-style)
+                      if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
+                        e.preventDefault();
+                        // Trigger form submission
+                        const form = e.currentTarget.closest('form');
+                        if (form) {
+                          form.requestSubmit();
+                        }
+                      }
+                    }}
                   />
+                  <div className="flex items-center justify-end mt-3">
+                    <button
+                      type="submit"
+                      disabled={!newComment.trim() || createCommentMutation.isPending}
+                      className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors font-medium"
+                    >
+                      {createCommentMutation.isPending ? 'Posting...' : 'Comment'}
+                    </button>
+                  </div>
                 </div>
               </div>
-              <div className="flex items-center justify-end mt-3">
-                <button
-                  onClick={handleSubmitComment}
-                  disabled={!newComment.trim() || createCommentMutation.isPending}
-                  className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                >
-                  {createCommentMutation.isPending ? 'Posting...' : 'Comment'}
-                </button>
+            </form>
+          )}
+
+          {post && post.isLocked && (
+            <div className="bg-yellow-50 border border-yellow-200 rounded-md p-4 mb-4">
+              <div className="flex items-center space-x-2">
+                <svg className="w-5 h-5 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                </svg>
+                <p className="text-sm text-yellow-800">
+                  This post is locked. New comments cannot be added.
+                </p>
               </div>
+            </div>
+          )}
+
+          {!user && post && (post.isLocked !== true) && (
+            <div className="bg-gray-50 border border-gray-200 rounded-md p-4 mb-4 text-center">
+              <p className="text-sm text-gray-600 mb-2">Please sign in to comment</p>
+              <Link to="/login" className="text-blue-600 hover:text-blue-800 font-medium">
+                Sign in
+              </Link>
             </div>
           )}
 

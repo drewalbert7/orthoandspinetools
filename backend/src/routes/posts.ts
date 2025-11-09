@@ -1,5 +1,6 @@
 import { Router, Request, Response } from 'express';
 import { authenticate, optionalAuth, AuthRequest } from '../middleware/auth';
+import { requirePostModeration, canModeratePost } from '../middleware/authorization';
 import { asyncHandler, AppError } from '../middleware/errorHandler';
 import { prisma } from '../lib/prisma';
 import { logger } from '../utils/logger';
@@ -496,8 +497,11 @@ router.get('/:id', optionalAuth, [
 
   const { id } = req.params;
 
-  const post = await prisma.post.findUnique({
-    where: { id },
+  const post = await prisma.post.findFirst({
+    where: { 
+      id,
+      isDeleted: false, // Only return non-deleted posts
+    },
     include: {
       author: {
         select: {
@@ -528,6 +532,9 @@ router.get('/:id', optionalAuth, [
         }
       },
       comments: {
+        where: {
+          isDeleted: false, // Only return non-deleted comments
+        },
         include: {
           author: {
             select: {
@@ -600,6 +607,9 @@ router.get('/:id', optionalAuth, [
       downvotes,
       userVote: userVote ? userVote.type : null,
       comments: commentsWithScores,
+      isLocked: post.isLocked || false,
+      isPinned: post.isPinned || false,
+      isDeleted: post.isDeleted || false,
     }
   });
 }));
@@ -828,7 +838,7 @@ router.put('/:id', authenticate, [
   });
 }));
 
-// Delete post
+// Delete post (author, moderator, or admin)
 router.delete('/:id', authenticate, [
   param('id').isString().isLength({ min: 1 }).withMessage('Invalid post ID'),
 ], asyncHandler(async (req: AuthRequest, res: Response) => {
@@ -839,7 +849,7 @@ router.delete('/:id', authenticate, [
 
   const { id } = req.params;
 
-  // Check if post exists and user owns it
+  // Check if post exists
   const post = await prisma.post.findUnique({
     where: { id }
   });
@@ -848,9 +858,13 @@ router.delete('/:id', authenticate, [
     throw new AppError('Post not found', 404);
   }
 
-  if (post.authorId !== req.user!.id) {
+  // Check if user can delete (author, moderator, or admin)
+  const canDelete = await canModeratePost(id, req.user!.id);
+  if (!canDelete) {
     throw new AppError('Not authorized to delete this post', 403);
   }
+
+  const isModeratorAction = post.authorId !== req.user!.id;
 
   // Soft delete the post
   await prisma.post.update({
@@ -862,11 +876,13 @@ router.delete('/:id', authenticate, [
   await prisma.auditLog.create({
     data: {
       userId: req.user!.id,
-      action: 'DELETE_POST',
+      action: isModeratorAction ? 'MODERATOR_DELETE_POST' : 'DELETE_POST',
       resource: 'post',
       resourceId: id,
       details: {
         title: post.title,
+        authorId: post.authorId,
+        isModeratorAction,
       },
       ipAddress: req.ip,
       userAgent: req.get('User-Agent'),
@@ -876,6 +892,80 @@ router.delete('/:id', authenticate, [
   res.json({
     success: true,
     message: 'Post deleted successfully'
+  });
+}));
+
+// Moderation: Lock/Unlock post (moderator/admin only)
+router.post('/:id/lock', authenticate, requirePostModeration, [
+  param('id').isString().isLength({ min: 1 }).withMessage('Invalid post ID'),
+  body('locked').isBoolean().withMessage('Locked must be a boolean'),
+], asyncHandler(async (req: AuthRequest, res: Response) => {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    throw new AppError(`Validation failed: ${errors.array().map(e => e.msg).join(', ')}`, 400);
+  }
+
+  const { id } = req.params;
+  const { locked } = req.body;
+
+  const post = await prisma.post.update({
+    where: { id },
+    data: { isLocked: locked }
+  });
+
+  await prisma.auditLog.create({
+    data: {
+      userId: req.user!.id,
+      action: locked ? 'LOCK_POST' : 'UNLOCK_POST',
+      resource: 'post',
+      resourceId: id,
+      details: { title: post.title },
+      ipAddress: req.ip,
+      userAgent: req.get('User-Agent'),
+    }
+  });
+
+  res.json({
+    success: true,
+    message: locked ? 'Post locked successfully' : 'Post unlocked successfully',
+    data: { isLocked: locked }
+  });
+}));
+
+// Moderation: Pin/Unpin post (moderator/admin only)
+router.post('/:id/pin', authenticate, requirePostModeration, [
+  param('id').isString().isLength({ min: 1 }).withMessage('Invalid post ID'),
+  body('pinned').isBoolean().withMessage('Pinned must be a boolean'),
+], asyncHandler(async (req: AuthRequest, res: Response) => {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    throw new AppError(`Validation failed: ${errors.array().map(e => e.msg).join(', ')}`, 400);
+  }
+
+  const { id } = req.params;
+  const { pinned } = req.body;
+
+  const post = await prisma.post.update({
+    where: { id },
+    data: { isPinned: pinned }
+  });
+
+  await prisma.auditLog.create({
+    data: {
+      userId: req.user!.id,
+      action: pinned ? 'PIN_POST' : 'UNPIN_POST',
+      resource: 'post',
+      resourceId: id,
+      details: { title: post.title },
+      ipAddress: req.ip,
+      userAgent: req.get('User-Agent'),
+    }
+  });
+
+  res.json({
+    success: true,
+    message: pinned ? 'Post pinned successfully' : 'Post unpinned successfully',
+    data: { isPinned: pinned }
   });
 }));
 

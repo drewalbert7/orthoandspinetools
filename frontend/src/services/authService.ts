@@ -154,7 +154,7 @@ class AuthService {
   async refreshUser(): Promise<User> {
     try {
       const response = await api.get('/auth/me');
-      const user = response.data;
+      const user = response.data.data || response.data;
       
       // Update stored user data
       localStorage.setItem('user', JSON.stringify(user));
@@ -168,8 +168,8 @@ class AuthService {
   // Update user profile
   async updateProfile(userData: Partial<User>): Promise<User> {
     try {
-      const response = await api.put('/auth/profile', userData);
-      const user = response.data;
+      const response = await api.put('/auth/me', userData);
+      const user = response.data.data;
       
       // Update stored user data
       localStorage.setItem('user', JSON.stringify(user));

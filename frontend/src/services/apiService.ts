@@ -63,6 +63,10 @@ export interface Post {
   userVote?: 'upvote' | 'downvote' | null;
   commentsCount?: number;
   _count?: { comments: number; votes: number };
+  // Moderation fields
+  isLocked?: boolean;
+  isPinned?: boolean;
+  isDeleted?: boolean;
 }
 
 export interface Comment {
@@ -83,7 +87,15 @@ export interface Comment {
   downvotes?: number;
   userVote?: 'upvote' | 'downvote' | null;
   _count?: { replies: number; votes: number };
-  post?: { id: string; title: string };
+  post?: { 
+    id: string; 
+    title: string;
+    community?: {
+      id: string;
+      name: string;
+      slug: string;
+    };
+  };
 }
 
 export interface Community {
@@ -139,6 +151,7 @@ export interface UserProfile {
     communitiesCount: number;
   };
   posts: Post[];
+  comments?: Comment[];
   communities: Community[];
 }
 
@@ -281,21 +294,54 @@ class ApiService {
   async getComments(postId: string): Promise<Comment[]> {
     try {
       const response = await api.get(`/comments/post/${postId}`);
-      return response.data.data?.comments || response.data;
+      // Backend returns { success: true, data: { comments: [...], pagination: {...} } }
+      if (response.data.data?.comments) {
+        return response.data.data.comments;
+      }
+      // Fallback for different response structures
+      if (Array.isArray(response.data.data)) {
+        return response.data.data;
+      }
+      if (Array.isArray(response.data)) {
+        return response.data;
+      }
+      return [];
     } catch (error: any) {
+      console.error('Error fetching comments:', error);
       throw new Error(error.response?.data?.message || 'Failed to fetch comments');
     }
   }
 
   async createComment(postId: string, content: string, parentId?: string): Promise<Comment> {
     try {
-      const response = await api.post(`/posts/${postId}/comments`, {
-        content,
-        parentId,
-      });
+      const payload: any = {
+        postId: String(postId),
+        content: String(content).trim(),
+      };
+      
+      if (parentId) {
+        payload.parentId = String(parentId);
+      }
+      
+      console.log('🌐 API: Creating comment', { payload, url: '/comments' });
+      const response = await api.post('/comments', payload);
+      console.log('🌐 API: Comment created response', { status: response.status, data: response.data });
+      
+      // Handle different response structures
+      if (response.data?.data) {
+        return response.data.data;
+      }
+      if (response.data?.success && response.data?.data) {
+        return response.data.data;
+      }
       return response.data;
     } catch (error: any) {
-      throw new Error(error.response?.data?.message || 'Failed to create comment');
+      const errorMessage = error.response?.data?.message 
+        || error.response?.data?.error 
+        || error.message 
+        || 'Failed to create comment';
+      
+      throw new Error(errorMessage);
     }
   }
 
@@ -524,6 +570,94 @@ class ApiService {
       return response.data;
     } catch (error: any) {
       throw new Error(error.response?.data?.message || 'Failed to upload file');
+    }
+  }
+
+  // Moderation
+  async getModerationQueue(type: 'post' | 'comment' = 'post', page = 1, limit = 20): Promise<any> {
+    try {
+      const response = await api.get(`/moderation/queue?type=${type}&page=${page}&limit=${limit}`);
+      return response.data.data;
+    } catch (error: any) {
+      throw new Error(error.response?.data?.message || 'Failed to fetch moderation queue');
+    }
+  }
+
+  async getModerationUsers(page = 1, limit = 20, search?: string): Promise<any> {
+    try {
+      const params = new URLSearchParams({
+        page: page.toString(),
+        limit: limit.toString(),
+      });
+      if (search) params.append('search', search);
+      
+      const response = await api.get(`/moderation/users?${params}`);
+      return response.data.data;
+    } catch (error: any) {
+      throw new Error(error.response?.data?.message || 'Failed to fetch users');
+    }
+  }
+
+  async banUser(userId: string, banned: boolean, reason?: string): Promise<void> {
+    try {
+      await api.post(`/moderation/users/${userId}/ban`, { banned, reason });
+    } catch (error: any) {
+      throw new Error(error.response?.data?.message || 'Failed to ban/unban user');
+    }
+  }
+
+  async promoteUser(userId: string, isAdmin: boolean): Promise<void> {
+    try {
+      await api.post(`/moderation/users/${userId}/promote`, { isAdmin });
+    } catch (error: any) {
+      throw new Error(error.response?.data?.message || 'Failed to promote/demote user');
+    }
+  }
+
+  async addCommunityModerator(communityId: string, userId: string): Promise<void> {
+    try {
+      await api.post(`/moderation/communities/${communityId}/moderators`, {
+        userId,
+        action: 'add',
+      });
+    } catch (error: any) {
+      throw new Error(error.response?.data?.message || 'Failed to add moderator');
+    }
+  }
+
+  async removeCommunityModerator(communityId: string, userId: string): Promise<void> {
+    try {
+      await api.post(`/moderation/communities/${communityId}/moderators`, {
+        userId,
+        action: 'remove',
+      });
+    } catch (error: any) {
+      throw new Error(error.response?.data?.message || 'Failed to remove moderator');
+    }
+  }
+
+  async getModerationPermissions(): Promise<any> {
+    try {
+      const response = await api.get('/moderation/permissions');
+      return response.data.data;
+    } catch (error: any) {
+      throw new Error(error.response?.data?.message || 'Failed to fetch moderation permissions');
+    }
+  }
+
+  async lockPost(postId: string, locked: boolean): Promise<void> {
+    try {
+      await api.post(`/posts/${postId}/lock`, { locked });
+    } catch (error: any) {
+      throw new Error(error.response?.data?.message || 'Failed to lock/unlock post');
+    }
+  }
+
+  async pinPost(postId: string, pinned: boolean): Promise<void> {
+    try {
+      await api.post(`/posts/${postId}/pin`, { pinned });
+    } catch (error: any) {
+      throw new Error(error.response?.data?.message || 'Failed to pin/unpin post');
     }
   }
 }

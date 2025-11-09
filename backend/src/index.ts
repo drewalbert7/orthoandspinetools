@@ -16,6 +16,7 @@ import commentRoutes from './routes/comments';
 import toolRoutes from './routes/tools';
 import uploadRoutes from './routes/upload';
 import karmaRoutes from './routes/karma';
+import moderationRoutes from './routes/moderation';
 
 // Import middleware
 import { errorHandler } from './middleware/errorHandler';
@@ -139,6 +140,7 @@ app.use('/api/comments', commentRoutes);
 app.use('/api/tools', toolRoutes);
 app.use('/api/upload', uploadRoutes);
 app.use('/api/karma', karmaRoutes);
+app.use('/api/moderation', moderationRoutes);
 
 // Error handling middleware
 app.use(errorHandler);
@@ -170,13 +172,32 @@ process.on('SIGINT', async () => {
   });
 });
 
-// Start server
-const PORT = process.env.PORT || 3001;
-server.listen(PORT, () => {
-  logger.info(`🚀 OrthoAndSpineTools API server running on port ${PORT}`);
-  logger.info(`📊 Environment: ${process.env.NODE_ENV || 'development'}`);
-  logger.info(`🔗 CORS Origins: ${(process.env.CORS_ORIGINS || allowedOrigins.join(', '))}`);
-  logger.info(`🔒 Trust Proxy: ${app.get('trust proxy')}`);
-});
+// Verify database connection before starting server
+async function startServer() {
+  try {
+    // Test database connection
+    await prisma.$queryRaw`SELECT 1`;
+    logger.info('✅ Database connection verified');
+    
+    const PORT = process.env.PORT || 3001;
+    server.listen(PORT, () => {
+      logger.info(`🚀 OrthoAndSpineTools API server running on port ${PORT}`);
+      logger.info(`📊 Environment: ${process.env.NODE_ENV || 'development'}`);
+      logger.info(`🔗 CORS Origins: ${(process.env.CORS_ORIGINS || allowedOrigins.join(', '))}`);
+      logger.info(`🔒 Trust Proxy: ${app.get('trust proxy')}`);
+    });
+  } catch (error: any) {
+    logger.error({
+      error: 'Failed to connect to database on startup',
+      message: error.message,
+      stack: error.stack,
+    });
+    logger.error('❌ Server startup aborted - database connection failed');
+    process.exit(1);
+  }
+}
+
+// Start server with database verification
+startServer();
 
 export default app;

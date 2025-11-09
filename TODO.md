@@ -83,6 +83,19 @@
 
 ### **CURRENT CRITICAL ISSUES** ⚠️
 
+#### **Database Password Mismatch** (CRITICAL) ✅ **RESOLVED**
+- **Issue**: Backend couldn't connect to database - "Authentication failed" errors for login and posts
+- **Root Cause**: Postgres container was initialized with a different password than `DATABASE_URL`. The `POSTGRES_PASSWORD` env var only applies on first initialization, not when volume already exists
+- **Fix Applied**: 
+  - Reset postgres password: `ALTER USER postgres WITH PASSWORD 'password';`
+  - Added database connection verification on server startup
+  - Updated health check to use `/api/health` endpoint that tests database
+- **Prevention**: 
+  - Server now verifies database connection before starting (exits with error if fails)
+  - Health check endpoint tests database connectivity
+  - Added startup verification to prevent silent failures
+- **Status**: ✅ **FIXED** - Login and posts loading correctly
+
 #### **Database Column Name Issues** (CRITICAL) ✅ **RESOLVED**
 - **Issue**: Raw SQL queries were using snake_case column names instead of camelCase
 - **Root Cause**: Prisma uses camelCase column names but raw SQL queries used snake_case (`user_id` vs `userId`)
@@ -179,6 +192,21 @@ cd /home/dstrad/orthoandspinetools-main
 - **Current Data**: Likely empty or minimal
 
 ### **DATABASE MAINTENANCE CHECKLIST** 🗄️ **CRITICAL**
+
+#### **Database Connection & Password Management:**
+1. **🔐 PASSWORD CONSISTENCY** - Ensure `POSTGRES_PASSWORD` in docker-compose.yml matches `DATABASE_URL`:
+   - Current password: `password` (set in both places)
+   - If password mismatch occurs: `docker-compose exec postgres psql -U postgres -c "ALTER USER postgres WITH PASSWORD 'password';"`
+   - **Note**: `POSTGRES_PASSWORD` env var only applies on first initialization, not when volume exists
+2. **✅ STARTUP VERIFICATION** - Server now verifies database connection before starting:
+   - If connection fails, server exits with error (prevents silent failures)
+   - Check logs for "✅ Database connection verified" on startup
+   - Health check endpoint (`/api/health`) tests database connectivity
+3. **🔍 TROUBLESHOOTING** - If database connection fails:
+   - Verify postgres container is running: `docker-compose ps postgres`
+   - Test connection: `docker-compose exec postgres psql -U postgres -d orthoandspinetools -c "SELECT 1;"`
+   - Check DATABASE_URL matches postgres password
+   - Verify network connectivity between backend and postgres containers
 
 #### **Before Making ANY Changes to Database Queries:**
 1. **📋 ALWAYS CHECK COLUMN NAMES** - Verify Prisma schema uses camelCase column names:
@@ -305,6 +333,11 @@ Before considering any task complete:
 - [ ] Live site still functions
 - [ ] **HTTPS site accessible** (https://orthoandspinetools.com)
 - [ ] **SSL certificate valid** (no "connection not private" errors)
+- [ ] **Database connection verified** (check logs for "✅ Database connection verified")
+- [ ] **Login functionality working** (user can sign in successfully)
+- [ ] **Posts loading correctly** (home page shows posts from database)
+- [ ] **Comment submission working** (can submit comments on posts)
+- [ ] **Profile page loading** (user profile displays correctly with posts and comments)
 - [ ] **Communities API working** (https://orthoandspinetools.com/api/communities)
 - [ ] **Posts API working** (https://orthoandspinetools.com/api/posts)
 - [ ] **Database queries successful** (no column name errors)
@@ -903,14 +936,16 @@ The platform focuses on:
 
 ---
 
-**Last Updated**: October 12, 2025 - 12:22 AM  
-**Status**: 🚀 **LIVE AND FUNCTIONAL** - Database column issues resolved, API working perfectly  
+**Last Updated**: November 9, 2025 - 3:20 AM  
+**Status**: 🚀 **LIVE AND FUNCTIONAL** - Database connection verified, all features operational  
 **SSL Status**: 🔒 **SECURE** - HTTPS working with valid Let's Encrypt certificates  
-**Database Status**: 🔗 **CONNECTED** - PostgreSQL authentication working correctly, no column errors  
+**Database Status**: 🔗 **CONNECTED** - PostgreSQL authentication working, startup verification active  
 **Authentication Status**: ✅ **WORKING** - User sign-in and registration functional  
+**Comment System**: ✅ **WORKING** - Comment submission functional with Reddit-style keyboard shortcuts  
+**Profile Pages**: ✅ **WORKING** - Profile loading with complete post and comment data  
 **Rich Text Editor**: ✅ **COMPLETE** - Full Reddit-like editor with all formatting options  
 **Communities API**: ✅ **FIXED** - Weekly metrics now calculating correctly (Spine: 2, Sports: 3, Ortho Trauma: 1 contributions)  
-**Next Session**: Enhanced profile page, moderator/admin role system, content moderation dashboard
+**Next Session**: Enhanced profile page improvements, moderator/admin role system, content moderation dashboard
 
 ## 🛡️ **PREVENTION MEASURES & SCALING PREPARATION**
 
@@ -1233,12 +1268,60 @@ The platform focuses on:
 - ✅ **Profile Loading Fixed** - Profile page loads correctly with star state
 - ✅ **Feed Integration** - Followed communities determine home feed content
 
+## ✅ **COMPLETED (November 9, 2025)**
+
+### 🔐 **Database Connection & Authentication Fixes** ✅ **CRITICAL INFRASTRUCTURE FIX**
+- ✅ **Database Password Mismatch Resolved** - Fixed PostgreSQL authentication failure preventing login and posts from loading
+- ✅ **Root Cause Identified** - Postgres container initialized with different password than `DATABASE_URL` in docker-compose.yml
+- ✅ **Password Reset Applied** - Reset postgres password to match DATABASE_URL: `ALTER USER postgres WITH PASSWORD 'password';`
+- ✅ **Startup Verification Added** - Backend now verifies database connection before starting (fails fast if connection fails)
+- ✅ **Health Check Updated** - Docker health check now uses `/api/health` endpoint that tests database connectivity
+- ✅ **Error Handling Improved** - Better error logging for Prisma connection errors with detailed error messages
+- ✅ **Prevention Measures** - Added comprehensive documentation and troubleshooting steps in database maintenance checklist
+- ✅ **Login Functionality Restored** - User authentication and login working correctly
+- ✅ **Posts Loading Restored** - All posts now load correctly from database
+- ✅ **Backend Rebuilt** - Fresh backend container with database connection verification
+
+### 💬 **Comment Submission System Fixed** ✅ **CRITICAL FEATURE FIX**
+- ✅ **Comment Endpoint Corrected** - Fixed frontend to call `/api/comments` instead of `/api/posts/{id}/comments`
+- ✅ **API Payload Fixed** - Updated comment creation to send `postId` in request body
+- ✅ **Form Submission Fixed** - Implemented proper form submission with `onSubmit` handler and `preventDefault()`
+- ✅ **Keyboard Shortcut Added** - Ctrl/Cmd+Enter now submits comments (Reddit-style)
+- ✅ **Error Handling Enhanced** - Replaced `alert()` with `react-hot-toast` notifications
+- ✅ **Locked Post Validation** - Added backend validation and frontend UI to prevent comments on locked posts
+- ✅ **Optimistic Updates** - Comments appear immediately after submission for better UX
+- ✅ **Query Invalidation** - Post comment count updates automatically after comment creation
+- ✅ **Conditional Rendering Fixed** - Comment box now shows correctly when user is logged in and post is not locked
+- ✅ **Frontend Rebuilt** - Updated comment submission flow deployed
+
+### 👤 **Profile Page Loading Fixed** ✅ **USER PROFILE FIX**
+- ✅ **Backend Response Enhanced** - `/api/auth/profile` endpoint now returns all necessary fields for posts and comments
+- ✅ **Post Data Complete** - Profile endpoint includes `author`, `attachments`, `votes`, `isLocked`, `isPinned`, `isDeleted` status
+- ✅ **Comment Data Complete** - Profile endpoint includes user comments with proper post and community data
+- ✅ **TypeScript Interfaces Updated** - Fixed `Comment` interface to include optional `community` object within `post` property
+- ✅ **Error Handling Improved** - Profile page now shows error messages and "Try again" button for better UX
+- ✅ **Data Structure Fixed** - All nested relationships properly included in profile response
+
+### 🌐 **Website Availability Fixed** ✅ **INFRASTRUCTURE FIX**
+- ✅ **Nginx Container Restarted** - Restarted nginx container that was stopped during frontend rebuild
+- ✅ **All Containers Verified** - Confirmed nginx, frontend, backend, and postgres all running
+- ✅ **HTTPS Verified** - Confirmed website accessible over HTTPS with HTTP/2 200 responses
+- ✅ **Frontend Assets Verified** - Confirmed index.html and JavaScript bundles present and accessible
+
+### 🛡️ **Database Connection Safeguards Implemented** ✅ **PREVENTION SYSTEM**
+- ✅ **Startup Database Verification** - Server verifies database connection before starting (exits with error if fails)
+- ✅ **Health Check Endpoint** - `/api/health` endpoint tests database connectivity for Docker health checks
+- ✅ **Password Management Documentation** - Added comprehensive password consistency guidelines
+- ✅ **Troubleshooting Guide** - Added step-by-step troubleshooting for database connection issues
+- ✅ **Error Logging Enhanced** - Improved error messages for Prisma connection failures
+- ✅ **Prevention Checklist** - Added database connection verification to maintenance checklist
+
 ## 🚀 **CURRENT SYSTEM STATUS**
 
 **Live Site**: https://orthoandspinetools.com  
 **Database**: 7 posts, 4 users, operational  
 **Status**: 🚀 **FULLY OPERATIONAL**  
-**Last Major Update**: October 27, 2025 - Star follow/unfollow fix, profile loading restored
+**Last Major Update**: November 9, 2025 - Database connection fixes, comment submission restored, profile loading fixed
 
 ### **Quick Reference Commands**
 ```bash
