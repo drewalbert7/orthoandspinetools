@@ -5,6 +5,7 @@ import { useQuery } from '@tanstack/react-query';
 import { apiService, UserProfile, Post, Comment } from '../services/apiService';
 import VoteButton from '../components/VoteButton';
 import PostAttachments from '../components/PostAttachments';
+import ShareButton from '../components/ShareButton';
 import { formatDistanceToNow } from 'date-fns';
 
 type TabType = 'overview' | 'posts' | 'comments' | 'saved' | 'history' | 'upvoted' | 'downvoted';
@@ -86,12 +87,12 @@ const PostCard: React.FC<{ post: Post }> = ({ post }) => {
             </svg>
             <span className="text-sm font-medium text-gray-700">{post._count?.comments || post.commentsCount || 0}</span>
           </Link>
-          <button className="flex items-center space-x-1 px-2 py-1 rounded-md border border-gray-200 hover:border-gray-300 bg-gray-50 hover:bg-gray-100 transition-colors">
-            <svg className="w-4 h-4 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.632-2.684 3 3 0 00-5.632 2.684zm0 9.316a3 3 0 105.632 2.684 3 3 0 00-5.632-2.684z" />
-            </svg>
-            <span className="text-sm font-medium text-gray-700">Share</span>
-          </button>
+          <ShareButton
+            url={`/post/${post.id}`}
+            title={post.title}
+            type="post"
+            size="sm"
+          />
         </div>
       </div>
     </div>

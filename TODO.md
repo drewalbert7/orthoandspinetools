@@ -1445,13 +1445,64 @@ The platform focuses on:
    - **Security Fix**: Removed hardcoded credentials from docker-compose.yml
    - **Status**: ✅ **RESOLVED** - Cloudinary fully configured and secured
 
+3. **Share Button Not Working** ⚠️ **PENDING** (December 7, 2025)
+   - **Issue**: Share buttons on posts and comments do not open the share menu when clicked
+   - **Location**: All pages with posts (Home, Community, Profile, Popular, PostDetail) and comments
+   - **Component**: `frontend/src/components/ShareButton.tsx`
+   - **Attempted Fixes**:
+     - Created ShareButton component with React Portal for menu rendering
+     - Added click handlers with preventDefault and stopPropagation
+     - Implemented fixed positioning with getBoundingClientRect for menu placement
+     - Added visible backdrop (bg-black bg-opacity-20) to indicate menu state
+     - Menu renders at document.body level to avoid clipping issues
+   - **Current Status**: 
+     - Component created and integrated across all pages
+     - TypeScript compilation successful
+     - Frontend build successful
+     - Menu does not appear when share button is clicked (even when signed in)
+   - **Next Steps**:
+     - Check browser console for JavaScript errors when clicking share button
+     - Verify React state updates are working (showMenu state)
+     - Test if portal rendering is working correctly
+     - Check for CSS z-index conflicts or positioning issues
+     - Verify event handlers are properly attached
+     - Consider using a simpler dropdown approach if portal is causing issues
+   - **Files Modified**:
+     - `frontend/src/components/ShareButton.tsx` (new component)
+     - `frontend/src/pages/Home.tsx`
+     - `frontend/src/pages/Community.tsx`
+     - `frontend/src/pages/Profile.tsx`
+     - `frontend/src/pages/Popular.tsx`
+     - `frontend/src/pages/PostDetail.tsx`
+     - `frontend/src/components/PostCard.tsx`
+     - `frontend/src/components/Comment.tsx`
+   - **Status**: ⚠️ **IN PROGRESS** - Needs debugging to identify why menu doesn't appear
+
+4. **Create Post Upload Image Link Issue** ⚠️ **PENDING** (December 7, 2025)
+   - **Issue**: Upload image link fills the whole page on the create post page
+   - **Location**: `frontend/src/pages/CreatePost.tsx` - Images & Video tab upload area
+   - **Problem**: The upload area or image link is taking up the entire page instead of being contained within the form
+   - **Impact**: Poor user experience, makes the create post form unusable
+   - **Next Steps**:
+     - Check CSS styling for upload area container
+     - Verify width/height constraints on upload box
+     - Check for CSS conflicts causing full-page expansion
+     - Review drag-and-drop area styling
+     - Ensure upload area is properly contained within form boundaries
+     - Check for z-index or positioning issues
+     - Verify responsive design breakpoints
+   - **Files to Review**:
+     - `frontend/src/pages/CreatePost.tsx` (upload area styling)
+     - Check for conflicting CSS classes or inline styles
+   - **Status**: ⚠️ **NEEDS DEBUGGING** - Upload area layout issue needs investigation
+
 ## 🚀 **CURRENT SYSTEM STATUS**
 
 **Live Site**: https://orthoandspinetools.com  
 **Database**: 34 posts, 4 users, 9 communities, operational  
 **Status**: 🚀 **FULLY OPERATIONAL**  
-**Last Major Update**: December 7, 2025 - Moderator & administrator system implemented, drewalbertmd verified as admin, automatic image resizing, profile picture upload fix, security improvements  
-**Last Review**: December 7, 2025 - Site review completed, health check fixed, Cloudinary configured, security vulnerabilities resolved, moderation system implemented and verified, administrator setup complete
+**Last Major Update**: December 7, 2025 - Moderator & administrator system implemented, drewalbertmd verified as admin, automatic image resizing, profile picture upload fix, security improvements, Reddit-style CreatePost restored  
+**Last Review**: December 7, 2025 - Site review completed, health check fixed, Cloudinary configured, security vulnerabilities resolved, moderation system implemented and verified, administrator setup complete, CreatePost page restored with full Reddit-style functionality
 
 ### **Quick Reference Commands**
 ```bash

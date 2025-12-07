@@ -3,6 +3,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { Comment as CommentType } from '../types';
 import { formatDistanceToNow } from 'date-fns';
 import CommentModerationMenu from './CommentModerationMenu';
+import ShareButton from './ShareButton';
 
 interface CommentProps {
   comment: CommentType;
@@ -116,9 +117,12 @@ const Comment: React.FC<CommentProps> = ({
                   Reply
                 </button>
               )}
-              <button className="hover:text-gray-700 transition-colors">
-                Share
-              </button>
+              <ShareButton
+                url={`/post/${comment.post.id}#comment-${comment.id}`}
+                type="comment"
+                size="sm"
+                className="hover:text-gray-700 transition-colors"
+              />
               <button className="hover:text-gray-700 transition-colors">
                 Report
               </button>
