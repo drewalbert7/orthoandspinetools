@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   # PostgreSQL Database
   postgres:
@@ -23,6 +21,8 @@ services:
       context: ./backend
       dockerfile: Dockerfile
     container_name: orthoandspinetools-backend
+    env_file:
+      - .env.cloudinary
     environment:
       NODE_ENV: development
       PORT: 3001
@@ -30,10 +30,11 @@ services:
       JWT_SECRET: your-super-secret-jwt-key-change-this-in-production
       JWT_EXPIRES_IN: 7d
       CORS_ORIGIN: http://localhost:3000
-      # Cloudinary Configuration (use environment variables!)
-      CLOUDINARY_CLOUD_NAME: ${CLOUDINARY_CLOUD_NAME}
-      CLOUDINARY_API_KEY: ${CLOUDINARY_API_KEY}
-      CLOUDINARY_API_SECRET: ${CLOUDINARY_API_SECRET}
+      # Cloudinary Configuration (loaded from .env.cloudinary file via env_file)
+      # These will be overridden by env_file if present, otherwise use shell environment
+      CLOUDINARY_CLOUD_NAME: ${CLOUDINARY_CLOUD_NAME:-dklzlt7hm}
+      CLOUDINARY_API_KEY: ${CLOUDINARY_API_KEY:-729558359667584}
+      CLOUDINARY_API_SECRET: ${CLOUDINARY_API_SECRET:-aBWDK-w0t-SbT-_UUb8sjRmYruU}
     ports:
       - "3001:3001"
     depends_on:

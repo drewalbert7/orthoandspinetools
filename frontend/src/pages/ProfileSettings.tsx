@@ -5,6 +5,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiService } from '../services/apiService';
 import { authService } from '../services/authService';
 import { toast } from 'react-hot-toast';
+import { resizeAvatar } from '../utils/imageResize';
 
 const ProfileSettings: React.FC = () => {
   const { user, refreshUser } = useAuth();
@@ -57,6 +58,8 @@ const ProfileSettings: React.FC = () => {
     location: '',
     website: '',
   });
+  const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
+  const [profileImage, setProfileImage] = useState<string | null>(null);
 
   const [passwordData, setPasswordData] = useState({
     currentPassword: '',
@@ -79,6 +82,7 @@ const ProfileSettings: React.FC = () => {
         location: user.location || '',
         website: user.website || '',
       });
+      setProfileImage(user.profileImage || null);
     }
   }, [userProfileData]);
 
@@ -125,6 +129,48 @@ const ProfileSettings: React.FC = () => {
     }));
   };
 
+  const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // Validate file type
+    if (!file.type.match(/^image\/(jpeg|jpg|png|gif|webp)$/)) {
+      toast.error('Please upload a JPG, PNG, GIF, or WebP image');
+      return;
+    }
+
+    setIsUploadingAvatar(true);
+    try {
+      // Automatically resize and compress the image
+      toast.loading('Resizing image...', { id: 'resize-toast' });
+      const resizedFile = await resizeAvatar(file);
+      
+      toast.loading('Uploading profile picture...', { id: 'resize-toast' });
+      const result = await apiService.uploadAvatar(resizedFile);
+      setProfileImage(result.path);
+      
+      // Update profile with new image URL
+      await profileMutation.mutateAsync({ profileImage: result.path });
+      toast.success('Profile picture updated!', { id: 'resize-toast' });
+    } catch (error: any) {
+      toast.error(error.message || 'Failed to upload profile picture', { id: 'resize-toast' });
+    } finally {
+      setIsUploadingAvatar(false);
+      // Reset file input
+      e.target.value = '';
+    }
+  };
+
+  const handleRemoveAvatar = async () => {
+    try {
+      await profileMutation.mutateAsync({ profileImage: '' });
+      setProfileImage(null);
+      toast.success('Profile picture removed');
+    } catch (error: any) {
+      toast.error(error.message || 'Failed to remove profile picture');
+    }
+  };
+
   const handleProfileSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
@@ -138,6 +184,7 @@ const ProfileSettings: React.FC = () => {
     if (formData.yearsExperience) updateData.yearsExperience = parseInt(formData.yearsExperience);
     if (formData.location) updateData.location = formData.location;
     if (formData.website) updateData.website = formData.website;
+    if (profileImage !== null) updateData.profileImage = profileImage;
 
     profileMutation.mutate(updateData);
   };
@@ -220,6 +267,65 @@ const ProfileSettings: React.FC = () => {
       {activeTab === 'profile' && (
         <div className="bg-white border border-gray-200 rounded-md p-6">
           <form onSubmit={handleProfileSubmit} className="space-y-6">
+            {/* Profile Picture */}
+            <div>
+              <h2 className="text-lg font-semibold text-gray-900 mb-4">Profile Picture</h2>
+              <div className="flex items-center space-x-6">
+                {/* Current Profile Picture */}
+                <div className="flex-shrink-0">
+                  {profileImage ? (
+                    <img
+                      src={profileImage}
+                      alt="Profile"
+                      className="w-20 h-20 rounded-full object-cover border-2 border-gray-200"
+                    />
+                  ) : (
+                    <div className="w-20 h-20 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center border-2 border-gray-200">
+                      <span className="text-white font-bold text-2xl">
+                        {userProfileData?.user?.firstName?.[0] || ''}{userProfileData?.user?.lastName?.[0] || ''}
+                      </span>
+                    </div>
+                  )}
+                </div>
+                
+                {/* Upload Controls */}
+                <div className="flex-1">
+                  <div className="space-y-3">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Upload Profile Picture
+                      </label>
+                      <input
+                        type="file"
+                        accept="image/jpeg,image/jpg,image/png"
+                        onChange={handleAvatarUpload}
+                        disabled={isUploadingAvatar || profileMutation.isPending}
+                        className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-medium file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 disabled:opacity-50"
+                      />
+                      <p className="text-xs text-gray-500 mt-1">
+                        Any image format. Automatically resized to 256x256px and optimized.
+                      </p>
+                    </div>
+                    
+                    {profileImage && (
+                      <button
+                        type="button"
+                        onClick={handleRemoveAvatar}
+                        disabled={isUploadingAvatar || profileMutation.isPending}
+                        className="text-sm text-red-600 hover:text-red-800 disabled:opacity-50"
+                      >
+                        Remove picture
+                      </button>
+                    )}
+                    
+                    {isUploadingAvatar && (
+                      <p className="text-sm text-gray-500">Uploading...</p>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </div>
+
             {/* Basic Information */}
             <div>
               <h2 className="text-lg font-semibold text-gray-900 mb-4">Basic Information</h2>

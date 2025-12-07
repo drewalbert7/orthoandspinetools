@@ -199,6 +199,15 @@ const Profile: React.FC = () => {
     return `${firstName?.[0] || ''}${lastName?.[0] || ''}`.toUpperCase() || 'U';
   };
 
+  const formatKarma = (karma: number): string => {
+    if (karma >= 1000000) {
+      return (karma / 1000000).toFixed(1) + 'M';
+    } else if (karma >= 1000) {
+      return (karma / 1000).toFixed(1) + 'k';
+    }
+    return karma.toString();
+  };
+
   return (
     <div className="max-w-6xl mx-auto">
       <div className="flex gap-6">
@@ -207,20 +216,22 @@ const Profile: React.FC = () => {
               {/* User Header */}
               <div className="bg-white border border-gray-200 rounded-md p-6 mb-4">
             <div className="flex items-start space-x-4">
-              {/* Profile Avatar */}
-              {profileUser.profileImage ? (
-                <img
-                  src={profileUser.profileImage}
-                  alt={`${profileUser.firstName} ${profileUser.lastName}`}
-                  className="w-20 h-20 rounded-full object-cover border-2 border-gray-200"
-                />
-              ) : (
-                <div className="w-20 h-20 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center border-2 border-gray-200">
-                  <span className="text-white font-bold text-2xl">
-                    {getInitials(profileUser.firstName, profileUser.lastName)}
-                  </span>
-                </div>
-              )}
+              {/* Profile Avatar - Reddit Style */}
+              <div className="relative group">
+                {profileUser.profileImage ? (
+                  <img
+                    src={profileUser.profileImage}
+                    alt={`${profileUser.firstName} ${profileUser.lastName}`}
+                    className="w-20 h-20 rounded-full object-cover border-2 border-gray-200 hover:border-gray-300 transition-colors"
+                  />
+                ) : (
+                  <div className="w-20 h-20 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center border-2 border-gray-200 hover:border-gray-300 transition-colors">
+                    <span className="text-white font-bold text-2xl">
+                      {getInitials(profileUser.firstName, profileUser.lastName)}
+                    </span>
+                  </div>
+                )}
+              </div>
               <div className="flex-1">
                 <div className="flex items-center justify-between">
                   <div>
@@ -253,31 +264,27 @@ const Profile: React.FC = () => {
               </div>
             </div>
 
-            {/* Stats */}
-            <div className="flex items-center space-x-6 mt-4 pt-4 border-t border-gray-200">
+            {/* Stats - Reddit Style */}
+            <div className="flex items-center space-x-8 mt-4 pt-4 border-t border-gray-200">
               <div className="text-center">
-                <div className="text-lg font-semibold text-gray-900">{stats.totalKarma}</div>
-                <div className="text-sm text-gray-500">Total Karma</div>
+                <div className="text-2xl font-bold text-gray-900">{formatKarma(stats.totalKarma)}</div>
+                <div className="text-xs text-gray-500 uppercase tracking-wide">Karma</div>
               </div>
               <div className="text-center">
-                <div className="text-lg font-semibold text-gray-900">{stats.postKarma}</div>
-                <div className="text-sm text-gray-500">Post Karma</div>
+                <div className="text-lg font-semibold text-gray-900">{formatKarma(stats.postKarma)}</div>
+                <div className="text-xs text-gray-500">Post Karma</div>
               </div>
               <div className="text-center">
-                <div className="text-lg font-semibold text-gray-900">{stats.commentKarma}</div>
-                <div className="text-sm text-gray-500">Comment Karma</div>
+                <div className="text-lg font-semibold text-gray-900">{formatKarma(stats.commentKarma)}</div>
+                <div className="text-xs text-gray-500">Comment Karma</div>
               </div>
               <div className="text-center">
                 <div className="text-lg font-semibold text-gray-900">{stats.postsCount + stats.commentsCount}</div>
-                <div className="text-sm text-gray-500">Contributions</div>
+                <div className="text-xs text-gray-500">Contributions</div>
               </div>
               <div className="text-center">
                 <div className="text-lg font-semibold text-gray-900">{formatAccountAge(profileUser.createdAt)}</div>
-                <div className="text-sm text-gray-500">Account Age</div>
-              </div>
-              <div className="text-center">
-                <div className="text-lg font-semibold text-gray-900">{stats.communitiesCount}</div>
-                <div className="text-sm text-gray-500">Active in</div>
+                <div className="text-xs text-gray-500">Account Age</div>
               </div>
             </div>
           </div>
@@ -489,30 +496,34 @@ const Profile: React.FC = () => {
               </div>
             )}
 
-            <div className="space-y-2 text-sm text-gray-500 mb-4">
-              <div className="flex justify-between">
-                <span>{stats.totalKarma} Total Karma</span>
+            <div className="space-y-3 text-sm mb-4">
+              <div className="flex justify-between items-center py-2 border-b border-gray-100">
+                <span className="text-gray-600">Karma</span>
+                <span className="font-semibold text-gray-900">{formatKarma(stats.totalKarma)}</span>
               </div>
-              <div className="flex justify-between">
-                <span>{stats.postKarma} Post Karma</span>
+              <div className="flex justify-between items-center py-2 border-b border-gray-100">
+                <span className="text-gray-600">Post Karma</span>
+                <span className="font-medium text-gray-900">{formatKarma(stats.postKarma)}</span>
               </div>
-              <div className="flex justify-between">
-                <span>{stats.commentKarma} Comment Karma</span>
+              <div className="flex justify-between items-center py-2 border-b border-gray-100">
+                <span className="text-gray-600">Comment Karma</span>
+                <span className="font-medium text-gray-900">{formatKarma(stats.commentKarma)}</span>
               </div>
-              <div className="flex justify-between">
-                <span>{stats.awardKarma} Award Karma</span>
+              <div className="flex justify-between items-center py-2 border-b border-gray-100">
+                <span className="text-gray-600">Award Karma</span>
+                <span className="font-medium text-gray-900">{formatKarma(stats.awardKarma || 0)}</span>
               </div>
-              <div className="flex justify-between">
-                <span>{stats.postsCount + stats.commentsCount} Contributions</span>
+              <div className="flex justify-between items-center py-2 border-b border-gray-100">
+                <span className="text-gray-600">Contributions</span>
+                <span className="font-medium text-gray-900">{stats.postsCount + stats.commentsCount}</span>
               </div>
-              <div className="flex justify-between">
-                <span>{formatAccountAge(profileUser.createdAt)} Account Age</span>
+              <div className="flex justify-between items-center py-2 border-b border-gray-100">
+                <span className="text-gray-600">Account Age</span>
+                <span className="font-medium text-gray-900">{formatAccountAge(profileUser.createdAt)}</span>
               </div>
-              <div className="flex justify-between">
-                <span>{stats.communitiesCount} Active in</span>
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 4V2a1 1 0 011-1h8a1 1 0 011 1v2m-9 0h10m-10 0a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V6a2 2 0 00-2-2M9 8h6m-6 4h6m-6 4h6" />
-                </svg>
+              <div className="flex justify-between items-center py-2">
+                <span className="text-gray-600">Active in</span>
+                <span className="font-medium text-gray-900">{stats.communitiesCount} communities</span>
               </div>
             </div>
 

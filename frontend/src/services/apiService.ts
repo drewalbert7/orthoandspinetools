@@ -427,7 +427,7 @@ class ApiService {
     }
   }
 
-  async uploadPostImages(files: File[]): Promise<Array<{ path: string; filename: string; originalName: string; size: number; mimetype: string }>> {
+  async uploadPostImages(files: File[]): Promise<Array<{ path: string; filename: string; originalName: string; size: number; mimetype: string; cloudinaryUrl?: string; cloudinaryPublicId?: string }>> {
     try {
       const formData = new FormData();
       files.forEach(file => formData.append('images', file));
@@ -438,18 +438,20 @@ class ApiService {
         },
       });
       return response.data.data.map((item: any) => ({
-        path: item.url || item.path,
+        path: item.url || item.cloudinaryUrl || item.path,
         filename: item.filename,
         originalName: item.originalName,
         size: item.size,
-        mimetype: item.mimetype
+        mimetype: item.mimetype,
+        cloudinaryUrl: item.url || item.cloudinaryUrl,
+        cloudinaryPublicId: item.cloudinaryPublicId
       }));
     } catch (error: any) {
       throw new Error(error.response?.data?.message || 'Failed to upload images');
     }
   }
 
-  async uploadPostVideos(files: File[]): Promise<Array<{ path: string; filename: string; originalName: string; size: number; mimetype: string }>> {
+  async uploadPostVideos(files: File[]): Promise<Array<{ path: string; filename: string; originalName: string; size: number; mimetype: string; cloudinaryUrl?: string; cloudinaryPublicId?: string; duration?: number }>> {
     try {
       const formData = new FormData();
       files.forEach(file => formData.append('videos', file));
@@ -460,11 +462,14 @@ class ApiService {
         },
       });
       return response.data.data.map((item: any) => ({
-        path: item.url || item.path,
+        path: item.url || item.cloudinaryUrl || item.path,
         filename: item.filename,
         originalName: item.originalName,
         size: item.size,
-        mimetype: item.mimetype
+        mimetype: item.mimetype,
+        cloudinaryUrl: item.url || item.cloudinaryUrl,
+        cloudinaryPublicId: item.cloudinaryPublicId,
+        duration: item.duration
       }));
     } catch (error: any) {
       throw new Error(error.response?.data?.message || 'Failed to upload videos');

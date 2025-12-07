@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiService, Community } from '../services/apiService';
+import { resizeImage } from '../utils/imageResize';
 import { useAuth } from '../contexts/AuthContext';
 
 const CommunitySettings: React.FC = () => {
@@ -34,9 +35,18 @@ const CommunitySettings: React.FC = () => {
 
     setIsUploading(true);
     try {
-      // Upload image to server
+      // Automatically resize and compress the image
+      const resizedFile = await resizeImage(file, {
+        maxWidth: 256,
+        maxHeight: 256,
+        maxSizeKB: 500,
+        quality: 0.85,
+        cropToFit: true,
+      });
+
+      // Upload resized image to server
       const formData = new FormData();
-      formData.append('image', file);
+      formData.append('image', resizedFile);
       
       const response = await fetch('/api/upload/community-image', {
         method: 'POST',

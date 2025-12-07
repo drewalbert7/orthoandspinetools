@@ -287,6 +287,7 @@ router.put('/me', authenticate, [
   body('yearsExperience').optional().isInt({ min: 0, max: 50 }).withMessage('Years experience must be 0-50'),
   body('location').optional().isString().withMessage('Location must be a string'),
   body('website').optional().isURL().withMessage('Website must be a valid URL'),
+  body('profileImage').optional().isString().isURL().withMessage('Profile image must be a valid URL'),
 ], asyncHandler(async (req: AuthRequest, res: Response) => {
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
@@ -302,7 +303,8 @@ router.put('/me', authenticate, [
     institution,
     yearsExperience,
     location,
-    website
+    website,
+    profileImage
   } = req.body;
 
   const updatedUser = await prisma.user.update({
@@ -317,6 +319,7 @@ router.put('/me', authenticate, [
       ...(yearsExperience !== undefined && { yearsExperience: parseInt(yearsExperience) }),
       ...(location && { location }),
       ...(website && { website }),
+      ...(profileImage !== undefined && { profileImage }),
     },
     select: {
       id: true,
