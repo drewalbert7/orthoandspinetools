@@ -1,5 +1,5 @@
 import { Router, Request, Response, NextFunction } from 'express';
-import { uploadSingle, uploadMultiple, uploadMultipleMemoryImages, uploadMultipleMemoryVideos, uploadMixed, getFileUrl, deleteFile, anonymizeXray } from '../middleware/upload';
+import { uploadSingle, uploadMultiple, uploadMultipleMemoryImages, uploadMultipleMemoryVideos, uploadSingleMemory, uploadMixed, getFileUrl, deleteFile, anonymizeXray } from '../middleware/upload';
 import { authenticate, AuthRequest } from '../middleware/auth';
 import { asyncHandler, AppError } from '../middleware/errorHandler';
 import { uploadRateLimit, checkStorageLimits, validateFileSecurity, logUploadAttempt } from '../middleware/uploadSecurity';
@@ -620,7 +620,7 @@ router.delete('/cloudinary/:publicId', authenticate, asyncHandler(async (req: Au
 router.post('/avatar-cloudinary', 
   authenticate, 
   uploadRateLimit, 
-  uploadSingle('avatar'), 
+  uploadSingleMemory('avatar'), 
   validateAvatarUpload,
   logUploadAttempt,
   asyncHandler(async (req: AuthRequest, res: Response) => {
@@ -629,6 +629,11 @@ router.post('/avatar-cloudinary',
     }
 
     const file = req.file;
+
+    // Ensure we have a buffer (should always be present with memory storage)
+    if (!file.buffer) {
+      throw new AppError('File buffer not available', 500);
+    }
 
     try {
       // Virus scan the avatar

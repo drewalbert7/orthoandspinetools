@@ -7,9 +7,10 @@ import { Comment as CommentType } from '../types';
 
 interface CommentListProps {
   postId: string;
+  communityId?: string;
 }
 
-const CommentList: React.FC<CommentListProps> = ({ postId }) => {
+const CommentList: React.FC<CommentListProps> = ({ postId, communityId }) => {
   const { user } = useAuth();
   const queryClient = useQueryClient();
   const [newComment, setNewComment] = useState('');
@@ -213,6 +214,7 @@ const CommentList: React.FC<CommentListProps> = ({ postId }) => {
               comment={comment}
               onReply={handleReply}
               onVote={handleVote}
+              communityId={communityId}
             />
           ))}
         </div>

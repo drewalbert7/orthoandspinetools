@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { Comment as CommentType } from '../types';
 import { formatDistanceToNow } from 'date-fns';
+import CommentModerationMenu from './CommentModerationMenu';
 
 interface CommentProps {
   comment: CommentType;
@@ -9,6 +10,7 @@ interface CommentProps {
   onVote: (commentId: string, voteType: 'upvote' | 'downvote') => void;
   depth?: number;
   maxDepth?: number;
+  communityId?: string;
 }
 
 const Comment: React.FC<CommentProps> = ({ 
@@ -16,7 +18,8 @@ const Comment: React.FC<CommentProps> = ({
   onReply, 
   onVote, 
   depth = 0, 
-  maxDepth = 5 
+  maxDepth = 5,
+  communityId
 }) => {
   const { user } = useAuth();
   const [isReplying, setIsReplying] = useState(false);
@@ -126,6 +129,13 @@ const Comment: React.FC<CommentProps> = ({
                 >
                   {showReplies ? 'Hide' : 'Show'} {comment._count.replies} replies
                 </button>
+              )}
+              {communityId && (
+                <CommentModerationMenu
+                  commentId={comment.id}
+                  postId={comment.post.id}
+                  communityId={communityId}
+                />
               )}
             </div>
           </div>

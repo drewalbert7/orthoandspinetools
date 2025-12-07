@@ -4,6 +4,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiService, Community } from '../services/apiService';
 import { resizeImage } from '../utils/imageResize';
 import { useAuth } from '../contexts/AuthContext';
+import ModeratorManagement from '../components/ModeratorManagement';
 
 const CommunitySettings: React.FC = () => {
   const { slug } = useParams<{ slug: string }>();
@@ -130,7 +131,11 @@ const CommunitySettings: React.FC = () => {
   }
 
   // Check if user has permission to edit
-  const canEdit = user && (community.ownerId === user.id || community.moderators?.some(mod => mod.userId === user.id) || user.isAdmin);
+  const isOwner = user && community.ownerId === user.id;
+  const isModerator = user && community.moderators?.some(mod => mod.userId === user.id);
+  const isAdmin = user?.isAdmin;
+  const canEdit = isOwner || isModerator || isAdmin;
+  const canManageModerators = !!isOwner || !!isAdmin; // Only owner and admin can manage moderators
   
   if (!canEdit) {
     return (
@@ -326,6 +331,16 @@ const CommunitySettings: React.FC = () => {
             <p className="text-xs text-gray-500 mt-1">Description editing coming soon</p>
           </div>
         </div>
+
+        {/* Moderators Section - Only for owners and admins */}
+        {canManageModerators && (
+          <ModeratorManagement 
+            communityId={community.id} 
+            currentModerators={community.moderators || []}
+            isOwner={!!isOwner}
+            isAdmin={!!isAdmin}
+          />
+        )}
 
         {/* Stats Section */}
         <div>

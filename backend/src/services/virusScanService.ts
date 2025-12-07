@@ -53,6 +53,12 @@ export class VirusScanService {
 
   // Basic file validation as fallback
   private async basicFileValidation(buffer: Buffer, filename: string): Promise<{ clean: boolean; threat?: string }> {
+    // Safety check: ensure buffer exists and is valid
+    if (!buffer || !Buffer.isBuffer(buffer)) {
+      logger.error(`Invalid buffer provided for file validation: ${filename}`);
+      return { clean: false, threat: 'Invalid file buffer' };
+    }
+
     // Check for suspicious file signatures
     const suspiciousSignatures = [
       { signature: [0x4D, 0x5A], name: 'PE Executable' }, // Windows executable

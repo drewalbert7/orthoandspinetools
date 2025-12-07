@@ -393,6 +393,134 @@ router.post('/communities/:communityId/moderators', authenticate, [
   }
 }));
 
+// Get community moderators (admin or community owner only)
+router.get('/communities/:communityId/moderators', authenticate, [
+  param('communityId').isString().isLength({ min: 1 }).withMessage('Invalid community ID'),
+], asyncHandler(async (req: AuthRequest, res: Response) => {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    throw new AppError(`Validation failed: ${errors.array().map(e => e.msg).join(', ')}`, 400);
+  }
+
+  const { communityId } = req.params;
+
+  // Check if user is admin or community owner
+  const user = await prisma.user.findUnique({
+    where: { id: req.user!.id },
+    select: { isAdmin: true }
+  });
+
+  const community = await prisma.community.findUnique({
+    where: { id: communityId },
+    select: { ownerId: true }
+  });
+
+  if (!community) {
+    throw new AppError('Community not found', 404);
+  }
+
+  if (!user?.isAdmin && community.ownerId !== req.user!.id) {
+    throw new AppError('Access denied. Admin or community owner privileges required.', 403);
+  }
+
+  const moderators = await prisma.communityModerator.findMany({
+    where: { communityId },
+    include: {
+      user: {
+        select: {
+          id: true,
+          username: true,
+          firstName: true,
+          lastName: true,
+          specialty: true,
+          profileImage: true,
+          email: true
+        }
+      }
+    },
+    orderBy: { createdAt: 'asc' }
+  });
+
+  res.json({
+    success: true,
+    data: moderators.map(mod => ({
+      id: mod.id,
+      userId: mod.userId,
+      role: mod.role,
+      createdAt: mod.createdAt,
+      user: mod.user
+    }))
+  });
+}));
+
+// Search users for adding as moderators (admin or community owner only)
+router.get('/users/search', authenticate, [
+  query('q').isString().isLength({ min: 1 }).withMessage('Search query required'),
+  query('communityId').optional().isString().withMessage('Invalid community ID'),
+], asyncHandler(async (req: AuthRequest, res: Response) => {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    throw new AppError(`Validation failed: ${errors.array().map(e => e.msg).join(', ')}`, 400);
+  }
+
+  const searchQuery = req.query.q as string;
+  const communityId = req.query.communityId as string | undefined;
+
+  // If communityId provided, check permissions
+  if (communityId) {
+    const user = await prisma.user.findUnique({
+      where: { id: req.user!.id },
+      select: { isAdmin: true }
+    });
+
+    const community = await prisma.community.findUnique({
+      where: { id: communityId },
+      select: { ownerId: true }
+    });
+
+    if (!community) {
+      throw new AppError('Community not found', 404);
+    }
+
+    if (!user?.isAdmin && community.ownerId !== req.user!.id) {
+      throw new AppError('Access denied. Admin or community owner privileges required.', 403);
+    }
+  }
+
+  // Search users by username, email, or name
+  const users = await prisma.user.findMany({
+    where: {
+      AND: [
+        { isActive: true },
+        {
+          OR: [
+            { username: { contains: searchQuery, mode: 'insensitive' } },
+            { email: { contains: searchQuery, mode: 'insensitive' } },
+            { firstName: { contains: searchQuery, mode: 'insensitive' } },
+            { lastName: { contains: searchQuery, mode: 'insensitive' } }
+          ]
+        }
+      ]
+    },
+    select: {
+      id: true,
+      username: true,
+      firstName: true,
+      lastName: true,
+      specialty: true,
+      profileImage: true,
+      email: true
+    },
+    take: 10,
+    orderBy: { createdAt: 'desc' }
+  });
+
+  res.json({
+    success: true,
+    data: users
+  });
+}));
+
 // Get user's moderation permissions
 router.get('/permissions', authenticate, asyncHandler(async (req: AuthRequest, res: Response) => {
   const user = await prisma.user.findUnique({

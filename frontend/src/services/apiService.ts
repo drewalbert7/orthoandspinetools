@@ -106,7 +106,18 @@ export interface Community {
   profileImage?: string;
   bannerImage?: string;
   ownerId?: string;
-  moderators?: Array<{ userId: string; role: string }>;
+  moderators?: Array<{ 
+    userId: string; 
+    role: string;
+    user?: {
+      id: string;
+      username: string;
+      firstName: string;
+      lastName: string;
+      specialty?: string;
+      profileImage?: string;
+    }
+  }>;
   specialty?: string;
   memberCount?: number;
   postCount?: number;
@@ -647,6 +658,26 @@ class ApiService {
       return response.data.data;
     } catch (error: any) {
       throw new Error(error.response?.data?.message || 'Failed to fetch moderation permissions');
+    }
+  }
+
+  async getCommunityModerators(communityId: string): Promise<any> {
+    try {
+      const response = await api.get(`/moderation/communities/${communityId}/moderators`);
+      return response.data.data;
+    } catch (error: any) {
+      throw new Error(error.response?.data?.message || 'Failed to fetch community moderators');
+    }
+  }
+
+  async searchUsers(query: string, communityId?: string): Promise<any> {
+    try {
+      const params = new URLSearchParams({ q: query });
+      if (communityId) params.append('communityId', communityId);
+      const response = await api.get(`/moderation/users/search?${params.toString()}`);
+      return response.data.data;
+    } catch (error: any) {
+      throw new Error(error.response?.data?.message || 'Failed to search users');
     }
   }
 

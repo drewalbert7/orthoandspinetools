@@ -5,6 +5,7 @@ import { apiService, Comment } from '../services/apiService';
 import VoteButton from '../components/VoteButton';
 import { useAuth } from '../contexts/AuthContext';
 import toast from 'react-hot-toast';
+import CommentModerationMenu from '../components/CommentModerationMenu';
 
 const PostDetail: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -270,6 +271,15 @@ const PostDetail: React.FC = () => {
               </svg>
               <span className="text-sm font-medium text-gray-700">Share</span>
             </button>
+
+            {/* Moderation Menu */}
+            {post?.community?.id && (
+              <CommentModerationMenu
+                commentId={comment.id}
+                postId={post.id}
+                communityId={post.community.id}
+              />
+            )}
           </div>
         </div>
 

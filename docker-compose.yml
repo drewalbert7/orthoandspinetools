@@ -30,11 +30,12 @@ services:
       JWT_SECRET: your-super-secret-jwt-key-change-this-in-production
       JWT_EXPIRES_IN: 7d
       CORS_ORIGIN: http://localhost:3000
-      # Cloudinary Configuration (loaded from .env.cloudinary file via env_file)
-      # These will be overridden by env_file if present, otherwise use shell environment
-      CLOUDINARY_CLOUD_NAME: ${CLOUDINARY_CLOUD_NAME:-dklzlt7hm}
-      CLOUDINARY_API_KEY: ${CLOUDINARY_API_KEY:-729558359667584}
-      CLOUDINARY_API_SECRET: ${CLOUDINARY_API_SECRET:-aBWDK-w0t-SbT-_UUb8sjRmYruU}
+      # Cloudinary Configuration - MUST be provided via .env.cloudinary file or shell environment
+      # Never hardcode credentials in version control!
+      # Create .env.cloudinary file with: CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY, CLOUDINARY_API_SECRET
+      CLOUDINARY_CLOUD_NAME: ${CLOUDINARY_CLOUD_NAME}
+      CLOUDINARY_API_KEY: ${CLOUDINARY_API_KEY}
+      CLOUDINARY_API_SECRET: ${CLOUDINARY_API_SECRET}
     ports:
       - "3001:3001"
     depends_on:
@@ -83,6 +84,12 @@ services:
 
 volumes:
   postgres_data:
+    driver: local
+    labels:
+      - "com.orthoandspinetools.protected=true"
+      - "com.orthoandspinetools.type=database"
+      - "com.orthoandspinetools.description=PostgreSQL database volume - DO NOT DELETE"
+      - "com.orthoandspinetools.backup-required=true"
 
 networks:
   orthoandspinetools-network:

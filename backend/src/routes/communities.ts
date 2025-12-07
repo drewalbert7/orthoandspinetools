@@ -291,6 +291,22 @@ router.get('/:id', trackCommunityVisitor, asyncHandler(async (req: Request, res:
             lastName: true,
             specialty: true
           }
+        },
+        moderators: {
+          select: {
+            userId: true,
+            role: true,
+            user: {
+              select: {
+                id: true,
+                username: true,
+                firstName: true,
+                lastName: true,
+                specialty: true,
+                profileImage: true
+              }
+            }
+          }
         }
       }
     });
@@ -366,12 +382,18 @@ router.get('/:id', trackCommunityVisitor, asyncHandler(async (req: Request, res:
         createdAt: community.createdAt.toISOString(),
         updatedAt: community.updatedAt.toISOString(),
         owner: community.owner,
+        ownerId: community.ownerId,
         isPrivate: community.isPrivate,
         allowPosts: community.allowPosts,
         allowComments: community.allowComments,
         rules: community.rules,
         profileImage: community.profileImage,
-        bannerImage: community.bannerImage
+        bannerImage: community.bannerImage,
+        moderators: community.moderators.map(mod => ({
+          userId: mod.userId,
+          role: mod.role,
+          user: mod.user
+        }))
       };
 
       return res.json({
@@ -387,6 +409,12 @@ router.get('/:id', trackCommunityVisitor, asyncHandler(async (req: Request, res:
         slug: community.slug,
         description: community.description,
         specialty: community.owner.specialty,
+        ownerId: community.ownerId,
+        moderators: community.moderators.map(mod => ({
+          userId: mod.userId,
+          role: mod.role,
+          user: mod.user
+        })),
         memberCount: community._count.members,
         postCount: community._count.posts,
         weeklyVisitors: 0,

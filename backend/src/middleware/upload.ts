@@ -161,6 +161,10 @@ export const uploadMultipleMemoryImages = (fieldName: string, maxCount: number =
 export const uploadMultipleMemoryVideos = (fieldName: string, maxCount: number = 5) => 
   uploadMemoryVideos.array(fieldName, maxCount);
 
+// Middleware for single file upload to Cloudinary (memory storage)
+export const uploadSingleMemory = (fieldName: string) => 
+  uploadMemoryImages.single(fieldName);
+
 // Middleware for mixed uploads (tools and xrays)
 export const uploadMixed = upload.fields([
   { name: 'toolImages', maxCount: 5 },
