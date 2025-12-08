@@ -222,6 +222,16 @@ export interface ToolReview {
   user: User;
 }
 
+export interface CommunityTag {
+  id: string;
+  communityId: string;
+  name: string;
+  color?: string;
+  description?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
 class ApiService {
   // Posts
   async getPosts(params: { page?: number; limit?: number; sort?: string; community?: string } = {}): Promise<{ posts: Post[]; pagination: { page: number; pages: number } }> {
@@ -268,13 +278,15 @@ class ApiService {
     patientAge?: number;
     procedureType?: string;
     attachments?: Array<{ path: string; filename: string; originalName: string; type: 'image' | 'video' }>;
+    tagIds?: string[];
   }): Promise<Post> {
     try {
       // Map postType to type for backend compatibility
-      const { postType, ...rest } = postData;
+      const { postType, tagIds, ...rest } = postData;
       const backendData = {
         ...rest,
         type: postType,
+        ...(tagIds && tagIds.length > 0 && { tagIds }),
       };
       
       const response = await api.post('/posts', backendData);
@@ -435,6 +447,42 @@ class ApiService {
       return response.data.data;
     } catch (error: any) {
       throw new Error(error.response?.data?.message || 'Failed to upload banner');
+    }
+  }
+
+  // Tags
+  async getCommunityTags(communityId: string): Promise<CommunityTag[]> {
+    try {
+      const response = await api.get(`/communities/${communityId}/tags`);
+      return response.data;
+    } catch (error: any) {
+      throw new Error(error.response?.data?.message || 'Failed to fetch community tags');
+    }
+  }
+
+  async createCommunityTag(communityId: string, tagData: { name: string; color?: string; description?: string }): Promise<CommunityTag> {
+    try {
+      const response = await api.post(`/communities/${communityId}/tags`, tagData);
+      return response.data;
+    } catch (error: any) {
+      throw new Error(error.response?.data?.message || 'Failed to create tag');
+    }
+  }
+
+  async updateCommunityTag(communityId: string, tagId: string, tagData: { name?: string; color?: string; description?: string }): Promise<CommunityTag> {
+    try {
+      const response = await api.put(`/communities/${communityId}/tags/${tagId}`, tagData);
+      return response.data;
+    } catch (error: any) {
+      throw new Error(error.response?.data?.message || 'Failed to update tag');
+    }
+  }
+
+  async deleteCommunityTag(communityId: string, tagId: string): Promise<void> {
+    try {
+      await api.delete(`/communities/${communityId}/tags/${tagId}`);
+    } catch (error: any) {
+      throw new Error(error.response?.data?.message || 'Failed to delete tag');
     }
   }
 

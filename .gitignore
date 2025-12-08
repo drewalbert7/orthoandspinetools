@@ -1,44 +1,68 @@
-# SSL certificates and sensitive files
-nginx/ssl/
-ssl-backup-*/
-*.pem
-*.key
-*.crt
-*.p12
-*.pfx
+# See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
 
-# Backup files
-backups/
-debug/
+# dependencies
+node_modules/
+/.pnp
+.pnp.js
 
-# Test files
-test.png
+# testing
+/coverage
+
+# production
+/build
+/dist
+
+# misc
+.DS_Store
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Docker
+.dockerignore
+
+# Backups (but keep .backup files in version control for critical files)
+*.backup
+!frontend/src/pages/CreatePost.tsx.backup
 
 # Environment files
 .env
-.env.local
-.env.production
-.env.cloudinary
+.env.*
+!.env.example
+!.env.cloudinary.example
 
-# Sensitive configuration files
-*CREDENTIALS*
-*API_KEYS*
-CLOUDINARY_*
-*TEST_RESULTS*
-SECURITY_FIX*
-*_cloudinary
+# SSL certificates and keys (sensitive)
+nginx/ssl/
+ssl-backup-*/
+
+# Build artifacts
+backend/dist/
+frontend/dist/
 
 # Logs
-*.log
 logs/
+backend/logs/
+nginx/logs/
+*.log
 
-# Node modules
-node_modules/
+# Debug files
+debug/
+test.png
 
-# Build outputs
-dist/
-build/
+# Database backups (too large for git)
+backups/
 
-# OS files
-.DS_Store
-Thumbs.db
+# Migration temp files
+backend/prisma/migrations/\$\(date*/

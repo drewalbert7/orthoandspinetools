@@ -42,7 +42,8 @@ router.post('/', authenticate, validatePost, asyncHandler(async (req: AuthReques
     caseType,
     patientAge,
     procedureType,
-    attachments
+    attachments,
+    tagIds
   } = req.body;
 
   // Check if community exists
@@ -52,6 +53,21 @@ router.post('/', authenticate, validatePost, asyncHandler(async (req: AuthReques
 
   if (!community) {
     throw new AppError('Community not found', 404);
+  }
+
+  // Validate tags if provided
+  if (tagIds && Array.isArray(tagIds) && tagIds.length > 0) {
+    // Verify all tags belong to this community
+    const tags = await prisma.communityTag.findMany({
+      where: {
+        id: { in: tagIds },
+        communityId: communityId
+      }
+    });
+
+    if (tags.length !== tagIds.length) {
+      throw new AppError('One or more tags do not belong to this community', 400);
+    }
   }
 
   // Create the post
@@ -83,6 +99,11 @@ router.post('/', authenticate, validatePost, asyncHandler(async (req: AuthReques
           duration: attachment.duration,
         }))
       } : undefined,
+      tags: tagIds && Array.isArray(tagIds) && tagIds.length > 0 ? {
+        create: tagIds.map((tagId: string) => ({
+          tagId: tagId
+        }))
+      } : undefined,
     },
     include: {
       author: {
@@ -103,6 +124,11 @@ router.post('/', authenticate, validatePost, asyncHandler(async (req: AuthReques
         }
       },
       attachments: true,
+      tags: {
+        include: {
+          tag: true
+        }
+      },
       votes: {
         include: {
           user: {

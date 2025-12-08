@@ -1,10 +1,11 @@
 import React, { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { apiService, Community } from '../services/apiService';
+import { apiService, Community, CommunityTag } from '../services/apiService';
 import { resizeImage } from '../utils/imageResize';
 import { useAuth } from '../contexts/AuthContext';
 import ModeratorManagement from '../components/ModeratorManagement';
+import toast from 'react-hot-toast';
 
 const CommunitySettings: React.FC = () => {
   const { slug } = useParams<{ slug: string }>();
@@ -12,6 +13,10 @@ const CommunitySettings: React.FC = () => {
   const { user } = useAuth();
   const queryClient = useQueryClient();
   const [isUploading, setIsUploading] = useState(false);
+  const [showAddTagForm, setShowAddTagForm] = useState(false);
+  const [newTagName, setNewTagName] = useState('');
+  const [newTagColor, setNewTagColor] = useState('#3B82F6');
+  const [newTagDescription, setNewTagDescription] = useState('');
 
   // Fetch community details
   const { data: community, isLoading } = useQuery<Community>({
@@ -19,6 +24,54 @@ const CommunitySettings: React.FC = () => {
     queryFn: () => apiService.getCommunity(slug!),
     enabled: !!slug,
   });
+
+  // Fetch community tags
+  const { data: communityTags, refetch: refetchTags } = useQuery<CommunityTag[]>({
+    queryKey: ['communityTags', community?.id],
+    queryFn: () => apiService.getCommunityTags(community!.id),
+    enabled: !!community?.id,
+  });
+
+  // Create tag mutation
+  const createTagMutation = useMutation({
+    mutationFn: (tagData: { name: string; color?: string; description?: string }) =>
+      apiService.createCommunityTag(community!.id, tagData),
+    onSuccess: () => {
+      refetchTags();
+      setShowAddTagForm(false);
+      setNewTagName('');
+      setNewTagColor('#3B82F6');
+      setNewTagDescription('');
+      toast.success('Tag created successfully');
+    },
+    onError: (error: any) => {
+      toast.error(error.message || 'Failed to create tag');
+    },
+  });
+
+  // Delete tag mutation
+  const deleteTagMutation = useMutation({
+    mutationFn: (tagId: string) => apiService.deleteCommunityTag(community!.id, tagId),
+    onSuccess: () => {
+      refetchTags();
+      toast.success('Tag deleted successfully');
+    },
+    onError: (error: any) => {
+      toast.error(error.message || 'Failed to delete tag');
+    },
+  });
+
+  const handleCreateTag = () => {
+    if (!newTagName.trim()) {
+      toast.error('Tag name is required');
+      return;
+    }
+    createTagMutation.mutate({
+      name: newTagName.trim(),
+      color: newTagColor,
+      description: newTagDescription.trim() || undefined,
+    });
+  };
 
   // Update community mutation
   const updateMutation = useMutation({
@@ -340,6 +393,111 @@ const CommunitySettings: React.FC = () => {
             isOwner={!!isOwner}
             isAdmin={!!isAdmin}
           />
+        )}
+
+        {/* Tags Section - For moderators/admins */}
+        {canEdit && (
+          <div className="mb-8">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-lg font-semibold text-gray-900">Community Tags</h2>
+              <button
+                onClick={() => setShowAddTagForm(!showAddTagForm)}
+                className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors text-sm font-medium"
+              >
+                {showAddTagForm ? 'Cancel' : 'Add Tag'}
+              </button>
+            </div>
+
+            {/* Add Tag Form */}
+            {showAddTagForm && (
+              <div className="mb-6 p-4 border border-gray-200 rounded-md bg-gray-50">
+                <div className="space-y-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Tag Name *
+                    </label>
+                    <input
+                      type="text"
+                      value={newTagName}
+                      onChange={(e) => setNewTagName(e.target.value)}
+                      placeholder="e.g., Case Study, Tool Review, Question"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Color
+                    </label>
+                    <input
+                      type="color"
+                      value={newTagColor}
+                      onChange={(e) => setNewTagColor(e.target.value)}
+                      className="w-full h-10 border border-gray-300 rounded-md cursor-pointer"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Description (optional)
+                    </label>
+                    <textarea
+                      value={newTagDescription}
+                      onChange={(e) => setNewTagDescription(e.target.value)}
+                      placeholder="Brief description of what this tag is for"
+                      rows={2}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    />
+                  </div>
+                  <button
+                    onClick={handleCreateTag}
+                    disabled={createTagMutation.isPending}
+                    className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {createTagMutation.isPending ? 'Creating...' : 'Create Tag'}
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* Tags List */}
+            <div className="space-y-2">
+              {communityTags && communityTags.length > 0 ? (
+                communityTags.map((tag) => (
+                  <div
+                    key={tag.id}
+                    className="flex items-center justify-between p-3 border border-gray-200 rounded-md bg-white"
+                  >
+                    <div className="flex items-center space-x-3">
+                      <div
+                        className="w-4 h-4 rounded-full"
+                        style={{ backgroundColor: tag.color || '#3B82F6' }}
+                      />
+                      <div>
+                        <div className="font-medium text-gray-900">{tag.name}</div>
+                        {tag.description && (
+                          <div className="text-sm text-gray-500">{tag.description}</div>
+                        )}
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => {
+                        if (window.confirm(`Are you sure you want to delete the tag "${tag.name}"?`)) {
+                          deleteTagMutation.mutate(tag.id);
+                        }
+                      }}
+                      disabled={deleteTagMutation.isPending}
+                      className="px-3 py-1 text-red-600 hover:bg-red-50 rounded-md transition-colors disabled:opacity-50"
+                    >
+                      Delete
+                    </button>
+                  </div>
+                ))
+              ) : (
+                <div className="text-center py-8 text-gray-500">
+                  <p>No tags yet. Add tags to help categorize posts in this community.</p>
+                </div>
+              )}
+            </div>
+          </div>
         )}
 
         {/* Stats Section */}

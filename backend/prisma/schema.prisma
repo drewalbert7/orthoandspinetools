@@ -89,6 +89,7 @@ model Community {
   moderators        CommunityModerator[]
   visitorLogs       CommunityVisitorLog[]
   contributions     CommunityContribution[]
+  tags              CommunityTag[]
   
   @@map("communities")
 }
@@ -139,6 +140,7 @@ model Post {
   comments          Comment[]
   attachments       PostAttachment[]
   votes             PostVote[]
+  tags              PostTag[]
   
   @@map("posts")
 }
@@ -411,5 +413,42 @@ model UserKarma {
   user              User      @relation(fields: [userId], references: [id], onDelete: Cascade)
   
   @@map("user_karma")
+}
+
+// Community tag model for community-specific tags
+model CommunityTag {
+  id                String    @id @default(cuid())
+  communityId       String
+  name              String
+  color             String?   // Optional color for tag display (hex code)
+  description       String?   // Optional description for tag
+  
+  // Timestamps
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+  
+  // Relations
+  community         Community @relation(fields: [communityId], references: [id], onDelete: Cascade)
+  posts             PostTag[]
+  
+  @@unique([communityId, name]) // Ensure unique tag names per community
+  @@map("community_tags")
+}
+
+// Post tag model (many-to-many relationship between posts and tags)
+model PostTag {
+  id                String    @id @default(cuid())
+  postId            String
+  tagId             String
+  
+  // Timestamps
+  createdAt         DateTime  @default(now())
+  
+  // Relations
+  post              Post      @relation(fields: [postId], references: [id], onDelete: Cascade)
+  tag               CommunityTag @relation(fields: [tagId], references: [id], onDelete: Cascade)
+  
+  @@unique([postId, tagId]) // Ensure a post can't have the same tag twice
+  @@map("post_tags")
 }
 

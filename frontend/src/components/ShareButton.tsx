@@ -18,7 +18,7 @@ const ShareButton: React.FC<ShareButtonProps> = ({
   size = 'md'
 }) => {
   const [showMenu, setShowMenu] = useState(false);
-  const [menuPosition, setMenuPosition] = useState({ top: 0, right: 0 });
+  const [menuPosition, setMenuPosition] = useState({ top: 0, left: 0 });
   const buttonRef = useRef<HTMLDivElement>(null);
 
   const fullUrl = url.startsWith('http') ? url : `${window.location.origin}${url}`;
@@ -28,11 +28,49 @@ const ShareButton: React.FC<ShareButtonProps> = ({
   useEffect(() => {
     if (showMenu && buttonRef.current) {
       const rect = buttonRef.current.getBoundingClientRect();
-      setMenuPosition({
-        top: rect.bottom + window.scrollY + 8,
-        right: window.innerWidth - rect.right + window.scrollX,
-      });
+      const scrollY = window.scrollY || window.pageYOffset;
+      const scrollX = window.scrollX || window.pageXOffset;
+      
+      // Position menu below button, aligned to left edge
+      let left = rect.left + scrollX;
+      let top = rect.bottom + scrollY + 8;
+      
+      // Adjust if menu would go off right edge of screen
+      const menuWidth = 224; // w-56 = 14rem = 224px
+      if (left + menuWidth > window.innerWidth) {
+        left = window.innerWidth - menuWidth - 16; // 16px padding from edge
+      }
+      
+      // Adjust if menu would go off bottom edge of screen
+      const menuHeight = 300; // Approximate height
+      if (top + menuHeight > window.innerHeight + scrollY) {
+        top = rect.top + scrollY - menuHeight - 8; // Position above button instead
+      }
+      
+      setMenuPosition({ top, left });
     }
+  }, [showMenu]);
+
+  // Close menu when clicking outside
+  useEffect(() => {
+    if (!showMenu) return;
+
+    const handleClickOutside = (event: MouseEvent) => {
+      if (buttonRef.current && !buttonRef.current.contains(event.target as Node)) {
+        // Check if click is on the menu (which is in a portal)
+        const menuElement = document.querySelector('[data-share-menu]');
+        if (menuElement && menuElement.contains(event.target as Node)) {
+          return; // Click is inside menu, don't close
+        }
+        setShowMenu(false);
+      }
+    };
+
+    // Use capture phase to catch clicks before they bubble
+    document.addEventListener('mousedown', handleClickOutside, true);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside, true);
+    };
   }, [showMenu]);
 
   const copyToClipboard = async () => {
@@ -138,15 +176,20 @@ const ShareButton: React.FC<ShareButtonProps> = ({
           {/* Backdrop */}
           <div
             className="fixed inset-0 z-40 bg-black bg-opacity-20"
-            onClick={() => setShowMenu(false)}
+            onClick={() => {
+              setShowMenu(false);
+            }}
+            style={{ zIndex: 40 }}
           />
           
           {/* Share Menu */}
           <div 
-            className="fixed w-56 bg-white border border-gray-200 rounded-md shadow-xl z-[100]"
+            data-share-menu
+            className="fixed w-56 bg-white border border-gray-200 rounded-md shadow-xl"
             style={{ 
               top: `${menuPosition.top}px`,
-              right: `${menuPosition.right}px`,
+              left: `${menuPosition.left}px`,
+              zIndex: 100,
             }}
             onClick={(e) => e.stopPropagation()}
           >

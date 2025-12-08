@@ -64,6 +64,7 @@ function App() {
                   <Route path="/login" element={<LoginForm />} />
                   <Route path="/register" element={<RegisterForm />} />
                   <Route path="/post/:id" element={<PostDetail />} />
+                  {/* ⚠️ CRITICAL ROUTE: CreatePost page - DO NOT REMOVE without backup */}
                   <Route path="/create-post" element={<CreatePost />} />
                   <Route path="/profile" element={<Profile />} />
                   <Route path="/profile/settings" element={<ProfileSettings />} />
