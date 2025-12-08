@@ -27,7 +27,7 @@ const PostCard: React.FC<{ post: Post }> = ({ post }) => {
       {/* Content Section */}
       <div className="p-3">
         {/* Post Header */}
-        <div className="flex items-center space-x-1 text-xs text-gray-500 mb-1">
+        <div className="flex flex-wrap items-center gap-x-1 gap-y-1 text-xs text-gray-500 mb-1">
           <Link 
             to={`/community/${post.community.slug}`}
             className="font-medium text-gray-900 hover:underline flex items-center space-x-1"
@@ -53,10 +53,10 @@ const PostCard: React.FC<{ post: Post }> = ({ post }) => {
 
         {/* Post Title and Content */}
         <Link to={`/post/${post.id}`} className="block">
-          <h3 className="text-lg font-medium text-gray-900 mb-2 hover:text-blue-600 transition-colors leading-tight">
+          <h3 className="text-base sm:text-lg font-medium text-gray-900 mb-2 hover:text-blue-600 transition-colors leading-tight">
             {post.title}
           </h3>
-          <p className="text-gray-800 text-sm leading-relaxed mb-3 line-clamp-3">
+          <p className="text-gray-800 text-xs sm:text-sm leading-relaxed mb-3 line-clamp-3">
             {post.content}
           </p>
         </Link>
@@ -65,7 +65,7 @@ const PostCard: React.FC<{ post: Post }> = ({ post }) => {
         <PostAttachments attachments={post.attachments} />
 
         {/* Action Bar with Voting - Reddit Style */}
-        <div className="flex items-center space-x-2 text-xs text-gray-500 pt-2 border-t border-gray-100">
+        <div className="flex items-center flex-wrap gap-2 text-xs text-gray-500 pt-2 border-t border-gray-100">
           {/* Voting Section - Using VoteButton Component */}
           <VoteButton
             postId={post.id}
@@ -147,14 +147,14 @@ const Popular: React.FC = () => {
   ];
 
   return (
-    <div className="max-w-4xl mx-auto">
+    <div className="max-w-4xl mx-auto px-3 sm:px-4">
       {/* Header with Sort Options */}
-      <div className="bg-white border border-gray-200 p-4 mb-4">
-        <div className="flex items-center justify-between">
-          <h1 className="text-xl font-semibold text-gray-900">Popular</h1>
+      <div className="bg-white border border-gray-200 p-3 sm:p-4 mb-4">
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 sm:gap-0">
+          <h1 className="text-lg sm:text-xl font-semibold text-gray-900">Popular</h1>
           
           {/* Sort Dropdown */}
-          <div className="flex items-center space-x-4">
+          <div className="flex items-center flex-wrap gap-2 sm:gap-4">
             {/* Community Filter */}
             <div className="relative">
               <select
@@ -200,7 +200,7 @@ const Popular: React.FC = () => {
       </div>
 
       {/* Posts Feed */}
-      <div className="space-y-2 p-4">
+      <div className="space-y-2 p-2 sm:p-4">
         {postsLoading ? (
           <div className="flex items-center justify-center py-8">
             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
@@ -211,7 +211,7 @@ const Popular: React.FC = () => {
             <PostCard key={post.id} post={post} />
           ))
         ) : (
-          <div className="bg-white border border-gray-200 p-6 text-center">
+          <div className="bg-white border border-gray-200 p-4 sm:p-6 text-center">
             <p className="text-gray-500">No posts available</p>
             <p className="text-sm text-gray-400 mt-2">
               {selectedCommunity !== 'all' 

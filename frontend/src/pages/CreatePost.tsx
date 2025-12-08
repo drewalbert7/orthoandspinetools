@@ -268,8 +268,8 @@ const CreatePost: React.FC = () => {
 
 
   return (
-    <div className="max-w-4xl mx-auto bg-white min-h-screen">
-      <div className="p-6">
+    <div className="max-w-4xl mx-auto bg-white min-h-screen px-3 sm:px-4 md:px-6">
+      <div className="p-3 sm:p-4 md:p-6">
         {/* Header */}
         <div className="flex items-center justify-between mb-8">
           <h1 className="text-2xl font-bold text-gray-900">Create post</h1>
@@ -335,8 +335,8 @@ const CreatePost: React.FC = () => {
         </div>
 
         {/* Post Type Tabs */}
-        <div className="mb-6">
-          <div className="flex space-x-1 border-b border-gray-200">
+        <div className="mb-4 sm:mb-6">
+          <div className="flex space-x-1 border-b border-gray-200 overflow-x-auto scrollbar-hide">
             {[
               { id: 'text', label: 'Text' },
               { id: 'images', label: 'Images & Video' },
@@ -346,7 +346,7 @@ const CreatePost: React.FC = () => {
               <button
                 key={tab.id}
                 onClick={() => setPostType(tab.id as PostType)}
-                className={`px-4 py-2 text-sm font-medium ${
+                className={`px-3 sm:px-4 py-2 text-xs sm:text-sm font-medium whitespace-nowrap flex-shrink-0 ${
                   postType === tab.id
                     ? 'text-blue-600 border-b-2 border-blue-600'
                     : 'text-gray-500 hover:text-gray-700'

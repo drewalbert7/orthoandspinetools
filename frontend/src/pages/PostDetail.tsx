@@ -331,7 +331,7 @@ const PostDetail: React.FC = () => {
 
   if (postLoading) {
     return (
-      <div className="max-w-6xl mx-auto px-4 py-6">
+      <div className="max-w-6xl mx-auto px-3 sm:px-4 py-4 sm:py-6">
         <div className="animate-pulse">
           <div className="h-8 bg-gray-200 rounded mb-4"></div>
           <div className="h-4 bg-gray-200 rounded mb-2"></div>
@@ -344,7 +344,7 @@ const PostDetail: React.FC = () => {
 
   if (postError || !post) {
     return (
-      <div className="max-w-6xl mx-auto px-4 py-6">
+      <div className="max-w-6xl mx-auto px-3 sm:px-4 py-4 sm:py-6">
         <div className="text-center py-12">
           <h1 className="text-2xl font-bold text-gray-900 mb-4">Post not found</h1>
           <p className="text-gray-600 mb-4">The post you're looking for doesn't exist or has been removed.</p>
@@ -358,8 +358,8 @@ const PostDetail: React.FC = () => {
 
 
   return (
-    <div className="max-w-6xl mx-auto px-4 py-6">
-      <div className="flex gap-6">
+    <div className="max-w-6xl mx-auto px-3 sm:px-4 py-4 sm:py-6">
+      <div className="flex flex-col lg:flex-row gap-4 lg:gap-6">
         {/* Main Content */}
         <div className="flex-1">
 
@@ -698,7 +698,7 @@ const PostDetail: React.FC = () => {
         </div>
 
         {/* Right Sidebar */}
-        <div className="w-80 space-y-4">
+        <div className="w-full lg:w-80 flex-shrink-0 space-y-4">
           {/* Community Info */}
           <div className="bg-white border border-gray-200 rounded-md p-4">
             {communityLoading ? (

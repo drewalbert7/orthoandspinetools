@@ -122,9 +122,9 @@ const Home: React.FC = () => {
   const posts = postsData?.posts || [];
 
   return (
-    <div className="max-w-4xl mx-auto">
+    <div className="max-w-4xl mx-auto px-2 sm:px-4">
       {/* Posts Feed */}
-      <div className="space-y-2 p-4">
+      <div className="space-y-2 p-2 sm:p-4">
         {postsLoading ? (
           <div className="flex items-center justify-center py-8">
             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
