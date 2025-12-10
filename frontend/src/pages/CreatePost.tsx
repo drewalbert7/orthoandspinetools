@@ -59,6 +59,9 @@ const CreatePost: React.FC = () => {
     queryKey: ['communityTags', selectedCommunity],
     queryFn: () => apiService.getCommunityTags(selectedCommunity),
     enabled: !!selectedCommunity,
+    retry: 2, // Retry failed requests twice
+    staleTime: 5 * 60 * 1000, // Consider data fresh for 5 minutes
+    // Tags are optional, so errors are handled gracefully by React Query
   });
 
   // Reset selected tags when community changes
@@ -108,14 +111,17 @@ const CreatePost: React.FC = () => {
         }
       };
 
+      // Filter out invalid tag IDs before sending
+      const validTagIds = selectedTags.filter((id) => id && typeof id === 'string' && id.trim().length > 0);
+
       const postData = {
         title: title.trim(),
         content: body.trim(),
         communityId: selectedCommunity,
         postType: getPostType(postType),
-        ...(postType === 'link' && { linkUrl }),
-        ...(postType === 'images' && { media: uploadedMedia }),
-        ...(selectedTags.length > 0 && { tagIds: selectedTags }),
+        ...(postType === 'link' && linkUrl && { linkUrl: linkUrl.trim() }),
+        ...(postType === 'images' && uploadedMedia && uploadedMedia.length > 0 && { media: uploadedMedia }),
+        ...(validTagIds.length > 0 && { tagIds: validTagIds }),
       };
 
       await apiService.createPost(postData);
@@ -376,37 +382,40 @@ const CreatePost: React.FC = () => {
         </div>
 
         {/* Tags Selection */}
-        {selectedCommunity && communityTags && communityTags.length > 0 && (
+        {selectedCommunity && communityTags && Array.isArray(communityTags) && communityTags.length > 0 && (
           <div className="mb-6">
             <label className="block text-sm font-medium text-gray-700 mb-2">
               Tags (optional)
             </label>
             <div className="flex flex-wrap gap-2">
-              {communityTags.map((tag) => (
-                <button
-                  key={tag.id}
-                  type="button"
-                  onClick={() => {
-                    if (selectedTags.includes(tag.id)) {
-                      setSelectedTags(selectedTags.filter(id => id !== tag.id));
-                    } else {
-                      setSelectedTags([...selectedTags, tag.id]);
+              {communityTags
+                .filter((tag) => tag && tag.id && tag.name) // Filter out invalid tags
+                .map((tag) => (
+                  <button
+                    key={tag.id}
+                    type="button"
+                    onClick={() => {
+                      if (!tag.id) return;
+                      if (selectedTags.includes(tag.id)) {
+                        setSelectedTags(selectedTags.filter(id => id !== tag.id));
+                      } else {
+                        setSelectedTags([...selectedTags, tag.id]);
+                      }
+                    }}
+                    className={`px-3 py-1.5 rounded-full text-sm font-medium transition-colors ${
+                      selectedTags.includes(tag.id)
+                        ? 'bg-blue-600 text-white'
+                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                    }`}
+                    style={
+                      selectedTags.includes(tag.id) && tag.color && /^#[0-9A-Fa-f]{6}$/.test(tag.color)
+                        ? { backgroundColor: tag.color, color: 'white' }
+                        : {}
                     }
-                  }}
-                  className={`px-3 py-1.5 rounded-full text-sm font-medium transition-colors ${
-                    selectedTags.includes(tag.id)
-                      ? 'bg-blue-600 text-white'
-                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                  }`}
-                  style={
-                    selectedTags.includes(tag.id) && tag.color
-                      ? { backgroundColor: tag.color, color: 'white' }
-                      : {}
-                  }
-                >
-                  {tag.name}
-                </button>
-              ))}
+                  >
+                    {tag.name}
+                  </button>
+                ))}
             </div>
             {selectedTags.length > 0 && (
               <p className="mt-2 text-xs text-gray-500">

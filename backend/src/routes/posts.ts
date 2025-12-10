@@ -43,7 +43,7 @@ router.post('/', authenticate, validatePost, asyncHandler(async (req: AuthReques
     patientAge,
     procedureType,
     attachments,
-    tagIds
+    tagIds: rawTagIds
   } = req.body;
 
   // Check if community exists
@@ -56,17 +56,32 @@ router.post('/', authenticate, validatePost, asyncHandler(async (req: AuthReques
   }
 
   // Validate tags if provided
-  if (tagIds && Array.isArray(tagIds) && tagIds.length > 0) {
-    // Verify all tags belong to this community
-    const tags = await prisma.communityTag.findMany({
-      where: {
-        id: { in: tagIds },
-        communityId: communityId
-      }
-    });
+  let tagIds: string[] | undefined = undefined;
+  if (rawTagIds && Array.isArray(rawTagIds) && rawTagIds.length > 0) {
+    // Filter out invalid tag IDs (null, undefined, empty strings)
+    const validTagIds = rawTagIds.filter((id) => id && typeof id === 'string' && id.trim().length > 0);
+    
+    if (validTagIds.length === 0) {
+      // If all tag IDs were invalid, just continue without tags
+      tagIds = undefined;
+    } else if (validTagIds.length !== rawTagIds.length) {
+      // Some tag IDs were invalid
+      throw new AppError('Invalid tag IDs provided', 400);
+    } else {
+      // Verify all tags belong to this community
+      const tags = await prisma.communityTag.findMany({
+        where: {
+          id: { in: validTagIds },
+          communityId: communityId
+        }
+      });
 
-    if (tags.length !== tagIds.length) {
-      throw new AppError('One or more tags do not belong to this community', 400);
+      if (tags.length !== validTagIds.length) {
+        throw new AppError('One or more tags do not belong to this community', 400);
+      }
+      
+      // Use validated tag IDs
+      tagIds = validTagIds;
     }
   }
 
@@ -270,6 +285,11 @@ router.get('/feed', authenticate, [
         }
       },
       attachments: true,
+      tags: {
+        include: {
+          tag: true
+        }
+      },
       votes: {
         select: {
           id: true,
@@ -461,23 +481,28 @@ router.get('/', optionalAuth, [
             slug: true,
           }
         },
-        attachments: true,
-        votes: {
-          include: {
-            user: {
-              select: {
-                id: true,
-                username: true,
-              }
+      attachments: true,
+      tags: {
+        include: {
+          tag: true
+        }
+      },
+      votes: {
+        include: {
+          user: {
+            select: {
+              id: true,
+              username: true,
             }
           }
-        },
-        _count: {
-          select: {
-            comments: true,
-            votes: true,
-          }
         }
+      },
+      _count: {
+        select: {
+          comments: true,
+          votes: true,
+        }
+      }
       }
     }),
     prisma.post.count({ where })
@@ -547,6 +572,11 @@ router.get('/:id', optionalAuth, [
         }
       },
       attachments: true,
+      tags: {
+        include: {
+          tag: true
+        }
+      },
       votes: {
         include: {
           user: {
@@ -611,9 +641,9 @@ router.get('/:id', optionalAuth, [
 
   // Calculate comment vote scores
   const commentsWithScores = post.comments.map(comment => {
-    const commentUpvotes = comment.votes.filter(vote => vote.type === 'upvote').length;
-    const commentDownvotes = comment.votes.filter(vote => vote.type === 'downvote').length;
-    const commentUserVote = req.user ? comment.votes.find(vote => vote.userId === req.user!.id) : null;
+    const commentUpvotes = comment.votes.filter((vote: any) => vote.type === 'upvote').length;
+    const commentDownvotes = comment.votes.filter((vote: any) => vote.type === 'downvote').length;
+    const commentUserVote = req.user ? comment.votes.find((vote: any) => vote.userId === req.user!.id) : null;
 
     return {
       ...comment,
@@ -834,6 +864,11 @@ router.put('/:id', authenticate, [
         }
       },
       attachments: true,
+      tags: {
+        include: {
+          tag: true
+        }
+      },
       _count: {
         select: {
           comments: true,

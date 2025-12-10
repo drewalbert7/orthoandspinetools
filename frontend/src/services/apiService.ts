@@ -52,6 +52,10 @@ export interface Post {
   attachments: Attachment[];
   votes: Vote[];
   comments?: Comment[];
+  tags?: Array<{
+    id: string;
+    tag: CommunityTag;
+  }>;
   createdAt: string;
   updatedAt: string;
   author: User;

@@ -45,6 +45,14 @@ router.post('/communities/:communityId/tags',
     const { communityId } = req.params;
     const { name, color, description } = req.body;
 
+    // Validate color format if provided (must be valid hex color)
+    if (color && typeof color === 'string' && color.trim()) {
+      const hexColorRegex = /^#[0-9A-Fa-f]{6}$/;
+      if (!hexColorRegex.test(color.trim())) {
+        throw new AppError('Color must be a valid hex color code (e.g., #FF5733)', 400);
+      }
+    }
+
     // Check if tag already exists for this community
     const existingTag = await prisma.communityTag.findUnique({
       where: {
@@ -72,8 +80,8 @@ router.post('/communities/:communityId/tags',
       data: {
         communityId,
         name: name.trim(),
-        color: color || null,
-        description: description || null
+        color: color && typeof color === 'string' ? color.trim() : null,
+        description: description && typeof description === 'string' ? description.trim() : null
       }
     });
 
@@ -99,6 +107,14 @@ router.put('/communities/:communityId/tags/:tagId',
 
     const { communityId, tagId } = req.params;
     const { name, color, description } = req.body;
+
+    // Validate color format if provided (must be valid hex color)
+    if (color !== undefined && color !== null && typeof color === 'string' && color.trim()) {
+      const hexColorRegex = /^#[0-9A-Fa-f]{6}$/;
+      if (!hexColorRegex.test(color.trim())) {
+        throw new AppError('Color must be a valid hex color code (e.g., #FF5733)', 400);
+      }
+    }
 
     // Verify tag exists and belongs to this community
     const existingTag = await prisma.communityTag.findUnique({
@@ -133,8 +149,8 @@ router.put('/communities/:communityId/tags/:tagId',
       where: { id: tagId },
       data: {
         ...(name && { name: name.trim() }),
-        ...(color !== undefined && { color: color || null }),
-        ...(description !== undefined && { description: description || null })
+        ...(color !== undefined && { color: color && typeof color === 'string' ? color.trim() : null }),
+        ...(description !== undefined && { description: description && typeof description === 'string' ? description.trim() : null })
       }
     });
 

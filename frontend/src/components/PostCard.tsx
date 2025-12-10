@@ -33,14 +33,22 @@ const PostCard: React.FC<PostCardProps> = ({ post, onVote }) => {
   };
 
   const formatDate = (dateString: string) => {
-    const date = new Date(dateString);
-    const now = new Date();
-    const diffInHours = Math.floor((now.getTime() - date.getTime()) / (1000 * 60 * 60));
-    
-    if (diffInHours < 1) return 'now';
-    if (diffInHours < 24) return `${diffInHours}h`;
-    if (diffInHours < 168) return `${Math.floor(diffInHours / 24)}d`;
-    return date.toLocaleDateString();
+    try {
+      if (!dateString) return 'unknown';
+      const date = new Date(dateString);
+      if (isNaN(date.getTime())) return 'unknown';
+      
+      const now = new Date();
+      const diffInHours = Math.floor((now.getTime() - date.getTime()) / (1000 * 60 * 60));
+      
+      if (diffInHours < 1) return 'now';
+      if (diffInHours < 24) return `${diffInHours}h`;
+      if (diffInHours < 168) return `${Math.floor(diffInHours / 24)}d`;
+      return date.toLocaleDateString();
+    } catch (error) {
+      console.error('Error formatting date:', error);
+      return 'unknown';
+    }
   };
 
   const getPostTypeColor = (type: string) => {
@@ -106,17 +114,25 @@ const PostCard: React.FC<PostCardProps> = ({ post, onVote }) => {
             <div className="w-5 h-5 bg-orange-500 rounded-full flex items-center justify-center">
               <span className="text-white text-xs font-bold">r</span>
             </div>
-            <Link 
-              to={`/community/${post.community.id}`}
-              className="font-semibold hover:underline text-white text-sm"
-            >
-              o/{post.community.name}
-            </Link>
+            {post.community ? (
+              <Link 
+                to={`/community/${post.community.id || post.communityId}`}
+                className="font-semibold hover:underline text-white text-sm"
+              >
+                o/{post.community.name || 'Unknown'}
+              </Link>
+            ) : (
+              <span className="font-semibold text-white text-sm">o/Unknown</span>
+            )}
             <span>•</span>
             <span>Posted by</span>
-            <Link to={`/user/${post.author.username}`} className="hover:underline text-gray-700">
-              u/{post.author.username}
-            </Link>
+            {post.author ? (
+              <Link to={`/user/${post.author.username || 'unknown'}`} className="hover:underline text-gray-700">
+                u/{post.author.username || 'unknown'}
+              </Link>
+            ) : (
+              <span className="text-gray-700">u/unknown</span>
+            )}
             <span>•</span>
             <span>{formatDate(post.createdAt)}</span>
             {post.type && (
@@ -137,6 +153,27 @@ const PostCard: React.FC<PostCardProps> = ({ post, onVote }) => {
           {post.content && (
             <div className="text-sm text-gray-800 mb-3 md:mb-4 leading-relaxed">
               {post.content.length > 200 ? `${post.content.substring(0, 200)}...` : post.content}
+            </div>
+          )}
+
+          {/* Tags */}
+          {post.tags && Array.isArray(post.tags) && post.tags.length > 0 && (
+            <div className="flex flex-wrap gap-2 mb-3">
+              {post.tags
+                .filter((postTag) => postTag && postTag.tag && postTag.tag.name) // Filter out invalid tags
+                .map((postTag) => (
+                  <span
+                    key={postTag.id || `tag-${postTag.tag.id}`}
+                    className="px-2 py-0.5 rounded-full text-xs font-medium"
+                    style={
+                      postTag.tag.color && /^#[0-9A-Fa-f]{6}$/.test(postTag.tag.color)
+                        ? { backgroundColor: postTag.tag.color, color: 'white' }
+                        : { backgroundColor: '#E5E7EB', color: '#374151' }
+                    }
+                  >
+                    {postTag.tag.name}
+                  </span>
+                ))}
             </div>
           )}
 
@@ -164,21 +201,23 @@ const PostCard: React.FC<PostCardProps> = ({ post, onVote }) => {
               </svg>
               <span>Save</span>
             </button>
-            <ModerationMenu
-              postId={post.id}
-              communityId={post.community.id || post.communityId}
-              isLocked={post.isLocked}
-              isPinned={post.isPinned}
-              onDelete={async () => {
-                try {
-                  await apiService.deletePost(post.id);
-                  queryClient.invalidateQueries({ queryKey: ['posts'] });
-                  toast.success('Post deleted');
-                } catch (error: any) {
-                  toast.error(error.message || 'Failed to delete post');
-                }
-              }}
-            />
+            {post.community && (post.community.id || post.communityId) && (
+              <ModerationMenu
+                postId={post.id}
+                communityId={post.community.id || post.communityId}
+                isLocked={post.isLocked}
+                isPinned={post.isPinned}
+                onDelete={async () => {
+                  try {
+                    await apiService.deletePost(post.id);
+                    queryClient.invalidateQueries({ queryKey: ['posts'] });
+                    toast.success('Post deleted');
+                  } catch (error: any) {
+                    toast.error(error.message || 'Failed to delete post');
+                  }
+                }}
+              />
+            )}
           </div>
         </div>
       </div>

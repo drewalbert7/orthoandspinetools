@@ -280,7 +280,7 @@ const PostDetail: React.FC = () => {
               <CommentModerationMenu
                 commentId={comment.id}
                 postId={post.id}
-                communityId={post.community.id}
+                communityId={post.community?.id || post.communityId}
               />
             )}
           </div>
@@ -387,19 +387,27 @@ const PostDetail: React.FC = () => {
                   {/* Community, Username, and Timestamp */}
                   <div className="flex flex-col">
                     <div className="flex items-center space-x-2 text-sm">
-                      <Link 
-                        to={`/community/${post.community.id}`}
-                        className="font-semibold hover:underline text-gray-900"
-                      >
-                        o/{post.community.name}
-                      </Link>
+                      {post.community ? (
+                        <Link 
+                          to={`/community/${post.community.id || post.communityId}`}
+                          className="font-semibold hover:underline text-gray-900"
+                        >
+                          o/{post.community.name || 'Unknown'}
+                        </Link>
+                      ) : (
+                        <span className="font-semibold text-gray-900">o/Unknown</span>
+                      )}
                       <span className="text-gray-500">•</span>
                       <span className="text-gray-500">{formatDate(post.createdAt)}</span>
                     </div>
                     <div className="text-sm text-gray-500">
-                      <Link to={`/user/${post.author.username}`} className="hover:underline text-gray-700">
-                        {post.author.username}
-                      </Link>
+                      {post.author ? (
+                        <Link to={`/user/${post.author.username || 'unknown'}`} className="hover:underline text-gray-700">
+                          {post.author.username || 'unknown'}
+                        </Link>
+                      ) : (
+                        <span className="text-gray-700">unknown</span>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -459,6 +467,27 @@ const PostDetail: React.FC = () => {
               {post.content && (
                 <div className="text-gray-800 leading-relaxed mb-6 whitespace-pre-wrap">
                   {post.content}
+                </div>
+              )}
+
+              {/* Tags */}
+              {post.tags && Array.isArray(post.tags) && post.tags.length > 0 && (
+                <div className="flex flex-wrap gap-2 mb-6">
+                  {post.tags
+                    .filter((postTag) => postTag && postTag.tag && postTag.tag.name) // Filter out invalid tags
+                    .map((postTag) => (
+                      <span
+                        key={postTag.id || `tag-${postTag.tag.id}`}
+                        className="px-3 py-1 rounded-full text-sm font-medium"
+                        style={
+                          postTag.tag.color && /^#[0-9A-Fa-f]{6}$/.test(postTag.tag.color)
+                            ? { backgroundColor: postTag.tag.color, color: 'white' }
+                            : { backgroundColor: '#E5E7EB', color: '#374151' }
+                        }
+                      >
+                        {postTag.tag.name}
+                      </span>
+                    ))}
                 </div>
               )}
 
@@ -731,14 +760,14 @@ const PostDetail: React.FC = () => {
                 <span className="text-white text-sm font-bold">o</span>
               </div>
               <div className="flex-1">
-                <h2 className="text-lg font-bold text-gray-900">o/{post.community.name}</h2>
+                <h2 className="text-lg font-bold text-gray-900">o/{post.community?.name || 'Unknown'}</h2>
               </div>
               <button className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors">
                 Joined
               </button>
             </div>
             <p className="text-sm text-gray-600 mb-3">
-              {communityData?.description || `A community for ${post.community.name.toLowerCase()} professionals to share tools, discuss cases, and network.`}
+              {communityData?.description || `A community for ${post.community?.name?.toLowerCase() || 'medical'} professionals to share tools, discuss cases, and network.`}
             </p>
             <div className="space-y-2 text-sm text-gray-500">
               <div className="flex justify-between">
@@ -783,7 +812,7 @@ const PostDetail: React.FC = () => {
 
           {/* Community Rules */}
           <div className="bg-white border border-gray-200 rounded-md p-4">
-            <h3 className="text-sm font-bold text-gray-900 mb-3">o/{post.community.name.toUpperCase()} RULES</h3>
+            <h3 className="text-sm font-bold text-gray-900 mb-3">o/{(post.community?.name || 'COMMUNITY').toUpperCase()} RULES</h3>
             <div className="space-y-2">
               {[
                 'Relevance',
