@@ -7,15 +7,15 @@ interface ShareButtonProps {
   title?: string;
   type?: 'post' | 'comment';
   className?: string;
-  size?: 'sm' | 'md';
+  size?: 'sm' | 'md'; // Deprecated - kept for backwards compatibility but ignored
 }
 
 const ShareButton: React.FC<ShareButtonProps> = ({ 
   url, 
   title, 
   type = 'post',
-  className = '',
-  size = 'md'
+  className: _className = '', // Deprecated - kept for backwards compatibility but not used
+  size: _size = 'md' // Deprecated - kept for backwards compatibility but not used
 }) => {
   const [showMenu, setShowMenu] = useState(false);
   const [menuPosition, setMenuPosition] = useState({ top: 0, left: 0 });
@@ -31,20 +31,32 @@ const ShareButton: React.FC<ShareButtonProps> = ({
       const scrollY = window.scrollY || window.pageYOffset;
       const scrollX = window.scrollX || window.pageXOffset;
       
+      const menuWidth = 224; // w-56 = 14rem = 224px
+      const menuHeight = 350; // Approximate height with all options
+      const padding = 8; // Space between button and menu
+      
       // Position menu below button, aligned to left edge
       let left = rect.left + scrollX;
-      let top = rect.bottom + scrollY + 8;
+      let top = rect.bottom + scrollY + padding;
       
       // Adjust if menu would go off right edge of screen
-      const menuWidth = 224; // w-56 = 14rem = 224px
-      if (left + menuWidth > window.innerWidth) {
-        left = window.innerWidth - menuWidth - 16; // 16px padding from edge
+      if (left + menuWidth > window.innerWidth + scrollX) {
+        left = window.innerWidth + scrollX - menuWidth - 16; // 16px padding from edge
+      }
+      
+      // Adjust if menu would go off left edge of screen
+      if (left < scrollX + 16) {
+        left = scrollX + 16; // 16px padding from edge
       }
       
       // Adjust if menu would go off bottom edge of screen
-      const menuHeight = 300; // Approximate height
       if (top + menuHeight > window.innerHeight + scrollY) {
-        top = rect.top + scrollY - menuHeight - 8; // Position above button instead
+        // Position above button instead
+        top = rect.top + scrollY - menuHeight - padding;
+        // If still off screen, position at top with padding
+        if (top < scrollY + 16) {
+          top = scrollY + 16;
+        }
       }
       
       setMenuPosition({ top, left });
@@ -143,12 +155,12 @@ const ShareButton: React.FC<ShareButtonProps> = ({
     }
   };
 
-  const iconSize = size === 'sm' ? 'w-4 h-4' : 'w-5 h-5';
-  const textSize = size === 'sm' ? 'text-sm' : 'text-base';
-  const padding = size === 'sm' ? 'px-2 py-1' : 'px-3 py-1.5';
-  const baseButtonClass = className && typeof className === 'string' && className.includes('border')
-    ? className
-    : `flex items-center space-x-1 ${padding} rounded-md border border-gray-200 hover:border-gray-300 bg-gray-50 hover:bg-gray-100 transition-colors ${className || ''}`;
+  // Standardized sizing - all share buttons should look the same
+  const iconSize = 'w-4 h-4';
+  const textSize = 'text-sm';
+  const padding = 'px-2 py-1';
+  // Always use consistent base styling, ignore custom className for button appearance
+  const baseButtonClass = `flex items-center space-x-1 ${padding} rounded-md border border-gray-200 hover:border-gray-300 bg-gray-50 hover:bg-gray-100 transition-colors`;
 
   const handleButtonClick = (e: React.MouseEvent) => {
     e.preventDefault();
@@ -175,11 +187,11 @@ const ShareButton: React.FC<ShareButtonProps> = ({
         <>
           {/* Backdrop */}
           <div
-            className="fixed inset-0 z-40 bg-black bg-opacity-20"
+            className="fixed inset-0 bg-black bg-opacity-20"
             onClick={() => {
               setShowMenu(false);
             }}
-            style={{ zIndex: 40 }}
+            style={{ zIndex: 9998 }}
           />
           
           {/* Share Menu */}
@@ -189,7 +201,7 @@ const ShareButton: React.FC<ShareButtonProps> = ({
             style={{ 
               top: `${menuPosition.top}px`,
               left: `${menuPosition.left}px`,
-              zIndex: 100,
+              zIndex: 9999,
             }}
             onClick={(e) => e.stopPropagation()}
           >

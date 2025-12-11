@@ -49,7 +49,12 @@ export interface User {
   medicalLicense?: string;
   institution?: string;
   yearsExperience?: number;
+  profileImage?: string;
+  bio?: string;
+  location?: string;
+  website?: string;
   isEmailVerified: boolean;
+  isVerifiedPhysician?: boolean;
   createdAt: string;
   updatedAt: string;
 }

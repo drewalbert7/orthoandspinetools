@@ -147,6 +147,41 @@ export const uploadToCloudinary = async (
   }
 };
 
+// Extract public_id from Cloudinary URL
+export const extractPublicIdFromUrl = (url: string): string | null => {
+  if (!url || !url.includes('cloudinary.com')) {
+    return null;
+  }
+
+  try {
+    // Cloudinary URL format: https://res.cloudinary.com/{cloud_name}/image/upload/{transformations}/{public_id}.{format}
+    // or: https://res.cloudinary.com/{cloud_name}/image/upload/v{version}/{public_id}.{format}
+    const urlParts = url.split('/');
+    const uploadIndex = urlParts.findIndex(part => part === 'upload');
+    
+    if (uploadIndex === -1) {
+      return null;
+    }
+
+    // Get everything after 'upload'
+    const afterUpload = urlParts.slice(uploadIndex + 1);
+    
+    // Join and remove file extension
+    let publicId = afterUpload.join('/');
+    
+    // Remove file extension (last .extension)
+    publicId = publicId.replace(/\.[^/.]+$/, '');
+    
+    // Remove version if present (v1234567890/)
+    publicId = publicId.replace(/^v\d+\//, '');
+    
+    return publicId || null;
+  } catch (error) {
+    console.error('Error extracting public_id from URL:', error);
+    return null;
+  }
+};
+
 // Delete file from Cloudinary
 export const deleteFromCloudinary = async (publicId: string): Promise<void> => {
   const cloudinaryInstance = getCloudinary();

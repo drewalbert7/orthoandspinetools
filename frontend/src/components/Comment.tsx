@@ -120,8 +120,6 @@ const Comment: React.FC<CommentProps> = ({
               <ShareButton
                 url={`/post/${comment.post.id}#comment-${comment.id}`}
                 type="comment"
-                size="sm"
-                className="hover:text-gray-700 transition-colors"
               />
               <button className="hover:text-gray-700 transition-colors">
                 Report

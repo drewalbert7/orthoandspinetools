@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiService } from '../services/apiService';
@@ -11,7 +11,7 @@ const ProfileSettings: React.FC = () => {
   const { user, refreshUser } = useAuth();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
-  const [activeTab, setActiveTab] = useState<'profile' | 'password'>('profile');
+  const [activeTab, setActiveTab] = useState<'profile' | 'password' | 'admin'>('profile');
 
   // Fetch current profile data
   const { data: userProfileData, isLoading } = useQuery({
@@ -260,6 +260,18 @@ const ProfileSettings: React.FC = () => {
           >
             Change Password
           </button>
+          {user?.isAdmin && (
+            <button
+              onClick={() => setActiveTab('admin')}
+              className={`px-6 py-3 text-sm font-medium ${
+                activeTab === 'admin'
+                  ? 'text-blue-600 border-b-2 border-blue-600'
+                  : 'text-gray-500 hover:text-gray-700'
+              }`}
+            >
+              Admin Settings
+            </button>
+          )}
         </div>
       </div>
 
@@ -579,6 +591,94 @@ const ProfileSettings: React.FC = () => {
               </button>
             </div>
           </form>
+        </div>
+      )}
+
+      {/* Admin Settings Tab - Only visible to admins */}
+      {activeTab === 'admin' && user?.isAdmin && (
+        <div className="bg-white border border-gray-200 rounded-md p-6">
+          <div className="space-y-6">
+            <div>
+              <h2 className="text-lg font-semibold text-gray-900 mb-2">Admin Settings</h2>
+              <p className="text-sm text-gray-600 mb-6">
+                These settings are only visible to administrators. Use these tools to manage the platform.
+              </p>
+            </div>
+
+            {/* Quick Actions */}
+            <div className="border-t border-gray-200 pt-6">
+              <h3 className="text-md font-semibold text-gray-900 mb-4">Quick Actions</h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <Link
+                  to="/admin"
+                  className="p-4 border border-gray-200 rounded-md hover:border-blue-500 hover:bg-blue-50 transition-colors"
+                >
+                  <div className="flex items-center space-x-3">
+                    <svg className="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+                    </svg>
+                    <div>
+                      <p className="font-medium text-gray-900">Admin Dashboard</p>
+                      <p className="text-sm text-gray-500">Manage users, communities, and content</p>
+                    </div>
+                  </div>
+                </Link>
+                <div className="p-4 border border-gray-200 rounded-md">
+                  <div className="flex items-center space-x-3">
+                    <svg className="w-6 h-6 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                    </svg>
+                    <div>
+                      <p className="font-medium text-gray-900">Platform Statistics</p>
+                      <p className="text-sm text-gray-500">View analytics and metrics</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Admin Information */}
+            <div className="border-t border-gray-200 pt-6">
+              <h3 className="text-md font-semibold text-gray-900 mb-4">Admin Information</h3>
+              <div className="bg-blue-50 border border-blue-200 rounded-md p-4">
+                <div className="space-y-2">
+                  <div className="flex justify-between">
+                    <span className="text-sm font-medium text-gray-700">Admin Status:</span>
+                    <span className="text-sm text-blue-600 font-semibold">Active Administrator</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-sm font-medium text-gray-700">User ID:</span>
+                    <span className="text-sm text-gray-600 font-mono">{user.id}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-sm font-medium text-gray-700">Username:</span>
+                    <span className="text-sm text-gray-600">@{user.username}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-sm font-medium text-gray-700">Email:</span>
+                    <span className="text-sm text-gray-600">{user.email}</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Security Notice */}
+            <div className="border-t border-gray-200 pt-6">
+              <div className="bg-yellow-50 border border-yellow-200 rounded-md p-4">
+                <div className="flex items-start space-x-3">
+                  <svg className="w-5 h-5 text-yellow-600 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                  </svg>
+                  <div>
+                    <p className="text-sm font-medium text-yellow-800">Security Notice</p>
+                    <p className="text-sm text-yellow-700 mt-1">
+                      As an administrator, you have full access to manage the platform. Please use these privileges responsibly and in accordance with platform policies.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
       )}
     </div>

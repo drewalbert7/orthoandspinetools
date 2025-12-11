@@ -148,6 +148,7 @@ export interface User {
   location?: string;
   website?: string;
   isEmailVerified: boolean;
+  isVerifiedPhysician?: boolean;
   createdAt: string;
   updatedAt: string;
   lastLoginAt?: string;
@@ -438,17 +439,47 @@ class ApiService {
     }
   }
 
-  async uploadCommunityBanner(file: File): Promise<{ imageUrl: string }> {
+  async uploadCommunityProfileImage(file: File): Promise<{ imageUrl: string; optimizedUrl?: string; cloudinaryUrl?: string }> {
     try {
       const formData = new FormData();
-      formData.append('banner', file);
+      formData.append('image', file);
       
-      const response = await api.post('/upload/community-banner', formData, {
+      const response = await api.post('/upload/community-image-cloudinary', formData, {
         headers: {
           'Content-Type': 'multipart/form-data',
         },
       });
-      return response.data.data;
+      const item = response.data.data;
+      // Use optimized Cloudinary URL for better performance
+      const imageUrl = item.optimizedUrl || item.cloudinaryUrl || item.imageUrl || item.secure_url;
+      return {
+        imageUrl,
+        optimizedUrl: item.optimizedUrl,
+        cloudinaryUrl: item.cloudinaryUrl
+      };
+    } catch (error: any) {
+      throw new Error(error.response?.data?.message || 'Failed to upload community image');
+    }
+  }
+
+  async uploadCommunityBanner(file: File): Promise<{ imageUrl: string; optimizedUrl?: string; cloudinaryUrl?: string }> {
+    try {
+      const formData = new FormData();
+      formData.append('banner', file);
+      
+      const response = await api.post('/upload/community-banner-cloudinary', formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+      });
+      const item = response.data.data;
+      // Use optimized Cloudinary URL for better performance
+      const imageUrl = item.optimizedUrl || item.cloudinaryUrl || item.imageUrl || item.secure_url;
+      return {
+        imageUrl,
+        optimizedUrl: item.optimizedUrl,
+        cloudinaryUrl: item.cloudinaryUrl
+      };
     } catch (error: any) {
       throw new Error(error.response?.data?.message || 'Failed to upload banner');
     }
@@ -550,8 +581,11 @@ class ApiService {
         },
       });
       const item = response.data.data;
+      // Use optimized Cloudinary URL for better performance (256x256 optimized for avatars)
+      // Fallback to regular Cloudinary URL if optimized not available
+      const cloudinaryUrl = item.optimizedUrl || item.cloudinaryUrl || item.secure_url || item.url || item.path;
       return {
-        path: item.url || item.path,
+        path: cloudinaryUrl,
         filename: item.filename,
         originalName: item.originalName,
         size: item.size,
@@ -746,6 +780,16 @@ class ApiService {
       await api.post(`/posts/${postId}/pin`, { pinned });
     } catch (error: any) {
       throw new Error(error.response?.data?.message || 'Failed to pin/unpin post');
+    }
+  }
+
+  // Verify/Unverify physician (Admin only)
+  async verifyPhysician(userId: string, isVerified: boolean): Promise<User> {
+    try {
+      const response = await api.put(`/auth/verify/${userId}`, { isVerified });
+      return response.data.data;
+    } catch (error: any) {
+      throw new Error(error.response?.data?.message || 'Failed to verify physician');
     }
   }
 }

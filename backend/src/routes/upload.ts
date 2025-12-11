@@ -255,83 +255,177 @@ router.get('/:filename', asyncHandler(async (req: Request, res: Response) => {
   }
 }));
 
-// Upload community profile image
-router.post('/community-image', authenticate, uploadSingle('image'), asyncHandler(async (req: AuthRequest, res: Response) => {
-  if (!req.file) {
-    throw new AppError('No file uploaded', 400);
-  }
+// Upload community profile image to Cloudinary
+router.post('/community-image-cloudinary', 
+  authenticate, 
+  uploadRateLimit, 
+  uploadSingleMemory('image'), 
+  validateFileSecurity,
+  logUploadAttempt,
+  asyncHandler(async (req: AuthRequest, res: Response) => {
+    if (!req.file) {
+      throw new AppError('No file uploaded', 400);
+    }
 
-  const fileUrl = getFileUrl(req, req.file.filename, 'images');
-  
-  // Log the upload for audit purposes
-  await prisma.auditLog.create({
-    data: {
-      userId: req.user!.id,
-      action: 'UPLOAD_COMMUNITY_IMAGE',
-      resource: 'community_image',
-      resourceId: req.file.filename,
-      details: {
-        filename: req.file.originalname,
-        size: req.file.size,
-        mimetype: req.file.mimetype,
-      },
-      ipAddress: req.ip,
-      userAgent: req.get('User-Agent'),
-    },
-  });
+    const file = req.file;
 
-  logger.info(`Community image uploaded by user ${req.user!.id}: ${req.file.filename}`);
+    // Ensure we have a buffer (should always be present with memory storage)
+    if (!file.buffer) {
+      throw new AppError('File buffer not available', 500);
+    }
 
-  res.json({
-    success: true,
-    data: {
-      imageUrl: fileUrl,
-      filename: req.file.filename,
-      originalName: req.file.originalname,
-      size: req.file.size,
-      mimetype: req.file.mimetype,
-    },
-  });
-}));
+    try {
+      // Virus scan the image
+      const scanResult = await virusScanService.scanFile(file.buffer, file.originalname);
+      if (!scanResult.clean) {
+        logger.warn(`Virus scan failed for community image ${file.originalname}: ${scanResult.threat}`, {
+          userId: req.user!.id,
+          ipAddress: req.ip,
+          userAgent: req.get('User-Agent')
+        });
+        throw new AppError(`Image security scan failed: ${scanResult.threat}`, 400);
+      }
 
-// Upload community banner image
-router.post('/community-banner', authenticate, uploadSingle('banner'), asyncHandler(async (req: AuthRequest, res: Response) => {
-  if (!req.file) {
-    throw new AppError('No file uploaded', 400);
-  }
+      // Upload to Cloudinary with community profile image settings (256x256)
+      const cloudinaryResult = await uploadToCloudinary(
+        file.buffer, 
+        file.originalname, 
+        'orthoandspinetools/communities',
+        { isAvatar: true, autoConvert: true }
+      );
 
-  const fileUrl = getFileUrl(req, req.file.filename, 'images');
-  
-  // Log the upload for audit purposes
-  await prisma.auditLog.create({
-    data: {
-      userId: req.user!.id,
-      action: 'UPLOAD_COMMUNITY_BANNER',
-      resource: 'community_banner',
-      resourceId: req.file.filename,
-      details: {
-        filename: req.file.originalname,
-        size: req.file.size,
-        mimetype: req.file.mimetype,
-      },
-      ipAddress: req.ip,
-      userAgent: req.get('User-Agent'),
-    },
-  });
+      logger.info(`Community profile image uploaded by user ${req.user!.id}: ${file.originalname}`, {
+        userId: req.user!.id,
+        fileName: file.originalname,
+        fileSize: file.size,
+        cloudinaryId: cloudinaryResult.public_id
+      });
 
-  logger.info(`Community banner uploaded by user ${req.user!.id}: ${req.file.filename}`);
+      // Log the upload for audit purposes
+      await prisma.auditLog.create({
+        data: {
+          userId: req.user!.id,
+          action: 'UPLOAD_COMMUNITY_IMAGE',
+          resource: 'community_image',
+          resourceId: cloudinaryResult.public_id,
+          details: {
+            filename: file.originalname,
+            size: file.size,
+            mimetype: file.mimetype,
+            cloudinaryId: cloudinaryResult.public_id,
+          },
+          ipAddress: req.ip,
+          userAgent: req.get('User-Agent'),
+        },
+      });
 
-  res.json({
-    success: true,
-    data: {
-      imageUrl: fileUrl,
-      filename: req.file.filename,
-      originalName: req.file.originalname,
-      size: req.file.size,
-      mimetype: req.file.mimetype,
-    },
-  });
-}));
+      res.json({
+        success: true,
+        data: {
+          imageUrl: cloudinaryResult.secure_url,
+          optimizedUrl: getOptimizedImageUrl(cloudinaryResult.public_id, { width: 256, height: 256 }),
+          cloudinaryUrl: cloudinaryResult.secure_url,
+          cloudinaryPublicId: cloudinaryResult.public_id,
+          filename: cloudinaryResult.public_id,
+          originalName: file.originalname,
+          size: cloudinaryResult.bytes,
+          mimetype: file.mimetype,
+          width: cloudinaryResult.width,
+          height: cloudinaryResult.height,
+        },
+      });
+    } catch (error: any) {
+      logger.error(`Failed to upload community image ${file.originalname}:`, error);
+      throw new AppError(error.message || 'Failed to upload community image', 500);
+    }
+  })
+);
+
+// Upload community banner image to Cloudinary
+router.post('/community-banner-cloudinary', 
+  authenticate, 
+  uploadRateLimit, 
+  uploadSingleMemory('banner'), 
+  validateFileSecurity,
+  logUploadAttempt,
+  asyncHandler(async (req: AuthRequest, res: Response) => {
+    if (!req.file) {
+      throw new AppError('No file uploaded', 400);
+    }
+
+    const file = req.file;
+
+    // Ensure we have a buffer (should always be present with memory storage)
+    if (!file.buffer) {
+      throw new AppError('File buffer not available', 500);
+    }
+
+    try {
+      // Virus scan the image
+      const scanResult = await virusScanService.scanFile(file.buffer, file.originalname);
+      if (!scanResult.clean) {
+        logger.warn(`Virus scan failed for community banner ${file.originalname}: ${scanResult.threat}`, {
+          userId: req.user!.id,
+          ipAddress: req.ip,
+          userAgent: req.get('User-Agent')
+        });
+        throw new AppError(`Image security scan failed: ${scanResult.threat}`, 400);
+      }
+
+      // Upload to Cloudinary with banner settings (max 1920x1080, limit crop)
+      const cloudinaryResult = await uploadToCloudinary(
+        file.buffer, 
+        file.originalname, 
+        'orthoandspinetools/communities/banners',
+        { isAvatar: false, autoConvert: true }
+      );
+
+      logger.info(`Community banner uploaded by user ${req.user!.id}: ${file.originalname}`, {
+        userId: req.user!.id,
+        fileName: file.originalname,
+        fileSize: file.size,
+        cloudinaryId: cloudinaryResult.public_id
+      });
+
+      // Log the upload for audit purposes
+      await prisma.auditLog.create({
+        data: {
+          userId: req.user!.id,
+          action: 'UPLOAD_COMMUNITY_BANNER',
+          resource: 'community_banner',
+          resourceId: cloudinaryResult.public_id,
+          details: {
+            filename: file.originalname,
+            size: file.size,
+            mimetype: file.mimetype,
+            cloudinaryId: cloudinaryResult.public_id,
+          },
+          ipAddress: req.ip,
+          userAgent: req.get('User-Agent'),
+        },
+      });
+
+      res.json({
+        success: true,
+        data: {
+          imageUrl: cloudinaryResult.secure_url,
+          optimizedUrl: getOptimizedImageUrl(cloudinaryResult.public_id, { width: 1920, height: 1080 }),
+          cloudinaryUrl: cloudinaryResult.secure_url,
+          cloudinaryPublicId: cloudinaryResult.public_id,
+          filename: cloudinaryResult.public_id,
+          originalName: file.originalname,
+          size: cloudinaryResult.bytes,
+          mimetype: file.mimetype,
+          width: cloudinaryResult.width,
+          height: cloudinaryResult.height,
+        },
+      });
+    } catch (error: any) {
+      logger.error(`Failed to upload community banner ${file.originalname}:`, error);
+      throw new AppError(error.message || 'Failed to upload community banner', 500);
+    }
+  })
+);
 
 // Upload post images
 router.post('/post-images', authenticate, uploadMultiple('images', 10), asyncHandler(async (req: AuthRequest, res: Response) => {

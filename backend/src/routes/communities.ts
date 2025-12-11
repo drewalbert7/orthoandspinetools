@@ -807,15 +807,64 @@ router.put('/:id', authenticate, [
     throw new AppError('You do not have permission to update this community', 403);
   }
 
-      // Update community
-      const updatedCommunity = await prisma.community.update({
-        where: { id },
-        data: {
-          ...(profileImage !== undefined && { profileImage }),
-          ...(bannerImage !== undefined && { bannerImage }),
-          ...(description !== undefined && { description }),
-          updatedAt: new Date(),
-        },
+  // Delete old Cloudinary images if updating
+  if (profileImage !== undefined && profileImage !== community.profileImage && community.profileImage) {
+    try {
+      const { deleteFromCloudinary, extractPublicIdFromUrl } = await import('../services/cloudinaryService');
+      const oldImageUrl = community.profileImage;
+      
+      if (oldImageUrl && oldImageUrl.includes('cloudinary.com')) {
+        const publicId = extractPublicIdFromUrl(oldImageUrl);
+        
+        if (publicId) {
+          await deleteFromCloudinary(publicId);
+          
+          console.log(`Deleted old community profile image from Cloudinary for community ${id}`, {
+            communityId: id,
+            userId: req.user!.id,
+            publicId: publicId
+          });
+        }
+      }
+    } catch (deleteError) {
+      // Log error but don't fail the update - old image cleanup is not critical
+      console.warn(`Failed to delete old community profile image from Cloudinary:`, deleteError);
+    }
+  }
+
+  if (bannerImage !== undefined && bannerImage !== community.bannerImage && community.bannerImage) {
+    try {
+      const { deleteFromCloudinary, extractPublicIdFromUrl } = await import('../services/cloudinaryService');
+      const oldBannerUrl = community.bannerImage;
+      
+      if (oldBannerUrl && oldBannerUrl.includes('cloudinary.com')) {
+        const publicId = extractPublicIdFromUrl(oldBannerUrl);
+        
+        if (publicId) {
+          await deleteFromCloudinary(publicId);
+          
+          console.log(`Deleted old community banner from Cloudinary for community ${id}`, {
+            communityId: id,
+            userId: req.user!.id,
+            publicId: publicId
+          });
+        }
+      }
+    } catch (deleteError) {
+      // Log error but don't fail the update - old image cleanup is not critical
+      console.warn(`Failed to delete old community banner from Cloudinary:`, deleteError);
+    }
+  }
+
+  // Update community
+  const updatedCommunity = await prisma.community.update({
+    where: { id },
+    data: {
+      ...(profileImage !== undefined && { profileImage }),
+      ...(bannerImage !== undefined && { bannerImage }),
+      ...(description !== undefined && { description }),
+      updatedAt: new Date(),
+    },
     include: {
       _count: {
         select: {

@@ -98,31 +98,19 @@ const CommunitySettings: React.FC = () => {
         cropToFit: true,
       });
 
-      // Upload resized image to server
-      const formData = new FormData();
-      formData.append('image', resizedFile);
+      // Upload to Cloudinary
+      const result = await apiService.uploadCommunityProfileImage(resizedFile);
       
-      const response = await fetch('/api/upload/community-image', {
-        method: 'POST',
-        body: formData,
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`,
-        },
-      });
-
-      if (!response.ok) {
-        throw new Error('Upload failed');
-      }
-
-      const { imageUrl } = await response.json();
-      
-      // Update community with new image URL
-      updateMutation.mutate({ profileImage: imageUrl });
-    } catch (error) {
+      // Update community with new image URL (use optimized URL)
+      updateMutation.mutate({ profileImage: result.imageUrl });
+      toast.success('Community profile image updated!');
+    } catch (error: any) {
       console.error('Image upload failed:', error);
-      alert('Failed to upload image. Please try again.');
+      toast.error(error.message || 'Failed to upload image. Please try again.');
     } finally {
       setIsUploading(false);
+      // Reset file input
+      event.target.value = '';
     }
   };
 
@@ -134,14 +122,16 @@ const CommunitySettings: React.FC = () => {
     try {
       const result = await apiService.uploadCommunityBanner(file);
       
-      // Update community with new banner URL
+      // Update community with new banner URL (use optimized URL)
       updateMutation.mutate({ bannerImage: result.imageUrl });
-      
-    } catch (error) {
+      toast.success('Community banner updated!');
+    } catch (error: any) {
       console.error('Error uploading banner:', error);
-      alert('Failed to upload banner. Please try again.');
+      toast.error(error.message || 'Failed to upload banner. Please try again.');
     } finally {
       setIsUploading(false);
+      // Reset file input
+      event.target.value = '';
     }
   };
 

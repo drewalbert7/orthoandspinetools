@@ -6,6 +6,7 @@ import VoteButton from '../components/VoteButton';
 import { useAuth } from '../contexts/AuthContext';
 import toast from 'react-hot-toast';
 import CommentModerationMenu from '../components/CommentModerationMenu';
+import ModerationMenu from '../components/ModerationMenu';
 import ShareButton from '../components/ShareButton';
 
 const PostDetail: React.FC = () => {
@@ -271,7 +272,6 @@ const PostDetail: React.FC = () => {
                 url={`/post/${post.id}#comment-${comment.id}`}
                 title={post.title}
                 type="comment"
-                size="sm"
               />
             )}
 
@@ -598,8 +598,29 @@ const PostDetail: React.FC = () => {
                 url={`/post/${post.id}`}
                 title={post.title}
                 type="post"
-                size="md"
               />
+
+              {/* Moderation Menu - Only visible to admins and moderators */}
+              {post.community && (post.community.id || post.communityId) && (
+                <ModerationMenu
+                  postId={post.id}
+                  communityId={post.community.id || post.communityId}
+                  isLocked={post.isLocked}
+                  isPinned={post.isPinned}
+                  onDelete={async () => {
+                    try {
+                      await apiService.deletePost(post.id);
+                      queryClient.invalidateQueries({ queryKey: ['posts'] });
+                      queryClient.invalidateQueries({ queryKey: ['post', post.id] });
+                      toast.success('Post deleted successfully');
+                      // Navigate away after deletion
+                      navigate('/');
+                    } catch (error: any) {
+                      toast.error(error.message || 'Failed to delete post');
+                    }
+                  }}
+                />
+              )}
             </div>
             </div>
           </div>

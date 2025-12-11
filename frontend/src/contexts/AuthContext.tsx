@@ -34,13 +34,25 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       try {
         const token = localStorage.getItem('token');
         if (token) {
-          // Get user data from localStorage instead of API call
-          const userData = authService.getCurrentUser();
-          if (userData) {
-            setUser(userData);
-          } else {
-            // If no user data in localStorage, clear token
-            localStorage.removeItem('token');
+          // First, try to get user data from localStorage for immediate display
+          const cachedUserData = authService.getCurrentUser();
+          if (cachedUserData) {
+            setUser(cachedUserData);
+          }
+          
+          // Always refresh from server to get latest data (including profileImage)
+          try {
+            const refreshedUser = await authService.refreshUser();
+            console.log('Refreshed user data:', refreshedUser);
+            setUser(refreshedUser);
+          } catch (refreshError) {
+            // If refresh fails, keep using cached data but log the error
+            console.warn('Failed to refresh user data, using cached data:', refreshError);
+            if (!cachedUserData) {
+              // If no cached data and refresh failed, clear token
+              localStorage.removeItem('token');
+              localStorage.removeItem('user');
+            }
           }
         }
       } catch (error) {

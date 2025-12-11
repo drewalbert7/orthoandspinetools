@@ -192,8 +192,6 @@ const PostCard: React.FC<PostCardProps> = ({ post, onVote }) => {
               url={`/post/${post.id}`}
               title={post.title}
               type="post"
-              size="sm"
-              className="text-gray-600 hover:text-blue-700 hover:bg-gray-100"
             />
             <button className="flex items-center space-x-1 text-gray-600 hover:text-blue-700 hover:bg-gray-100 px-2 py-1 rounded-md transition-colors">
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">

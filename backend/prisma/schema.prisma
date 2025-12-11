@@ -20,6 +20,7 @@ model User {
   isEmailVerified   Boolean   @default(false)
   isActive          Boolean   @default(true)
   isAdmin           Boolean   @default(false) @map("is_admin")  // Admin privileges
+  isVerifiedPhysician Boolean @default(false) @map("is_verified_physician")  // Verified physician badge
   
   // Medical credentials
   medicalLicense    String?

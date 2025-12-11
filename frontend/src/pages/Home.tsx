@@ -98,7 +98,6 @@ const PostCard: React.FC<{ post: Post }> = ({ post }) => {
             url={`/post/${post.id}`}
             title={post.title}
             type="post"
-            size="sm"
           />
         </div>
       </div>

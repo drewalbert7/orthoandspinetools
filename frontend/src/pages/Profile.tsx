@@ -91,7 +91,6 @@ const PostCard: React.FC<{ post: Post }> = ({ post }) => {
             url={`/post/${post.id}`}
             title={post.title}
             type="post"
-            size="sm"
           />
         </div>
       </div>
@@ -141,9 +140,9 @@ const Profile: React.FC = () => {
 
   if (!user) {
     return (
-      <div className="max-w-4xl mx-auto px-4 sm:px-6">
-        <div className="text-center py-8 sm:py-12">
-          <h1 className="text-xl sm:text-2xl font-bold text-gray-900 mb-4">Please sign in to view your profile</h1>
+      <div className="max-w-4xl mx-auto px-2 sm:px-4 md:px-6">
+        <div className="text-center py-6 sm:py-8 md:py-12">
+          <h1 className="text-lg sm:text-xl md:text-2xl font-bold text-gray-900 mb-3 sm:mb-4">Please sign in to view your profile</h1>
           <Link to="/login" className="text-blue-600 hover:text-blue-800">
             Sign in here
           </Link>
@@ -154,8 +153,8 @@ const Profile: React.FC = () => {
 
   if (isLoading) {
     return (
-      <div className="max-w-6xl mx-auto px-4 sm:px-6">
-        <div className="text-center py-8 sm:py-12">
+      <div className="max-w-6xl mx-auto px-2 sm:px-4 md:px-6">
+        <div className="text-center py-6 sm:py-8 md:py-12">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
           <p className="mt-4 text-gray-600">Loading profile...</p>
         </div>
@@ -165,8 +164,8 @@ const Profile: React.FC = () => {
 
   if (error) {
     return (
-      <div className="max-w-6xl mx-auto px-4 sm:px-6">
-        <div className="text-center py-8 sm:py-12">
+      <div className="max-w-6xl mx-auto px-2 sm:px-4 md:px-6">
+        <div className="text-center py-6 sm:py-8 md:py-12">
           <h1 className="text-xl sm:text-2xl font-bold text-gray-900 mb-4">Error loading profile</h1>
           <p className="text-gray-600 mb-4 text-sm sm:text-base">{(error as Error).message}</p>
           <button 
@@ -182,8 +181,8 @@ const Profile: React.FC = () => {
 
   if (!profileData) {
     return (
-      <div className="max-w-6xl mx-auto px-4 sm:px-6">
-        <div className="text-center py-8 sm:py-12">
+      <div className="max-w-6xl mx-auto px-2 sm:px-4 md:px-6">
+        <div className="text-center py-6 sm:py-8 md:py-12">
           <h1 className="text-xl sm:text-2xl font-bold text-gray-900 mb-4">No profile data found</h1>
         </div>
       </div>
@@ -210,8 +209,8 @@ const Profile: React.FC = () => {
   };
 
   return (
-    <div className="max-w-6xl mx-auto px-4 sm:px-6">
-      <div className="flex flex-col lg:flex-row gap-4 lg:gap-6">
+    <div className="max-w-6xl mx-auto px-2 sm:px-4 md:px-6">
+      <div className="flex flex-col lg:flex-row gap-3 sm:gap-4 lg:gap-6">
         {/* Main Content */}
         <div className="flex-1 min-w-0">
               {/* User Header */}
@@ -454,30 +453,30 @@ const Profile: React.FC = () => {
               )}
 
               {activeTab === 'saved' && (
-                <div className="text-center py-8 text-gray-500">
-                  <p>No saved posts.</p>
-                  <p className="text-sm mt-1">Posts you save will appear here.</p>
+                <div className="text-center py-6 sm:py-8 text-gray-500">
+                  <p className="text-sm sm:text-base">No saved posts.</p>
+                  <p className="text-xs sm:text-sm mt-1">Posts you save will appear here.</p>
                 </div>
               )}
 
               {activeTab === 'history' && (
-                <div className="text-center py-8 text-gray-500">
-                  <p>No history.</p>
-                  <p className="text-sm mt-1">Your browsing history will appear here.</p>
+                <div className="text-center py-6 sm:py-8 text-gray-500">
+                  <p className="text-sm sm:text-base">No history.</p>
+                  <p className="text-xs sm:text-sm mt-1">Your browsing history will appear here.</p>
                 </div>
               )}
 
               {activeTab === 'upvoted' && (
-                <div className="text-center py-8 text-gray-500">
-                  <p>No upvoted posts.</p>
-                  <p className="text-sm mt-1">Posts you upvote will appear here.</p>
+                <div className="text-center py-6 sm:py-8 text-gray-500">
+                  <p className="text-sm sm:text-base">No upvoted posts.</p>
+                  <p className="text-xs sm:text-sm mt-1">Posts you upvote will appear here.</p>
                 </div>
               )}
 
               {activeTab === 'downvoted' && (
-                <div className="text-center py-8 text-gray-500">
-                  <p>No downvoted posts.</p>
-                  <p className="text-sm mt-1">Posts you downvote will appear here.</p>
+                <div className="text-center py-6 sm:py-8 text-gray-500">
+                  <p className="text-sm sm:text-base">No downvoted posts.</p>
+                  <p className="text-xs sm:text-sm mt-1">Posts you downvote will appear here.</p>
                 </div>
               )}
             </div>
@@ -486,28 +485,28 @@ const Profile: React.FC = () => {
 
         {/* Right Sidebar */}
         <div className="w-full lg:w-80 flex-shrink-0">
-          <div className="bg-white border border-gray-200 rounded-md p-4 mb-4">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="font-semibold text-gray-900">{profileUser.firstName} {profileUser.lastName}</h3>
-              <button className="flex items-center space-x-1 text-gray-600 hover:text-gray-800">
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <div className="bg-white border border-gray-200 rounded-md p-3 sm:p-4 mb-3 sm:mb-4">
+            <div className="flex items-center justify-between mb-3 sm:mb-4">
+              <h3 className="text-sm sm:text-base font-semibold text-gray-900 truncate">{profileUser.firstName} {profileUser.lastName}</h3>
+              <button className="flex items-center space-x-1 text-gray-600 hover:text-gray-800 flex-shrink-0 ml-2">
+                <svg className="w-3.5 h-3.5 sm:w-4 sm:h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.367 2.684 3 3 0 00-5.367-2.684z" />
                 </svg>
-                <span className="text-sm">Share</span>
+                <span className="text-xs sm:text-sm hidden sm:inline">Share</span>
               </button>
             </div>
             
-            <div className="text-sm text-gray-500 mb-4">
+            <div className="text-xs sm:text-sm text-gray-500 mb-3 sm:mb-4">
               <p>0 followers</p>
             </div>
 
             {profileUser.bio && (
-              <div className="text-sm text-gray-700 mb-4">
+              <div className="text-xs sm:text-sm text-gray-700 mb-3 sm:mb-4 break-words">
                 <p>{profileUser.bio}</p>
               </div>
             )}
 
-            <div className="space-y-3 text-sm mb-4">
+            <div className="space-y-2 sm:space-y-3 text-xs sm:text-sm mb-3 sm:mb-4">
               <div className="flex justify-between items-center py-2 border-b border-gray-100">
                 <span className="text-gray-600">Karma</span>
                 <span className="font-semibold text-gray-900">{formatKarma(stats.totalKarma)}</span>
@@ -538,17 +537,17 @@ const Profile: React.FC = () => {
               </div>
             </div>
 
-            <div className="text-sm text-gray-500 mb-4">
+            <div className="text-xs sm:text-sm text-gray-500 mb-3 sm:mb-4">
               <p>0 Gold earned</p>
             </div>
 
-            <div className="border-t border-gray-200 pt-4 mt-4">
-              <h4 className="font-semibold text-gray-900 mb-2">PROFILE SETTINGS</h4>
+            <div className="border-t border-gray-200 pt-3 sm:pt-4 mt-3 sm:mt-4">
+              <h4 className="text-xs sm:text-sm font-semibold text-gray-900 mb-2">PROFILE SETTINGS</h4>
               <Link
                 to="/profile/settings"
-                className="w-full mt-2 px-3 py-2 bg-blue-600 text-white rounded-md text-sm hover:bg-blue-700 transition-colors flex items-center justify-center space-x-2"
+                className="w-full mt-2 px-2 sm:px-3 py-1.5 sm:py-2 bg-blue-600 text-white rounded-md text-xs sm:text-sm hover:bg-blue-700 transition-colors flex items-center justify-center space-x-1 sm:space-x-2"
               >
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg className="w-3.5 h-3.5 sm:w-4 sm:h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
                 </svg>
                 <span>Edit Profile</span>
@@ -557,25 +556,25 @@ const Profile: React.FC = () => {
           </div>
 
           {/* Followed Communities */}
-          <div className="bg-white border border-gray-200 rounded-md p-4">
-            <h3 className="font-semibold text-gray-900 mb-4">Followed Communities</h3>
-            <div className="space-y-3">
+          <div className="bg-white border border-gray-200 rounded-md p-3 sm:p-4">
+            <h3 className="text-sm sm:text-base font-semibold text-gray-900 mb-3 sm:mb-4">Followed Communities</h3>
+            <div className="space-y-2 sm:space-y-3">
               {communities.length > 0 ? (
                 communities.map((community) => (
-                  <div key={community.id} className="flex items-center space-x-3">
+                  <div key={community.id} className="flex items-center space-x-2 sm:space-x-3">
                     {community.profileImage ? (
                       <img 
                         src={community.profileImage} 
                         alt={community.name}
-                        className="w-8 h-8 rounded-full object-cover"
+                        className="w-7 h-7 sm:w-8 sm:h-8 rounded-full object-cover flex-shrink-0"
                       />
                     ) : (
-                      <div className="w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center">
+                      <div className="w-7 h-7 sm:w-8 sm:h-8 bg-blue-600 rounded-full flex items-center justify-center flex-shrink-0">
                         <span className="text-white text-xs font-bold">o/</span>
                       </div>
                     )}
-                    <div className="flex-1">
-                      <Link to={`/community/${community.slug || community.id}`} className="text-sm font-medium text-gray-900 hover:text-blue-600">
+                    <div className="flex-1 min-w-0">
+                      <Link to={`/community/${community.slug || community.id}`} className="text-xs sm:text-sm font-medium text-gray-900 hover:text-blue-600 truncate block">
                         o/{community.name}
                       </Link>
                       <p className="text-xs text-gray-500">{community.memberCount || 0} members</p>
@@ -583,8 +582,8 @@ const Profile: React.FC = () => {
                   </div>
                 ))
               ) : (
-                <div className="text-center py-4 text-gray-500">
-                  <p className="text-sm">No communities followed yet</p>
+                <div className="text-center py-3 sm:py-4 text-gray-500">
+                  <p className="text-xs sm:text-sm">No communities followed yet</p>
                   <p className="text-xs mt-1">Communities you follow will appear here</p>
                 </div>
               )}

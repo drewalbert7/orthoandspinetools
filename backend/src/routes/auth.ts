@@ -160,9 +160,14 @@ router.post('/login', validateLogin, asyncHandler(async (req: Request, res: Resp
       medicalLicense: true,
       institution: true,
       yearsExperience: true,
+      profileImage: true,
+      bio: true,
+      location: true,
+      website: true,
       isActive: true,
       isEmailVerified: true,
       isAdmin: true,
+      isVerifiedPhysician: true,
       lastLoginAt: true,
     }
   });
@@ -253,6 +258,7 @@ router.get('/me', authenticate, asyncHandler(async (req: AuthRequest, res: Respo
       website: true,
       isEmailVerified: true,
       isAdmin: true,
+      isVerifiedPhysician: true,
       createdAt: true,
       updatedAt: true,
       lastLoginAt: true,
@@ -306,6 +312,37 @@ router.put('/me', authenticate, [
     website,
     profileImage
   } = req.body;
+
+  // Get current user to check for old profile image
+  const currentUser = await prisma.user.findUnique({
+    where: { id: req.user!.id },
+    select: { profileImage: true }
+  });
+
+  // If updating profile image and user has an old Cloudinary image, delete it
+  if (profileImage !== undefined && profileImage !== currentUser?.profileImage && currentUser?.profileImage) {
+    try {
+      const { deleteFromCloudinary, extractPublicIdFromUrl } = await import('../services/cloudinaryService');
+      const oldImageUrl = currentUser.profileImage;
+      
+      if (oldImageUrl && oldImageUrl.includes('cloudinary.com')) {
+        const publicId = extractPublicIdFromUrl(oldImageUrl);
+        
+        if (publicId) {
+          await deleteFromCloudinary(publicId);
+          
+          logger.info(`Deleted old profile image from Cloudinary for user ${req.user!.id}`, {
+            userId: req.user!.id,
+            publicId: publicId,
+            oldUrl: oldImageUrl
+          });
+        }
+      }
+    } catch (deleteError) {
+      // Log error but don't fail the update - old image cleanup is not critical
+      logger.warn(`Failed to delete old profile image from Cloudinary:`, deleteError);
+    }
+  }
 
   const updatedUser = await prisma.user.update({
     where: { id: req.user!.id },
@@ -848,6 +885,84 @@ router.post('/reset-password', validatePasswordUpdate, asyncHandler(async (req: 
     }
     throw error;
   }
+}));
+
+// Verify/Unverify physician (Admin only)
+router.put('/verify/:userId', authenticate, [
+  param('userId').isString().isLength({ min: 1 }).withMessage('Invalid user ID'),
+  body('isVerified').isBoolean().withMessage('isVerified must be a boolean'),
+], asyncHandler(async (req: AuthRequest, res: Response) => {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    throw new AppError(`Validation failed: ${errors.array().map(e => e.msg).join(', ')}`, 400);
+  }
+
+  const { userId } = req.params;
+  const { isVerified } = req.body;
+
+  // Check if requester is admin
+  if (!req.user!.isAdmin) {
+    throw new AppError('Only administrators can verify physicians', 403);
+  }
+
+  // Get the user to verify
+  const userToVerify = await prisma.user.findUnique({
+    where: { id: userId },
+    select: {
+      id: true,
+      username: true,
+      firstName: true,
+      lastName: true,
+      isVerifiedPhysician: true,
+    }
+  });
+
+  if (!userToVerify) {
+    throw new AppError('User not found', 404);
+  }
+
+  // Update verification status
+  const updatedUser = await prisma.user.update({
+    where: { id: userId },
+    data: { isVerifiedPhysician: isVerified },
+    select: {
+      id: true,
+      username: true,
+      firstName: true,
+      lastName: true,
+      isVerifiedPhysician: true,
+      profileImage: true,
+    }
+  });
+
+  // Log the verification action
+  await prisma.auditLog.create({
+    data: {
+      userId: req.user!.id,
+      action: isVerified ? 'VERIFY_PHYSICIAN' : 'UNVERIFY_PHYSICIAN',
+      resource: 'user',
+      resourceId: userId,
+      details: {
+        verifiedUserId: userId,
+        verifiedUsername: userToVerify.username,
+        isVerified: isVerified,
+      },
+      ipAddress: req.ip,
+      userAgent: req.get('User-Agent'),
+    }
+  });
+
+  logger.info(`${isVerified ? 'Verified' : 'Unverified'} physician: ${userToVerify.username}`, {
+    adminId: req.user!.id,
+    userId: userId,
+    isVerified: isVerified
+  });
+
+  res.json({
+    success: true,
+    message: `Physician ${isVerified ? 'verified' : 'unverified'} successfully`,
+    data: updatedUser
+  });
 }));
 
 export default router;

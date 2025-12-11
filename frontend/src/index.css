@@ -16,10 +16,25 @@
 @layer base {
   html {
     font-family: 'Inter', system-ui, sans-serif;
+    -webkit-text-size-adjust: 100%;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
   }
   
   body {
     @apply bg-white text-gray-900;
+    overflow-x: hidden; /* Prevent horizontal scroll on mobile */
+  }
+  
+  /* Ensure touch targets are accessible on mobile */
+  @media (max-width: 640px) {
+    button:not(.no-touch-target), 
+    a:not(.no-touch-target) {
+      min-height: 44px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+    }
   }
 }
 
