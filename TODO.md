@@ -1070,7 +1070,16 @@ All previously identified issues have been resolved:
   - Added data attribute for menu identification in click handlers
 - **Status**: ✅ **RESOLVED** - Share menu now appears correctly when button is clicked
 
-### **3. Additional Enhancements** 📝 **LOW PRIORITY**
+### **3. Verified Physician Badge - Next Steps** 📋 **PENDING TASKS**
+- ⏳ **Run Database Migration** - Execute `npx prisma migrate dev --name add_verified_physician` to add `isVerifiedPhysician` field to database
+- ⏳ **Update Post Author Queries** - Add `isVerifiedPhysician: true` to all post author select statements in `backend/src/routes/posts.ts`
+- ⏳ **Add Admin/Moderator UI** - Create UI component for admins/moderators to verify/unverify physicians
+  - Add verification controls to user profile pages
+  - Add bulk verification interface in Admin Dashboard
+  - Add verification status indicator in user management tables
+  - Consider adding verification to community moderator management
+
+### **4. Additional Enhancements** 📝 **LOW PRIORITY**
 - Enhanced profile page design
 - Reporting system for posts/comments
 - Advanced admin dashboard features
