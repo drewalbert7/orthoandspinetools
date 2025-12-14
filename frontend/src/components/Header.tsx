@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Menu, X } from 'lucide-react';
 import UserAvatar from './UserAvatar';
+import apiService, { Notification } from '../services/apiService';
 
 interface HeaderProps {
   isMobileSidebarOpen: boolean;
@@ -12,8 +14,56 @@ interface HeaderProps {
 const Header: React.FC<HeaderProps> = ({ isMobileSidebarOpen, onMobileSidebarToggle }) => {
   const { user, logout, refreshUser } = useAuth();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isNotificationOpen, setIsNotificationOpen] = useState(false);
+
+  // Fetch notifications
+  const { data: notificationsData } = useQuery({
+    queryKey: ['notifications'],
+    queryFn: () => apiService.getNotifications(20, 0),
+    enabled: !!user,
+    refetchInterval: 30000, // Refetch every 30 seconds
+  });
+
+  // Fetch unread count
+  const { data: unreadCountData } = useQuery({
+    queryKey: ['notifications', 'unread-count'],
+    queryFn: () => apiService.getUnreadNotificationCount(),
+    enabled: !!user,
+    refetchInterval: 30000,
+  });
+
+  const unreadCount = unreadCountData?.count || 0;
+  const notifications = notificationsData?.notifications || [];
+
+  // Mark notification as read mutation
+  const markAsReadMutation = useMutation({
+    mutationFn: (notificationId: string) => apiService.markNotificationAsRead(notificationId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['notifications'] });
+      queryClient.invalidateQueries({ queryKey: ['notifications', 'unread-count'] });
+    },
+  });
+
+  // Mark all as read mutation
+  const markAllAsReadMutation = useMutation({
+    mutationFn: () => apiService.markAllNotificationsAsRead(),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['notifications'] });
+      queryClient.invalidateQueries({ queryKey: ['notifications', 'unread-count'] });
+    },
+  });
+
+  const handleNotificationClick = (notification: Notification) => {
+    if (!notification.isRead) {
+      markAsReadMutation.mutate(notification.id);
+    }
+    if (notification.link) {
+      navigate(notification.link);
+      setIsNotificationOpen(false);
+    }
+  };
 
   // Refresh user data when component mounts if user exists but profileImage might be missing
   useEffect(() => {
@@ -113,23 +163,78 @@ const Header: React.FC<HeaderProps> = ({ isMobileSidebarOpen, onMobileSidebarTog
                 <div className="relative">
                   <button
                     onClick={() => setIsNotificationOpen(!isNotificationOpen)}
-                    className="p-2 text-black hover:text-gray-600 transition-colors flex items-center justify-center"
+                    className="p-2 text-black hover:text-gray-600 transition-colors flex items-center justify-center relative"
                   >
                     <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
                       <path strokeLinecap="round" strokeLinejoin="round" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
                     </svg>
+                    {unreadCount > 0 && (
+                      <span className="absolute -top-1 -right-1 bg-reddit-orange text-white text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center">
+                        {unreadCount > 9 ? '9+' : unreadCount}
+                      </span>
+                    )}
                   </button>
 
                   {/* Notification Dropdown */}
                   {isNotificationOpen && (
-                    <div className="absolute right-0 mt-2 w-80 bg-white rounded-md shadow-lg py-1 z-50 border border-gray-200">
-                      <div className="px-4 py-2 border-b border-gray-200">
-                        <h3 className="text-sm font-medium text-gray-900">Notifications</h3>
+                    <>
+                      <div
+                        className="fixed inset-0 z-40"
+                        onClick={() => setIsNotificationOpen(false)}
+                      />
+                      <div className="absolute right-0 mt-2 w-80 bg-white rounded-md shadow-lg z-50 border border-gray-200 max-h-96 overflow-y-auto">
+                        <div className="px-4 py-3 border-b border-gray-200 flex items-center justify-between">
+                          <h3 className="text-sm font-medium text-gray-900">Notifications</h3>
+                          {unreadCount > 0 && (
+                            <button
+                              onClick={() => markAllAsReadMutation.mutate()}
+                              className="text-xs text-blue-600 hover:text-blue-800"
+                            >
+                              Mark all as read
+                            </button>
+                          )}
+                        </div>
+                        {notifications.length === 0 ? (
+                          <div className="px-4 py-8 text-sm text-gray-500 text-center">
+                            No notifications
+                          </div>
+                        ) : (
+                          <div className="divide-y divide-gray-100">
+                            {notifications.map((notification: Notification) => (
+                              <button
+                                key={notification.id}
+                                onClick={() => handleNotificationClick(notification)}
+                                className={`w-full text-left px-4 py-3 hover:bg-gray-50 transition-colors ${
+                                  !notification.isRead ? 'bg-blue-50' : ''
+                                }`}
+                              >
+                                <div className="flex items-start space-x-3">
+                                  <div className={`flex-shrink-0 w-2 h-2 rounded-full mt-2 ${
+                                    !notification.isRead ? 'bg-blue-600' : 'bg-transparent'
+                                  }`} />
+                                  <div className="flex-1 min-w-0">
+                                    <p className={`text-sm ${!notification.isRead ? 'font-semibold text-gray-900' : 'text-gray-700'}`}>
+                                      {notification.title}
+                                    </p>
+                                    <p className="text-xs text-gray-500 mt-1 line-clamp-2">
+                                      {notification.message}
+                                    </p>
+                                    <p className="text-xs text-gray-400 mt-1">
+                                      {new Date(notification.createdAt).toLocaleDateString('en-US', {
+                                        month: 'short',
+                                        day: 'numeric',
+                                        hour: 'numeric',
+                                        minute: '2-digit',
+                                      })}
+                                    </p>
+                                  </div>
+                                </div>
+                              </button>
+                            ))}
+                          </div>
+                        )}
                       </div>
-                      <div className="px-4 py-3 text-sm text-gray-500">
-                        No new notifications
-                      </div>
-                    </div>
+                    </>
                   )}
                 </div>
 

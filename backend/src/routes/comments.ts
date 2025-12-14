@@ -6,6 +6,7 @@ import { prisma } from '../lib/prisma';
 import { logger } from '../utils/logger';
 import { body, param, query, validationResult } from 'express-validator';
 import { updateUserKarma, calculateKarmaChange } from '../utils/karmaService';
+import { notifyPostAuthor, notifyCommentAuthor, notifyCommentUpvote } from '../services/notificationService';
 
 const router = Router();
 
@@ -163,6 +164,21 @@ router.post('/', authenticate, validateComment, asyncHandler(async (req: AuthReq
   const upvotes = (comment.votes as any[]).filter((vote: any) => vote.type === 'upvote').length;
   const downvotes = (comment.votes as any[]).filter((vote: any) => vote.type === 'downvote').length;
   const userVote = (comment.votes as any[]).find((vote: any) => vote.userId === req.user!.id);
+
+  // Send notifications (non-blocking)
+  const commentAuthorName = `${comment.author.firstName} ${comment.author.lastName}`.trim() || comment.author.username;
+  
+  if (parentId) {
+    // Notify parent comment author
+    notifyCommentAuthor(parentId, req.user!.id, commentAuthorName).catch(err => {
+      logger.error('Error sending comment reply notification:', err);
+    });
+  } else {
+    // Notify post author
+    notifyPostAuthor(postId, req.user!.id, commentAuthorName).catch(err => {
+      logger.error('Error sending post reply notification:', err);
+    });
+  }
 
   // Transform comment to match frontend interface
   const commentResponse = {
@@ -507,9 +523,19 @@ router.post('/:id/vote', authenticate, validateCommentVote, asyncHandler(async (
   const { id } = req.params;
   const { type } = req.body;
 
-  // Check if comment exists
+  // Check if comment exists and get author info
   const comment = await prisma.comment.findUnique({
-    where: { id }
+    where: { id },
+    include: {
+      author: {
+        select: {
+          id: true,
+          username: true,
+          firstName: true,
+          lastName: true,
+        }
+      }
+    }
   });
 
   if (!comment) {
@@ -599,6 +625,17 @@ router.post('/:id/vote', authenticate, validateCommentVote, asyncHandler(async (
     }
   }
 
+  // Get voter info for notifications
+  const voter = await prisma.user.findUnique({
+    where: { id: req.user!.id },
+    select: {
+      id: true,
+      username: true,
+      firstName: true,
+      lastName: true,
+    }
+  });
+
   // Create new vote
   const vote = await prisma.commentVote.create({
     data: {
@@ -612,6 +649,14 @@ router.post('/:id/vote', authenticate, validateCommentVote, asyncHandler(async (
   const karmaChange = calculateKarmaChange(null, type);
   if (karmaChange !== 0) {
     await updateUserKarma(comment.authorId, 'comment', karmaChange);
+  }
+
+  // Send notification for upvotes (non-blocking)
+  if (type === 'upvote' && voter) {
+    const voterName = `${voter.firstName} ${voter.lastName}`.trim() || voter.username;
+    notifyCommentUpvote(id, req.user!.id, voterName).catch(err => {
+      logger.error('Error sending comment upvote notification:', err);
+    });
   }
 
   // Log the vote creation

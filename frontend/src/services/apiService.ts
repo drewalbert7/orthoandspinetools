@@ -792,8 +792,80 @@ class ApiService {
       throw new Error(error.response?.data?.message || 'Failed to verify physician');
     }
   }
+
+  // Notification methods
+  async getNotifications(limit = 20, offset = 0): Promise<NotificationResponse> {
+    try {
+      const response = await api.get('/notifications', {
+        params: { limit, offset },
+      });
+      return response.data;
+    } catch (error: any) {
+      throw new Error(error.response?.data?.message || 'Failed to fetch notifications');
+    }
+  }
+
+  async getUnreadNotificationCount(): Promise<{ count: number }> {
+    try {
+      const response = await api.get('/notifications/unread-count');
+      return response.data;
+    } catch (error: any) {
+      throw new Error(error.response?.data?.message || 'Failed to fetch unread count');
+    }
+  }
+
+  async markNotificationAsRead(notificationId: string): Promise<void> {
+    try {
+      await api.put(`/notifications/${notificationId}/read`);
+    } catch (error: any) {
+      throw new Error(error.response?.data?.message || 'Failed to mark notification as read');
+    }
+  }
+
+  async markAllNotificationsAsRead(): Promise<void> {
+    try {
+      await api.put('/notifications/mark-all-read');
+    } catch (error: any) {
+      throw new Error(error.response?.data?.message || 'Failed to mark all notifications as read');
+    }
+  }
+
+  async deleteNotification(notificationId: string): Promise<void> {
+    try {
+      await api.delete(`/notifications/${notificationId}`);
+    } catch (error: any) {
+      throw new Error(error.response?.data?.message || 'Failed to delete notification');
+    }
+  }
+}
+
+// Notification interfaces
+export interface Notification {
+  id: string;
+  type: 'comment_reply' | 'post_reply' | 'mention' | 'vote' | 'mod_action';
+  title: string;
+  message: string;
+  link?: string;
+  isRead: boolean;
+  relatedPostId?: string;
+  relatedCommentId?: string;
+  relatedUserId?: string;
+  createdAt: string;
+  readAt?: string;
+}
+
+export interface NotificationResponse {
+  notifications: Notification[];
+  pagination: {
+    total: number;
+    unread: number;
+    limit: number;
+    offset: number;
+    hasMore: boolean;
+  };
 }
 
 // Export singleton instance
 export const apiService = new ApiService();
+
 export default apiService;

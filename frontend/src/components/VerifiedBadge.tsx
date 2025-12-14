@@ -32,3 +32,5 @@ const VerifiedBadge: React.FC<VerifiedBadgeProps> = ({ size = 'md', className = 
 
 export default VerifiedBadge;
 
+
+

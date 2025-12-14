@@ -5,7 +5,7 @@ import { prisma } from '../lib/prisma';
 import { logger } from '../utils/logger';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
-import { body, validationResult } from 'express-validator';
+import { body, param, validationResult } from 'express-validator';
 
 const router = Router();
 
