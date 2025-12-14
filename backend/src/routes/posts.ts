@@ -6,7 +6,6 @@ import { prisma } from '../lib/prisma';
 import { logger } from '../utils/logger';
 import { body, param, query, validationResult } from 'express-validator';
 import { updateUserKarma, calculateKarmaChange } from '../utils/karmaService';
-import { notifyPostUpvote } from '../services/notificationService';
 
 const router = Router();
 
@@ -681,19 +680,9 @@ router.post('/:id/vote', authenticate, validateVote, asyncHandler(async (req: Au
   const { id } = req.params;
   const { type } = req.body;
 
-  // Check if post exists and get author info
+  // Check if post exists
   const post = await prisma.post.findUnique({
-    where: { id },
-    include: {
-      author: {
-        select: {
-          id: true,
-          username: true,
-          firstName: true,
-          lastName: true,
-        }
-      }
-    }
+    where: { id }
   });
 
   if (!post) {
@@ -783,17 +772,6 @@ router.post('/:id/vote', authenticate, validateVote, asyncHandler(async (req: Au
     }
   }
 
-  // Get voter info for notifications
-  const voter = await prisma.user.findUnique({
-    where: { id: req.user!.id },
-    select: {
-      id: true,
-      username: true,
-      firstName: true,
-      lastName: true,
-    }
-  });
-
   // Create new vote
   const vote = await prisma.postVote.create({
     data: {
@@ -807,14 +785,6 @@ router.post('/:id/vote', authenticate, validateVote, asyncHandler(async (req: Au
   const karmaChange = calculateKarmaChange(null, type);
   if (karmaChange !== 0) {
     await updateUserKarma(post.authorId, 'post', karmaChange);
-  }
-
-  // Send notification for upvotes (non-blocking)
-  if (type === 'upvote' && voter) {
-    const voterName = `${voter.firstName} ${voter.lastName}`.trim() || voter.username;
-    notifyPostUpvote(id, req.user!.id, voterName).catch(err => {
-      logger.error('Error sending post upvote notification:', err);
-    });
   }
 
   // Log the vote creation

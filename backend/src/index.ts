@@ -17,7 +17,6 @@ import toolRoutes from './routes/tools';
 import uploadRoutes from './routes/upload';
 import karmaRoutes from './routes/karma';
 import moderationRoutes from './routes/moderation';
-import notificationRoutes from './routes/notifications';
 
 // Import middleware
 import { errorHandler } from './middleware/errorHandler';
@@ -142,7 +141,6 @@ app.use('/api/tools', toolRoutes);
 app.use('/api/upload', uploadRoutes);
 app.use('/api/karma', karmaRoutes);
 app.use('/api/moderation', moderationRoutes);
-app.use('/api/notifications', notificationRoutes);
 
 // Error handling middleware
 app.use(errorHandler);
