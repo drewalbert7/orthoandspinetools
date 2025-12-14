@@ -1079,6 +1079,207 @@ All previously identified issues have been resolved:
   - Add verification status indicator in user management tables
   - Consider adding verification to community moderator management
 
+### **5. Notification System Implementation** 🔔 **PLANNED - DATABASE SAFE**
+**Status:** ⏳ **PLANNING COMPLETE - READY FOR IMPLEMENTATION**  
+**Priority:** Medium  
+**Risk Level:** Low (incremental, non-breaking changes)
+
+#### **Phase 1: Database Schema (SAFE - No Breaking Changes)** ✅ **PLANNED**
+- ⏳ **Add Notification Model to Prisma Schema**
+  - Create `Notification` model in `backend/prisma/schema.prisma`
+  - Fields: `id`, `userId`, `type`, `title`, `message`, `link`, `isRead`, `createdAt`, `updatedAt`
+  - Types: `comment`, `reply`, `vote`, `mention`, `moderation`, `system`
+  - Relations: `user` (User model)
+  - **Safety:** New table only, no modifications to existing tables
+  - **Migration:** Use `prisma db push` or create migration file
+  - **Verification:** Test migration on development database first
+
+- ⏳ **Database Migration Steps (SAFE)**
+  1. Backup database: `./scripts/database-backup-production.sh`
+  2. Review schema changes: Verify only new table is added
+  3. Test migration locally: `npx prisma db push` in development
+  4. Verify no existing data affected: Check all existing tables still accessible
+  5. Apply to production: Run migration in backend container
+  6. Regenerate Prisma client: `npx prisma generate`
+  7. Restart backend: Verify no errors in logs
+
+#### **Phase 2: Backend API (Non-Breaking)** ✅ **PLANNED**
+- ⏳ **Create Notification Routes** (`backend/src/routes/notifications.ts`)
+  - `GET /api/notifications` - Get user's notifications (paginated)
+  - `GET /api/notifications/unread-count` - Get unread count
+  - `PUT /api/notifications/:id/read` - Mark notification as read
+  - `PUT /api/notifications/read-all` - Mark all as read
+  - `DELETE /api/notifications/:id` - Delete notification
+  - **Safety:** New routes only, no changes to existing routes
+  - **Authentication:** Use existing `authenticate` middleware
+  - **Validation:** Use `express-validator` for input validation
+
+- ⏳ **Create Notification Service** (`backend/src/services/notificationService.ts`)
+  - `createNotification(userId, type, data)` - Create notification
+  - `getUserNotifications(userId, options)` - Get notifications with pagination
+  - `markAsRead(notificationId, userId)` - Mark as read
+  - `markAllAsRead(userId)` - Mark all as read
+  - `deleteNotification(notificationId, userId)` - Delete notification
+  - `getUnreadCount(userId)` - Get unread count
+  - **Safety:** Service layer only, no database modifications to existing tables
+
+- ⏳ **Integrate Notification Triggers** (Incremental - One at a time)
+  - **Comment Notifications:**
+    - When user's post receives a comment → Create notification
+    - When user's comment receives a reply → Create notification
+    - Location: `backend/src/routes/comments.ts` (POST /comments)
+    - **Safety:** Add notification creation AFTER successful comment creation
+    - **Error Handling:** If notification creation fails, don't fail comment creation
+  
+  - **Vote Notifications:**
+    - When user's post receives significant upvotes (optional threshold)
+    - When user's comment receives upvotes (optional threshold)
+    - Location: `backend/src/routes/posts.ts` (vote endpoints)
+    - **Safety:** Add notification creation AFTER successful vote
+    - **Optional:** Only notify on milestone votes (10, 50, 100, etc.)
+  
+  - **Mention Notifications:**
+    - When user is mentioned in comment/post (@username)
+    - Parse content for @mentions
+    - Location: Comment and post creation endpoints
+    - **Safety:** Add mention parsing AFTER content validation
+  
+  - **Moderation Notifications:**
+    - When post/comment is removed by moderator
+    - When user is promoted to moderator
+    - Location: Moderation endpoints
+    - **Safety:** Add notification AFTER moderation action succeeds
+
+#### **Phase 3: Frontend Integration (Non-Breaking)** ✅ **PLANNED**
+- ⏳ **Update API Service** (`frontend/src/services/apiService.ts`)
+  - Add `getNotifications(params)` method
+  - Add `getUnreadCount()` method
+  - Add `markNotificationAsRead(id)` method
+  - Add `markAllNotificationsAsRead()` method
+  - Add `deleteNotification(id)` method
+  - **Safety:** New methods only, no changes to existing methods
+
+- ⏳ **Create Notification Hook** (`frontend/src/hooks/useNotifications.ts`)
+  - Use React Query for notification data
+  - Auto-refresh every 30 seconds when dropdown is open
+  - Optimistic updates for read/unread state
+  - **Safety:** New hook, no changes to existing hooks
+
+- ⏳ **Update Header Component** (`frontend/src/components/Header.tsx`)
+  - Replace "No new notifications" with actual notification list
+  - Display notification items with type icons
+  - Show unread count badge on bell icon
+  - Add "Mark all as read" button
+  - Add click handlers to navigate to notification links
+  - **Safety:** Update existing dropdown only, no structural changes
+
+- ⏳ **Create NotificationItem Component** (`frontend/src/components/NotificationItem.tsx`)
+  - Display notification with icon, title, message, timestamp
+  - Show read/unread state
+  - Handle click to navigate to link
+  - Handle mark as read on click
+  - **Safety:** New component, no changes to existing components
+
+#### **Phase 4: Testing & Verification (CRITICAL)** ✅ **PLANNED**
+- ⏳ **Database Safety Tests**
+  - Verify all existing tables still accessible
+  - Verify no data loss in existing tables
+  - Verify notification table created correctly
+  - Test rollback procedure if needed
+
+- ⏳ **API Tests**
+  - Test notification creation for each type
+  - Test notification retrieval with pagination
+  - Test mark as read functionality
+  - Test unread count calculation
+  - Verify authentication required for all endpoints
+
+- ⏳ **Integration Tests**
+  - Test comment notification creation
+  - Test reply notification creation
+  - Test vote notification creation (if implemented)
+  - Test mention notification creation
+  - Test notification display in header
+  - Test notification click navigation
+
+- ⏳ **User Experience Tests**
+  - Test notification dropdown opens/closes correctly
+  - Test unread count badge displays correctly
+  - Test notification list scrolls properly
+  - Test mark all as read functionality
+  - Test notification deletion
+  - Test mobile responsiveness
+
+#### **Phase 5: Deployment (SAFE ROLLOUT)** ✅ **PLANNED**
+- ⏳ **Pre-Deployment Checklist**
+  - [ ] Database backup created
+  - [ ] Schema changes reviewed
+  - [ ] All tests passing
+  - [ ] No breaking changes identified
+  - [ ] Rollback plan documented
+
+- ⏳ **Deployment Steps**
+  1. Deploy backend changes (new routes, service, triggers)
+  2. Run database migration in backend container
+  3. Verify backend starts without errors
+  4. Deploy frontend changes
+  5. Verify frontend builds successfully
+  6. Test notification functionality on live site
+  7. Monitor backend logs for errors
+
+- ⏳ **Post-Deployment Monitoring**
+  - Monitor database performance
+  - Monitor notification creation rate
+  - Check for any errors in logs
+  - Verify user notifications are being created
+  - Monitor API response times
+
+#### **Safety Measures** 🛡️
+1. **Database Protection:**
+   - Always backup before migration
+   - Test migration on development database first
+   - Use transactions where possible
+   - Verify rollback procedure works
+
+2. **Code Safety:**
+   - Add notification creation AFTER successful operations
+   - Never fail main operations if notification creation fails
+   - Use try-catch blocks around notification creation
+   - Log notification errors but don't throw
+
+3. **Incremental Implementation:**
+   - Implement one notification type at a time
+   - Test each type before adding next
+   - Deploy incrementally if possible
+   - Monitor each addition carefully
+
+4. **Error Handling:**
+   - Notification creation failures should not break existing features
+   - Graceful degradation if notification service unavailable
+   - Clear error messages for debugging
+   - Comprehensive logging
+
+#### **Estimated Timeline**
+- **Phase 1 (Database):** 30 minutes
+- **Phase 2 (Backend):** 2-3 hours
+- **Phase 3 (Frontend):** 2-3 hours
+- **Phase 4 (Testing):** 1-2 hours
+- **Phase 5 (Deployment):** 30 minutes
+- **Total:** 6-9 hours
+
+#### **Dependencies**
+- Existing authentication system (already in place)
+- Existing comment system (already in place)
+- Existing vote system (already in place)
+- Prisma ORM (already in place)
+- React Query (already in place)
+
+#### **Notes**
+- Notification system is completely optional - if it fails, core functionality continues
+- Can be implemented incrementally (one notification type at a time)
+- Database changes are additive only (new table, no modifications)
+- All existing functionality remains unchanged
+
 ### **4. Additional Enhancements** 📝 **LOW PRIORITY**
 - Enhanced profile page design
 - Reporting system for posts/comments
