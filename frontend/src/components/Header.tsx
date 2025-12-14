@@ -53,23 +53,23 @@ const Header: React.FC<HeaderProps> = ({ isMobileSidebarOpen, onMobileSidebarTog
             {/* Logo and Brand */}
             <Link to="/" className="flex items-center space-x-2">
               <div className="w-8 h-8 bg-reddit-orange rounded-lg flex items-center justify-center">
-                {/* Hammer Icon - exact match to provided image, resized to fit */}
+                {/* Hammer Icon - exact match to provided image */}
                 <svg 
                   className="w-6 h-6 text-white" 
                   viewBox="0 0 24 24" 
                   fill="currentColor"
                   preserveAspectRatio="xMidYMid meet"
                 >
-                  {/* Thick circular border - unbroken black line */}
+                  {/* Thick circular border - unbroken black line, consistent line weight */}
                   <circle cx="12" cy="12" r="10" fill="none" stroke="currentColor" strokeWidth="2.5" />
-                  {/* Hammer head - left rectangular striking face (solid thick black) */}
-                  <rect x="6.5" y="7.5" width="3.8" height="2.5" />
-                  {/* Hammer head - right tapering side (wedge-like, tapers outward then narrows) */}
-                  <path d="M10.3 7.5 L14 6.8 L14 10 L10.3 10 Z" />
-                  {/* Small rectangular protrusion on top center of hammer head */}
-                  <rect x="9.5" y="6" width="1.8" height="1.5" />
-                  {/* Hammer handle - thick vertical line/rectangle extending down from center */}
-                  <rect x="10.8" y="10" width="2.4" height="5" />
+                  {/* Hammer head - left rectangular striking face (solid thick black block) */}
+                  <rect x="6.5" y="7.2" width="3.5" height="2.6" />
+                  {/* Hammer head - right side tapers outward then narrows to flat wedge-like shape */}
+                  <path d="M10 7.2 L13.2 6.5 L13.8 8.5 L13.2 9.8 L10 9.8 Z" />
+                  {/* Small rectangular protrusion on top center of hammer head (eye where handle inserts) */}
+                  <rect x="9.3" y="5.8" width="1.4" height="1.4" />
+                  {/* Hammer handle - thick vertical line/rectangle extending down from center of head */}
+                  <rect x="10.8" y="9.8" width="2.4" height="5.2" />
                 </svg>
               </div>
               <span className="text-xl font-bold text-reddit hidden sm:block">
