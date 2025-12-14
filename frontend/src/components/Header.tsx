@@ -53,7 +53,23 @@ const Header: React.FC<HeaderProps> = ({ isMobileSidebarOpen, onMobileSidebarTog
             {/* Logo and Brand */}
             <Link to="/" className="flex items-center space-x-2">
               <div className="w-8 h-8 bg-reddit-orange rounded-lg flex items-center justify-center">
-                <span className="text-white font-bold text-lg">O</span>
+                {/* Hammer Icon - minimalist design */}
+                <svg 
+                  className="w-5 h-5 text-white" 
+                  viewBox="0 0 24 24" 
+                  fill="currentColor"
+                >
+                  {/* Circle outline */}
+                  <circle cx="12" cy="12" r="10" fill="none" stroke="currentColor" strokeWidth="2" />
+                  {/* Hammer head - left rectangular face */}
+                  <rect x="7" y="7" width="3.5" height="2.5" />
+                  {/* Hammer head - right tapering side */}
+                  <path d="M10.5 7 L13.5 6.5 L13.5 9.5 L10.5 9.5 Z" />
+                  {/* Small top protrusion */}
+                  <rect x="9.5" y="6" width="1.5" height="1" />
+                  {/* Hammer handle - vertical line */}
+                  <rect x="11" y="9.5" width="2" height="4.5" rx="0.5" />
+                </svg>
               </div>
               <span className="text-xl font-bold text-reddit hidden sm:block">
                 OrthoAndSpineTools
