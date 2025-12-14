@@ -51,7 +51,7 @@ const UserAvatar: React.FC<UserAvatarProps> = ({
 
   return (
     <div className={`relative ${sizeClasses[size]} ${className}`}>
-      <div className={`${sizeClasses[size]} rounded-full overflow-hidden border-2 border-gray-300`}>
+      <div className={`${sizeClasses[size]} rounded-full overflow-hidden`}>
         {isValidImage ? (
           <img
             src={user.profileImage!}
@@ -86,4 +86,6 @@ const UserAvatar: React.FC<UserAvatarProps> = ({
 };
 
 export default UserAvatar;
+
+
 

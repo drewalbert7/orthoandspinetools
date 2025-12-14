@@ -142,7 +142,7 @@ const Header: React.FC<HeaderProps> = ({ isMobileSidebarOpen, onMobileSidebarTog
                     className="flex items-center space-x-2 hover:bg-gray-100 rounded-md px-2 py-1 transition-colors"
                   >
                     {/* User Avatar */}
-                    <UserAvatar user={user} size="sm" className="border-2 border-gray-300 hover:border-blue-500 transition-colors" />
+                    <UserAvatar user={user} size="sm" />
                     {/* User Name - Hidden on mobile, shown on larger screens */}
                     <div className="hidden md:block text-left">
                       <p className="text-sm font-medium text-gray-900">
@@ -173,7 +173,7 @@ const Header: React.FC<HeaderProps> = ({ isMobileSidebarOpen, onMobileSidebarTog
                         {/* User Info Header */}
                         <div className="px-4 py-3 border-b border-gray-200">
                           <div className="flex items-center space-x-3">
-                            <UserAvatar user={user} size="md" className="border-2 border-gray-300" />
+                            <UserAvatar user={user} size="md" />
                             <div className="flex-1 min-w-0">
                               <p className="text-sm font-medium text-gray-900 truncate">
                                 {user.firstName} {user.lastName}
