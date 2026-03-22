@@ -286,11 +286,25 @@ const ProfileSettings: React.FC = () => {
                 {/* Current Profile Picture */}
                 <div className="flex-shrink-0">
                   {profileImage ? (
-                    <img
-                      src={profileImage}
-                      alt="Profile"
-                      className="w-20 h-20 rounded-full object-cover border-2 border-gray-200"
-                    />
+                    <div className="relative w-20 h-20">
+                      <img
+                        src={profileImage}
+                        alt="Profile"
+                        className="w-20 h-20 rounded-full object-cover border-2 border-gray-200"
+                        referrerPolicy="no-referrer"
+                        onError={(e) => {
+                          const target = e.currentTarget;
+                          target.style.display = 'none';
+                          const fallback = target.nextElementSibling;
+                          if (fallback) (fallback as HTMLElement).style.display = 'flex';
+                        }}
+                      />
+                      <div className="hidden w-20 h-20 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full items-center justify-center border-2 border-gray-200 absolute inset-0">
+                        <span className="text-white font-bold text-2xl">
+                          {userProfileData?.user?.firstName?.[0] || ''}{userProfileData?.user?.lastName?.[0] || ''}
+                        </span>
+                      </div>
+                    </div>
                   ) : (
                     <div className="w-20 h-20 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center border-2 border-gray-200">
                       <span className="text-white font-bold text-2xl">

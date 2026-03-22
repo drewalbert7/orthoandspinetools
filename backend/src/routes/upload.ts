@@ -766,7 +766,7 @@ router.post('/avatar-cloudinary',
           mimetype: file.mimetype,
           cloudinaryPublicId: cloudinaryResult.public_id,
           cloudinaryUrl: cloudinaryResult.secure_url,
-          optimizedUrl: getOptimizedImageUrl(cloudinaryResult.public_id, { width: 256, height: 256 }),
+          optimizedUrl: getOptimizedImageUrl(cloudinaryResult.public_id, { width: 256, height: 256, crop: 'fill', gravity: 'face' }),
           thumbnailUrl: getThumbnailUrl(cloudinaryResult.public_id, 64),
           width: cloudinaryResult.width,
           height: cloudinaryResult.height

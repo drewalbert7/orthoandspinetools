@@ -165,16 +165,24 @@ export const extractPublicIdFromUrl = (url: string): string | null => {
 
     // Get everything after 'upload'
     const afterUpload = urlParts.slice(uploadIndex + 1);
-    
-    // Join and remove file extension
-    let publicId = afterUpload.join('/');
-    
-    // Remove file extension (last .extension)
+    // Skip transformation segments (e.g. c_fill,g_face,h_256,q_auto,w_256) and version (v123...)
+    let i = 0;
+    while (i < afterUpload.length) {
+      const seg = afterUpload[i];
+      if (seg.includes(',') || /^c_[^/]+$/i.test(seg)) {
+        i++;
+        continue;
+      }
+      if (/^v\d+$/i.test(seg)) {
+        i++;
+        continue;
+      }
+      break;
+    }
+    const rest = afterUpload.slice(i);
+    let publicId = rest.join('/');
     publicId = publicId.replace(/\.[^/.]+$/, '');
-    
-    // Remove version if present (v1234567890/)
     publicId = publicId.replace(/^v\d+\//, '');
-    
     return publicId || null;
   } catch (error) {
     console.error('Error extracting public_id from URL:', error);
@@ -203,21 +211,26 @@ export const getOptimizedImageUrl = (publicId: string, options: {
   height?: number;
   quality?: string;
   format?: string;
+  crop?: 'limit' | 'fill' | 'thumb';
+  gravity?: string;
 } = {}): string => {
   const cloudinaryInstance = getCloudinary();
   if (!cloudinaryInstance) {
     return '';
   }
 
-  const { width, height, quality = 'auto', format = 'auto' } = options;
+  const { width, height, quality = 'auto', format = 'auto', crop = 'limit', gravity } = options;
   
-  return cloudinaryInstance.url(publicId, {
+  const urlOptions: Record<string, unknown> = {
     width,
     height,
     quality,
     format,
-    crop: 'limit'
-  });
+    crop
+  };
+  if (gravity) urlOptions.gravity = gravity;
+  
+  return cloudinaryInstance.url(publicId, urlOptions);
 };
 
 // Get thumbnail URL

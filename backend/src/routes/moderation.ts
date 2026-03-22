@@ -568,5 +568,47 @@ router.get('/permissions', authenticate, asyncHandler(async (req: AuthRequest, r
   });
 }));
 
+// Get platform analytics (admin only)
+router.get('/stats', authenticate, requireAdmin, asyncHandler(async (_req: AuthRequest, res: Response) => {
+  const [userCount, postCount, commentCount, communityCount, recentPosts] = await Promise.all([
+    prisma.user.count(),
+    prisma.post.count({ where: { isDeleted: false } }),
+    prisma.comment.count({ where: { isDeleted: false } }),
+    prisma.community.count(),
+    prisma.post.count({
+      where: {
+        isDeleted: false,
+        createdAt: { gte: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000) },
+      },
+    }),
+  ]);
+
+  const recentComments = await prisma.comment.count({
+    where: {
+      isDeleted: false,
+      createdAt: { gte: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000) },
+    },
+  });
+
+  const newUsersThisWeek = await prisma.user.count({
+    where: {
+      createdAt: { gte: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000) },
+    },
+  });
+
+  res.json({
+    success: true,
+    data: {
+      totalUsers: userCount,
+      totalPosts: postCount,
+      totalComments: commentCount,
+      totalCommunities: communityCount,
+      postsThisWeek: recentPosts,
+      commentsThisWeek: recentComments,
+      newUsersThisWeek,
+    },
+  });
+}));
+
 export default router;
 

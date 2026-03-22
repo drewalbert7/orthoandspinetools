@@ -5,7 +5,7 @@ import { prisma } from '../lib/prisma';
 import { logger } from '../utils/logger';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
-import { body, validationResult } from 'express-validator';
+import { body, param, validationResult } from 'express-validator';
 
 const router = Router();
 
@@ -221,9 +221,6 @@ router.post('/login', validateLogin, asyncHandler(async (req: Request, res: Resp
   // Remove password hash from response
   const { passwordHash, ...userWithoutPassword } = user;
 
-  console.log('User object:', user);
-  console.log('isAdmin field:', user.isAdmin);
-
   res.json({
     success: true,
     message: 'Login successful',
@@ -292,8 +289,17 @@ router.put('/me', authenticate, [
   body('institution').optional().isString().withMessage('Institution must be a string'),
   body('yearsExperience').optional().isInt({ min: 0, max: 50 }).withMessage('Years experience must be 0-50'),
   body('location').optional().isString().withMessage('Location must be a string'),
-  body('website').optional().isURL().withMessage('Website must be a valid URL'),
-  body('profileImage').optional().isString().isURL().withMessage('Profile image must be a valid URL'),
+  body('website')
+    .optional({ values: 'falsy' })
+    .trim()
+    .customSanitizer((value: string) => {
+      if (!value) return value;
+      return /^https?:\/\//i.test(value) ? value : `https://${value}`;
+    })
+    .isURL()
+    .withMessage('Website must be a valid URL'),
+  // Allow clearing avatar with ""; optional+falsy skips URL check for empty string
+  body('profileImage').optional({ values: 'falsy' }).isString().isURL().withMessage('Profile image must be a valid HTTPS URL'),
 ], asyncHandler(async (req: AuthRequest, res: Response) => {
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
@@ -568,6 +574,7 @@ router.get('/profile', authenticate, asyncHandler(async (req: AuthRequest, res: 
         firstName: user.firstName,
         lastName: user.lastName,
         isAdmin: user.isAdmin,
+        isVerifiedPhysician: user.isVerifiedPhysician,
         specialty: user.specialty,
         subSpecialty: user.subSpecialty,
         institution: user.institution,
@@ -593,7 +600,12 @@ router.get('/profile', authenticate, asyncHandler(async (req: AuthRequest, res: 
       posts: ((user as any).posts as any[]).map((post: any) => {
         // Calculate user's vote for this post
         const userVote = post.votes.find((v: any) => v.userId === user.id);
-        
+        const community = post.community ?? {
+          id: post.communityId,
+          name: 'Unknown',
+          slug: 'unknown',
+          profileImage: null as string | null,
+        };
         return {
           id: post.id,
           title: post.title,
@@ -603,8 +615,8 @@ router.get('/profile', authenticate, asyncHandler(async (req: AuthRequest, res: 
           createdAt: post.createdAt,
           updatedAt: post.updatedAt,
           authorId: user.id,
-          communityId: post.community.id,
-          community: post.community,
+          communityId: community.id,
+          community,
           author: {
             id: user.id,
             username: user.username,
@@ -647,7 +659,16 @@ router.get('/profile', authenticate, asyncHandler(async (req: AuthRequest, res: 
           postId: comment.postId,
           createdAt: comment.createdAt,
           updatedAt: comment.updatedAt,
-          post: comment.post,
+          post: comment.post
+            ? {
+                ...comment.post,
+                community: comment.post.community ?? {
+                  id: '',
+                  name: 'Unknown',
+                  slug: 'unknown',
+                },
+              }
+            : null,
           author: {
             id: user.id,
             username: user.username,

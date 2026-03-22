@@ -1,0 +1,35 @@
+# Example: horizontal scaling pattern for the API (reference only)
+# Docker Compose v2 does not load this file automatically — merge patterns into your
+# orchestration (Compose override, Swarm stack, or Kubernetes).
+#
+# Goals:
+# - Multiple backend replicas behind nginx
+# - Same JWT_SECRET and DATABASE_URL on every replica
+# - Reduce connection_limit per replica in DATABASE_URL (e.g. 5 each × 3 = 15 connections)
+#
+# Steps (conceptual):
+# 1. Duplicate the backend service as backend-a, backend-b OR use `deploy.replicas` in Swarm mode
+# 2. Update nginx upstream in nginx.conf:
+#    upstream backend {
+#        least_conn;
+#        server backend-a:3001;
+#        server backend-b:3001;
+#        keepalive 16;
+#    }
+# 3. Add to each API location block (if using keepalive):
+#    proxy_http_version 1.1;
+#    proxy_set_header Connection "";
+# 4. For uploads: use Cloudinary only or shared volume — local disk per container is not shared
+#
+# version: '3.8'
+# services:
+#   backend-a:
+#     extends:
+#       file: docker-compose.prod.yml
+#       service: backend
+#     container_name: orthoandspinetools-backend-a
+#   backend-b:
+#     extends:
+#       file: docker-compose.prod.yml
+#       service: backend
+#     container_name: orthoandspinetools-backend-b

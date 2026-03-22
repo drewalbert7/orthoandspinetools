@@ -1,5 +1,24 @@
 # OrthoAndSpineTools Medical Platform - Development Progress & TODO
 
+## 🔥 **NEXT UP — START HERE** (Feb 22, 2026)
+
+**Do these first on the next coding session (after deploy):**
+
+1. **Profile & settings QA (production)** — Re-test `/profile` and Profile Settings: avatar display, save profile, remove avatar. Confirm toasts show **real API errors** (not generic “Failed to update profile”) if something fails.
+2. **Auth error handling** — `authService` + `apiService` now read both `error` and `message` from API responses; verify login/register/password flows still behave.
+3. **PUT `/auth/me` validation** — Website field auto-prepends `https://` when missing a protocol; test with `example.com` and full URLs.
+4. **Optional follow-ups** — Reconcile duplicate “NEXT PRIORITIES” sections in this file; apply `apiErrorMessage` pattern to any remaining `axios` catch blocks that only use `message`.
+
+**Recently shipped (session wrap-up):**
+
+- Removed `crossOrigin="anonymous"` from profile/avatar `<img>` tags (fixes Cloudinary display issues).
+- `GET /auth/profile` + `getUserProfile`: retries, validation of response shape, `apiErrorMessage` for backend `error` field.
+- `PUT /auth/me`: website sanitizer; null-safe `community` on profile payload when relations are missing.
+- `extractPublicIdFromUrl` in `cloudinaryService.ts` skips transformation/version path segments.
+- Avatar upload prefers stable `secure_url` / `cloudinaryUrl` for stored `profileImage`.
+
+---
+
 ## 🤖 **CODING AGENT INSTRUCTIONS** (Read First - Every New Context Window)
 
 ### **MANDATORY STARTUP CHECKLIST** ⚠️
@@ -87,7 +106,7 @@
 - **Issue**: Backend couldn't connect to database - "Authentication failed" errors for login and posts
 - **Root Cause**: Postgres container was initialized with a different password than `DATABASE_URL`. The `POSTGRES_PASSWORD` env var only applies on first initialization, not when volume already exists
 - **Fix Applied**: 
-  - Reset postgres password: `ALTER USER postgres WITH PASSWORD 'password';`
+  - Reset postgres password to match .env: `ALTER USER postgres WITH PASSWORD 'secure_password_123';` (or 'password' if using docker-compose.yml)
   - Added database connection verification on server startup
   - Updated health check to use `/api/health` endpoint that tests database
 - **Prevention**: 
@@ -203,17 +222,17 @@ cd /home/dstrad/orthoandspinetools-main
 ### **DATABASE MAINTENANCE CHECKLIST** 🗄️ **CRITICAL**
 
 #### **Database Connection & Password Management:**
-1. **🔐 PASSWORD CONSISTENCY** - Ensure `POSTGRES_PASSWORD` in docker-compose.yml matches `DATABASE_URL`:
-   - Current password: `password` (set in both places)
-   - If password mismatch occurs: `docker-compose exec postgres psql -U postgres -c "ALTER USER postgres WITH PASSWORD 'password';"`
+1. **🔐 PASSWORD CONSISTENCY** - Ensure `POSTGRES_PASSWORD` in .env matches `DATABASE_URL` in backend:
+   - Current password: `secure_password_123` (in root .env, used by docker-compose.prod.yml)
+   - If password mismatch occurs: `docker compose -f docker-compose.prod.yml exec postgres psql -U postgres -c "ALTER USER postgres WITH PASSWORD 'secure_password_123';"` then `docker compose -f docker-compose.prod.yml restart backend`
    - **Note**: `POSTGRES_PASSWORD` env var only applies on first initialization, not when volume exists
 2. **✅ STARTUP VERIFICATION** - Server now verifies database connection before starting:
    - If connection fails, server exits with error (prevents silent failures)
    - Check logs for "✅ Database connection verified" on startup
    - Health check endpoint (`/api/health`) tests database connectivity
 3. **🔍 TROUBLESHOOTING** - If database connection fails:
-   - Verify postgres container is running: `docker-compose ps postgres`
-   - Test connection: `docker-compose exec postgres psql -U postgres -d orthoandspinetools -c "SELECT 1;"`
+   - Verify postgres container is running: `docker compose ps postgres`
+   - Test connection: `docker compose exec postgres psql -U postgres -d orthoandspinetools -c "SELECT 1;"`
    - Check DATABASE_URL matches postgres password
    - Verify network connectivity between backend and postgres containers
 
@@ -226,17 +245,17 @@ cd /home/dstrad/orthoandspinetools-main
 
 2. **🔍 VERIFY DATABASE SCHEMA** - Check actual column names in database:
    ```bash
-   docker-compose exec postgres psql -U postgres -d orthoandspinetools -c "\d table_name"
+   docker compose exec postgres psql -U postgres -d orthoandspinetools -c "\d table_name"
    ```
 
 3. **🧪 TEST DATABASE QUERIES** - Always test raw SQL queries before deploying:
    ```bash
-   docker-compose exec postgres psql -U postgres -d orthoandspinetools -c "SELECT * FROM table_name LIMIT 1;"
+   docker compose exec postgres psql -U postgres -d orthoandspinetools -c "SELECT * FROM table_name LIMIT 1;"
    ```
 
 4. **🔄 GRACEFUL RESTART** - Use proper restart sequence after database changes:
    ```bash
-   docker-compose restart backend
+   docker compose restart backend
    sleep 10
    curl -s https://orthoandspinetools.com/api/communities
    ```
@@ -250,11 +269,11 @@ cd /home/dstrad/orthoandspinetools-main
 #### **Emergency Database Recovery:**
 1. **🚨 IF DATABASE QUERIES FAIL** - Check column names and Prisma schema:
    ```bash
-   docker-compose logs backend --tail=50
+   docker compose logs backend --tail=50
    ```
 2. **🔍 CHECK SCHEMA** - Verify database schema matches Prisma schema:
    ```bash
-   docker-compose exec postgres psql -U postgres -d orthoandspinetools -c "\dt"
+   docker compose exec postgres psql -U postgres -d orthoandspinetools -c "\dt"
    ```
 3. **📋 VERIFY QUERIES** - Test all raw SQL queries manually
 4. **🧪 TEST API ENDPOINTS** - Verify all API endpoints work before marking as resolved
@@ -275,18 +294,18 @@ cd /home/dstrad/orthoandspinetools-main
 
 3. **🧪 TEST NGINX CONFIGURATION** - Always test before restarting:
    ```bash
-   docker-compose exec nginx nginx -t
+   docker compose exec nginx nginx -t
    ```
 
 4. **🔄 GRACEFUL RESTART** - Use proper restart sequence:
    ```bash
-   docker-compose restart nginx
+   docker compose restart nginx
    sleep 5
    curl -I https://orthoandspinetools.com
    ```
 
 #### **SSL Certificate Renewal Process:**
-1. **📅 CHECK EXPIRY** - Certificates expire Dec 30, 2025 (auto-renewal configured)
+1. **📅 CHECK EXPIRY** - Current served cert expires **May 10, 2026** (renew Feb 2026 cert on disk; reload nginx after copy). Auto-renewal: run `update-ssl-certs.sh` or certbot as documented.
 2. **🔄 MANUAL RENEWAL** (if needed):
    ```bash
    ./update-ssl-certs.sh
@@ -301,7 +320,7 @@ cd /home/dstrad/orthoandspinetools-main
    ```
 2. **🔍 CHECK LOGS** - Review nginx error logs:
    ```bash
-   docker-compose logs nginx --tail=50
+   docker compose logs nginx --tail=50
    ```
 3. **📋 VERIFY PATHS** - Ensure nginx.conf uses correct certificate paths
 4. **🧪 TEST CONNECTION** - Verify HTTPS works before marking as resolved
@@ -421,10 +440,11 @@ For detailed changelog of all completed work, see `CHANGELOG.md`.
 ## 📋 **NEXT PRIORITIES**
 
 ### **Immediate (Next 1-2 hours)**
-1. **Test user registration and login** - Verify authentication flow works end-to-end over HTTPS
-2. **Create initial content** - Add sample posts and communities to populate the site
-3. **Test core functionality** - Voting, commenting, post creation with SSL
-4. **Mobile responsiveness** - Ensure the Reddit-style design works on mobile devices
+1. **Profile & avatar QA** — After deploy: profile page load, Cloudinary avatar display, Profile Settings save/remove photo, confirm error messages from API surface correctly (see **NEXT UP — START HERE** above).
+2. **Test user registration and login** - Verify authentication flow works end-to-end over HTTPS
+3. **Create initial content** - Add sample posts and communities to populate the site
+4. **Test core functionality** - Voting, commenting, post creation with SSL
+5. **Mobile responsiveness** - Ensure the Reddit-style design works on mobile devices
 
 ### **Short Term (Next 1-2 days)**
 1. **Content Management** - Add more medical specialty communities
@@ -705,13 +725,13 @@ The platform focuses on:
 
 ---
 
-**Last Updated**: December 10, 2025 - 3:57 AM  
+**Last Updated**: March 2026 - Site evaluation and nginx SSL reload completed  
 **Status**: 🚀 **LIVE AND FUNCTIONAL** - Database connection verified, all features operational  
-**SSL Status**: 🔒 **SECURE** - HTTPS working with valid Let's Encrypt certificates  
-**Database Status**: 🔗 **CONNECTED** - PostgreSQL authentication working, startup verification active (34 posts, 4 users, 9 communities)  
+**SSL Status**: 🔒 **SECURE** - HTTPS verified with valid certificate (served cert expires **May 10, 2026**). If browsers show expired SSL but `nginx/ssl/certs/fullchain.pem` on disk is newer, run: `docker compose -f docker-compose.prod.yml exec nginx nginx -t && docker compose -f docker-compose.prod.yml exec nginx nginx -s reload`  
+**Database Status**: 🔗 **CONNECTED** - PostgreSQL authentication working, startup verification active (7 posts, 4 users, 9 communities). Password: `secure_password_123` (in .env). If postgres container recreated, run: `ALTER USER postgres WITH PASSWORD 'secure_password_123';` then restart backend.  
 **Authentication Status**: ✅ **WORKING** - User sign-in and registration functional  
 **Comment System**: ✅ **WORKING** - Comment submission functional with Reddit-style keyboard shortcuts  
-**Profile Pages**: ✅ **WORKING** - Profile loading with complete post and comment data, fully mobile-optimized  
+**Profile Pages**: ✅ **WORKING** - Profile loading with complete post and comment data, fully mobile-optimized. Admin/Verified Physician badges displayed.  
 **Rich Text Editor**: ✅ **COMPLETE** - Full Reddit-like WYSIWYG editor with real-time formatting display  
 **WYSIWYG Editor**: ✅ **COMPLETE** - Formatting visible in real-time (bold text appears bold, etc.)  
 **CreatePost Protection**: ✅ **ACTIVE** - Multiple protection layers prevent accidental deletion  
@@ -725,8 +745,36 @@ The platform focuses on:
 **Profile Pictures**: ✅ **ENHANCED** - Automatic image resizing and compression, no manual resizing required  
 **Security**: ✅ **IMPROVED** - Removed hardcoded credentials from docker-compose.yml  
 **Moderation System**: ✅ **COMPLETE** - Full Reddit-style moderator and administrator system with community-specific moderation  
-**Administrator Setup**: ✅ **VERIFIED** - drewalbertmd set as highest permission administrator (can promote users, manage moderators, moderate all communities)  
+**Administrator Setup**: ✅ **VERIFIED** - drewalbertmd set as highest permission administrator + verified physician (isAdmin, isVerifiedPhysician). Profile badges on profile page. Promote script: `backend/scripts/promote-admin.ts`  
+**Home Feed**: ✅ **FIXED** - Empty feed fallback: when logged-in user follows no communities, Home now shows all posts instead of "No posts available"  
+**Star Unfollow**: ✅ **FIXED** (Feb 2026) - Sidebar star unfollow now works; optimisticFollows used as display source of truth (union with followedCommunityIds caused unfollow to not update UI)  
 **Next Session**: Additional security hardening, performance optimization
+
+### **Plain-English ops** (March 2026) ✅
+- ✅ **`docs/WHAT_TO_DO.md`** — what you actually need to do vs optional scaling; backups; deploy commands
+
+### **Profile photo upload** (March 2026) ✅
+- ✅ **Root cause** — Axios default `Content-Type: application/json` was sent with `FormData`, so the server could not parse multipart uploads (missing boundary).
+- ✅ **Fix** — `multipartFormDataConfig` clears `Content-Type` for all Cloudinary uploads (avatar, community images, post images/videos, generic upload).
+- ✅ **Auth** — `PUT /auth/me` allows empty `website` and clearing `profileImage` via `optional({ values: 'falsy' })`.
+
+### **Frontend usability** (March 2026) ✅
+- ✅ **Global search** — header search submits to `/search?q=…`; backend `GET /api/posts?q=` filters title/content; communities matched client-side from list
+- ✅ **Mobile search** — search field visible on small screens (not desktop-only)
+- ✅ **Notifications** — copy clarifies “none yet” / future feature
+
+### **Production & scalability** (March 2026) ✅
+- ✅ **`docs/PRODUCTION_SCALING.md`** — deployment checklist, pooling, scaling path, monitoring
+- ✅ **`.env.example`** — production env template (no secrets)
+- ✅ **`docker-compose.prod.yml`** — Postgres `shm_size`, healthchecks, startup order (`depends_on` + healthy), `DATABASE_URL` with `connection_limit` + `pool_timeout`
+- ✅ **`nginx/nginx.conf`** — `worker_processes auto`, higher `worker_connections`, upstream `keepalive`, longer timeouts for uploads/API
+- ✅ **`docker-compose.scale.example.yml`** — reference for multi-backend + nginx upstream
+
+### 🌐 **Live Site Evaluation Checklist** (March 2026)
+- ✅ `https://orthoandspinetools.com/api/health` → 200, healthy
+- ✅ `GET /api/posts` and `GET /api/communities` → success
+- ✅ Docker: postgres, backend (healthy), frontend (healthy), nginx running
+- ⚠️ **SSL**: After renewing or copying new certs into `nginx/ssl/certs/`, **reload nginx** or browsers may still see the previous (expired) certificate
 
 ## 🛡️ **PREVENTION MEASURES & SCALING PREPARATION**
 
@@ -782,6 +830,12 @@ The platform focuses on:
 - ✅ **State Synchronization** - Frontend state stays in sync with backend
 - ✅ **User Experience** - Immediate visual feedback for follow/unfollow actions
 - ✅ **Frontend Deployed** - Updated Sidebar with optimistic updates deployed
+
+### ⭐ **Star Unfollow Bug Fixed** ✅ **FEBRUARY 2026**
+- ✅ **Issue** - Clicking star to unfollow did not update UI; star stayed filled
+- ✅ **Root Cause** - `combinedFollowedIds` was union of `followedCommunityIds` + `optimisticFollows`. Unfollow removed from optimisticFollows but community stayed in followedCommunityIds until API refetch
+- ✅ **Fix** - Use `optimisticFollows` as sole display source of truth (synced from API, updated immediately on follow/unfollow)
+- ✅ **File** - `frontend/src/components/Sidebar.tsx`
 
 ### 🚨 **Communities Emergency Protection System** ✅ **COMPREHENSIVE PREVENTION IMPLEMENTED**
 - ✅ **Emergency Fix Applied** - Communities loading error fixed immediately
@@ -1021,6 +1075,16 @@ All previously identified issues have been resolved:
 **Status**: 🚀 **FULLY OPERATIONAL**  
 **Last Major Update**: December 8, 2025 - Mobile optimization complete, share button fixed, WYSIWYG editor implemented  
 **Last Review**: December 8, 2025 - All pages mobile-optimized, responsive design implemented, share functionality working
+
+### **🖥️ SERVER UPDATES STATUS** ✅ **CURRENT (December 2025)**
+- ✅ **Docker**: 29.1.2 (upgraded from 28.4.0 on December 7, 2025)
+- ✅ **Docker Compose**: v5.0.0 (upgraded from 2.39.4 on December 7, 2025)
+- ✅ **System Packages**: All 46 security updates applied (December 7, 2025)
+- ✅ **SSL Certificate**: Valid until **May 10, 2026** (reload nginx after updating files in `nginx/ssl/certs/`)
+- ✅ **Container Health**: All containers running and healthy (4-5 weeks uptime)
+- ✅ **Docker Storage**: 5.8GB cleaned up (December 7, 2025)
+- **Note**: Use `docker compose` (without hyphen) for all commands going forward
+- **See**: `SERVER_UPDATES_EVALUATION.md` for detailed evaluation
 
 ## 📋 **NEXT PRIORITIES** (In Order)
 
@@ -1368,7 +1432,7 @@ All previously identified issues have been resolved:
 
 ### **Quick Reference Commands**
 ```bash
-# Safe restart (NEVER use docker-compose down!)
+# Safe restart (NEVER use docker compose down!)
 ./scripts/quick-restart.sh
 
 # Create backup

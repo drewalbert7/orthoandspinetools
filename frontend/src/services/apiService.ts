@@ -10,6 +10,13 @@ const api = axios.create({
   },
 });
 
+/** Backend errorHandler sends `{ error: string }`; some routes use `message`. */
+function apiErrorMessage(error: unknown, fallback: string): string {
+  const err = error as { response?: { data?: { message?: string; error?: string } } };
+  const d = err?.response?.data;
+  return (d?.message || d?.error || fallback) as string;
+}
+
 // Add request interceptor to include auth token
 api.interceptors.request.use(
   (config) => {
@@ -23,6 +30,22 @@ api.interceptors.request.use(
     return Promise.reject(error);
   }
 );
+
+/** Clears default JSON Content-Type so FormData gets multipart boundary (fixes avatar/image uploads). */
+const multipartFormDataConfig = {
+  transformRequest: [
+    (data: unknown, headers: Record<string, unknown>) => {
+      if (data instanceof FormData) {
+        if (headers && typeof (headers as { delete?: (k: string) => void }).delete === 'function') {
+          (headers as { delete: (k: string) => void }).delete('Content-Type');
+        } else {
+          delete (headers as Record<string, string>)['Content-Type'];
+        }
+      }
+      return data;
+    },
+  ],
+};
 
 // Add response interceptor to handle auth errors
 api.interceptors.response.use(
@@ -239,13 +262,14 @@ export interface CommunityTag {
 
 class ApiService {
   // Posts
-  async getPosts(params: { page?: number; limit?: number; sort?: string; community?: string } = {}): Promise<{ posts: Post[]; pagination: { page: number; pages: number } }> {
+  async getPosts(params: { page?: number; limit?: number; sort?: string; community?: string; q?: string } = {}): Promise<{ posts: Post[]; pagination: { page: number; pages: number } }> {
     try {
       const search = new URLSearchParams();
       if (params.page) search.set('page', String(params.page));
       if (params.limit) search.set('limit', String(params.limit));
       if (params.sort) search.set('sort', params.sort);
       if (params.community) search.set('community', params.community);
+      if (params.q?.trim()) search.set('q', params.q.trim());
       const response = await api.get(`/posts?${search.toString()}`);
       return response.data.data;
     } catch (error: any) {
@@ -444,11 +468,7 @@ class ApiService {
       const formData = new FormData();
       formData.append('image', file);
       
-      const response = await api.post('/upload/community-image-cloudinary', formData, {
-        headers: {
-          'Content-Type': 'multipart/form-data',
-        },
-      });
+      const response = await api.post('/upload/community-image-cloudinary', formData, multipartFormDataConfig);
       const item = response.data.data;
       // Use optimized Cloudinary URL for better performance
       const imageUrl = item.optimizedUrl || item.cloudinaryUrl || item.imageUrl || item.secure_url;
@@ -467,11 +487,7 @@ class ApiService {
       const formData = new FormData();
       formData.append('banner', file);
       
-      const response = await api.post('/upload/community-banner-cloudinary', formData, {
-        headers: {
-          'Content-Type': 'multipart/form-data',
-        },
-      });
+      const response = await api.post('/upload/community-banner-cloudinary', formData, multipartFormDataConfig);
       const item = response.data.data;
       // Use optimized Cloudinary URL for better performance
       const imageUrl = item.optimizedUrl || item.cloudinaryUrl || item.imageUrl || item.secure_url;
@@ -526,11 +542,7 @@ class ApiService {
       const formData = new FormData();
       files.forEach(file => formData.append('images', file));
       
-      const response = await api.post('/upload/post-images-cloudinary', formData, {
-        headers: {
-          'Content-Type': 'multipart/form-data',
-        },
-      });
+      const response = await api.post('/upload/post-images-cloudinary', formData, multipartFormDataConfig);
       return response.data.data.map((item: any) => ({
         path: item.url || item.cloudinaryUrl || item.path,
         filename: item.filename,
@@ -550,11 +562,7 @@ class ApiService {
       const formData = new FormData();
       files.forEach(file => formData.append('videos', file));
       
-      const response = await api.post('/upload/post-videos-cloudinary', formData, {
-        headers: {
-          'Content-Type': 'multipart/form-data',
-        },
-      });
+      const response = await api.post('/upload/post-videos-cloudinary', formData, multipartFormDataConfig);
       return response.data.data.map((item: any) => ({
         path: item.url || item.cloudinaryUrl || item.path,
         filename: item.filename,
@@ -574,16 +582,16 @@ class ApiService {
     try {
       const formData = new FormData();
       formData.append('avatar', file);
-      
-      const response = await api.post('/upload/avatar-cloudinary', formData, {
-        headers: {
-          'Content-Type': 'multipart/form-data',
-        },
-      });
+      const response = await api.post('/upload/avatar-cloudinary', formData, multipartFormDataConfig);
       const item = response.data.data;
       // Use optimized Cloudinary URL for better performance (256x256 optimized for avatars)
       // Fallback to regular Cloudinary URL if optimized not available
-      const cloudinaryUrl = item.optimizedUrl || item.cloudinaryUrl || item.secure_url || item.url || item.path;
+      // Prefer stable secure URL for DB storage; transformation URLs can break some clients
+      const cloudinaryUrl =
+        item.cloudinaryUrl || item.url || item.secure_url || item.optimizedUrl || item.path;
+      if (!cloudinaryUrl || typeof cloudinaryUrl !== 'string' || !/^https?:\/\//i.test(cloudinaryUrl)) {
+        throw new Error('Upload succeeded but no image URL was returned. Is Cloudinary configured on the server?');
+      }
       return {
         path: cloudinaryUrl,
         filename: item.filename,
@@ -602,9 +610,13 @@ class ApiService {
   async getUserProfile(): Promise<UserProfile> {
     try {
       const response = await api.get('/auth/profile');
-      return response.data.data;
-    } catch (error: any) {
-      throw new Error(error.response?.data?.message || 'Failed to fetch user profile');
+      const data = response.data?.data;
+      if (!data || !data.user) {
+        throw new Error('Invalid profile response from server');
+      }
+      return data;
+    } catch (error: unknown) {
+      throw new Error(apiErrorMessage(error, 'Failed to fetch user profile'));
     }
   }
 
@@ -664,11 +676,7 @@ class ApiService {
         formData.append('postId', postId);
       }
       
-      const response = await api.post('/upload', formData, {
-        headers: {
-          'Content-Type': 'multipart/form-data',
-        },
-      });
+      const response = await api.post('/upload', formData, multipartFormDataConfig);
       return response.data;
     } catch (error: any) {
       throw new Error(error.response?.data?.message || 'Failed to upload file');
@@ -744,6 +752,23 @@ class ApiService {
       return response.data.data;
     } catch (error: any) {
       throw new Error(error.response?.data?.message || 'Failed to fetch moderation permissions');
+    }
+  }
+
+  async getAdminStats(): Promise<{
+    totalUsers: number;
+    totalPosts: number;
+    totalComments: number;
+    totalCommunities: number;
+    postsThisWeek: number;
+    commentsThisWeek: number;
+    newUsersThisWeek: number;
+  }> {
+    try {
+      const response = await api.get('/moderation/stats');
+      return response.data.data;
+    } catch (error: any) {
+      throw new Error(error.response?.data?.message || 'Failed to fetch admin stats');
     }
   }
 

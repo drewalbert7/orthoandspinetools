@@ -63,64 +63,49 @@ The platform includes dedicated communities for 9 orthopedic specialties:
 7. **Hand** - Hand and wrist surgery
 8. **Sports** - Sports medicine and athletic injuries
 9. **Adult Reconstruction** - Joint replacement and reconstruction
-=======
+
 ### Infrastructure
 - **Docker** + **Docker Compose**
 - **Nginx** reverse proxy
 - **SSL/TLS** encryption
 - **PostgreSQL** with connection pooling
->>>>>>> ae62b1420f3b95e4e1cba4d93dbbf9d54abc835a
+
+### Production deployment & scaling
+- **[docs/WHAT_TO_DO.md](docs/WHAT_TO_DO.md)** — **start here**: plain-English checklist (what you must do vs optional scaling docs)
+- **[docs/PRODUCTION_SCALING.md](docs/PRODUCTION_SCALING.md)** — deploy checklist, connection pooling, horizontal scaling, health checks, backups
+- **`.env.example`** — template for secrets and pool-related settings
+- **`docker-compose.prod.yml`** — production stack with healthchecks and Prisma pool params on `DATABASE_URL`
+- **`docker-compose.scale.example.yml`** — notes for multiple backend replicas behind nginx
 
 ## 🚀 Quick Start
 
 ### Prerequisites
-<<<<<<< HEAD
-- Docker and Docker Compose
-- Node.js (for development)
-- PostgreSQL database
-- Redis cache (optional)
-=======
 - Node.js 18+
 - PostgreSQL 14+
 - Docker & Docker Compose
->>>>>>> ae62b1420f3b95e4e1cba4d93dbbf9d54abc835a
 
 ### Development Setup
 ```bash
-<<<<<<< HEAD
-cd ~/orthoandspinetools-medical-platform/backend
-npm install
-npm run dev
-```
-
-### Frontend Setup
-```bash
-cd ~/orthoandspinetools-medical-platform/frontend
-npm install
-npm run dev
-```
-=======
 # Clone repository
-git clone <repository-url>
-cd orthoandspinetools-medical-platform
+git clone https://github.com/drewalbert7/orthoandspinetools.git
+cd orthoandspinetools
 
 # Start development environment
-docker-compose up -d
+docker compose up -d
 
 # Install dependencies
 cd backend && npm install
 cd ../frontend && npm install
 
 # Run database migrations
-cd backend && npm run db:migrate
+cd backend && npx prisma migrate dev
 
 # Start development servers
-npm run dev:backend    # Backend on port 3001
-npm run dev:frontend   # Frontend on port 3000
+# Backend runs on port 3001
+# Frontend runs on port 3000
 ```
 
 ## 🔒 HIPAA Compliance Features
->>>>>>> ae62b1420f3b95e4e1cba4d93dbbf9d54abc835a
 
 - **Data Encryption** - All data encrypted in transit and at rest
 - **Access Controls** - Role-based permissions for medical data
@@ -186,17 +171,11 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ## 🆘 Support
 
-<<<<<<< HEAD
-- Medical community inspiration from orthopedic professionals
-- Open source medical education initiatives
-- Healthcare technology innovation
-- Medical professional community feedback
-=======
 For support and questions:
 - **Email**: support@orthoandspinetools.com
 - **Documentation**: [docs/](docs/)
 - **Issues**: GitHub Issues
->>>>>>> ae62b1420f3b95e4e1cba4d93dbbf9d54abc835a
+- **Live Site**: https://orthoandspinetools.com
 
 ---
 

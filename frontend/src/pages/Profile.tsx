@@ -108,6 +108,8 @@ const Profile: React.FC = () => {
     queryKey: ['user-profile', user?.id],
     queryFn: () => apiService.getUserProfile(),
     enabled: !!user,
+    retry: 2,
+    staleTime: 60_000,
   });
 
   // Sort posts based on selected option
@@ -223,6 +225,7 @@ const Profile: React.FC = () => {
                     src={profileUser.profileImage}
                     alt={`${profileUser.firstName} ${profileUser.lastName}`}
                     className="w-16 h-16 sm:w-20 sm:h-20 rounded-full object-cover border-2 border-gray-200 hover:border-gray-300 transition-colors"
+                    referrerPolicy="no-referrer"
                   />
                 ) : (
                   <div className="w-16 h-16 sm:w-20 sm:h-20 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center border-2 border-gray-200 hover:border-gray-300 transition-colors">
@@ -238,7 +241,19 @@ const Profile: React.FC = () => {
                     <h1 className="text-xl sm:text-2xl font-bold text-gray-900 truncate">
                       {profileUser.firstName} {profileUser.lastName}
                     </h1>
-                    <p className="text-gray-600 text-sm sm:text-base">u/{profileUser.username}</p>
+                    <p className="text-gray-600 text-sm sm:text-base flex items-center gap-2 flex-wrap">
+                      u/{profileUser.username}
+                      {profileUser.isAdmin && (
+                        <span className="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-amber-100 text-amber-800 border border-amber-200">
+                          Admin
+                        </span>
+                      )}
+                      {profileUser.isVerifiedPhysician && (
+                        <span className="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800 border border-blue-200">
+                          Verified Physician
+                        </span>
+                      )}
+                    </p>
                     {profileUser.specialty && (
                       <p className="text-xs sm:text-sm text-gray-500 mt-1">
                         {profileUser.specialty}

@@ -389,6 +389,7 @@ router.get('/', optionalAuth, [
   query('type').optional().isIn(['discussion', 'case_study', 'tool_review', 'question']).withMessage('Invalid post type'),
   query('specialty').optional().isString().withMessage('Specialty must be a string'),
   query('sort').optional().isIn(['newest', 'oldest', 'popular', 'controversial', 'best', 'top', 'rising']).withMessage('Invalid sort option'),
+  query('q').optional().isString().isLength({ max: 200 }).withMessage('Search query too long'),
 ], asyncHandler(async (req: AuthRequest, res: Response) => {
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
@@ -398,12 +399,20 @@ router.get('/', optionalAuth, [
   const page = parseInt(req.query.page as string) || 1;
   const limit = parseInt(req.query.limit as string) || 20;
   const skip = (page - 1) * limit;
-  const { community, type, specialty, sort } = req.query;
+  const { community, type, specialty, sort, q } = req.query;
 
   // Build where clause
   const where: any = {
     isDeleted: false,
   };
+
+  const searchTerm = typeof q === 'string' ? q.trim() : '';
+  if (searchTerm.length > 0) {
+    where.OR = [
+      { title: { contains: searchTerm, mode: 'insensitive' } },
+      { content: { contains: searchTerm, mode: 'insensitive' } },
+    ];
+  }
 
   if (community) {
     // Check if community exists and get its ID

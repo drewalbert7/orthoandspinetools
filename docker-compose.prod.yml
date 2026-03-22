@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   # PostgreSQL Database
   postgres:
@@ -14,6 +12,13 @@ services:
     networks:
       - orthoandspinetools-network
     restart: unless-stopped
+    shm_size: "256mb"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d orthoandspinetools"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
 
   # Backend API
   backend:
@@ -21,20 +26,30 @@ services:
       context: ./backend
       dockerfile: Dockerfile
     container_name: orthoandspinetools-backend
+    env_file:
+      - .env.cloudinary
     environment:
       NODE_ENV: production
       PORT: 3001
-      DATABASE_URL: postgresql://postgres:${POSTGRES_PASSWORD:-secure_password_123}@postgres:5432/orthoandspinetools
+      # Pool limits per instance — lower connection_limit when running multiple backend replicas
+      DATABASE_URL: postgresql://postgres:${POSTGRES_PASSWORD:-secure_password_123}@postgres:5432/orthoandspinetools?connection_limit=10&pool_timeout=20
       JWT_SECRET: ${JWT_SECRET:-your-super-secret-jwt-key-change-this-in-production}
       JWT_EXPIRES_IN: 7d
       CORS_ORIGIN: https://orthoandspinetools.com
     depends_on:
-      - postgres
+      postgres:
+        condition: service_healthy
     volumes:
       - ./backend/uploads:/app/uploads
     networks:
       - orthoandspinetools-network
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3001/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
 
   # Frontend Application
   frontend:
@@ -45,10 +60,17 @@ services:
     environment:
       VITE_API_URL: https://orthoandspinetools.com/api
     depends_on:
-      - backend
+      backend:
+        condition: service_healthy
     networks:
       - orthoandspinetools-network
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://127.0.0.1:3000/"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
 
   # Nginx Reverse Proxy
   nginx:
@@ -62,8 +84,10 @@ services:
       - ./nginx/ssl:/etc/nginx/ssl
       - ./nginx/logs:/var/log/nginx
     depends_on:
-      - frontend
-      - backend
+      backend:
+        condition: service_healthy
+      frontend:
+        condition: service_healthy
     networks:
       - orthoandspinetools-network
     restart: unless-stopped

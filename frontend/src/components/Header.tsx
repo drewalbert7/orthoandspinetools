@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { Menu, X } from 'lucide-react';
 import UserAvatar from './UserAvatar';
@@ -12,8 +12,25 @@ interface HeaderProps {
 const Header: React.FC<HeaderProps> = ({ isMobileSidebarOpen, onMobileSidebarToggle }) => {
   const { user, logout, refreshUser } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isNotificationOpen, setIsNotificationOpen] = useState(false);
+  const [searchInput, setSearchInput] = useState('');
+
+  useEffect(() => {
+    if (location.pathname === '/search') {
+      const params = new URLSearchParams(location.search);
+      setSearchInput(params.get('q') || '');
+    }
+  }, [location.pathname, location.search]);
+
+  const handleSearchSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    const q = searchInput.trim();
+    if (q) {
+      navigate(`/search?q=${encodeURIComponent(q)}`);
+    }
+  };
 
   // Refresh user data when component mounts if user exists but profileImage might be missing
   useEffect(() => {
@@ -78,21 +95,30 @@ const Header: React.FC<HeaderProps> = ({ isMobileSidebarOpen, onMobileSidebarTog
             </Link>
           </div>
 
-          {/* Search Bar - Hidden on mobile */}
-          <div className="flex-1 max-w-lg mx-8 hidden md:block">
+          {/* Search — works on mobile and desktop */}
+          <form
+            onSubmit={handleSearchSubmit}
+            className="flex-1 min-w-0 max-w-lg mx-2 sm:mx-4 md:mx-8"
+            role="search"
+            aria-label="Search posts and communities"
+          >
             <div className="relative">
               <input
-                type="text"
-                placeholder="Search"
-                className="w-full pl-10 pr-4 py-2 bg-reddit-card border border-reddit rounded-full focus:outline-none focus:ring-2 focus:ring-reddit-blue focus:border-transparent text-reddit placeholder-reddit-text-muted"
+                type="search"
+                name="q"
+                value={searchInput}
+                onChange={(e) => setSearchInput(e.target.value)}
+                placeholder="Search posts & communities"
+                autoComplete="off"
+                className="w-full pl-9 pr-3 py-1.5 sm:py-2 text-sm sm:text-base bg-reddit-card border border-reddit rounded-full focus:outline-none focus:ring-2 focus:ring-reddit-blue focus:border-transparent text-reddit placeholder-reddit-text-muted"
               />
-              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                <svg className="h-5 w-5 text-reddit-text-muted" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <div className="absolute inset-y-0 left-0 pl-2.5 flex items-center pointer-events-none">
+                <svg className="h-4 w-4 sm:h-5 sm:w-5 text-reddit-text-muted" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
                 </svg>
               </div>
             </div>
-          </div>
+          </form>
 
           {/* Right Side Navigation */}
           <div className="flex items-center space-x-3">
@@ -127,7 +153,7 @@ const Header: React.FC<HeaderProps> = ({ isMobileSidebarOpen, onMobileSidebarTog
                         <h3 className="text-sm font-medium text-gray-900">Notifications</h3>
                       </div>
                       <div className="px-4 py-3 text-sm text-gray-500">
-                        No new notifications
+                        No notifications yet. Alerts for replies and mentions may be added in a future update.
                       </div>
                     </div>
                   )}

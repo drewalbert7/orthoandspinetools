@@ -57,6 +57,7 @@ const UserAvatar: React.FC<UserAvatarProps> = ({
             src={user.profileImage!}
             alt={`${user.firstName} ${user.lastName}`}
             className="w-full h-full object-cover"
+            referrerPolicy="no-referrer"
             onError={(e) => {
               // If image fails to load, fall back to initials
               const target = e.target as HTMLImageElement;

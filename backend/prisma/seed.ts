@@ -9,7 +9,7 @@ async function main() {
   // Create a default admin user if it doesn't exist
   const adminUser = await prisma.user.upsert({
     where: { email: 'admin@orthoandspinetools.com' },
-    update: {},
+    update: { isAdmin: true, isActive: true },
     create: {
       email: 'admin@orthoandspinetools.com',
       username: 'admin',
@@ -17,6 +17,8 @@ async function main() {
       lastName: 'User',
       passwordHash: await bcrypt.hash('admin123', 10),
       isEmailVerified: true,
+      isAdmin: true,
+      isActive: true,
       specialty: 'Orthopedic Surgery',
       institution: 'OrthoAndSpineTools',
       yearsExperience: 10,

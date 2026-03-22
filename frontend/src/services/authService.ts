@@ -10,6 +10,13 @@ const api = axios.create({
   },
 });
 
+/** Backend errorHandler uses `error`; some routes use `message`. */
+function apiErrorMessage(error: unknown, fallback: string): string {
+  const err = error as { response?: { data?: { message?: string; error?: string } } };
+  const d = err?.response?.data;
+  return (d?.message || d?.error || fallback) as string;
+}
+
 // Add request interceptor to include auth token
 api.interceptors.request.use(
   (config) => {
@@ -165,8 +172,8 @@ class AuthService {
       localStorage.setItem('user', JSON.stringify(user));
       
       return user;
-    } catch (error: any) {
-      throw new Error(error.response?.data?.message || 'Failed to refresh user data');
+    } catch (error: unknown) {
+      throw new Error(apiErrorMessage(error, 'Failed to refresh user data'));
     }
   }
 
@@ -180,8 +187,8 @@ class AuthService {
       localStorage.setItem('user', JSON.stringify(user));
       
       return user;
-    } catch (error: any) {
-      throw new Error(error.response?.data?.message || 'Failed to update profile');
+    } catch (error: unknown) {
+      throw new Error(apiErrorMessage(error, 'Failed to update profile'));
     }
   }
 
@@ -192,8 +199,8 @@ class AuthService {
         currentPassword,
         newPassword,
       });
-    } catch (error: any) {
-      throw new Error(error.response?.data?.message || 'Failed to change password');
+    } catch (error: unknown) {
+      throw new Error(apiErrorMessage(error, 'Failed to change password'));
     }
   }
 
@@ -201,8 +208,8 @@ class AuthService {
   async forgotPassword(email: string): Promise<void> {
     try {
       await api.post('/auth/forgot-password', { email });
-    } catch (error: any) {
-      throw new Error(error.response?.data?.message || 'Failed to send reset email');
+    } catch (error: unknown) {
+      throw new Error(apiErrorMessage(error, 'Failed to send reset email'));
     }
   }
 
@@ -210,8 +217,8 @@ class AuthService {
   async resetPassword(token: string, newPassword: string): Promise<void> {
     try {
       await api.post('/auth/reset-password', { token, newPassword });
-    } catch (error: any) {
-      throw new Error(error.response?.data?.message || 'Failed to reset password');
+    } catch (error: unknown) {
+      throw new Error(apiErrorMessage(error, 'Failed to reset password'));
     }
   }
 }

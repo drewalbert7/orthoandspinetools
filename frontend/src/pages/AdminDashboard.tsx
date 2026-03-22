@@ -8,7 +8,7 @@ import toast from 'react-hot-toast';
 type TabType = 'users' | 'moderation' | 'communities' | 'analytics';
 
 const AdminDashboard: React.FC = () => {
-  const { user } = useAuth();
+  const { user: currentUser } = useAuth();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [activeTab, setActiveTab] = useState<TabType>('users');
@@ -19,7 +19,7 @@ const AdminDashboard: React.FC = () => {
   const { data: permissions } = useQuery({
     queryKey: ['moderation-permissions'],
     queryFn: () => apiService.getModerationPermissions(),
-    enabled: !!user,
+    enabled: !!currentUser,
   });
 
   React.useEffect(() => {
@@ -36,11 +36,27 @@ const AdminDashboard: React.FC = () => {
     enabled: activeTab === 'users' && !!permissions?.isAdmin,
   });
 
+  const [moderationType, setModerationType] = useState<'post' | 'comment'>('post');
+
   // Fetch moderation queue
   const { data: moderationData, isLoading: moderationLoading } = useQuery({
-    queryKey: ['moderation-queue', 'post', page],
-    queryFn: () => apiService.getModerationQueue('post', page, 20),
+    queryKey: ['moderation-queue', moderationType, page],
+    queryFn: () => apiService.getModerationQueue(moderationType, page, 20),
     enabled: activeTab === 'moderation' && !!permissions?.isAdmin,
+  });
+
+  // Fetch communities for admin
+  const { data: communitiesData, isLoading: communitiesLoading } = useQuery({
+    queryKey: ['admin-communities'],
+    queryFn: () => apiService.getCommunities(),
+    enabled: activeTab === 'communities' && !!permissions?.isAdmin,
+  });
+
+  // Fetch analytics
+  const { data: statsData, isLoading: statsLoading } = useQuery({
+    queryKey: ['admin-stats'],
+    queryFn: () => apiService.getAdminStats(),
+    enabled: activeTab === 'analytics' && !!permissions?.isAdmin,
   });
 
   // Ban/Unban user mutation
@@ -70,7 +86,7 @@ const AdminDashboard: React.FC = () => {
     },
   });
 
-  if (!user) {
+  if (!currentUser) {
     return (
       <div className="max-w-6xl mx-auto">
         <div className="text-center py-12">
@@ -244,7 +260,7 @@ const AdminDashboard: React.FC = () => {
                                   Promote
                                 </button>
                               )}
-                              {user.isAdmin && user.id !== permissions?.isAdmin && (
+                              {user.isAdmin && user.id !== currentUser?.id && (
                                 <button
                                   onClick={() => {
                                     if (window.confirm('Are you sure you want to demote this admin?')) {
@@ -301,6 +317,24 @@ const AdminDashboard: React.FC = () => {
 
           {activeTab === 'moderation' && (
             <div>
+              <div className="mb-4 flex gap-2">
+                <button
+                  onClick={() => { setModerationType('post'); setPage(1); }}
+                  className={`px-4 py-2 rounded-md text-sm font-medium ${
+                    moderationType === 'post' ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                  }`}
+                >
+                  Posts
+                </button>
+                <button
+                  onClick={() => { setModerationType('comment'); setPage(1); }}
+                  className={`px-4 py-2 rounded-md text-sm font-medium ${
+                    moderationType === 'comment' ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                  }`}
+                >
+                  Comments
+                </button>
+              </div>
               {moderationLoading ? (
                 <div className="text-center py-8">
                   <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
@@ -308,34 +342,77 @@ const AdminDashboard: React.FC = () => {
                 </div>
               ) : moderationData?.items && moderationData.items.length > 0 ? (
                 <div className="space-y-4">
-                  {moderationData.items.map((post: any) => (
-                    <div key={post.id} className="border border-gray-200 rounded-md p-4">
-                      <div className="flex items-start justify-between">
-                        <div className="flex-1">
-                          <Link
-                            to={`/post/${post.id}`}
-                            className="text-lg font-medium text-gray-900 hover:text-blue-600"
-                          >
-                            {post.title}
-                          </Link>
-                          <p className="text-sm text-gray-600 mt-1">
-                            by u/{post.author.username} in o/{post.community.name}
-                          </p>
-                          <p className="text-sm text-gray-500 mt-2">
-                            {post._count?.comments || 0} comments • {post._count?.votes || 0} votes
-                          </p>
+                  {moderationType === 'post'
+                    ? moderationData.items.map((post: any) => (
+                        <div key={post.id} className="border border-gray-200 rounded-md p-4">
+                          <div className="flex items-start justify-between">
+                            <div className="flex-1">
+                              <Link
+                                to={`/post/${post.id}`}
+                                className="text-lg font-medium text-gray-900 hover:text-blue-600"
+                              >
+                                {post.title}
+                              </Link>
+                              <p className="text-sm text-gray-600 mt-1">
+                                by u/{post.author?.username} in o/{post.community?.name}
+                              </p>
+                              <p className="text-sm text-gray-500 mt-2">
+                                {post._count?.comments || 0} comments • {post._count?.votes || 0} votes
+                              </p>
+                            </div>
+                            <Link
+                              to={`/post/${post.id}`}
+                              className="px-3 py-1 bg-blue-600 text-white rounded-md text-sm hover:bg-blue-700"
+                            >
+                              Review
+                            </Link>
+                          </div>
                         </div>
-                        <div className="flex space-x-2">
-                          <Link
-                            to={`/post/${post.id}`}
-                            className="px-3 py-1 bg-blue-600 text-white rounded-md text-sm hover:bg-blue-700"
-                          >
-                            Review
-                          </Link>
+                      ))
+                    : moderationData.items.map((comment: any) => (
+                        <div key={comment.id} className="border border-gray-200 rounded-md p-4">
+                          <div className="flex items-start justify-between">
+                            <div className="flex-1">
+                              <p className="text-sm text-gray-900 line-clamp-2">{comment.content}</p>
+                              <p className="text-sm text-gray-600 mt-1">
+                                by u/{comment.author?.username} on post: {comment.post?.title}
+                              </p>
+                              <p className="text-sm text-gray-500 mt-2">
+                                {comment._count?.replies || 0} replies • {comment._count?.votes || 0} votes
+                              </p>
+                            </div>
+                            <Link
+                              to={`/post/${comment.post?.id}`}
+                              className="px-3 py-1 bg-blue-600 text-white rounded-md text-sm hover:bg-blue-700"
+                            >
+                              Review
+                            </Link>
+                          </div>
                         </div>
+                      ))}
+                  {moderationData.pagination && moderationData.pagination.pages > 1 && (
+                    <div className="mt-4 flex items-center justify-between">
+                      <span className="text-sm text-gray-500">
+                        Page {moderationData.pagination.page} of {moderationData.pagination.pages}
+                      </span>
+                      <div className="flex gap-2">
+                        <button
+                          onClick={() => setPage((p) => Math.max(1, p - 1))}
+                          disabled={page === 1}
+                          className="px-4 py-2 border border-gray-300 rounded-md disabled:opacity-50 text-sm"
+                        >
+                          Previous
+                        </button>
+                        <button
+                          onClick={() => setPage((p) => Math.min(moderationData.pagination.pages, p + 1))}
+                          disabled={page >= moderationData.pagination.pages}
+                          className="px-4 py-2 border border-gray-300 rounded-md disabled:opacity-50 text-sm"
+                        >
+                          Next
+                        </button>
                       </div>
                     </div>
-                  ))}
+                  )}
                 </div>
               ) : (
                 <div className="text-center py-8 text-gray-500">
@@ -346,14 +423,99 @@ const AdminDashboard: React.FC = () => {
           )}
 
           {activeTab === 'communities' && (
-            <div className="text-center py-8 text-gray-500">
-              <p>Community management coming soon</p>
+            <div>
+              {communitiesLoading ? (
+                <div className="text-center py-8">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
+                  <p className="mt-4 text-gray-600">Loading communities...</p>
+                </div>
+              ) : communitiesData && communitiesData.length > 0 ? (
+                <div className="overflow-x-auto">
+                  <table className="min-w-full divide-y divide-gray-200">
+                    <thead className="bg-gray-50">
+                      <tr>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Community</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Members</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Posts</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody className="bg-white divide-y divide-gray-200">
+                      {communitiesData.map((community: any) => (
+                        <tr key={community.id}>
+                          <td className="px-6 py-4">
+                            <div className="text-sm font-medium text-gray-900">{community.name}</div>
+                            <div className="text-xs text-gray-500">o/{community.slug}</div>
+                          </td>
+                          <td className="px-6 py-4 text-sm text-gray-500">{community.memberCount ?? 0}</td>
+                          <td className="px-6 py-4 text-sm text-gray-500">{community.postCount ?? 0}</td>
+                          <td className="px-6 py-4">
+                            <Link
+                              to={`/community/${community.slug}/settings`}
+                              className="text-blue-600 hover:text-blue-800 text-sm font-medium"
+                            >
+                              Manage
+                            </Link>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              ) : (
+                <div className="text-center py-8 text-gray-500">No communities found</div>
+              )}
             </div>
           )}
 
           {activeTab === 'analytics' && (
-            <div className="text-center py-8 text-gray-500">
-              <p>Analytics dashboard coming soon</p>
+            <div>
+              {statsLoading ? (
+                <div className="text-center py-8">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
+                  <p className="mt-4 text-gray-600">Loading analytics...</p>
+                </div>
+              ) : statsData ? (
+                <div className="space-y-6">
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
+                      <p className="text-sm text-gray-500">Total Users</p>
+                      <p className="text-2xl font-bold text-gray-900">{statsData.totalUsers}</p>
+                    </div>
+                    <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
+                      <p className="text-sm text-gray-500">Total Posts</p>
+                      <p className="text-2xl font-bold text-gray-900">{statsData.totalPosts}</p>
+                    </div>
+                    <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
+                      <p className="text-sm text-gray-500">Total Comments</p>
+                      <p className="text-2xl font-bold text-gray-900">{statsData.totalComments}</p>
+                    </div>
+                    <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
+                      <p className="text-sm text-gray-500">Communities</p>
+                      <p className="text-2xl font-bold text-gray-900">{statsData.totalCommunities}</p>
+                    </div>
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-semibold text-gray-900 mb-4">This Week</h3>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                      <div className="bg-blue-50 rounded-lg p-4 border border-blue-100">
+                        <p className="text-sm text-blue-600">New Users</p>
+                        <p className="text-2xl font-bold text-blue-900">{statsData.newUsersThisWeek}</p>
+                      </div>
+                      <div className="bg-green-50 rounded-lg p-4 border border-green-100">
+                        <p className="text-sm text-green-600">New Posts</p>
+                        <p className="text-2xl font-bold text-green-900">{statsData.postsThisWeek}</p>
+                      </div>
+                      <div className="bg-purple-50 rounded-lg p-4 border border-purple-100">
+                        <p className="text-sm text-purple-600">New Comments</p>
+                        <p className="text-2xl font-bold text-purple-900">{statsData.commentsThisWeek}</p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <div className="text-center py-8 text-gray-500">Unable to load analytics</div>
+              )}
             </div>
           )}
         </div>

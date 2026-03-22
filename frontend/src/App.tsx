@@ -19,6 +19,7 @@ import ProfileSettings from './pages/ProfileSettings';
 import Community from './pages/Community';
 import CommunitySettings from './pages/CommunitySettings';
 import AdminDashboard from './pages/AdminDashboard';
+import Search from './pages/Search';
 
 // Context
 import { AuthProvider } from './contexts/AuthContext';
@@ -61,6 +62,7 @@ function App() {
                 <Routes>
                   <Route path="/" element={<Home />} />
                   <Route path="/popular" element={<Popular />} />
+                  <Route path="/search" element={<Search />} />
                   <Route path="/login" element={<LoginForm />} />
                   <Route path="/register" element={<RegisterForm />} />
                   <Route path="/post/:id" element={<PostDetail />} />

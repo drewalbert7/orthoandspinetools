@@ -48,17 +48,17 @@ const Sidebar: React.FC<SidebarProps> = ({ isMobileOpen, onMobileClose }) => {
     },
   });
 
-  const followedCommunityIds = new Set(followedCommunities?.map(c => c.id) || []);
-  
-  // Sync optimistic follows with actual data
+  // Sync optimistic follows with actual data from API
   useEffect(() => {
     if (followedCommunities) {
       setOptimisticFollows(new Set(followedCommunities.map(c => c.id)));
     }
   }, [followedCommunities]);
   
-  // Combined followed state (actual + optimistic)
-  const combinedFollowedIds = new Set([...followedCommunityIds, ...optimisticFollows]);
+  // Use optimisticFollows as display source of truth - it handles both follow (add) and unfollow (remove)
+  // correctly. Union with followedCommunityIds was wrong: unfollow removed from optimisticFollows
+  // but community stayed in followedCommunityIds, so star never unclicked.
+  const combinedFollowedIds = optimisticFollows;
   
   // Debug logging (reduced verbosity)
   // console.log('🔍 Debug Info:', {
