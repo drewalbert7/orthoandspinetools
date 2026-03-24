@@ -1,21 +1,35 @@
 # OrthoAndSpineTools Medical Platform - Development Progress & TODO
 
-## 🔥 **NEXT UP — START HERE** (Feb 22, 2026)
+## 🔥 **NEXT UP — START HERE** (updated Mar 24, 2026)
 
-**Do these first on the next coding session (after deploy):**
+### **1. Deploy (production server)**
+On the server, from the project root (with your usual `.env`):
+```bash
+git pull origin main
+docker compose -f docker-compose.prod.yml build --no-cache backend frontend
+docker compose -f docker-compose.prod.yml up -d
+```
+*(If you use a different compose file or script, match your standard process — e.g. `./deploy.sh`.)*
 
-1. **Profile & settings QA (production)** — Re-test `/profile` and Profile Settings: avatar display, save profile, remove avatar. Confirm toasts show **real API errors** (not generic “Failed to update profile”) if something fails.
-2. **Auth error handling** — `authService` + `apiService` now read both `error` and `message` from API responses; verify login/register/password flows still behave.
-3. **PUT `/auth/me` validation** — Website field auto-prepends `https://` when missing a protocol; test with `example.com` and full URLs.
-4. **Optional follow-ups** — Reconcile duplicate “NEXT PRIORITIES” sections in this file; apply `apiErrorMessage` pattern to any remaining `axios` catch blocks that only use `message`.
+### **2. Production QA (right after deploy)**
+1. **Profile photo** — `/profile/settings`: upload **JPG/PNG** and also a file that was **WebP/GIF/no extension** before (should work now). Confirm image on profile + header.
+2. **Profile save** — Change bio or website (`example.com` without `https://` should save).
+3. **Auth** — Log out, log in; optional password change.
+4. If anything fails, copy the **exact toast or Network tab error** for debugging.
 
-**Recently shipped (session wrap-up):**
+### **3. Backlog (when QA is green)**
+- **Content** — Remove or hide obvious test posts on the live home feed (“Test”, “d”, etc.).
+- **TODO hygiene** — Merge duplicate `## 📋 NEXT PRIORITIES` sections (~line 440 vs ~1089).
+- **Physician verification** — `isVerifiedPhysician` on post author payloads + admin UI (see ~line 1137).
 
-- Removed `crossOrigin="anonymous"` from profile/avatar `<img>` tags (fixes Cloudinary display issues).
-- `GET /auth/profile` + `getUserProfile`: retries, validation of response shape, `apiErrorMessage` for backend `error` field.
-- `PUT /auth/me`: website sanitizer; null-safe `community` on profile payload when relations are missing.
-- `extractPublicIdFromUrl` in `cloudinaryService.ts` skips transformation/version path segments.
-- Avatar upload prefers stable `secure_url` / `cloudinaryUrl` for stored `profileImage`.
+**Recently shipped:**
+
+- **Avatar upload fix (Mar 24, 2026)** — Resized images always use a **`.jpg` filename**; dedicated **`uploadSingleAvatarMemory`** allows JPEG/PNG MIME + `.jpg`/`.jpeg`/`.png`/no extension (fixes multer rejecting `image/jpeg` + `photo.webp`). `avatarValidation` allows missing extension when MIME is valid. `uploadAvatar` errors use **`apiErrorMessage`**.
+- Removed `crossOrigin="anonymous"` from profile/avatar `<img>` tags (Cloudinary display).
+- `GET /auth/profile` + `getUserProfile`: retries, response shape check, `apiErrorMessage`.
+- `PUT /auth/me`: website sanitizer; null-safe `community` on profile payload.
+- `extractPublicIdFromUrl` skips Cloudinary transformation/version path segments.
+- Avatar API prefers stable `secure_url` / `cloudinaryUrl` for stored `profileImage`.
 
 ---
 
@@ -519,12 +533,13 @@ Docker + Docker Compose
 
 ### **Backend: 95% Complete** ✅
 - All core APIs implemented and tested
-- Image upload system ready
+- Image upload system ready (including avatar pipeline to Cloudinary)
 - Voting system functional
 - Authentication working
 - Database schema complete
 - Production deployment successful
-- **NEEDS**: Moderator/Admin role system and permissions
+- **Moderation/Admin**: ✅ Implemented (see IMMEDIATE NEXT STEPS §2 below)
+- **NEEDS**: Reporting/analytics depth, notifications (planned), ongoing hardening
 
 ### **Frontend: 90% Complete** ✅
 - Reddit-style UI implemented with light theme
@@ -537,7 +552,8 @@ Docker + Docker Compose
 - API integration working
 - Responsive design with mobile hamburger menu
 - Production build successful
-- **NEEDS**: Enhanced profile page, moderator/admin UI controls
+- **Moderation/Admin UI**: ✅ Implemented (ModerationMenu, AdminDashboard, etc.)
+- **NEEDS**: Profile polish (pagination, badges/social — see §1 below), physician verification UX
 
 ### **Infrastructure: 100% Complete** ✅
 - Docker containerization
@@ -553,16 +569,14 @@ Docker + Docker Compose
 ## 🎯 **IMMEDIATE NEXT STEPS** (Priority Order)
 
 ### **1. Enhanced Profile Page** 🔥 **HIGH PRIORITY**
-- **Current Status**: Basic profile page exists but needs significant improvement
-- **Requirements**:
-  - Reddit-style profile layout with user stats
-  - User post/comment history with pagination
-  - Profile customization (avatar, bio, preferences)
-  - User activity tracking and statistics
+- **Current Status**: Profile + settings work; **avatar upload pipeline fixed** (Mar 24, 2026 — deploy + QA in **NEXT UP**).
+- **Still valuable**:
+  - Pagination for post/comment history
   - Achievement/badge system for engagement
   - Follow/follower system for users
+  - Deeper activity stats
 - **Files to Modify**: `frontend/src/pages/Profile.tsx`, backend user routes
-- **Estimated Time**: 2-3 hours
+- **Estimated Time**: 2–4 hours for pagination + polish; larger for social features
 
 ### **2. Moderator/Admin Role System** ✅ **COMPLETED (December 7, 2025)**
 - **Status**: ✅ **FULLY IMPLEMENTED** - Complete Reddit-style moderation system

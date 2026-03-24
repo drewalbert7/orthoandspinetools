@@ -13,6 +13,16 @@ export interface ResizeOptions {
   cropToFit?: boolean; // Crop to exact dimensions (for avatars)
 }
 
+/** Canvas output is always JPEG — filename must end in .jpg so multipart/multer validation accepts the upload. */
+function jpegOutputFileName(originalName: string): string {
+  const base =
+    originalName.includes('.') && originalName.lastIndexOf('.') > 0
+      ? originalName.slice(0, originalName.lastIndexOf('.'))
+      : originalName || 'avatar';
+  const safe = base.replace(/[^\w.\- ]+/g, '_').trim() || 'avatar';
+  return `${safe.slice(0, 120)}.jpg`;
+}
+
 /**
  * Resize and compress an image file
  * @param file - Original image file
@@ -121,7 +131,7 @@ export async function resizeImage(
                   // Create a new File object with the resized image
                   const resizedFile = new File(
                     [blob],
-                    file.name,
+                    jpegOutputFileName(file.name),
                     {
                       type: 'image/jpeg', // Always convert to JPEG for better compression
                       lastModified: Date.now(),

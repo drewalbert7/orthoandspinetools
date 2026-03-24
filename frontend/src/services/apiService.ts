@@ -12,9 +12,12 @@ const api = axios.create({
 
 /** Backend errorHandler sends `{ error: string }`; some routes use `message`. */
 function apiErrorMessage(error: unknown, fallback: string): string {
-  const err = error as { response?: { data?: { message?: string; error?: string } } };
+  const err = error as {
+    response?: { data?: { message?: string; error?: string } };
+    message?: string;
+  };
   const d = err?.response?.data;
-  return (d?.message || d?.error || fallback) as string;
+  return String(d?.message || d?.error || err?.message || fallback);
 }
 
 // Add request interceptor to include auth token
@@ -601,8 +604,8 @@ class ApiService {
         width: item.width,
         height: item.height
       };
-    } catch (error: any) {
-      throw new Error(error.response?.data?.message || 'Failed to upload avatar');
+    } catch (error: unknown) {
+      throw new Error(apiErrorMessage(error, 'Failed to upload avatar'));
     }
   }
 

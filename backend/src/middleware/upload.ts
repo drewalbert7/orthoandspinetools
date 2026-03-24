@@ -165,6 +165,44 @@ export const uploadMultipleMemoryVideos = (fieldName: string, maxCount: number =
 export const uploadSingleMemory = (fieldName: string) => 
   uploadMemoryImages.single(fieldName);
 
+/**
+ * Profile avatars: output is always JPEG/PNG from the app after canvas resize.
+ * Multer's generic image filter rejects e.g. image/jpeg + "photo.webp" or files with no extension.
+ */
+const avatarMemoryMulter = multer({
+  storage: memoryStorage,
+  limits: {
+    fileSize: FILE_SIZE_LIMITS.avatars,
+    files: 1,
+    fieldSize: 1024 * 1024,
+  },
+  fileFilter: (req: Request, file: Express.Multer.File, cb: multer.FileFilterCallback) => {
+    const allowedMimeTypes = ['image/jpeg', 'image/jpg', 'image/png'];
+    const ext = path.extname(file.originalname || '').toLowerCase();
+    const allowedExt = ['', '.jpg', '.jpeg', '.png'];
+
+    if (!allowedMimeTypes.includes(file.mimetype)) {
+      return cb(
+        new AppError(
+          `Invalid avatar type (${file.mimetype}). Use JPEG or PNG.`,
+          400
+        )
+      );
+    }
+    if (!allowedExt.includes(ext)) {
+      return cb(
+        new AppError(
+          'Avatar filename must end with .jpg, .jpeg, or .png (photos from phones often need the app resize step).',
+          400
+        )
+      );
+    }
+    cb(null, true);
+  },
+});
+
+export const uploadSingleAvatarMemory = avatarMemoryMulter.single('avatar');
+
 // Middleware for mixed uploads (tools and xrays)
 export const uploadMixed = upload.fields([
   { name: 'toolImages', maxCount: 5 },
