@@ -2,7 +2,11 @@ import React, { useState, useEffect } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { Menu, X } from 'lucide-react';
+import toast from 'react-hot-toast';
 import UserAvatar from './UserAvatar';
+import NotificationItem from './NotificationItem';
+import { useNotifications } from '../hooks/useNotifications';
+import type { AppNotification } from '../services/apiService';
 
 interface HeaderProps {
   isMobileSidebarOpen: boolean;
@@ -16,6 +20,43 @@ const Header: React.FC<HeaderProps> = ({ isMobileSidebarOpen, onMobileSidebarTog
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isNotificationOpen, setIsNotificationOpen] = useState(false);
   const [searchInput, setSearchInput] = useState('');
+
+  const {
+    unreadCount,
+    notifications,
+    isLoadingList,
+    listError,
+    markRead,
+    markAllRead,
+    remove,
+  } = useNotifications(isNotificationOpen, !!user);
+
+  const handleNotificationNavigate = async (n: AppNotification) => {
+    try {
+      if (!n.isRead) {
+        await markRead.mutateAsync(n.id);
+      }
+    } catch {
+      // Still navigate if mark-read fails
+    }
+    setIsNotificationOpen(false);
+    if (n.link) {
+      navigate(n.link);
+    }
+  };
+
+  const handleNotificationDismiss = (e: React.MouseEvent, id: string) => {
+    e.stopPropagation();
+    remove.mutate(id, {
+      onError: () => toast.error('Could not remove notification'),
+    });
+  };
+
+  const handleMarkAllNotificationsRead = () => {
+    markAllRead.mutate(undefined, {
+      onError: () => toast.error('Could not mark all as read'),
+    });
+  };
 
   useEffect(() => {
     if (location.pathname === '/search') {
@@ -135,27 +176,74 @@ const Header: React.FC<HeaderProps> = ({ isMobileSidebarOpen, onMobileSidebarTog
                   <span>Create</span>
                 </Link>
 
-                {/* Notification Bell Icon */}
+                {/* Notification Bell */}
                 <div className="relative">
                   <button
+                    type="button"
                     onClick={() => setIsNotificationOpen(!isNotificationOpen)}
-                    className="p-2 text-black hover:text-gray-600 transition-colors flex items-center justify-center"
+                    className="relative p-2 text-black hover:text-gray-600 transition-colors flex items-center justify-center"
+                    aria-expanded={isNotificationOpen}
+                    aria-haspopup="true"
+                    aria-label={`Notifications${unreadCount > 0 ? `, ${unreadCount} unread` : ''}`}
                   >
                     <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
                       <path strokeLinecap="round" strokeLinejoin="round" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
                     </svg>
+                    {unreadCount > 0 && (
+                      <span className="absolute top-0.5 right-0.5 min-w-[1.125rem] h-[1.125rem] px-1 flex items-center justify-center rounded-full bg-red-600 text-white text-[10px] font-bold leading-none">
+                        {unreadCount > 99 ? '99+' : unreadCount}
+                      </span>
+                    )}
                   </button>
 
-                  {/* Notification Dropdown */}
                   {isNotificationOpen && (
-                    <div className="absolute right-0 mt-2 w-80 bg-white rounded-md shadow-lg py-1 z-50 border border-gray-200">
-                      <div className="px-4 py-2 border-b border-gray-200">
-                        <h3 className="text-sm font-medium text-gray-900">Notifications</h3>
+                    <>
+                      <div
+                        className="fixed inset-0 z-40"
+                        aria-hidden
+                        onClick={() => setIsNotificationOpen(false)}
+                      />
+                      <div className="absolute right-0 mt-2 w-[min(100vw-2rem,22rem)] max-w-sm bg-white rounded-md shadow-lg z-50 border border-gray-200 flex flex-col max-h-[min(24rem,70vh)]">
+                        <div className="px-4 py-2 border-b border-gray-200 flex items-center justify-between gap-2 flex-shrink-0">
+                          <h3 className="text-sm font-medium text-gray-900">Notifications</h3>
+                          {notifications.some((n) => !n.isRead) && (
+                            <button
+                              type="button"
+                              onClick={handleMarkAllNotificationsRead}
+                              disabled={markAllRead.isPending}
+                              className="text-xs text-blue-600 hover:text-blue-800 disabled:opacity-50"
+                            >
+                              Mark all read
+                            </button>
+                          )}
+                        </div>
+                        <div className="overflow-y-auto flex-1 min-h-0">
+                          {isLoadingList && (
+                            <div className="px-4 py-6 text-sm text-gray-500 text-center">Loading…</div>
+                          )}
+                          {listError && !isLoadingList && (
+                            <div className="px-4 py-4 text-sm text-red-600">
+                              Could not load notifications.
+                            </div>
+                          )}
+                          {!isLoadingList && !listError && notifications.length === 0 && (
+                            <div className="px-4 py-6 text-sm text-gray-500 text-center">
+                              No notifications yet. You’ll see alerts when someone comments on your posts or replies to
+                              your comments.
+                            </div>
+                          )}
+                          {!isLoadingList &&
+                            notifications.map((n) => (
+                              <NotificationItem
+                                key={n.id}
+                                notification={n}
+                                onOpen={handleNotificationNavigate}
+                                onDismiss={handleNotificationDismiss}
+                              />
+                            ))}
+                        </div>
                       </div>
-                      <div className="px-4 py-3 text-sm text-gray-500">
-                        No notifications yet. Alerts for replies and mentions may be added in a future update.
-                      </div>
-                    </div>
+                    </>
                   )}
                 </div>
 

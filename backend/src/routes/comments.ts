@@ -6,6 +6,7 @@ import { prisma } from '../lib/prisma';
 import { logger } from '../utils/logger';
 import { body, param, query, validationResult } from 'express-validator';
 import { updateUserKarma, calculateKarmaChange } from '../utils/karmaService';
+import { createNotification, NotificationType } from '../services/notificationService';
 
 const router = Router();
 
@@ -51,6 +52,8 @@ router.post('/', authenticate, validateComment, asyncHandler(async (req: AuthReq
     where: { id: postId },
     select: {
       id: true,
+      title: true,
+      authorId: true,
       isLocked: true,
       isDeleted: true,
     }
@@ -215,6 +218,42 @@ router.post('/', authenticate, validateComment, asyncHandler(async (req: AuthReq
       userAgent: req.get('User-Agent'),
     }
   });
+
+  // In-app notifications (never fail the request)
+  const titleShort =
+    post.title.length > 80 ? `${post.title.slice(0, 77)}...` : post.title;
+  const actorUsername = comment.author.username;
+  const link = `/post/${postId}`;
+
+  if (parentId) {
+    const parent = await prisma.comment.findUnique({
+      where: { id: parentId },
+      select: { authorId: true },
+    });
+    if (parent?.authorId) {
+      await createNotification({
+        userId: parent.authorId,
+        type: NotificationType.REPLY_TO_COMMENT,
+        title: 'New reply to your comment',
+        message: `u/${actorUsername} replied on “${titleShort}”`,
+        link,
+        actorId: req.user!.id,
+        postId,
+        commentId: comment.id,
+      });
+    }
+  } else {
+    await createNotification({
+      userId: post.authorId,
+      type: NotificationType.COMMENT_ON_POST,
+      title: 'New comment on your post',
+      message: `u/${actorUsername} commented on “${titleShort}”`,
+      link,
+      actorId: req.user!.id,
+      postId,
+      commentId: comment.id,
+    });
+  }
 
   res.status(201).json({
     success: true,

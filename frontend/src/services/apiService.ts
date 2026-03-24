@@ -272,6 +272,28 @@ export interface CommunityTag {
   updatedAt: string;
 }
 
+export interface AppNotification {
+  id: string;
+  userId: string;
+  type: string;
+  title: string;
+  message: string;
+  link: string | null;
+  actorId: string | null;
+  postId: string | null;
+  commentId: string | null;
+  isRead: boolean;
+  createdAt: string;
+}
+
+export interface NotificationsPage {
+  items: AppNotification[];
+  total: number;
+  page: number;
+  limit: number;
+  totalPages: number;
+}
+
 class ApiService {
   // Posts
   async getPosts(params: { page?: number; limit?: number; sort?: string; community?: string; q?: string } = {}): Promise<{ posts: Post[]; pagination: { page: number; pages: number } }> {
@@ -833,6 +855,49 @@ class ApiService {
       return response.data.data;
     } catch (error: unknown) {
       throw new Error(apiErrorMessage(error, 'Failed to verify physician'));
+    }
+  }
+
+  // Notifications
+  async getNotifications(page = 1, limit = 20): Promise<NotificationsPage> {
+    try {
+      const response = await api.get('/notifications', { params: { page, limit } });
+      return response.data.data;
+    } catch (error: unknown) {
+      throw new Error(apiErrorMessage(error, 'Failed to load notifications'));
+    }
+  }
+
+  async getUnreadNotificationCount(): Promise<number> {
+    try {
+      const response = await api.get('/notifications/unread-count');
+      return response.data.data?.count ?? 0;
+    } catch (error: unknown) {
+      throw new Error(apiErrorMessage(error, 'Failed to load unread count'));
+    }
+  }
+
+  async markNotificationRead(id: string): Promise<void> {
+    try {
+      await api.put(`/notifications/${encodeURIComponent(id)}/read`);
+    } catch (error: unknown) {
+      throw new Error(apiErrorMessage(error, 'Failed to mark notification read'));
+    }
+  }
+
+  async markAllNotificationsRead(): Promise<void> {
+    try {
+      await api.put('/notifications/read-all');
+    } catch (error: unknown) {
+      throw new Error(apiErrorMessage(error, 'Failed to mark all read'));
+    }
+  }
+
+  async deleteNotification(id: string): Promise<void> {
+    try {
+      await api.delete(`/notifications/${encodeURIComponent(id)}`);
+    } catch (error: unknown) {
+      throw new Error(apiErrorMessage(error, 'Failed to delete notification'));
     }
   }
 }
