@@ -3,12 +3,12 @@ import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiService } from '../services/apiService';
-import { authService } from '../services/authService';
+import { authService, type User } from '../services/authService';
 import { toast } from 'react-hot-toast';
 import { resizeAvatar } from '../utils/imageResize';
 
 const ProfileSettings: React.FC = () => {
-  const { user, refreshUser } = useAuth();
+  const { user, refreshUser, updateProfile } = useAuth();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [activeTab, setActiveTab] = useState<'profile' | 'password' | 'admin'>('profile');
@@ -20,9 +20,9 @@ const ProfileSettings: React.FC = () => {
     enabled: !!user,
   });
 
-  // Profile update mutation
+  // Profile update mutation — must use AuthContext.updateProfile so Header (and other consumers) get new user state (e.g. profileImage). authService alone only updates localStorage.
   const profileMutation = useMutation({
-    mutationFn: (data: any) => authService.updateProfile(data),
+    mutationFn: (data: Partial<User>) => updateProfile(data),
     onSuccess: async () => {
       await refreshUser();
       queryClient.invalidateQueries({ queryKey: ['user-profile', user?.id] });

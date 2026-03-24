@@ -35,7 +35,8 @@ services:
       DATABASE_URL: postgresql://postgres:${POSTGRES_PASSWORD:-secure_password_123}@postgres:5432/orthoandspinetools?connection_limit=10&pool_timeout=20
       JWT_SECRET: ${JWT_SECRET:-your-super-secret-jwt-key-change-this-in-production}
       JWT_EXPIRES_IN: 7d
-      CORS_ORIGIN: https://orthoandspinetools.com
+      # Backend reads CORS_ORIGINS (plural); comma-separated. Defaults in code if unset.
+      CORS_ORIGINS: https://orthoandspinetools.com,https://www.orthoandspinetools.com
     depends_on:
       postgres:
         condition: service_healthy
@@ -56,9 +57,10 @@ services:
     build:
       context: ./frontend
       dockerfile: Dockerfile
+      args:
+        # Must match how users reach the site (apex vs www). Baked in at `npm run build`.
+        VITE_API_URL: ${VITE_API_URL:-https://orthoandspinetools.com/api}
     container_name: orthoandspinetools-frontend
-    environment:
-      VITE_API_URL: https://orthoandspinetools.com/api
     depends_on:
       backend:
         condition: service_healthy

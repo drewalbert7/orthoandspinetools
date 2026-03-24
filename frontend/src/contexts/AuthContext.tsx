@@ -44,7 +44,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           try {
             const refreshedUser = await authService.refreshUser();
             console.log('Refreshed user data:', refreshedUser);
-            setUser(refreshedUser);
+            setUser((prev) => (prev ? { ...prev, ...refreshedUser } : refreshedUser));
           } catch (refreshError) {
             // If refresh fails, keep using cached data but log the error
             console.warn('Failed to refresh user data, using cached data:', refreshError);
@@ -95,18 +95,16 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   };
 
   const updateProfile = async (userData: Partial<User>) => {
-    try {
-      const updatedUser = await authService.updateProfile(userData);
-      setUser(updatedUser);
-    } catch (error) {
-      throw error;
-    }
+    const updatedUser = await authService.updateProfile(userData);
+    // PUT /me omits some fields (e.g. isAdmin); merge so header & menus stay correct.
+    setUser((prev) => (prev ? { ...prev, ...updatedUser } : updatedUser));
   };
 
   const refreshUser = async () => {
     try {
       const refreshedUser = await authService.refreshUser();
-      setUser(refreshedUser);
+      // Merge so we never drop fields if the client User type is wider than the payload.
+      setUser((prev) => (prev ? { ...prev, ...refreshedUser } : refreshedUser));
     } catch (error) {
       console.error('Failed to refresh user:', error);
       // Don't throw - just log the error

@@ -62,6 +62,7 @@ docker compose -f docker-compose.prod.yml up -d
 - ✅ **Document any breaking changes** or new requirements
 
 #### **After Completing Tasks:**
+- ✅ **Git**: Commit locally during the session; **`git push` only at session end** (or when explicitly requested) — avoid pushing every small fix.
 - ✅ **Update TODO.md** with completed work and new findings
 - ✅ **Test the live site** to ensure changes work in production
 - ✅ **Check for linting errors** and fix them

@@ -13,7 +13,10 @@ RUN npm ci
 # Copy source code
 COPY . .
 
-# Build the application
+# Vite inlines this at build time (runtime `environment:` in Compose does NOT apply).
+ARG VITE_API_URL=https://orthoandspinetools.com/api
+ENV VITE_API_URL=$VITE_API_URL
+
 RUN npm run build
 
 # Production stage
