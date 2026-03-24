@@ -67,7 +67,10 @@ const ModerationMenu: React.FC<ModerationMenuProps> = ({
 
   // Check if user can moderate this post
   const canModerate = React.useMemo(() => {
-    if (!user || !permissions) return false;
+    if (!user) return false;
+    // Trust auth context for global admin actions even if permissions query fails.
+    if (user.isAdmin) return true;
+    if (!permissions) return false;
     
     // Admin can moderate everything
     if (permissions.isAdmin) return true;

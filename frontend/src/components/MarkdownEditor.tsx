@@ -14,6 +14,25 @@ export interface MarkdownEditorHandle {
   insertMarkdown: (before: string, after: string, placeholder: string) => void;
 }
 
+function getPlainTextFromHtml(html: string): string {
+  const div = document.createElement('div');
+  div.innerHTML = html;
+  return div.textContent || div.innerText || '';
+}
+
+/** Compare stored markdown to what the editor DOM currently represents (avoids fighting the browser on every keystroke). */
+function markdownMatchesDom(html: string, markdown: string, toMd: (h: string) => string): boolean {
+  let derived: string;
+  try {
+    derived = toMd(html);
+  } catch {
+    derived = getPlainTextFromHtml(html);
+  }
+  const a = (derived || '').replace(/\r\n/g, '\n').trimEnd();
+  const b = (markdown || '').replace(/\r\n/g, '\n').trimEnd();
+  return a === b;
+}
+
 const MarkdownEditor = forwardRef<MarkdownEditorHandle, MarkdownEditorProps>(({
   value,
   onChange,
@@ -23,6 +42,7 @@ const MarkdownEditor = forwardRef<MarkdownEditorHandle, MarkdownEditorProps>(({
   onKeyDown,
 }, ref) => {
   const editorRef = useRef<HTMLDivElement>(null);
+  const composingRef = useRef(false);
   const [isUpdating, setIsUpdating] = useState(false);
   const [cursorPos, setCursorPos] = useState(0);
 
@@ -42,12 +62,7 @@ const MarkdownEditor = forwardRef<MarkdownEditorHandle, MarkdownEditorProps>(({
     }
   }, []);
 
-  // Get text content from HTML (for cursor position)
-  const getTextFromHtml = (html: string): string => {
-    const div = document.createElement('div');
-    div.innerHTML = html;
-    return div.textContent || div.innerText || '';
-  };
+  const getTextFromHtml = getPlainTextFromHtml;
 
   // Save cursor position
   const saveCursor = useCallback(() => {
@@ -181,13 +196,23 @@ const MarkdownEditor = forwardRef<MarkdownEditorHandle, MarkdownEditorProps>(({
 
   // Handle input - convert HTML back to markdown
   const handleInput = useCallback((e: React.FormEvent<HTMLDivElement>) => {
-    if (isUpdating) return;
-    
+    if (isUpdating || composingRef.current) return;
+
     const html = e.currentTarget.innerHTML;
     const markdown = htmlToMarkdown(html);
     saveCursor();
-    
+
     // Only update if markdown actually changed
+    if (markdown !== value) {
+      onChange(markdown);
+    }
+  }, [isUpdating, onChange, saveCursor, value, htmlToMarkdown]);
+
+  const flushFromDom = useCallback(() => {
+    if (!editorRef.current || isUpdating) return;
+    const html = editorRef.current.innerHTML;
+    const markdown = htmlToMarkdown(html);
+    saveCursor();
     if (markdown !== value) {
       onChange(markdown);
     }
@@ -256,35 +281,45 @@ const MarkdownEditor = forwardRef<MarkdownEditorHandle, MarkdownEditorProps>(({
     insertMarkdown,
   }), [insertMarkdown]);
 
-  // Update HTML when markdown changes externally (from formatting buttons)
+  // Update HTML when markdown changes externally (formatting buttons / programmatic).
+  // Do NOT reset the DOM when the editor already represents the same markdown — that breaks typing (esp. mobile).
   useEffect(() => {
-    if (!editorRef.current || isUpdating) return;
-    
-    // Get current rendered markdown
-    const currentRendered = markdownToHtml(value || '');
+    if (!editorRef.current || isUpdating || composingRef.current) return;
+
     const currentHtml = editorRef.current.innerHTML;
-    
-    // Only update if markdown actually changed
-    // Compare by checking if the rendered HTML would be different
-    if (currentHtml !== currentRendered && currentRendered !== '') {
-      setIsUpdating(true);
-      const wasFocused = document.activeElement === editorRef.current;
-      const savedPos = cursorPos;
-      
-      editorRef.current.innerHTML = currentRendered || '<br>';
-      
-      if (wasFocused) {
-        editorRef.current.focus();
-        // Try to restore cursor, but if it fails, place at end
-        setTimeout(() => {
-          restoreCursor(savedPos);
-          setIsUpdating(false);
-        }, 0);
-      } else {
-        setIsUpdating(false);
-      }
+    if (markdownMatchesDom(currentHtml, value || '', htmlToMarkdown)) {
+      return;
     }
-  }, [value, markdownToHtml, cursorPos, restoreCursor, isUpdating]);
+
+    const currentRendered = markdownToHtml(value || '');
+    const v = value || '';
+
+    // Clear editor when value cleared from outside
+    if (!v.trim()) {
+      setIsUpdating(true);
+      editorRef.current.innerHTML = '<br>';
+      setIsUpdating(false);
+      return;
+    }
+
+    if (!currentRendered.trim()) return;
+
+    setIsUpdating(true);
+    const wasFocused = document.activeElement === editorRef.current;
+    const savedPos = cursorPos;
+
+    editorRef.current.innerHTML = currentRendered;
+
+    if (wasFocused) {
+      editorRef.current.focus();
+      setTimeout(() => {
+        restoreCursor(savedPos);
+        setIsUpdating(false);
+      }, 0);
+    } else {
+      setIsUpdating(false);
+    }
+  }, [value, markdownToHtml, cursorPos, restoreCursor, isUpdating, htmlToMarkdown]);
 
   return (
     <>
@@ -296,11 +331,21 @@ const MarkdownEditor = forwardRef<MarkdownEditorHandle, MarkdownEditorProps>(({
         onPaste={handlePaste}
         onKeyDown={onKeyDown}
         onBlur={saveCursor}
+        onCompositionStart={() => {
+          composingRef.current = true;
+        }}
+        onCompositionEnd={() => {
+          composingRef.current = false;
+          flushFromDom();
+        }}
         className={`${className} px-4 py-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent`}
         style={{
           minHeight: `${rows * 1.5}rem`,
           whiteSpace: 'pre-wrap',
           wordWrap: 'break-word',
+          WebkitUserSelect: 'text',
+          userSelect: 'text',
+          touchAction: 'manipulation',
         }}
         data-placeholder={!value ? placeholder : ''}
       />

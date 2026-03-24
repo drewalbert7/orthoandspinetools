@@ -37,7 +37,10 @@ const CreatePost: React.FC = () => {
   const [title, setTitle] = useState('');
   const [body, setBody] = useState('');
   const [linkUrl, setLinkUrl] = useState('');
-  const [isMarkdownMode, setIsMarkdownMode] = useState(false);
+  // Mobile: default to plain <textarea> (reliable). Desktop: rich editor.
+  const [isMarkdownMode, setIsMarkdownMode] = useState(() =>
+    typeof window !== 'undefined' && window.matchMedia('(max-width: 640px)').matches
+  );
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState('');
   const [showCommunityDropdown, setShowCommunityDropdown] = useState(false);
@@ -373,9 +376,11 @@ const CreatePost: React.FC = () => {
               onChange={(e) => setTitle(e.target.value)}
               placeholder="Title*"
               maxLength={300}
-              className="w-full px-3 sm:px-4 py-2 sm:py-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-base sm:text-lg pr-16 sm:pr-20"
+              autoComplete="off"
+              enterKeyHint="done"
+              className="w-full px-3 sm:px-4 py-2 sm:py-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-base sm:text-lg pr-16 sm:pr-20 touch-manipulation relative z-10"
             />
-            <div className="absolute bottom-2 right-2 sm:right-3 text-xs text-gray-400">
+            <div className="absolute bottom-2 right-2 sm:right-3 text-xs text-gray-400 pointer-events-none select-none z-20">
               {title.length}/300
             </div>
           </div>
@@ -428,9 +433,9 @@ const CreatePost: React.FC = () => {
         {/* Content based on post type */}
         {postType === 'text' && (
           <div className="mb-4 sm:mb-6">
-            {/* Formatting Toolbar */}
+            {/* Formatting Toolbar (rich editor only) */}
             <div className="flex items-center justify-between mb-2 sm:mb-3">
-              <div className="flex items-center space-x-0.5 sm:space-x-1 overflow-x-auto scrollbar-hide flex-1">
+              <div className={`flex items-center space-x-0.5 sm:space-x-1 overflow-x-auto scrollbar-hide flex-1 ${isMarkdownMode ? 'opacity-40 pointer-events-none' : ''}`}>
                 {/* Bold */}
                 <button 
                   type="button"
@@ -558,42 +563,64 @@ const CreatePost: React.FC = () => {
                 </button>
               </div>
               <button
+                type="button"
                 onClick={() => setIsMarkdownMode(!isMarkdownMode)}
                 className="text-xs sm:text-sm text-blue-600 hover:text-blue-800 whitespace-nowrap ml-2 sm:ml-0"
               >
-                <span className="hidden sm:inline">Switch to Markdown Editor</span>
-                <span className="sm:hidden">Markdown</span>
+                {isMarkdownMode ? (
+                  <>
+                    <span className="hidden sm:inline">Switch to rich editor</span>
+                    <span className="sm:hidden">Rich</span>
+                  </>
+                ) : (
+                  <>
+                    <span className="hidden sm:inline">Plain Markdown (better on mobile)</span>
+                    <span className="sm:hidden">Plain text</span>
+                  </>
+                )}
               </button>
             </div>
             
-            {/* Text Area - WYSIWYG Editor */}
+            {/* Body: plain textarea (reliable typing) vs rich contenteditable */}
             <div className="relative">
-              <MarkdownEditor
-                ref={editorRef}
-                value={body}
-                onChange={setBody}
-                placeholder="Body text (optional)"
-                rows={8}
-                className="w-full resize-none text-sm sm:text-base"
-                onKeyDown={(e) => {
-                  // Keyboard shortcuts
-                  if (e.ctrlKey || e.metaKey) {
-                    if (e.key === 'b') {
-                      e.preventDefault();
-                      handleFormatBold(editorRef.current);
-                    } else if (e.key === 'i') {
-                      e.preventDefault();
-                      handleFormatItalic(editorRef.current);
+              {isMarkdownMode ? (
+                <textarea
+                  value={body}
+                  onChange={(e) => setBody(e.target.value)}
+                  placeholder="Body text (optional) — Markdown supported"
+                  rows={10}
+                  spellCheck
+                  autoComplete="off"
+                  className="w-full min-h-[12rem] px-4 py-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm sm:text-base resize-y touch-manipulation"
+                />
+              ) : (
+                <MarkdownEditor
+                  ref={editorRef}
+                  value={body}
+                  onChange={setBody}
+                  placeholder="Body text (optional)"
+                  rows={8}
+                  className="w-full resize-none text-sm sm:text-base"
+                  onKeyDown={(e) => {
+                    if (e.ctrlKey || e.metaKey) {
+                      if (e.key === 'b') {
+                        e.preventDefault();
+                        handleFormatBold(editorRef.current);
+                      } else if (e.key === 'i') {
+                        e.preventDefault();
+                        handleFormatItalic(editorRef.current);
+                      }
                     }
-                  }
-                }}
-              />
-              {/* Resize handle */}
-              <div className="absolute bottom-2 right-2 w-3 h-3">
-                <svg className="w-3 h-3 text-gray-400" fill="currentColor" viewBox="0 0 24 24">
-                  <path d="M22 22H20V20H22V22ZM22 18H20V16H22V18ZM18 22H16V20H18V22ZM18 18H16V16H18V18ZM14 22H12V20H14V22ZM22 14H20V12H22V14Z"/>
-                </svg>
-              </div>
+                  }}
+                />
+              )}
+              {!isMarkdownMode && (
+                <div className="absolute bottom-2 right-2 w-3 h-3 pointer-events-none select-none" aria-hidden>
+                  <svg className="w-3 h-3 text-gray-400" fill="currentColor" viewBox="0 0 24 24">
+                    <path d="M22 22H20V20H22V22ZM22 18H20V16H22V18ZM18 22H16V20H18V22ZM18 18H16V16H18V18ZM14 22H12V20H14V22ZM22 14H20V12H22V14Z"/>
+                  </svg>
+                </div>
+              )}
             </div>
           </div>
         )}
@@ -605,7 +632,9 @@ const CreatePost: React.FC = () => {
               value={linkUrl}
               onChange={(e) => setLinkUrl(e.target.value)}
               placeholder="URL"
-              className="w-full px-3 sm:px-4 py-2 sm:py-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm sm:text-base"
+              autoComplete="off"
+              enterKeyHint="done"
+              className="w-full px-3 sm:px-4 py-2 sm:py-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm sm:text-base touch-manipulation"
             />
           </div>
         )}
@@ -678,7 +707,7 @@ const CreatePost: React.FC = () => {
               <div className="space-y-2 sm:space-y-3">
                 {/* Formatting Toolbar */}
                 <div className="flex items-center justify-between">
-                  <div className="flex items-center space-x-0.5 sm:space-x-1 overflow-x-auto scrollbar-hide flex-1">
+                  <div className={`flex items-center space-x-0.5 sm:space-x-1 overflow-x-auto scrollbar-hide flex-1 ${isMarkdownMode ? 'opacity-40 pointer-events-none' : ''}`}>
                     {/* Bold */}
                     <button 
                       type="button"
@@ -807,35 +836,46 @@ const CreatePost: React.FC = () => {
                     </button>
                   </div>
                   <button
+                    type="button"
                     onClick={() => setIsMarkdownMode(!isMarkdownMode)}
                     className="text-sm text-blue-600 hover:text-blue-800"
                   >
-                    Switch to Markdown Editor
+                    {isMarkdownMode ? 'Switch to rich editor' : 'Plain Markdown (mobile-friendly)'}
                   </button>
                 </div>
                 
-                {/* Text Area - WYSIWYG Editor */}
                 <div className="relative">
-                  <MarkdownEditor
-                    ref={imagesEditorRef}
-                    value={body}
-                    onChange={setBody}
-                    placeholder="Body text (optional)"
-                    rows={8}
-                    className="w-full resize-none text-sm sm:text-base"
-                    onKeyDown={(e) => {
-                      // Keyboard shortcuts
-                      if (e.ctrlKey || e.metaKey) {
-                        if (e.key === 'b') {
-                          e.preventDefault();
-                          handleFormatBold(imagesEditorRef.current);
-                        } else if (e.key === 'i') {
-                          e.preventDefault();
-                          handleFormatItalic(imagesEditorRef.current);
+                  {isMarkdownMode ? (
+                    <textarea
+                      value={body}
+                      onChange={(e) => setBody(e.target.value)}
+                      placeholder="Body text (optional) — Markdown supported"
+                      rows={10}
+                      spellCheck
+                      autoComplete="off"
+                      className="w-full min-h-[12rem] px-4 py-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm sm:text-base resize-y touch-manipulation"
+                    />
+                  ) : (
+                    <MarkdownEditor
+                      ref={imagesEditorRef}
+                      value={body}
+                      onChange={setBody}
+                      placeholder="Body text (optional)"
+                      rows={8}
+                      className="w-full resize-none text-sm sm:text-base"
+                      onKeyDown={(e) => {
+                        if (e.ctrlKey || e.metaKey) {
+                          if (e.key === 'b') {
+                            e.preventDefault();
+                            handleFormatBold(imagesEditorRef.current);
+                          } else if (e.key === 'i') {
+                            e.preventDefault();
+                            handleFormatItalic(imagesEditorRef.current);
+                          }
                         }
-                      }
-                    }}
-                  />
+                      }}
+                    />
+                  )}
                 </div>
               </div>
             </div>

@@ -118,12 +118,12 @@ const PostCard: React.FC<PostCardProps> = ({ post, onVote }) => {
             {post.community ? (
               <Link 
                 to={`/community/${post.community.id || post.communityId}`}
-                className="font-semibold hover:underline text-white text-sm"
+                className="font-semibold hover:underline text-gray-900 text-sm"
               >
                 o/{post.community.name || 'Unknown'}
               </Link>
             ) : (
-              <span className="font-semibold text-white text-sm">o/Unknown</span>
+              <span className="font-semibold text-gray-900 text-sm">o/Unknown</span>
             )}
             <span>•</span>
             <span>Posted by</span>
@@ -148,7 +148,7 @@ const PostCard: React.FC<PostCardProps> = ({ post, onVote }) => {
 
           {/* Title - Larger and more prominent */}
           <Link to={`/post/${post.id}`} className="block mb-2 md:mb-3">
-            <h2 className="text-lg md:text-xl font-semibold text-white hover:text-blue-400 transition-colors leading-tight">
+            <h2 className="text-base sm:text-lg md:text-xl font-semibold text-gray-900 hover:text-blue-700 transition-colors leading-snug break-words [overflow-wrap:anywhere]">
               {post.title}
             </h2>
           </Link>
@@ -203,10 +203,10 @@ const PostCard: React.FC<PostCardProps> = ({ post, onVote }) => {
               </svg>
               <span>Save</span>
             </button>
-            {post.community && (post.community.id || post.communityId) && (
+            {(post.communityId || post.community?.id) && (
               <ModerationMenu
                 postId={post.id}
-                communityId={post.community.id || post.communityId}
+                communityId={post.community?.id || post.communityId}
                 isLocked={post.isLocked}
                 isPinned={post.isPinned}
                 onDelete={async () => {

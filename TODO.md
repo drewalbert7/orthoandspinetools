@@ -12,18 +12,28 @@ docker compose -f docker-compose.prod.yml up -d
 *(If you use a different compose file or script, match your standard process — e.g. `./deploy.sh`.)*
 
 ### **2. Production QA (right after deploy)**
-1. **Profile photo** — `/profile/settings`: upload **JPG/PNG** and also a file that was **WebP/GIF/no extension** before (should work now). Confirm image on profile + header.
-2. **Profile save** — Change bio or website (`example.com` without `https://` should save).
-3. **Auth** — Log out, log in; optional password change.
-4. If anything fails, copy the **exact toast or Network tab error** for debugging.
+1. **Home feed** — verify `/` shows posts from multiple communities (not followed-only feed).
+2. **Create Post typing** — verify title/body typing is stable on mobile + desktop (`/create-post`).
+3. **Notifications** — comment/reply should create unread bell items; mark read / mark all / dismiss work.
+4. **Admin delete** — as admin, open post menu (`...`) from Home and PostDetail and confirm delete works.
+5. If anything fails, copy the **exact toast text** and **Network response JSON**.
 
 ### **3. Backlog (when QA is green)**
+- **Admin hardening (NEXT STEP)** — Ensure admin moderation capabilities are consistently available:
+  - Add explicit admin fallback action in post UI (if moderation permissions endpoint fails).
+  - Audit admin paths for delete/lock/pin/report actions across Home, Popular, PostDetail.
+  - Add targeted regression checks for admin role/session refresh edge cases.
 - **Content** — Remove or hide obvious test posts on the live home feed (“Test”, “d”, etc.) — manual in DB/admin or add a moderation tool later.
 - **TODO hygiene** — ✅ Duplicate priorities condensed: summary at ~line 454, extended at ~line 1115.
 - **Physician verification** — ✅ `isVerifiedPhysician` on post/comment author queries; Admin → Users **Verify MD** / **Unverify MD**; **MD ✓** badge on feeds/post detail.
 
 **Recently shipped:**
 
+- **Notification system v1 (Mar 24, 2026)** — Added `Notification` model + migration, backend service/routes (`/api/notifications`, unread count, read, read-all, delete), comment/reply triggers, header bell dropdown with unread badge + actions, and graceful degradation if notifications table is missing.
+- **Home feed behavior (Mar 24, 2026)** — `/` now uses all-community posts (`/api/posts`) instead of followed-community-only feed for logged-in users.
+- **Create Post text-entry fix (Mar 24, 2026)** — stabilized editor typing on mobile/desktop; added true plain-markdown textarea mode; fixed overlays that could block taps in text fields.
+- **Post title/mobile readability (Mar 24, 2026)** — fixed title/community text contrast and improved wrapping on small screens.
+- **Admin moderation UI reliability (Mar 24, 2026)** — admin now gets moderation menu even when permissions fetch fails; menu no longer depends on fully-expanded `post.community` object.
 - **Avatar upload fix (Mar 24, 2026)** — Resized images always use a **`.jpg` filename**; dedicated **`uploadSingleAvatarMemory`** allows JPEG/PNG MIME + `.jpg`/`.jpeg`/`.png`/no extension (fixes multer rejecting `image/jpeg` + `photo.webp`). `avatarValidation` allows missing extension when MIME is valid. `uploadAvatar` errors use **`apiErrorMessage`**.
 - Removed `crossOrigin="anonymous"` from profile/avatar `<img>` tags (Cloudinary display).
 - `GET /auth/profile` + `getUserProfile`: retries, response shape check, `apiErrorMessage`.
@@ -1112,13 +1122,20 @@ All previously identified issues have been resolved:
 
 **Optional later:** Profile-page verify controls for admins; moderator-only verify (currently admin-only API).
 
-### **5. Notification System Implementation** 🔔 **PLANNED - DATABASE SAFE**
-**Status:** ⏳ **PLANNING COMPLETE - READY FOR IMPLEMENTATION**  
+### **5. Notification System Implementation** 🔔 **IN PROGRESS (v1 SHIPPED)**
+**Status:** ✅ **Core implementation shipped (Mar 24, 2026); follow-ups remain**  
 **Priority:** Medium  
 **Risk Level:** Low (incremental, non-breaking changes)
 
-#### **Phase 1: Database Schema (SAFE - No Breaking Changes)** ✅ **PLANNED**
-- ⏳ **Add Notification Model to Prisma Schema**
+**Progress snapshot (Mar 24, 2026):**
+- ✅ DB model + migration added (`Notification`, `20260222120000_add_notifications`)
+- ✅ Backend routes/service shipped (`GET list`, `GET unread-count`, `PUT read`, `PUT read-all`, `DELETE`)
+- ✅ Comment/reply triggers shipped in `comments.ts` (non-fatal if notification write fails)
+- ✅ Frontend bell/dropdown shipped (`useNotifications`, `NotificationItem`, Header integration)
+- ⏳ Remaining: vote/mention/moderation notification triggers + deeper automated tests
+
+#### **Phase 1: Database Schema (SAFE - No Breaking Changes)** ✅ **COMPLETED**
+- ✅ **Add Notification Model to Prisma Schema**
   - Create `Notification` model in `backend/prisma/schema.prisma`
   - Fields: `id`, `userId`, `type`, `title`, `message`, `link`, `isRead`, `createdAt`, `updatedAt`
   - Types: `comment`, `reply`, `vote`, `mention`, `moderation`, `system`
@@ -1127,7 +1144,7 @@ All previously identified issues have been resolved:
   - **Migration:** Use `prisma db push` or create migration file
   - **Verification:** Test migration on development database first
 
-- ⏳ **Database Migration Steps (SAFE)**
+- ✅ **Database Migration Steps (SAFE)**
   1. Backup database: `./scripts/database-backup-production.sh`
   2. Review schema changes: Verify only new table is added
   3. Test migration locally: `npx prisma db push` in development
@@ -1136,8 +1153,8 @@ All previously identified issues have been resolved:
   6. Regenerate Prisma client: `npx prisma generate`
   7. Restart backend: Verify no errors in logs
 
-#### **Phase 2: Backend API (Non-Breaking)** ✅ **PLANNED**
-- ⏳ **Create Notification Routes** (`backend/src/routes/notifications.ts`)
+#### **Phase 2: Backend API (Non-Breaking)** ✅ **MOSTLY COMPLETED**
+- ✅ **Create Notification Routes** (`backend/src/routes/notifications.ts`)
   - `GET /api/notifications` - Get user's notifications (paginated)
   - `GET /api/notifications/unread-count` - Get unread count
   - `PUT /api/notifications/:id/read` - Mark notification as read
@@ -1147,7 +1164,7 @@ All previously identified issues have been resolved:
   - **Authentication:** Use existing `authenticate` middleware
   - **Validation:** Use `express-validator` for input validation
 
-- ⏳ **Create Notification Service** (`backend/src/services/notificationService.ts`)
+- ✅ **Create Notification Service** (`backend/src/services/notificationService.ts`)
   - `createNotification(userId, type, data)` - Create notification
   - `getUserNotifications(userId, options)` - Get notifications with pagination
   - `markAsRead(notificationId, userId)` - Mark as read
@@ -1158,8 +1175,8 @@ All previously identified issues have been resolved:
 
 - ⏳ **Integrate Notification Triggers** (Incremental - One at a time)
   - **Comment Notifications:**
-    - When user's post receives a comment → Create notification
-    - When user's comment receives a reply → Create notification
+    - ✅ When user's post receives a comment → Create notification
+    - ✅ When user's comment receives a reply → Create notification
     - Location: `backend/src/routes/comments.ts` (POST /comments)
     - **Safety:** Add notification creation AFTER successful comment creation
     - **Error Handling:** If notification creation fails, don't fail comment creation
@@ -1183,8 +1200,8 @@ All previously identified issues have been resolved:
     - Location: Moderation endpoints
     - **Safety:** Add notification AFTER moderation action succeeds
 
-#### **Phase 3: Frontend Integration (Non-Breaking)** ✅ **PLANNED**
-- ⏳ **Update API Service** (`frontend/src/services/apiService.ts`)
+#### **Phase 3: Frontend Integration (Non-Breaking)** ✅ **MOSTLY COMPLETED**
+- ✅ **Update API Service** (`frontend/src/services/apiService.ts`)
   - Add `getNotifications(params)` method
   - Add `getUnreadCount()` method
   - Add `markNotificationAsRead(id)` method
@@ -1192,13 +1209,13 @@ All previously identified issues have been resolved:
   - Add `deleteNotification(id)` method
   - **Safety:** New methods only, no changes to existing methods
 
-- ⏳ **Create Notification Hook** (`frontend/src/hooks/useNotifications.ts`)
+- ✅ **Create Notification Hook** (`frontend/src/hooks/useNotifications.ts`)
   - Use React Query for notification data
   - Auto-refresh every 30 seconds when dropdown is open
   - Optimistic updates for read/unread state
   - **Safety:** New hook, no changes to existing hooks
 
-- ⏳ **Update Header Component** (`frontend/src/components/Header.tsx`)
+- ✅ **Update Header Component** (`frontend/src/components/Header.tsx`)
   - Replace "No new notifications" with actual notification list
   - Display notification items with type icons
   - Show unread count badge on bell icon
@@ -1206,7 +1223,7 @@ All previously identified issues have been resolved:
   - Add click handlers to navigate to notification links
   - **Safety:** Update existing dropdown only, no structural changes
 
-- ⏳ **Create NotificationItem Component** (`frontend/src/components/NotificationItem.tsx`)
+- ✅ **Create NotificationItem Component** (`frontend/src/components/NotificationItem.tsx`)
   - Display notification with icon, title, message, timestamp
   - Show read/unread state
   - Handle click to navigate to link

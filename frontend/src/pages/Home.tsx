@@ -112,36 +112,41 @@ const PostCard: React.FC<{ post: Post }> = ({ post }) => {
 const Home: React.FC = () => {
   const { user } = useAuth();
 
-  // Fetch posts from followed communities (feed) or all communities
-  const { data: feedData, isLoading: feedLoading } = useQuery({
-    queryKey: user ? ['feed', 'home'] : ['posts', 'home'],
-    queryFn: () => user 
-      ? apiService.getFeed({ limit: 20, sort: 'newest' })
-      : apiService.getPosts({ limit: 20, sort: 'newest' }),
+  // Home should be a global feed across all communities.
+  const { data, isLoading, isError, error } = useQuery({
+    queryKey: ['posts', 'home'],
+    queryFn: () => apiService.getPosts({ limit: 20, sort: 'newest' }),
     staleTime: 30 * 1000, // 30 seconds - shorter cache for vote freshness
     refetchOnWindowFocus: true, // Refetch when user switches back to tab
   });
 
-  // Fallback: when logged-in user has empty feed (no followed communities), show all posts
-  const { data: allPostsData, isLoading: fallbackLoading } = useQuery({
-    queryKey: ['posts', 'home', 'fallback'],
-    queryFn: () => apiService.getPosts({ limit: 20, sort: 'newest' }),
+  // If global feed fetch fails for any reason, logged-in users can still see their feed.
+  const { data: feedFallbackData, isLoading: feedFallbackLoading } = useQuery({
+    queryKey: ['feed', 'home', 'fallback'],
+    queryFn: () => apiService.getFeed({ limit: 20, sort: 'newest' }),
+    enabled: !!user && isError,
     staleTime: 30 * 1000,
-    enabled: !!user && !feedLoading && (feedData?.posts?.length === 0),
   });
 
-  const posts = (feedData?.posts?.length ?? 0) > 0 
-    ? (feedData?.posts || []) 
-    : (allPostsData?.posts || feedData?.posts || []);
+  const posts = data?.posts?.length
+    ? data.posts
+    : (feedFallbackData?.posts || []);
 
   return (
     <div className="max-w-4xl mx-auto px-2 sm:px-4">
       {/* Posts Feed */}
       <div className="space-y-2 p-2 sm:p-4">
-        {(feedLoading || (!!user && (feedData?.posts?.length ?? 0) === 0 && fallbackLoading)) ? (
+        {(isLoading || feedFallbackLoading) ? (
           <div className="flex items-center justify-center py-8">
             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
             <span className="ml-3 text-gray-600">Loading posts...</span>
+          </div>
+        ) : isError && posts.length === 0 ? (
+          <div className="bg-white border border-red-200 p-6 text-center">
+            <p className="text-red-600 font-medium">Could not load posts</p>
+            <p className="text-sm text-gray-500 mt-2">
+              {error instanceof Error ? error.message : 'Please refresh and try again.'}
+            </p>
           </div>
         ) : posts.length > 0 ? (
           posts.map((post) => (

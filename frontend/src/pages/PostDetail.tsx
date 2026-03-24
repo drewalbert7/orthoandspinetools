@@ -608,10 +608,10 @@ const PostDetail: React.FC = () => {
               />
 
               {/* Moderation Menu - Only visible to admins and moderators */}
-              {post.community && (post.community.id || post.communityId) && (
+              {(post.communityId || post.community?.id) && (
                 <ModerationMenu
                   postId={post.id}
-                  communityId={post.community.id || post.communityId}
+                  communityId={post.community?.id || post.communityId}
                   isLocked={post.isLocked}
                   isPinned={post.isPinned}
                   onDelete={async () => {
