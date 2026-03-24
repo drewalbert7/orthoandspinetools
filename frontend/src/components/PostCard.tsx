@@ -4,6 +4,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { Post, apiService } from '../services/apiService';
 import ModerationMenu from './ModerationMenu';
 import ShareButton from './ShareButton';
+import VerifiedPhysicianInline from './VerifiedPhysicianInline';
 import toast from 'react-hot-toast';
 
 interface PostCardProps {
@@ -127,9 +128,12 @@ const PostCard: React.FC<PostCardProps> = ({ post, onVote }) => {
             <span>•</span>
             <span>Posted by</span>
             {post.author ? (
-              <Link to={`/user/${post.author.username || 'unknown'}`} className="hover:underline text-gray-700">
-                u/{post.author.username || 'unknown'}
-              </Link>
+              <span className="inline-flex items-center flex-wrap gap-x-0">
+                <Link to={`/user/${post.author.username || 'unknown'}`} className="hover:underline text-gray-700">
+                  u/{post.author.username || 'unknown'}
+                </Link>
+                {post.author.isVerifiedPhysician && <VerifiedPhysicianInline />}
+              </span>
             ) : (
               <span className="text-gray-700">u/unknown</span>
             )}

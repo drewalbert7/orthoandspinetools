@@ -129,6 +129,7 @@ router.post('/', authenticate, validatePost, asyncHandler(async (req: AuthReques
           lastName: true,
           specialty: true,
           profileImage: true,
+          isVerifiedPhysician: true,
         }
       },
       community: {
@@ -275,6 +276,7 @@ router.get('/feed', authenticate, [
           lastName: true,
           specialty: true,
           profileImage: true,
+          isVerifiedPhysician: true,
         }
       },
       community: {
@@ -481,6 +483,7 @@ router.get('/', optionalAuth, [
             lastName: true,
             specialty: true,
             profileImage: true,
+            isVerifiedPhysician: true,
           }
         },
         community: {
@@ -571,6 +574,7 @@ router.get('/:id', optionalAuth, [
           lastName: true,
           specialty: true,
           profileImage: true,
+          isVerifiedPhysician: true,
         }
       },
       community: {
@@ -609,6 +613,7 @@ router.get('/:id', optionalAuth, [
               lastName: true,
               specialty: true,
               profileImage: true,
+              isVerifiedPhysician: true,
             }
           },
           votes: {
@@ -863,6 +868,7 @@ router.put('/:id', authenticate, [
           lastName: true,
           specialty: true,
           profileImage: true,
+          isVerifiedPhysician: true,
         }
       },
       community: {

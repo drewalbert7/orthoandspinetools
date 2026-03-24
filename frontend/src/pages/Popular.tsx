@@ -5,6 +5,7 @@ import { apiService, Post } from '../services/apiService';
 import VoteButton from '../components/VoteButton';
 import PostAttachments from '../components/PostAttachments';
 import ShareButton from '../components/ShareButton';
+import VerifiedPhysicianInline from '../components/VerifiedPhysicianInline';
 
 // PostCard component for displaying individual posts
 const PostCard: React.FC<{ post: Post }> = ({ post }) => {
@@ -46,7 +47,10 @@ const PostCard: React.FC<{ post: Post }> = ({ post }) => {
             <span>o/{post.community.name}</span>
           </Link>
           <span>•</span>
-          <span>Posted by u/{post.author.username}</span>
+          <span className="inline-flex items-center flex-wrap gap-x-0">
+            Posted by u/{post.author.username}
+            {post.author.isVerifiedPhysician && <VerifiedPhysicianInline />}
+          </span>
           <span>•</span>
           <span>{formatTimeAgo(new Date(post.createdAt))}</span>
         </div>

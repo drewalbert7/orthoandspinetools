@@ -8,6 +8,7 @@ import toast from 'react-hot-toast';
 import CommentModerationMenu from '../components/CommentModerationMenu';
 import ModerationMenu from '../components/ModerationMenu';
 import ShareButton from '../components/ShareButton';
+import VerifiedPhysicianInline from '../components/VerifiedPhysicianInline';
 
 const PostDetail: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -206,9 +207,12 @@ const PostDetail: React.FC = () => {
                 {comment.author.username.charAt(0).toUpperCase()}
               </span>
             </div>
-            <Link to={`/user/${comment.author.username}`} className="hover:underline text-gray-700 font-medium">
-              {comment.author.username}
-            </Link>
+            <span className="inline-flex items-center flex-wrap gap-x-0">
+              <Link to={`/user/${comment.author.username}`} className="hover:underline text-gray-700 font-medium">
+                {comment.author.username}
+              </Link>
+              {comment.author.isVerifiedPhysician && <VerifiedPhysicianInline />}
+            </span>
             <span>{formatDate(comment.createdAt)}</span>
           </div>
 
@@ -400,11 +404,14 @@ const PostDetail: React.FC = () => {
                       <span className="text-gray-500">•</span>
                       <span className="text-gray-500">{formatDate(post.createdAt)}</span>
                     </div>
-                    <div className="text-sm text-gray-500">
+                    <div className="text-sm text-gray-500 inline-flex items-center flex-wrap gap-x-0">
                       {post.author ? (
-                        <Link to={`/user/${post.author.username || 'unknown'}`} className="hover:underline text-gray-700">
-                          {post.author.username || 'unknown'}
-                        </Link>
+                        <>
+                          <Link to={`/user/${post.author.username || 'unknown'}`} className="hover:underline text-gray-700">
+                            {post.author.username || 'unknown'}
+                          </Link>
+                          {post.author.isVerifiedPhysician && <VerifiedPhysicianInline />}
+                        </>
                       ) : (
                         <span className="text-gray-700">unknown</span>
                       )}

@@ -4,6 +4,7 @@ import { useQuery } from '@tanstack/react-query';
 import { apiService, Post, Community } from '../services/apiService';
 import VoteButton from '../components/VoteButton';
 import PostAttachments from '../components/PostAttachments';
+import VerifiedPhysicianInline from '../components/VerifiedPhysicianInline';
 
 function PostRow({ post }: { post: Post }) {
   return (
@@ -12,7 +13,11 @@ function PostRow({ post }: { post: Post }) {
         <Link to={`/community/${post.community?.slug}`} className="font-medium text-gray-900 hover:underline">
           o/{post.community?.name}
         </Link>
-        <span> • u/{post.author?.username}</span>
+        <span className="inline-flex items-center flex-wrap gap-x-0">
+          {' '}
+          • u/{post.author?.username}
+          {post.author?.isVerifiedPhysician && <VerifiedPhysicianInline />}
+        </span>
       </div>
       <Link to={`/post/${post.id}`} className="block">
         <h3 className="text-base font-medium text-gray-900 hover:text-blue-600">{post.title}</h3>

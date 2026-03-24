@@ -6,6 +6,7 @@ import VoteButton from '../components/VoteButton';
 import ShareButton from '../components/ShareButton';
 import { useAuth } from '../contexts/AuthContext';
 import PostAttachments from '../components/PostAttachments';
+import VerifiedPhysicianInline from '../components/VerifiedPhysicianInline';
 
 const CommunityPage: React.FC = () => {
   const { slug } = useParams<{ slug: string }>();
@@ -203,7 +204,10 @@ const CommunityPage: React.FC = () => {
                       </div>
                       <span>o/{community.name}</span>
                       <span>•</span>
-                      <span>Posted by u/{post.author?.username || 'Unknown'}</span>
+                      <span className="inline-flex items-center flex-wrap gap-x-0">
+                        Posted by u/{post.author?.username || 'Unknown'}
+                        {post.author?.isVerifiedPhysician && <VerifiedPhysicianInline />}
+                      </span>
                       <span>•</span>
                       <span>{formatDate(post.createdAt)}</span>
                     </div>

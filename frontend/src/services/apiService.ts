@@ -816,8 +816,8 @@ class ApiService {
     try {
       const response = await api.put(`/auth/verify/${userId}`, { isVerified });
       return response.data.data;
-    } catch (error: any) {
-      throw new Error(error.response?.data?.message || 'Failed to verify physician');
+    } catch (error: unknown) {
+      throw new Error(apiErrorMessage(error, 'Failed to verify physician'));
     }
   }
 }

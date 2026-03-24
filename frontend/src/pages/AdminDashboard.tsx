@@ -86,6 +86,21 @@ const AdminDashboard: React.FC = () => {
     },
   });
 
+  const verifyPhysicianMutation = useMutation({
+    mutationFn: ({ userId, isVerified }: { userId: string; isVerified: boolean }) =>
+      apiService.verifyPhysician(userId, isVerified),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin-users'] });
+      queryClient.invalidateQueries({ queryKey: ['posts'] });
+      queryClient.invalidateQueries({ queryKey: ['feed'] });
+      queryClient.invalidateQueries({ queryKey: ['search-posts'] });
+      toast.success('Physician verification updated');
+    },
+    onError: (error: any) => {
+      toast.error(error.message || 'Failed to update physician verification');
+    },
+  });
+
   if (!currentUser) {
     return (
       <div className="max-w-6xl mx-auto">
@@ -182,6 +197,9 @@ const AdminDashboard: React.FC = () => {
                             Role
                           </th>
                           <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Physician
+                          </th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                             Activity
                           </th>
                           <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -221,6 +239,17 @@ const AdminDashboard: React.FC = () => {
                                 }`}
                               >
                                 {user.isAdmin ? 'Admin' : 'User'}
+                              </span>
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap">
+                              <span
+                                className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
+                                  user.isVerifiedPhysician
+                                    ? 'bg-blue-100 text-blue-800'
+                                    : 'bg-gray-100 text-gray-600'
+                                }`}
+                              >
+                                {user.isVerifiedPhysician ? 'Verified' : 'Not verified'}
                               </span>
                             </td>
                             <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
@@ -275,6 +304,32 @@ const AdminDashboard: React.FC = () => {
                                   Demote
                                 </button>
                               )}
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  const next = !user.isVerifiedPhysician;
+                                  if (
+                                    window.confirm(
+                                      next
+                                        ? `Verify ${user.username} as a physician?`
+                                        : `Remove verified physician status from ${user.username}?`
+                                    )
+                                  ) {
+                                    verifyPhysicianMutation.mutate({
+                                      userId: user.id,
+                                      isVerified: next,
+                                    });
+                                  }
+                                }}
+                                disabled={verifyPhysicianMutation.isPending}
+                                className={`${
+                                  user.isVerifiedPhysician
+                                    ? 'text-gray-600 hover:text-gray-900'
+                                    : 'text-blue-600 hover:text-blue-900'
+                                } disabled:opacity-50`}
+                              >
+                                {user.isVerifiedPhysician ? 'Unverify MD' : 'Verify MD'}
+                              </button>
                             </td>
                           </tr>
                         ))}

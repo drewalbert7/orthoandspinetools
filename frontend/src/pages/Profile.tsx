@@ -6,6 +6,7 @@ import { apiService, UserProfile, Post, Comment } from '../services/apiService';
 import VoteButton from '../components/VoteButton';
 import PostAttachments from '../components/PostAttachments';
 import ShareButton from '../components/ShareButton';
+import VerifiedPhysicianInline from '../components/VerifiedPhysicianInline';
 import { formatDistanceToNow } from 'date-fns';
 
 type TabType = 'overview' | 'posts' | 'comments' | 'saved' | 'history' | 'upvoted' | 'downvoted';
@@ -50,7 +51,10 @@ const PostCard: React.FC<{ post: Post }> = ({ post }) => {
             <span>o/{post.community?.name || 'Unknown'}</span>
           </Link>
           <span>•</span>
-          <span>Posted by u/{post.author?.username || 'Unknown'}</span>
+          <span className="inline-flex items-center flex-wrap gap-x-0">
+            Posted by u/{post.author?.username || 'Unknown'}
+            {post.author?.isVerifiedPhysician && <VerifiedPhysicianInline />}
+          </span>
           <span>•</span>
           <span>{formatTimeAgo(new Date(post.createdAt))}</span>
         </div>

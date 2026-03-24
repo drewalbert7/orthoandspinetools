@@ -18,9 +18,9 @@ docker compose -f docker-compose.prod.yml up -d
 4. If anything fails, copy the **exact toast or Network tab error** for debugging.
 
 ### **3. Backlog (when QA is green)**
-- **Content** — Remove or hide obvious test posts on the live home feed (“Test”, “d”, etc.).
-- **TODO hygiene** — Merge duplicate `## 📋 NEXT PRIORITIES` sections (~line 440 vs ~1089).
-- **Physician verification** — `isVerifiedPhysician` on post author payloads + admin UI (see ~line 1137).
+- **Content** — Remove or hide obvious test posts on the live home feed (“Test”, “d”, etc.) — manual in DB/admin or add a moderation tool later.
+- **TODO hygiene** — ✅ Duplicate priorities condensed: summary at ~line 454, extended at ~line 1115.
+- **Physician verification** — ✅ `isVerifiedPhysician` on post/comment author queries; Admin → Users **Verify MD** / **Unverify MD**; **MD ✓** badge on feeds/post detail.
 
 **Recently shipped:**
 
@@ -451,7 +451,9 @@ For detailed changelog of all completed work, see `CHANGELOG.md`.
 - **User Registration Testing** - Verify authentication flow works end-to-end
 - **Mobile Responsiveness** - Ensure the Reddit-style design works on mobile
 
-## 📋 **NEXT PRIORITIES**
+## 📋 **NEXT PRIORITIES** (summary)
+
+> **Longer backlog** (notifications, etc.) is under **NEXT PRIORITIES (extended)** later in this file (~line 1115).
 
 ### **Immediate (Next 1-2 hours)**
 1. **Profile & avatar QA** — After deploy: profile page load, Cloudinary avatar display, Profile Settings save/remove photo, confirm error messages from API surface correctly (see **NEXT UP — START HERE** above).
@@ -1100,62 +1102,14 @@ All previously identified issues have been resolved:
 - **Note**: Use `docker compose` (without hyphen) for all commands going forward
 - **See**: `SERVER_UPDATES_EVALUATION.md` for detailed evaluation
 
-## 📋 **NEXT PRIORITIES** (In Order)
+## 📋 **NEXT PRIORITIES** (extended)
 
-### **1. Test Tag Functionality End-to-End** ✅ **FULLY IMPLEMENTED & FIXED** (December 10, 2025)
-- **Status**: ✅ **COMPLETE** - Tag creation issue fixed, all functionality working
-- **Description**: Complete tag system implemented from creation to display
-- **Implementation Completed**:
-  - ✅ Tags included in all posts API responses (GET /posts, GET /posts/:id, GET /posts/feed)
-  - ✅ Tags field added to Post interface in apiService.ts
-  - ✅ Tags displayed in PostCard component (all post listings)
-  - ✅ Tags displayed in PostDetail page (individual post view)
-  - ✅ Tag creation UI in CommunitySettings (moderator/admin only)
-  - ✅ Tag selection UI in CreatePost (shows community-specific tags)
-  - ✅ Tag deletion API endpoint working
-  - ✅ Tags saved correctly with posts (many-to-many relationship)
-  - ✅ **Tag routes fixed** - Integrated into communities router, route conflicts resolved
-  - ✅ **Backend rebuilt** - All TypeScript errors fixed, Prisma client regenerated
-- **Critical Fix Applied** (December 10, 2025):
-  - **Issue**: Tag creation failing with 404 errors - routes not matching
-  - **Root Cause**: Tag routes registered separately at `/api` conflicted with `/api/communities/:id` route
-  - **Solution**: Integrated tag routes directly into communities router, placed BEFORE `/:id` route
-  - **Files Modified**:
-    - `backend/src/routes/communities.ts` - Added tag routes (GET, POST, PUT, DELETE)
-    - `backend/src/index.ts` - Removed separate tagRoutes registration
-    - `backend/src/routes/posts.ts` - Fixed tag validation logic
-    - Regenerated Prisma client for CommunityTag model
-  - **Verification**: GET `/api/communities/:communityId/tags` now returns 200 (empty array `[]`)
-- **Files Modified**:
-  - `backend/src/routes/posts.ts` - Added tags to all post queries
-  - `frontend/src/services/apiService.ts` - Added tags to Post interface
-  - `frontend/src/components/PostCard.tsx` - Added tag display with null checks
-  - `frontend/src/pages/PostDetail.tsx` - Added tag display with null checks
-  - `frontend/src/pages/CreatePost.tsx` - Tag selection with validation
-  - `frontend/src/pages/CommunitySettings.tsx` - Tag management UI
-- **Status**: ✅ **READY FOR USE** - Tag creation, selection, and display all functional
+**Archive — completed work (high level):**
+- ✅ **Tags** (Dec 2025) — Community tags, CreatePost, PostCard/PostDetail; routes on `communities` router.
+- ✅ **Share button** (Dec 2025) — `ShareButton.tsx` positioning / z-index / click-outside.
+- ✅ **Verified physician** (Mar 2026) — `isVerifiedPhysician` on post + comment author selects (`posts.ts`, `comments.ts`); admin user list includes flag; **Verify MD** / **Unverify MD** in `AdminDashboard`; **MD ✓** inline badge (`VerifiedPhysicianInline`) on Home, Popular, Profile, Community, Search, `PostCard`, PostDetail; `PUT /api/auth/verify/:userId` unchanged.
 
-### **2. Fix Share Button Functionality** ✅ **COMPLETED (December 8, 2025)**
-- **Status**: ✅ **RESOLVED**
-- **Description**: Share buttons on posts and comments now open the share menu correctly when clicked
-- **Location**: All pages with posts (Home, Community, Profile, Popular, PostDetail) and comments
-- **Component**: `frontend/src/components/ShareButton.tsx`
-- **Fix Applied**:
-  - Changed menu positioning from `right` to `left` for better control
-  - Improved positioning logic with edge detection (prevents menu going off-screen)
-  - Added click-outside handler to close menu when clicking elsewhere
-  - Fixed z-index values (backdrop: 40, menu: 100) using inline styles for reliability
-  - Added data attribute for menu identification in click handlers
-- **Status**: ✅ **RESOLVED** - Share menu now appears correctly when button is clicked
-
-### **3. Verified Physician Badge - Next Steps** 📋 **PENDING TASKS**
-- ✅ **Run Database Migration** - Database migration completed, `isVerifiedPhysician` field added to database
-- ⏳ **Update Post Author Queries** - Add `isVerifiedPhysician: true` to all post author select statements in `backend/src/routes/posts.ts`
-- ⏳ **Add Admin/Moderator UI** - Create UI component for admins/moderators to verify/unverify physicians
-  - Add verification controls to user profile pages
-  - Add bulk verification interface in Admin Dashboard
-  - Add verification status indicator in user management tables
-  - Consider adding verification to community moderator management
+**Optional later:** Profile-page verify controls for admins; moderator-only verify (currently admin-only API).
 
 ### **5. Notification System Implementation** 🔔 **PLANNED - DATABASE SAFE**
 **Status:** ⏳ **PLANNING COMPLETE - READY FOR IMPLEMENTATION**  
