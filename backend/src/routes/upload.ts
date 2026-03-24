@@ -772,9 +772,13 @@ router.post('/avatar-cloudinary',
           height: cloudinaryResult.height
         }
       });
-    } catch (error: any) {
+    } catch (error: unknown) {
       logger.error(`Failed to upload avatar ${file.originalname}:`, error);
-      throw new AppError(error.message || 'Failed to upload avatar', 500);
+      if (error instanceof AppError) {
+        throw error;
+      }
+      const msg = error instanceof Error ? error.message : 'Failed to upload avatar';
+      throw new AppError(msg, 500);
     }
   })
 );

@@ -489,6 +489,7 @@ router.get('/profile', authenticate, asyncHandler(async (req: AuthRequest, res: 
           },
           votes: {
             select: {
+              id: true,
               type: true,
               userId: true,
             }
@@ -532,6 +533,7 @@ router.get('/profile', authenticate, asyncHandler(async (req: AuthRequest, res: 
           },
           votes: {
             select: {
+              id: true,
               type: true,
               userId: true,
             }
@@ -597,9 +599,9 @@ router.get('/profile', authenticate, asyncHandler(async (req: AuthRequest, res: 
         commentsCount: (user as any)._count?.comments || 0,
         communitiesCount: ((user as any).communities as any[])?.length || 0,
       },
-      posts: ((user as any).posts as any[]).map((post: any) => {
-        // Calculate user's vote for this post
-        const userVote = post.votes.find((v: any) => v.userId === user.id);
+      posts: (((user as any).posts as any[]) || []).map((post: any) => {
+        const postVotes = Array.isArray(post.votes) ? post.votes : [];
+        const userVote = postVotes.find((v: any) => v.userId === user.id);
         const community = post.community ?? {
           id: post.communityId,
           name: 'Unknown',
@@ -624,20 +626,21 @@ router.get('/profile', authenticate, asyncHandler(async (req: AuthRequest, res: 
             lastName: user.lastName,
             specialty: user.specialty,
             profileImage: user.profileImage,
+            isVerifiedPhysician: user.isVerifiedPhysician,
           },
           attachments: post.attachments || [],
-          votes: post.votes.map((v: any) => ({
+          votes: postVotes.map((v: any) => ({
             id: v.id || '',
             postId: post.id,
             userId: v.userId,
             type: v.type,
           })),
-          voteScore: post.votes.reduce((score: number, vote: any) => score + (vote.type === 'upvote' ? 1 : -1), 0),
+          voteScore: postVotes.reduce((score: number, vote: any) => score + (vote.type === 'upvote' ? 1 : -1), 0),
           userVote: userVote ? (userVote.type === 'upvote' ? 'upvote' : 'downvote') : null,
-          commentsCount: post._count.comments,
+          commentsCount: post._count?.comments ?? 0,
           _count: {
-            comments: post._count.comments,
-            votes: post._count.votes || post.votes.length,
+            comments: post._count?.comments ?? 0,
+            votes: post._count?.votes ?? postVotes.length,
           },
           isLocked: post.isLocked || false,
           isPinned: post.isPinned || false,
@@ -648,9 +651,9 @@ router.get('/profile', authenticate, asyncHandler(async (req: AuthRequest, res: 
         ...community,
         memberCount: 0, // We'll calculate this separately if needed
       })),
-      comments: ((user as any).comments as any[]).map((comment: any) => {
-        // Calculate user's vote for this comment
-        const userVote = comment.votes.find((v: any) => v.userId === user.id);
+      comments: (((user as any).comments as any[]) || []).map((comment: any) => {
+        const commentVotes = Array.isArray(comment.votes) ? comment.votes : [];
+        const userVote = commentVotes.find((v: any) => v.userId === user.id);
         
         return {
           id: comment.id,
@@ -676,18 +679,19 @@ router.get('/profile', authenticate, asyncHandler(async (req: AuthRequest, res: 
             lastName: user.lastName,
             specialty: user.specialty,
             profileImage: user.profileImage,
+            isVerifiedPhysician: user.isVerifiedPhysician,
           },
-          votes: comment.votes.map((v: any) => ({
+          votes: commentVotes.map((v: any) => ({
             id: v.id || '',
             commentId: comment.id,
             userId: v.userId,
             type: v.type,
           })),
-          voteScore: comment.votes.reduce((score: number, vote: any) => score + (vote.type === 'upvote' ? 1 : -1), 0),
+          voteScore: commentVotes.reduce((score: number, vote: any) => score + (vote.type === 'upvote' ? 1 : -1), 0),
           userVote: userVote ? (userVote.type === 'upvote' ? 'upvote' : 'downvote') : null,
           _count: {
-            replies: comment._count.replies,
-            votes: comment._count.votes || comment.votes.length,
+            replies: comment._count?.replies ?? 0,
+            votes: comment._count?.votes ?? commentVotes.length,
           },
           isDeleted: false,
           replies: [] as any[],

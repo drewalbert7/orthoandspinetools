@@ -2,12 +2,9 @@ import axios from 'axios';
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'https://orthoandspinetools.com/api';
 
-// Create axios instance with default config
+// No default Content-Type — setting JSON globally breaks multipart uploads (avatar/images).
 const api = axios.create({
   baseURL: API_BASE_URL,
-  headers: {
-    'Content-Type': 'application/json',
-  },
 });
 
 /** Backend errorHandler sends `{ error: string }`; some routes use `message`. */
@@ -20,12 +17,24 @@ function apiErrorMessage(error: unknown, fallback: string): string {
   return String(d?.message || d?.error || err?.message || fallback);
 }
 
-// Add request interceptor to include auth token
+// Add request interceptor to include auth token + correct Content-Type
 api.interceptors.request.use(
   (config) => {
     const token = localStorage.getItem('token');
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
+    }
+    const data = config.data;
+    if (data instanceof FormData) {
+      delete (config.headers as Record<string, unknown>)['Content-Type'];
+    } else if (
+      data !== undefined &&
+      data !== null &&
+      typeof data === 'object' &&
+      !(data instanceof URLSearchParams) &&
+      !(typeof Blob !== 'undefined' && data instanceof Blob)
+    ) {
+      (config.headers as Record<string, string>)['Content-Type'] = 'application/json';
     }
     return config;
   },
@@ -613,11 +622,17 @@ class ApiService {
   async getUserProfile(): Promise<UserProfile> {
     try {
       const response = await api.get('/auth/profile');
-      const data = response.data?.data;
-      if (!data || !data.user) {
+      const payload = response.data;
+      // Normal: { success, data: { user, stats, posts, ... } }
+      let data = payload?.data;
+      // Tolerant: misconfigured proxy returning inner object at root
+      if (!data?.user && payload?.user) {
+        data = payload as UserProfile;
+      }
+      if (!data?.user) {
         throw new Error('Invalid profile response from server');
       }
-      return data;
+      return data as UserProfile;
     } catch (error: unknown) {
       throw new Error(apiErrorMessage(error, 'Failed to fetch user profile'));
     }

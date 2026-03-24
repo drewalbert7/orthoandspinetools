@@ -2,27 +2,38 @@ import axios from 'axios';
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'https://orthoandspinetools.com/api';
 
-// Create axios instance with default config
+// No default Content-Type — JSON default breaks multipart (same as apiService).
 const api = axios.create({
   baseURL: API_BASE_URL,
-  headers: {
-    'Content-Type': 'application/json',
-  },
 });
 
 /** Backend errorHandler uses `error`; some routes use `message`. */
 function apiErrorMessage(error: unknown, fallback: string): string {
-  const err = error as { response?: { data?: { message?: string; error?: string } } };
+  const err = error as {
+    response?: { data?: { message?: string; error?: string } };
+    message?: string;
+  };
   const d = err?.response?.data;
-  return (d?.message || d?.error || fallback) as string;
+  return String(d?.message || d?.error || err?.message || fallback);
 }
 
-// Add request interceptor to include auth token
 api.interceptors.request.use(
   (config) => {
     const token = localStorage.getItem('token');
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
+    }
+    const data = config.data;
+    if (data instanceof FormData) {
+      delete (config.headers as Record<string, unknown>)['Content-Type'];
+    } else if (
+      data !== undefined &&
+      data !== null &&
+      typeof data === 'object' &&
+      !(data instanceof URLSearchParams) &&
+      !(typeof Blob !== 'undefined' && data instanceof Blob)
+    ) {
+      (config.headers as Record<string, string>)['Content-Type'] = 'application/json';
     }
     return config;
   },
