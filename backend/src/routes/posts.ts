@@ -12,7 +12,16 @@ const router = Router();
 // Validation middleware
 const validatePost = [
   body('title').trim().isLength({ min: 1, max: 200 }).withMessage('Title must be 1-200 characters'),
-  body('content').trim().isLength({ min: 1, max: 10000 }).withMessage('Content must be 1-10000 characters'),
+  body('content')
+    .custom((value, { req }) => {
+      const v = (typeof value === 'string' ? value : '').trim();
+      const att = (req as Request).body?.attachments;
+      const hasAtt = Array.isArray(att) && att.length > 0;
+      if (hasAtt && v.length === 0) return true;
+      if (v.length >= 1 && v.length <= 10000) return true;
+      return false;
+    })
+    .withMessage('Content must be 1-10000 characters, unless the post includes at least one attachment'),
   body('type').isIn(['discussion', 'case_study', 'tool_review', 'question']).withMessage('Invalid post type'),
   body('communityId').isString().withMessage('Invalid community ID'),
   body('specialty').optional().isString().withMessage('Specialty must be a string'),
@@ -98,21 +107,40 @@ router.post('/', authenticate, validatePost, asyncHandler(async (req: AuthReques
       authorId: req.user!.id,
       communityId,
       attachments: attachments ? {
-        create: attachments.map((attachment: any) => ({
-          filename: attachment.filename,
-          originalName: attachment.originalName,
-          mimeType: attachment.mimetype,
-          size: attachment.size,
-          path: attachment.url,
-          // Cloudinary fields
-          cloudinaryPublicId: attachment.cloudinaryPublicId,
-          cloudinaryUrl: attachment.url,
-          optimizedUrl: attachment.optimizedUrl,
-          thumbnailUrl: attachment.thumbnailUrl,
-          width: attachment.width,
-          height: attachment.height,
-          duration: attachment.duration,
-        }))
+        create: attachments.map((attachment: any) => {
+          const url = String(attachment.url || '').trim();
+          if (!url) {
+            throw new AppError('Each attachment must include a valid url', 400);
+          }
+          const mime =
+            typeof attachment.mimetype === 'string' && attachment.mimetype.trim()
+              ? attachment.mimetype.trim()
+              : 'application/octet-stream';
+          const size = Number(attachment.size);
+          return {
+            filename: String(attachment.filename || 'file').slice(0, 500),
+            originalName: String(attachment.originalName || attachment.filename || 'file').slice(0, 500),
+            mimeType: mime,
+            size: Number.isFinite(size) && size >= 0 ? Math.floor(size) : 0,
+            path: url,
+            cloudinaryPublicId: attachment.cloudinaryPublicId || undefined,
+            cloudinaryUrl: url,
+            optimizedUrl: attachment.optimizedUrl || undefined,
+            thumbnailUrl: attachment.thumbnailUrl || undefined,
+            width: (() => {
+              const n = attachment.width != null ? parseInt(String(attachment.width), 10) : NaN;
+              return Number.isFinite(n) ? n : undefined;
+            })(),
+            height: (() => {
+              const n = attachment.height != null ? parseInt(String(attachment.height), 10) : NaN;
+              return Number.isFinite(n) ? n : undefined;
+            })(),
+            duration: (() => {
+              const n = attachment.duration != null ? parseInt(String(attachment.duration), 10) : NaN;
+              return Number.isFinite(n) ? n : undefined;
+            })(),
+          };
+        })
       } : undefined,
       tags: tagIds && Array.isArray(tagIds) && tagIds.length > 0 ? {
         create: tagIds.map((tagId: string) => ({

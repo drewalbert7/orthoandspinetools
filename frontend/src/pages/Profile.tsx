@@ -1,7 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { Link } from 'react-router-dom';
-import { useQuery } from '@tanstack/react-query';
+import { useInfiniteQuery } from '@tanstack/react-query';
 import { apiService, UserProfile, Post, Comment } from '../services/apiService';
 import VoteButton from '../components/VoteButton';
 import PostAttachments from '../components/PostAttachments';
@@ -9,8 +9,11 @@ import ShareButton from '../components/ShareButton';
 import VerifiedPhysicianInline from '../components/VerifiedPhysicianInline';
 import { formatDistanceToNow } from 'date-fns';
 
-type TabType = 'overview' | 'posts' | 'comments' | 'saved' | 'history' | 'upvoted' | 'downvoted';
+type TabType = 'posts' | 'comments';
 type SortOption = 'hot' | 'new' | 'top' | 'controversial';
+
+/** Matches backend max `postsLimit` / `commentsLimit` on GET /auth/profile. */
+const PROFILE_PAGE_SIZE = 50;
 
 // PostCard component for displaying posts (Reddit-style)
 const PostCard: React.FC<{ post: Post }> = ({ post }) => {
@@ -72,7 +75,7 @@ const PostCard: React.FC<{ post: Post }> = ({ post }) => {
         </Link>
 
         {/* Attachments Preview */}
-        <PostAttachments attachments={post.attachments || []} />
+        <PostAttachments attachments={post.attachments ?? []} postId={post.id} />
 
         {/* Action Bar with Voting */}
         <div className="flex items-center flex-wrap gap-2 text-xs text-gray-500 pt-2 border-t border-gray-100">
@@ -104,19 +107,48 @@ const PostCard: React.FC<{ post: Post }> = ({ post }) => {
 
 const Profile: React.FC = () => {
   const { user } = useAuth();
-  const [activeTab, setActiveTab] = useState<TabType>('overview');
+  const [activeTab, setActiveTab] = useState<TabType>('posts');
   const [sortOption, setSortOption] = useState<SortOption>('new');
 
-  // Fetch user profile data
-  const { data: profileData, isLoading, error } = useQuery<UserProfile>({
+  const {
+    data: profileInfinite,
+    isLoading,
+    error,
+    refetch,
+    isFetching,
+    fetchNextPage,
+    hasNextPage,
+    isFetchingNextPage,
+  } = useInfiniteQuery({
     queryKey: ['user-profile', user?.id],
-    queryFn: () => apiService.getUserProfile(),
+    initialPageParam: 1,
+    queryFn: ({ pageParam }) =>
+      apiService.getUserProfile({
+        postsPage: pageParam,
+        postsLimit: PROFILE_PAGE_SIZE,
+        commentsPage: 1,
+        commentsLimit: pageParam === 1 ? PROFILE_PAGE_SIZE : 0,
+        omitComments: pageParam !== 1,
+      }),
+    getNextPageParam: (lastPage) =>
+      lastPage.postsPagination?.hasMore ? (lastPage.postsPagination.page ?? 1) + 1 : undefined,
     enabled: !!user,
     retry: 2,
     staleTime: 60_000,
   });
 
-  // Sort posts based on selected option
+  const profileData = useMemo((): UserProfile | null => {
+    const pages = profileInfinite?.pages;
+    if (!pages?.length) return null;
+    const first = pages[0];
+    const morePosts = pages.slice(1).flatMap((p) => p.posts || []);
+    return {
+      ...first,
+      posts: [...(first.posts || []), ...morePosts],
+      comments: first.comments || [],
+    };
+  }, [profileInfinite]);
+
   const sortedPosts = useMemo(() => {
     if (!profileData?.posts) return [];
     const posts = [...profileData.posts];
@@ -174,11 +206,13 @@ const Profile: React.FC = () => {
         <div className="text-center py-6 sm:py-8 md:py-12">
           <h1 className="text-xl sm:text-2xl font-bold text-gray-900 mb-4">Error loading profile</h1>
           <p className="text-gray-600 mb-4 text-sm sm:text-base">{(error as Error).message}</p>
-          <button 
-            onClick={() => window.location.reload()} 
-            className="text-blue-600 hover:text-blue-800 text-sm sm:text-base"
+          <button
+            type="button"
+            onClick={() => refetch()}
+            disabled={isFetching}
+            className="px-4 py-2 rounded-md bg-blue-600 text-white text-sm sm:text-base hover:bg-blue-700 disabled:opacity-50"
           >
-            Try again
+            {isFetching ? 'Retrying…' : 'Try again'}
           </button>
         </div>
       </div>
@@ -213,6 +247,33 @@ const Profile: React.FC = () => {
     }
     return karma.toString();
   };
+
+  const profileHeaderStats = [
+    { label: 'Total karma', value: formatKarma(stats.totalKarma) },
+    { label: 'Post karma', value: formatKarma(stats.postKarma) },
+    { label: 'Comment karma', value: formatKarma(stats.commentKarma) },
+    {
+      label: 'Contributions',
+      value: String(stats.postsCount + stats.commentsCount),
+    },
+    { label: 'Member for', value: formatAccountAge(profileUser.createdAt) },
+  ];
+
+  const profileSidebarStats = [
+    { label: 'Total karma', value: formatKarma(stats.totalKarma) },
+    { label: 'Post karma', value: formatKarma(stats.postKarma) },
+    { label: 'Comment karma', value: formatKarma(stats.commentKarma) },
+    { label: 'Award karma', value: formatKarma(stats.awardKarma || 0) },
+    {
+      label: 'Contributions',
+      value: String(stats.postsCount + stats.commentsCount),
+    },
+    { label: 'Member for', value: formatAccountAge(profileUser.createdAt) },
+    {
+      label: 'Followed communities',
+      value: String(stats.communitiesCount),
+    },
+  ];
 
   return (
     <div className="max-w-6xl mx-auto px-2 sm:px-4 md:px-6">
@@ -264,6 +325,11 @@ const Profile: React.FC = () => {
                         {profileUser.subSpecialty && ` - ${profileUser.subSpecialty}`}
                       </p>
                     )}
+                    {typeof profileUser.yearsExperience === 'number' && profileUser.yearsExperience >= 0 && (
+                      <p className="text-xs sm:text-sm text-gray-500 mt-1">
+                        {profileUser.yearsExperience} {profileUser.yearsExperience === 1 ? 'year' : 'years'} professional experience
+                      </p>
+                    )}
                   </div>
                   <Link
                     to="/profile/settings"
@@ -289,32 +355,44 @@ const Profile: React.FC = () => {
                       <span>{profileUser.location}</span>
                     </>
                   )}
+                  {profileUser.website?.trim() && (() => {
+                    const raw = profileUser.website.trim();
+                    const href = /^https?:\/\//i.test(raw) ? raw : `https://${raw}`;
+                    let label = raw.replace(/^https?:\/\//i, '');
+                    if (label.length > 48) label = `${label.slice(0, 45)}…`;
+                    return (
+                      <>
+                        <span className="hidden sm:inline">•</span>
+                        <a
+                          href={href}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-blue-600 hover:text-blue-800 break-all"
+                        >
+                          {label}
+                        </a>
+                      </>
+                    );
+                  })()}
                 </div>
               </div>
             </div>
 
-            {/* Stats - Reddit Style */}
-            <div className="grid grid-cols-3 sm:grid-cols-5 gap-4 sm:gap-6 lg:gap-8 mt-4 pt-4 border-t border-gray-200">
-              <div className="text-center">
-                <div className="text-xl sm:text-2xl font-bold text-gray-900">{formatKarma(stats.totalKarma)}</div>
-                <div className="text-xs text-gray-500 uppercase tracking-wide">Karma</div>
-              </div>
-              <div className="text-center">
-                <div className="text-base sm:text-lg font-semibold text-gray-900">{formatKarma(stats.postKarma)}</div>
-                <div className="text-xs text-gray-500">Post Karma</div>
-              </div>
-              <div className="text-center">
-                <div className="text-base sm:text-lg font-semibold text-gray-900">{formatKarma(stats.commentKarma)}</div>
-                <div className="text-xs text-gray-500">Comment Karma</div>
-              </div>
-              <div className="text-center">
-                <div className="text-base sm:text-lg font-semibold text-gray-900">{stats.postsCount + stats.commentsCount}</div>
-                <div className="text-xs text-gray-500">Contributions</div>
-              </div>
-              <div className="text-center col-span-3 sm:col-span-1">
-                <div className="text-base sm:text-lg font-semibold text-gray-900">{formatAccountAge(profileUser.createdAt)}</div>
-                <div className="text-xs text-gray-500">Account Age</div>
-              </div>
+            <div
+              className="mt-4 pt-4 border-t border-gray-200 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-x-4 gap-y-5"
+              role="list"
+              aria-label="Profile statistics"
+            >
+              {profileHeaderStats.map((row) => (
+                <div key={row.label} className="text-center min-w-0 px-0.5" role="listitem">
+                  <div className="text-lg sm:text-xl font-semibold tabular-nums tracking-tight text-gray-900 leading-none">
+                    {row.value}
+                  </div>
+                  <div className="mt-2 text-[11px] sm:text-xs font-medium text-gray-500 uppercase tracking-wide leading-tight">
+                    {row.label}
+                  </div>
+                </div>
+              ))}
             </div>
           </div>
 
@@ -322,13 +400,8 @@ const Profile: React.FC = () => {
           <div className="bg-white border border-gray-200 rounded-md mb-4">
             <div className="flex border-b border-gray-200 overflow-x-auto scrollbar-hide">
               {[
-                { id: 'overview', label: 'Overview' },
                 { id: 'posts', label: 'Posts' },
                 { id: 'comments', label: 'Comments' },
-                { id: 'saved', label: 'Saved' },
-                { id: 'history', label: 'History' },
-                { id: 'upvoted', label: 'Upvoted' },
-                { id: 'downvoted', label: 'Downvoted' }
               ].map((tab) => (
                 <button
                   key={tab.id}
@@ -345,7 +418,7 @@ const Profile: React.FC = () => {
             </div>
 
             {/* Content Filter & Sort */}
-            {(activeTab === 'overview' || activeTab === 'posts') && (
+            {activeTab === 'posts' && (
               <div className="px-3 sm:px-6 py-3 border-b border-gray-200 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 sm:gap-0">
                 <div className="flex items-center flex-wrap gap-2 sm:gap-4">
                   {/* Sort Options */}
@@ -379,27 +452,32 @@ const Profile: React.FC = () => {
 
             {/* Content */}
             <div className="p-3 sm:p-6">
-              {activeTab === 'overview' && (
-                <div className="space-y-2">
-                  {sortedPosts.length > 0 ? (
-                    sortedPosts.map((post) => (
-                      <PostCard key={post.id} post={post} />
-                    ))
-                  ) : (
-                    <div className="text-center py-8 text-gray-500">
-                      <p>No posts yet.</p>
-                      <p className="text-sm mt-1">Your posts will appear here.</p>
-                    </div>
-                  )}
-                </div>
-              )}
-
               {activeTab === 'posts' && (
                 <div className="space-y-2">
                   {sortedPosts.length > 0 ? (
-                    sortedPosts.map((post) => (
-                      <PostCard key={post.id} post={post} />
-                    ))
+                    <>
+                      {sortedPosts.map((post) => (
+                        <PostCard key={post.id} post={post} />
+                      ))}
+                      {stats.postsCount > sortedPosts.length && (
+                        <p className="text-xs text-gray-500 text-center py-2">
+                          Showing {sortedPosts.length} of {stats.postsCount} posts
+                          {sortOption !== 'new' ? ' (sorted among loaded posts)' : ''}.
+                        </p>
+                      )}
+                      {hasNextPage && (
+                        <div className="flex justify-center pt-1 pb-2">
+                          <button
+                            type="button"
+                            onClick={() => fetchNextPage()}
+                            disabled={isFetchingNextPage}
+                            className="px-4 py-2 text-sm font-medium rounded-md border border-gray-300 bg-white hover:bg-gray-50 text-gray-800 disabled:opacity-50"
+                          >
+                            {isFetchingNextPage ? 'Loading…' : 'Load more posts'}
+                          </button>
+                        </div>
+                      )}
+                    </>
                   ) : (
                     <div className="text-center py-8 text-gray-500">
                       <p>No posts yet.</p>
@@ -412,7 +490,8 @@ const Profile: React.FC = () => {
               {activeTab === 'comments' && (
                 <div className="space-y-3 sm:space-y-4">
                   {comments.length > 0 ? (
-                    comments.map((comment: Comment) => (
+                    <>
+                    {comments.map((comment: Comment) => (
                       <div key={comment.id} className="border border-gray-200 rounded-md p-3 sm:p-4 hover:border-gray-300 transition-colors">
                         <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-gray-500 mb-2">
                           <span>Commented on</span>
@@ -461,7 +540,15 @@ const Profile: React.FC = () => {
                           </Link>
                         </div>
                       </div>
-                    ))
+                    ))}
+                      {comments.length >= PROFILE_PAGE_SIZE &&
+                        stats.commentsCount > PROFILE_PAGE_SIZE && (
+                          <p className="text-xs text-gray-500 text-center py-3 px-2 border border-dashed border-gray-200 rounded-md bg-gray-50">
+                            Showing your {PROFILE_PAGE_SIZE} most recent comments ({stats.commentsCount} total). Comment
+                            pagination is not available yet.
+                          </p>
+                        )}
+                    </>
                   ) : (
                     <div className="text-center py-8 text-gray-500">
                       <p className="text-sm sm:text-base">No comments yet.</p>
@@ -471,33 +558,6 @@ const Profile: React.FC = () => {
                 </div>
               )}
 
-              {activeTab === 'saved' && (
-                <div className="text-center py-6 sm:py-8 text-gray-500">
-                  <p className="text-sm sm:text-base">No saved posts.</p>
-                  <p className="text-xs sm:text-sm mt-1">Posts you save will appear here.</p>
-                </div>
-              )}
-
-              {activeTab === 'history' && (
-                <div className="text-center py-6 sm:py-8 text-gray-500">
-                  <p className="text-sm sm:text-base">No history.</p>
-                  <p className="text-xs sm:text-sm mt-1">Your browsing history will appear here.</p>
-                </div>
-              )}
-
-              {activeTab === 'upvoted' && (
-                <div className="text-center py-6 sm:py-8 text-gray-500">
-                  <p className="text-sm sm:text-base">No upvoted posts.</p>
-                  <p className="text-xs sm:text-sm mt-1">Posts you upvote will appear here.</p>
-                </div>
-              )}
-
-              {activeTab === 'downvoted' && (
-                <div className="text-center py-6 sm:py-8 text-gray-500">
-                  <p className="text-sm sm:text-base">No downvoted posts.</p>
-                  <p className="text-xs sm:text-sm mt-1">Posts you downvote will appear here.</p>
-                </div>
-              )}
             </div>
           </div>
         </div>
@@ -505,18 +565,15 @@ const Profile: React.FC = () => {
         {/* Right Sidebar */}
         <div className="w-full lg:w-80 flex-shrink-0">
           <div className="bg-white border border-gray-200 rounded-md p-3 sm:p-4 mb-3 sm:mb-4">
-            <div className="flex items-center justify-between mb-3 sm:mb-4">
+            <div className="flex items-center justify-between gap-2 mb-3 sm:mb-4">
               <h3 className="text-sm sm:text-base font-semibold text-gray-900 truncate">{profileUser.firstName} {profileUser.lastName}</h3>
-              <button className="flex items-center space-x-1 text-gray-600 hover:text-gray-800 flex-shrink-0 ml-2">
-                <svg className="w-3.5 h-3.5 sm:w-4 sm:h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.367 2.684 3 3 0 00-5.367-2.684z" />
-                </svg>
-                <span className="text-xs sm:text-sm hidden sm:inline">Share</span>
-              </button>
-            </div>
-            
-            <div className="text-xs sm:text-sm text-gray-500 mb-3 sm:mb-4">
-              <p>0 followers</p>
+              <div className="flex-shrink-0 scale-90 sm:scale-100 origin-right">
+                <ShareButton
+                  url="/profile"
+                  title={`${profileUser.firstName} ${profileUser.lastName} on OrthoAndSpineTools`}
+                  type="post"
+                />
+              </div>
             </div>
 
             {profileUser.bio && (
@@ -525,40 +582,19 @@ const Profile: React.FC = () => {
               </div>
             )}
 
-            <div className="space-y-2 sm:space-y-3 text-xs sm:text-sm mb-3 sm:mb-4">
-              <div className="flex justify-between items-center py-2 border-b border-gray-100">
-                <span className="text-gray-600">Karma</span>
-                <span className="font-semibold text-gray-900">{formatKarma(stats.totalKarma)}</span>
-              </div>
-              <div className="flex justify-between items-center py-2 border-b border-gray-100">
-                <span className="text-gray-600">Post Karma</span>
-                <span className="font-medium text-gray-900">{formatKarma(stats.postKarma)}</span>
-              </div>
-              <div className="flex justify-between items-center py-2 border-b border-gray-100">
-                <span className="text-gray-600">Comment Karma</span>
-                <span className="font-medium text-gray-900">{formatKarma(stats.commentKarma)}</span>
-              </div>
-              <div className="flex justify-between items-center py-2 border-b border-gray-100">
-                <span className="text-gray-600">Award Karma</span>
-                <span className="font-medium text-gray-900">{formatKarma(stats.awardKarma || 0)}</span>
-              </div>
-              <div className="flex justify-between items-center py-2 border-b border-gray-100">
-                <span className="text-gray-600">Contributions</span>
-                <span className="font-medium text-gray-900">{stats.postsCount + stats.commentsCount}</span>
-              </div>
-              <div className="flex justify-between items-center py-2 border-b border-gray-100">
-                <span className="text-gray-600">Account Age</span>
-                <span className="font-medium text-gray-900">{formatAccountAge(profileUser.createdAt)}</span>
-              </div>
-              <div className="flex justify-between items-center py-2">
-                <span className="text-gray-600">Active in</span>
-                <span className="font-medium text-gray-900">{stats.communitiesCount} communities</span>
-              </div>
-            </div>
-
-            <div className="text-xs sm:text-sm text-gray-500 mb-3 sm:mb-4">
-              <p>0 Gold earned</p>
-            </div>
+            <dl className="mb-3 sm:mb-4 divide-y divide-gray-100 border-t border-gray-100">
+              {profileSidebarStats.map((row) => (
+                <div
+                  key={row.label}
+                  className="flex justify-between items-baseline gap-4 py-2.5 first:pt-2"
+                >
+                  <dt className="text-xs font-medium text-gray-500 shrink-0">{row.label}</dt>
+                  <dd className="text-sm font-semibold tabular-nums text-gray-900 text-right min-w-0 break-words">
+                    {row.value}
+                  </dd>
+                </div>
+              ))}
+            </dl>
 
             <div className="border-t border-gray-200 pt-3 sm:pt-4 mt-3 sm:mt-4">
               <h4 className="text-xs sm:text-sm font-semibold text-gray-900 mb-2">PROFILE SETTINGS</h4>

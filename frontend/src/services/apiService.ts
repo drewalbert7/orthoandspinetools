@@ -1,6 +1,7 @@
 import axios from 'axios';
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'https://orthoandspinetools.com/api';
+/** Same-origin `/api` uses Vite dev proxy (vite.config) or production nginx. Set VITE_API_URL only for a separate API host. */
+const API_BASE_URL = import.meta.env.VITE_API_URL || '/api';
 
 // No default Content-Type — setting JSON globally breaks multipart uploads (avatar/images).
 const api = axios.create({
@@ -189,6 +190,13 @@ export interface User {
   lastLoginAt?: string;
 }
 
+export interface ProfileListPagination {
+  page: number;
+  limit: number;
+  total: number;
+  hasMore: boolean;
+}
+
 export interface UserProfile {
   user: User;
   stats: {
@@ -204,6 +212,8 @@ export interface UserProfile {
   posts: Post[];
   comments?: Comment[];
   communities: Community[];
+  postsPagination?: ProfileListPagination;
+  commentsPagination?: ProfileListPagination;
 }
 
 export interface Vote {
@@ -294,6 +304,14 @@ export interface NotificationsPage {
   totalPages: number;
 }
 
+function normalizePostAttachments<T extends { attachments?: unknown }>(post: T): T & { attachments: Attachment[] } {
+  const a = post.attachments;
+  return {
+    ...post,
+    attachments: Array.isArray(a) ? (a as Attachment[]) : [],
+  };
+}
+
 class ApiService {
   // Posts
   async getPosts(params: { page?: number; limit?: number; sort?: string; community?: string; q?: string } = {}): Promise<{ posts: Post[]; pagination: { page: number; pages: number } }> {
@@ -305,9 +323,16 @@ class ApiService {
       if (params.community) search.set('community', params.community);
       if (params.q?.trim()) search.set('q', params.q.trim());
       const response = await api.get(`/posts?${search.toString()}`);
-      return response.data.data;
-    } catch (error: any) {
-      throw new Error(error.response?.data?.message || 'Failed to fetch posts');
+      const payload = response.data?.data;
+      if (!payload || !Array.isArray(payload.posts)) {
+        throw new Error('Invalid posts response from server');
+      }
+      return {
+        ...payload,
+        posts: payload.posts.map((p: Post) => normalizePostAttachments(p)),
+      };
+    } catch (error: unknown) {
+      throw new Error(apiErrorMessage(error, 'Failed to fetch posts'));
     }
   }
 
@@ -318,16 +343,23 @@ class ApiService {
       if (params.limit) search.set('limit', String(params.limit));
       if (params.sort) search.set('sort', params.sort);
       const response = await api.get(`/posts/feed?${search.toString()}`);
-      return response.data.data;
-    } catch (error: any) {
-      throw new Error(error.response?.data?.message || 'Failed to fetch feed');
+      const payload = response.data?.data;
+      if (!payload || !Array.isArray(payload.posts)) {
+        throw new Error('Invalid feed response from server');
+      }
+      return {
+        ...payload,
+        posts: payload.posts.map((p: Post) => normalizePostAttachments(p)),
+      };
+    } catch (error: unknown) {
+      throw new Error(apiErrorMessage(error, 'Failed to fetch feed'));
     }
   }
 
   async getPost(id: string): Promise<Post> {
     try {
       const response = await api.get(`/posts/${id}`);
-      return response.data.data;
+      return normalizePostAttachments(response.data.data as Post);
     } catch (error: any) {
       throw new Error(error.response?.data?.message || 'Failed to fetch post');
     }
@@ -340,7 +372,19 @@ class ApiService {
     postType: 'discussion' | 'case_study' | 'tool_review';
     patientAge?: number;
     procedureType?: string;
-    attachments?: Array<{ path: string; filename: string; originalName: string; type: 'image' | 'video' }>;
+    attachments?: Array<{
+      url: string;
+      filename: string;
+      originalName: string;
+      mimetype: string;
+      size: number;
+      cloudinaryPublicId?: string;
+      optimizedUrl?: string;
+      thumbnailUrl?: string;
+      width?: number;
+      height?: number;
+      duration?: number;
+    }>;
     tagIds?: string[];
   }): Promise<Post> {
     try {
@@ -353,9 +397,14 @@ class ApiService {
       };
       
       const response = await api.post('/posts', backendData);
-      return response.data;
-    } catch (error: any) {
-      throw new Error(error.response?.data?.message || 'Failed to create post');
+      const raw = response.data;
+      const post = raw?.data ?? raw;
+      if (!post || typeof post !== 'object' || !('id' in post)) {
+        throw new Error('Invalid create-post response from server');
+      }
+      return normalizePostAttachments(post as Post);
+    } catch (error: unknown) {
+      throw new Error(apiErrorMessage(error, 'Failed to create post'));
     }
   }
 
@@ -571,7 +620,21 @@ class ApiService {
     }
   }
 
-  async uploadPostImages(files: File[]): Promise<Array<{ path: string; filename: string; originalName: string; size: number; mimetype: string; cloudinaryUrl?: string; cloudinaryPublicId?: string }>> {
+  async uploadPostImages(files: File[]): Promise<
+    Array<{
+      path: string;
+      filename: string;
+      originalName: string;
+      size: number;
+      mimetype: string;
+      cloudinaryUrl?: string;
+      cloudinaryPublicId?: string;
+      optimizedUrl?: string;
+      thumbnailUrl?: string;
+      width?: number;
+      height?: number;
+    }>
+  > {
     try {
       const formData = new FormData();
       files.forEach(file => formData.append('images', file));
@@ -584,14 +647,31 @@ class ApiService {
         size: item.size,
         mimetype: item.mimetype,
         cloudinaryUrl: item.url || item.cloudinaryUrl,
-        cloudinaryPublicId: item.cloudinaryPublicId
+        cloudinaryPublicId: item.cloudinaryPublicId,
+        optimizedUrl: item.optimizedUrl,
+        thumbnailUrl: item.thumbnailUrl,
+        width: item.width,
+        height: item.height,
       }));
     } catch (error: any) {
       throw new Error(error.response?.data?.message || 'Failed to upload images');
     }
   }
 
-  async uploadPostVideos(files: File[]): Promise<Array<{ path: string; filename: string; originalName: string; size: number; mimetype: string; cloudinaryUrl?: string; cloudinaryPublicId?: string; duration?: number }>> {
+  async uploadPostVideos(files: File[]): Promise<
+    Array<{
+      path: string;
+      filename: string;
+      originalName: string;
+      size: number;
+      mimetype: string;
+      cloudinaryUrl?: string;
+      cloudinaryPublicId?: string;
+      duration?: number;
+      width?: number;
+      height?: number;
+    }>
+  > {
     try {
       const formData = new FormData();
       files.forEach(file => formData.append('videos', file));
@@ -605,7 +685,9 @@ class ApiService {
         mimetype: item.mimetype,
         cloudinaryUrl: item.url || item.cloudinaryUrl,
         cloudinaryPublicId: item.cloudinaryPublicId,
-        duration: item.duration
+        duration: item.duration,
+        width: item.width,
+        height: item.height,
       }));
     } catch (error: any) {
       throw new Error(error.response?.data?.message || 'Failed to upload videos');
@@ -641,13 +723,24 @@ class ApiService {
   }
 
   // User Profile
-  async getUserProfile(): Promise<UserProfile> {
+  async getUserProfile(params?: {
+    postsPage?: number;
+    postsLimit?: number;
+    commentsPage?: number;
+    commentsLimit?: number;
+    omitComments?: boolean;
+  }): Promise<UserProfile> {
     try {
-      const response = await api.get('/auth/profile');
+      const search = new URLSearchParams();
+      if (params?.postsPage != null) search.set('postsPage', String(params.postsPage));
+      if (params?.postsLimit != null) search.set('postsLimit', String(params.postsLimit));
+      if (params?.commentsPage != null) search.set('commentsPage', String(params.commentsPage));
+      if (params?.commentsLimit != null) search.set('commentsLimit', String(params.commentsLimit));
+      if (params?.omitComments) search.set('omitComments', 'true');
+      const q = search.toString();
+      const response = await api.get(q ? `/auth/profile?${q}` : '/auth/profile');
       const payload = response.data;
-      // Normal: { success, data: { user, stats, posts, ... } }
       let data = payload?.data;
-      // Tolerant: misconfigured proxy returning inner object at root
       if (!data?.user && payload?.user) {
         data = payload as UserProfile;
       }

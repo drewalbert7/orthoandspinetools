@@ -234,7 +234,7 @@ const CommunityPage: React.FC = () => {
                     )}
                     
                     {/* Attachments Preview - Reddit Style */}
-                    <PostAttachments attachments={post.attachments} />
+                    <PostAttachments attachments={post.attachments ?? []} postId={post.id} />
                   </div>
 
                   {/* Post Actions */}

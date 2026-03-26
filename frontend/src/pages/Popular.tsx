@@ -66,7 +66,7 @@ const PostCard: React.FC<{ post: Post }> = ({ post }) => {
         </Link>
 
         {/* Attachments Preview - Reddit Style */}
-        <PostAttachments attachments={post.attachments} />
+        <PostAttachments attachments={post.attachments ?? []} postId={post.id} />
 
         {/* Action Bar with Voting - Reddit Style */}
         <div className="flex items-center flex-wrap gap-2 text-xs text-gray-500 pt-2 border-t border-gray-100">

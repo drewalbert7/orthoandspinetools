@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
 import { Post, apiService } from '../services/apiService';
 import ModerationMenu from './ModerationMenu';
+import PostAttachments from './PostAttachments';
 import ShareButton from './ShareButton';
 import VerifiedPhysicianInline from './VerifiedPhysicianInline';
 import toast from 'react-hot-toast';
@@ -159,6 +160,8 @@ const PostCard: React.FC<PostCardProps> = ({ post, onVote }) => {
               {post.content.length > 200 ? `${post.content.substring(0, 200)}...` : post.content}
             </div>
           )}
+
+          <PostAttachments attachments={post.attachments ?? []} postId={post.id} />
 
           {/* Tags */}
           {post.tags && Array.isArray(post.tags) && post.tags.length > 0 && (

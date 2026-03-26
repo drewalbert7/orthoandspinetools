@@ -23,7 +23,7 @@ function PostRow({ post }: { post: Post }) {
         <h3 className="text-base font-medium text-gray-900 hover:text-blue-600">{post.title}</h3>
         <p className="text-sm text-gray-700 line-clamp-2 mt-1">{post.content}</p>
       </Link>
-      <PostAttachments attachments={post.attachments || []} />
+      <PostAttachments attachments={post.attachments ?? []} postId={post.id} />
       <div className="mt-2 pt-2 border-t border-gray-100">
         <VoteButton
           postId={post.id}

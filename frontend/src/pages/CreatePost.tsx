@@ -19,9 +19,10 @@
  * File size should be > 800 lines (currently ~851 lines)
  */
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useLayoutEffect, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { apiService, Community, CommunityTag } from '../services/apiService';
 import { useAuth } from '../contexts/AuthContext';
 import toast from 'react-hot-toast';
@@ -29,8 +30,24 @@ import MarkdownEditor, { MarkdownEditorHandle } from '../components/MarkdownEdit
 
 type PostType = 'text' | 'images' | 'link' | 'poll';
 
+type UploadedPostMedia = {
+  url: string;
+  filename: string;
+  originalName: string;
+  type: 'image' | 'video';
+  mimetype: string;
+  size: number;
+  cloudinaryPublicId?: string;
+  optimizedUrl?: string;
+  thumbnailUrl?: string;
+  width?: number;
+  height?: number;
+  duration?: number;
+};
+
 const CreatePost: React.FC = () => {
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const { user } = useAuth();
   const [selectedCommunity, setSelectedCommunity] = useState<string>('');
   const [postType, setPostType] = useState<PostType>('text');
@@ -44,10 +61,17 @@ const CreatePost: React.FC = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState('');
   const [showCommunityDropdown, setShowCommunityDropdown] = useState(false);
-  const [uploadedMedia, setUploadedMedia] = useState<Array<{ url: string; filename: string; originalName: string; type: 'image' | 'video' }>>([]);
+  const [communityMenuRect, setCommunityMenuRect] = useState<{
+    top: number;
+    left: number;
+    width: number;
+  } | null>(null);
+  const [uploadedMedia, setUploadedMedia] = useState<UploadedPostMedia[]>([]);
   const [isUploading, setIsUploading] = useState(false);
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const communityButtonRef = useRef<HTMLButtonElement>(null);
+  const communityMenuPortalRef = useRef<HTMLDivElement>(null);
   const editorRef = useRef<MarkdownEditorHandle | null>(null);
   const imagesEditorRef = useRef<MarkdownEditorHandle | null>(null);
 
@@ -72,12 +96,36 @@ const CreatePost: React.FC = () => {
     setSelectedTags([]);
   }, [selectedCommunity]);
 
-  // Close dropdown when clicking outside
+  useLayoutEffect(() => {
+    if (!showCommunityDropdown) {
+      setCommunityMenuRect(null);
+      return;
+    }
+    const updateRect = () => {
+      const btn = communityButtonRef.current;
+      if (!btn) return;
+      const r = btn.getBoundingClientRect();
+      setCommunityMenuRect({
+        top: r.bottom + 4,
+        left: r.left,
+        width: r.width,
+      });
+    };
+    updateRect();
+    window.addEventListener('scroll', updateRect, true);
+    window.addEventListener('resize', updateRect);
+    return () => {
+      window.removeEventListener('scroll', updateRect, true);
+      window.removeEventListener('resize', updateRect);
+    };
+  }, [showCommunityDropdown]);
+
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
-        setShowCommunityDropdown(false);
-      }
+      const t = event.target as Node;
+      if (dropdownRef.current?.contains(t)) return;
+      if (communityMenuPortalRef.current?.contains(t)) return;
+      setShowCommunityDropdown(false);
     };
 
     document.addEventListener('mousedown', handleClickOutside);
@@ -117,17 +165,34 @@ const CreatePost: React.FC = () => {
       // Filter out invalid tag IDs before sending
       const validTagIds = selectedTags.filter((id) => id && typeof id === 'string' && id.trim().length > 0);
 
+      const hasUploadedMedia = uploadedMedia.length > 0;
       const postData = {
         title: title.trim(),
         content: body.trim(),
         communityId: selectedCommunity,
-        postType: getPostType(postType),
+        postType: hasUploadedMedia ? 'case_study' : getPostType(postType),
         ...(postType === 'link' && linkUrl && { linkUrl: linkUrl.trim() }),
-        ...(postType === 'images' && uploadedMedia && uploadedMedia.length > 0 && { media: uploadedMedia }),
+        ...(hasUploadedMedia && {
+          attachments: uploadedMedia.map((m) => ({
+            url: m.url,
+            filename: m.filename,
+            originalName: m.originalName,
+            mimetype: m.mimetype,
+            size: m.size,
+            ...(m.cloudinaryPublicId && { cloudinaryPublicId: m.cloudinaryPublicId }),
+            ...(m.optimizedUrl && { optimizedUrl: m.optimizedUrl }),
+            ...(m.thumbnailUrl && { thumbnailUrl: m.thumbnailUrl }),
+            ...(m.width != null && { width: m.width }),
+            ...(m.height != null && { height: m.height }),
+            ...(m.duration != null && { duration: m.duration }),
+          })),
+        }),
         ...(validTagIds.length > 0 && { tagIds: validTagIds }),
       };
 
       await apiService.createPost(postData);
+      await queryClient.invalidateQueries({ queryKey: ['posts'] });
+      await queryClient.invalidateQueries({ queryKey: ['feed'] });
       toast.success('Post created successfully!');
       navigate('/');
     } catch (error: any) {
@@ -154,28 +219,45 @@ const CreatePost: React.FC = () => {
       const imageFiles = files.filter(file => file.type.startsWith('image/'));
       const videoFiles = files.filter(file => file.type.startsWith('video/'));
 
-      const uploadedFiles: Array<{ url: string; filename: string; originalName: string; type: 'image' | 'video' }> = [];
+      const uploadedFiles: UploadedPostMedia[] = [];
 
       // Upload images if any
       if (imageFiles.length > 0) {
         const uploadedImages = await apiService.uploadPostImages(imageFiles);
-        uploadedFiles.push(...uploadedImages.map(img => ({ 
-          url: img.cloudinaryUrl || img.path,
-          filename: img.filename,
-          originalName: img.originalName,
-          type: 'image' as const 
-        })));
+        uploadedFiles.push(
+          ...uploadedImages.map((img) => ({
+            url: img.cloudinaryUrl || img.path,
+            filename: img.filename,
+            originalName: img.originalName,
+            type: 'image' as const,
+            mimetype: img.mimetype || 'image/jpeg',
+            size: img.size ?? 0,
+            cloudinaryPublicId: img.cloudinaryPublicId,
+            optimizedUrl: img.optimizedUrl,
+            thumbnailUrl: img.thumbnailUrl,
+            width: img.width,
+            height: img.height,
+          }))
+        );
       }
 
       // Upload videos if any
       if (videoFiles.length > 0) {
         const uploadedVideos = await apiService.uploadPostVideos(videoFiles);
-        uploadedFiles.push(...uploadedVideos.map(vid => ({ 
-          url: vid.cloudinaryUrl || vid.path,
-          filename: vid.filename,
-          originalName: vid.originalName,
-          type: 'video' as const 
-        })));
+        uploadedFiles.push(
+          ...uploadedVideos.map((vid) => ({
+            url: vid.cloudinaryUrl || vid.path,
+            filename: vid.filename,
+            originalName: vid.originalName,
+            type: 'video' as const,
+            mimetype: vid.mimetype || 'video/mp4',
+            size: vid.size ?? 0,
+            cloudinaryPublicId: vid.cloudinaryPublicId,
+            duration: vid.duration,
+            width: vid.width,
+            height: vid.height,
+          }))
+        );
       }
 
       setUploadedMedia(prev => [...prev, ...uploadedFiles]);
@@ -294,10 +376,12 @@ const CreatePost: React.FC = () => {
           </div>
         )}
 
-        {/* Community Selection */}
-        <div className="mb-4 sm:mb-6">
-          <div className="relative" ref={dropdownRef}>
+        {/* Community Selection — menu rendered via portal so it is not covered by the title field (stacking) */}
+        <div className="mb-4 sm:mb-6" ref={dropdownRef}>
+          <div className="relative">
             <button
+              ref={communityButtonRef}
+              type="button"
               onClick={() => setShowCommunityDropdown(!showCommunityDropdown)}
               className="w-full px-3 sm:px-4 py-2.5 sm:py-3 border border-gray-300 rounded-full bg-white text-left focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             >
@@ -313,20 +397,44 @@ const CreatePost: React.FC = () => {
                 </svg>
               </div>
             </button>
+          </div>
+        </div>
 
-            {showCommunityDropdown && (
-              <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg max-h-60 overflow-y-auto">
+        {typeof document !== 'undefined' &&
+          showCommunityDropdown &&
+          communityMenuRect &&
+          createPortal(
+            <>
+              <div
+                className="fixed inset-0 z-[10990] bg-black/20 sm:bg-black/10"
+                aria-hidden
+                onMouseDown={() => setShowCommunityDropdown(false)}
+              />
+              <div
+                ref={communityMenuPortalRef}
+                className="fixed z-[11000] max-h-[min(50vh,15rem)] overflow-y-auto bg-white border border-gray-300 rounded-md shadow-2xl"
+                style={{
+                  top: communityMenuRect.top,
+                  left: communityMenuRect.left,
+                  width: communityMenuRect.width,
+                }}
+                role="listbox"
+                aria-label="Choose community"
+                onMouseDown={(e) => e.stopPropagation()}
+              >
                 {communitiesLoading ? (
                   <div className="p-3 text-center text-sm text-gray-500">Loading communities...</div>
                 ) : (
                   communities?.map((community) => (
                     <button
                       key={community.id}
+                      type="button"
+                      role="option"
                       onClick={() => {
                         setSelectedCommunity(community.id);
                         setShowCommunityDropdown(false);
                       }}
-                      className="w-full px-3 sm:px-4 py-2.5 sm:py-3 text-left hover:bg-gray-50 flex items-center space-x-2 sm:space-x-3"
+                      className="w-full px-3 sm:px-4 py-2.5 sm:py-3 text-left hover:bg-gray-50 flex items-center space-x-2 sm:space-x-3 border-b border-gray-100 last:border-b-0"
                     >
                       <div className="w-7 h-7 sm:w-8 sm:h-8 bg-blue-600 rounded-full flex items-center justify-center flex-shrink-0">
                         <span className="text-white font-bold text-xs sm:text-sm">o/</span>
@@ -339,9 +447,9 @@ const CreatePost: React.FC = () => {
                   ))
                 )}
               </div>
-            )}
-          </div>
-        </div>
+            </>,
+            document.body
+          )}
 
         {/* Post Type Tabs */}
         <div className="mb-4 sm:mb-6">
@@ -367,9 +475,9 @@ const CreatePost: React.FC = () => {
           </div>
         </div>
 
-        {/* Title Input */}
-        <div className="mb-4 sm:mb-6">
-          <div className="relative">
+        {/* Title Input — z-0 so portaled community menu (body, z~11k) always stacks above */}
+        <div className="mb-4 sm:mb-6 relative z-0">
+          <div className="relative z-0">
             <input
               type="text"
               value={title}
@@ -378,9 +486,9 @@ const CreatePost: React.FC = () => {
               maxLength={300}
               autoComplete="off"
               enterKeyHint="done"
-              className="w-full px-3 sm:px-4 py-2 sm:py-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-base sm:text-lg pr-16 sm:pr-20 touch-manipulation relative z-10"
+              className="relative z-0 w-full px-3 sm:px-4 py-2 sm:py-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-base sm:text-lg pr-16 sm:pr-20 touch-manipulation"
             />
-            <div className="absolute bottom-2 right-2 sm:right-3 text-xs text-gray-400 pointer-events-none select-none z-20">
+            <div className="absolute bottom-2 right-2 sm:right-3 text-xs text-gray-400 pointer-events-none select-none z-0">
               {title.length}/300
             </div>
           </div>
@@ -675,7 +783,7 @@ const CreatePost: React.FC = () => {
                         <div key={index} className="relative group">
                           {media.type === 'image' ? (
                             <img
-                              src={media.url}
+                              src={media.optimizedUrl || media.thumbnailUrl || media.url}
                               alt={media.originalName}
                               className="w-full h-24 sm:h-32 object-cover rounded-md border border-gray-200"
                             />

@@ -501,12 +501,20 @@ const PostDetail: React.FC = () => {
               {/* Attachments - Reddit Style Full Display */}
               {post.attachments && post.attachments.length > 0 && (
                 <div className="mb-6">
-                  {post.attachments.map((attachment) => (
+                  {post.attachments.map((attachment) => {
+                    const mediaSrc =
+                      attachment.optimizedUrl ||
+                      attachment.thumbnailUrl ||
+                      attachment.cloudinaryUrl ||
+                      attachment.path ||
+                      attachment.filename;
+                    const mime = attachment.mimeType ?? '';
+                    return (
                     <div key={attachment.id} className="mb-6">
-                      {attachment.mimeType.startsWith('image/') ? (
+                      {mime.startsWith('image/') ? (
                         <div className="relative bg-gray-100 rounded-lg overflow-hidden">
                           <img
-                            src={attachment.cloudinaryUrl || attachment.path}
+                            src={mediaSrc}
                             alt={attachment.originalName}
                             className="w-full h-auto cursor-pointer hover:opacity-95 transition-opacity"
                             style={{ 
@@ -515,8 +523,7 @@ const PostDetail: React.FC = () => {
                               objectFit: 'contain'
                             }}
                             onClick={() => {
-                              // Open image in full screen modal or new tab
-                              window.open(attachment.cloudinaryUrl || attachment.path, '_blank');
+                              window.open(mediaSrc, '_blank');
                             }}
                           />
                           {/* Image overlay with filename and expand indicator */}
@@ -532,10 +539,10 @@ const PostDetail: React.FC = () => {
                             Click to expand
                           </div>
                         </div>
-                      ) : attachment.mimeType.startsWith('video/') ? (
+                      ) : mime.startsWith('video/') ? (
                         <div className="relative bg-gray-100 rounded-lg overflow-hidden">
                           <video
-                            src={attachment.cloudinaryUrl || attachment.path}
+                            src={mediaSrc}
                             controls
                             className="w-full h-auto"
                             style={{ 
@@ -571,7 +578,8 @@ const PostDetail: React.FC = () => {
                         </div>
                       )}
                     </div>
-                  ))}
+                    );
+                  })}
                 </div>
               )}
 
