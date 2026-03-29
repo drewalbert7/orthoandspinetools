@@ -52,6 +52,7 @@ const getCloudinary = () => {
         cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
         api_key: process.env.CLOUDINARY_API_KEY,
         api_secret: process.env.CLOUDINARY_API_SECRET,
+        secure: true,
       });
     } catch (error) {
       console.warn('Cloudinary not available:', error);
@@ -226,7 +227,10 @@ export const getOptimizedImageUrl = (publicId: string, options: {
     height,
     quality,
     format,
-    crop
+    crop,
+    secure: true,
+    // Nested public_ids (folder/asset) otherwise get forced /v1/… which does not match the real version → 404 in browser.
+    force_version: false,
   };
   if (gravity) urlOptions.gravity = gravity;
   

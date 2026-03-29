@@ -28,11 +28,12 @@ function inferMediaKind(mime: string, src: string): 'image' | 'video' | 'file' {
 }
 
 function mediaSrc(attachment: TimelineAttachment): string {
+  // Prefer canonical delivery URL from upload; optimized/thumbnail are SDK-derived and used to 404 when version was wrong (nested public_id + forced v1).
   return (
-    attachment.optimizedUrl ||
-    attachment.thumbnailUrl ||
     attachment.cloudinaryUrl ||
     attachment.path ||
+    attachment.optimizedUrl ||
+    attachment.thumbnailUrl ||
     attachment.filename ||
     ''
   );
@@ -88,7 +89,7 @@ const PostAttachments: React.FC<PostAttachmentsProps> = ({ attachments, postId }
       <>
         <img
           src={item.src}
-          alt={item.att.originalName}
+          alt=""
           className="absolute inset-0 w-full h-full object-cover hover:opacity-95 transition-opacity"
           loading="lazy"
           decoding="async"
@@ -211,7 +212,7 @@ const PostAttachments: React.FC<PostAttachmentsProps> = ({ attachments, postId }
             >
               <img
                 src={mediaSrcSingle}
-                alt={attachment.originalName}
+                alt=""
                 className="w-full h-auto object-contain hover:opacity-95 transition-opacity rounded-md"
                 style={{ maxHeight: '600px' }}
                 loading="lazy"
@@ -233,7 +234,7 @@ const PostAttachments: React.FC<PostAttachmentsProps> = ({ attachments, postId }
             >
               <img
                 src={mediaSrcSingle}
-                alt={attachment.originalName}
+                alt=""
                 className="w-full h-auto object-contain hover:opacity-95 transition-opacity rounded-md"
                 style={{ maxHeight: '600px' }}
                 loading="lazy"

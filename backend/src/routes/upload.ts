@@ -584,9 +584,13 @@ router.post('/post-images-cloudinary',
         },
       });
 
+      const originalName = String(file.originalname || '')
+        .replace(/\u202F/g, ' ')
+        .replace(/\u00A0/g, ' ');
+
       uploadedFiles.push({
         filename: cloudinaryResult.public_id,
-        originalName: file.originalname,
+        originalName,
         url: cloudinaryResult.secure_url,
         size: cloudinaryResult.bytes,
         mimetype: file.mimetype,

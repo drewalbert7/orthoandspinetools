@@ -808,8 +808,8 @@ const CreatePost: React.FC = () => {
                         <div key={index} className="relative group">
                           {media.type === 'image' ? (
                             <img
-                              src={media.optimizedUrl || media.thumbnailUrl || media.url}
-                              alt={media.originalName}
+                              src={media.url || media.optimizedUrl || media.thumbnailUrl}
+                              alt=""
                               className="w-full h-24 sm:h-32 object-cover rounded-md border border-gray-200"
                             />
                           ) : (
@@ -828,7 +828,6 @@ const CreatePost: React.FC = () => {
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                             </svg>
                           </button>
-                          <p className="text-xs text-gray-500 mt-1 truncate">{media.originalName}</p>
                         </div>
                       ))}
                     </div>

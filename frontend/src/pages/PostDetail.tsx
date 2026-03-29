@@ -503,19 +503,19 @@ const PostDetail: React.FC = () => {
                 <div className="mb-6">
                   {post.attachments.map((attachment) => {
                     const mediaSrc =
-                      attachment.optimizedUrl ||
-                      attachment.thumbnailUrl ||
                       attachment.cloudinaryUrl ||
                       attachment.path ||
+                      attachment.optimizedUrl ||
+                      attachment.thumbnailUrl ||
                       attachment.filename;
                     const mime = attachment.mimeType ?? '';
                     return (
                     <div key={attachment.id} className="mb-6">
                       {mime.startsWith('image/') ? (
-                        <div className="relative bg-gray-100 rounded-lg overflow-hidden">
+                        <div className="bg-gray-100 rounded-lg overflow-hidden">
                           <img
                             src={mediaSrc}
-                            alt={attachment.originalName}
+                            alt=""
                             className="w-full h-auto cursor-pointer hover:opacity-95 transition-opacity"
                             style={{ 
                               maxHeight: '80vh',
@@ -526,21 +526,9 @@ const PostDetail: React.FC = () => {
                               window.open(mediaSrc, '_blank');
                             }}
                           />
-                          {/* Image overlay with filename and expand indicator */}
-                          <div className="absolute bottom-4 right-4 bg-black bg-opacity-70 text-white text-sm px-3 py-2 rounded-lg">
-                            <div className="flex items-center space-x-2">
-                              <span>{attachment.originalName}</span>
-                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4" />
-                              </svg>
-                            </div>
-                          </div>
-                          <div className="absolute top-4 right-4 bg-black bg-opacity-70 text-white text-xs px-2 py-1 rounded">
-                            Click to expand
-                          </div>
                         </div>
                       ) : mime.startsWith('video/') ? (
-                        <div className="relative bg-gray-100 rounded-lg overflow-hidden">
+                        <div className="bg-gray-100 rounded-lg overflow-hidden">
                           <video
                             src={mediaSrc}
                             controls
@@ -551,9 +539,6 @@ const PostDetail: React.FC = () => {
                               objectFit: 'contain'
                             }}
                           />
-                          <div className="absolute bottom-4 right-4 bg-black bg-opacity-70 text-white text-sm px-3 py-2 rounded-lg">
-                            {attachment.originalName}
-                          </div>
                         </div>
                       ) : (
                         <div className="border border-gray-200 rounded-lg p-6 bg-gray-50">
