@@ -6,10 +6,24 @@ import { uploadRateLimit, checkStorageLimits, validateFileSecurity, logUploadAtt
 import { validateAvatarUpload, validateVideoDuration } from '../middleware/avatarValidation';
 import { prisma } from '../lib/prisma';
 import { logger } from '../utils/logger';
-import { uploadToCloudinary, deleteFromCloudinary, getOptimizedImageUrl, getThumbnailUrl } from '../services/cloudinaryService';
+import { uploadToCloudinary, deleteFromCloudinary, getOptimizedImageUrl, getThumbnailUrl, isCloudinaryMediaReady } from '../services/cloudinaryService';
 import { virusScanService } from '../services/virusScanService';
 
 const router = Router();
+
+// Post media readiness (no auth; no secrets — ops + honest UI when Cloudinary is missing)
+router.get('/status', asyncHandler(async (_req: Request, res: Response) => {
+  res.json({
+    success: true,
+    data: {
+      cloudinaryConfigured: isCloudinaryMediaReady(),
+      limits: {
+        imageMb: 20,
+        videoMb: 1024,
+      },
+    },
+  });
+}));
 
 // Upload single tool image
 router.post('/tool-image', authenticate, uploadSingle('toolImage'), asyncHandler(async (req: AuthRequest, res: Response) => {

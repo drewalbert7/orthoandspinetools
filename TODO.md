@@ -1,34 +1,76 @@
 # OrthoAndSpineTools Medical Platform - Development Progress & TODO
 
-## 🔥 **NEXT UP — START HERE** (updated Mar 24, 2026)
+**How to use this file (nothing below was deleted — only clarified):**
+| Section | Purpose |
+|--------|---------|
+| **NEXT UP — START HERE** | **Verified production deploy facts** (paths, Compose, containers) + deploy commands + production QA + backlog. |
+| **NEXT PRIORITIES (summary)** | Short roadmap snapshot; **NEXT UP wins** if they disagree. |
+| **NEXT PRIORITIES (extended roadmap)** | Notifications and other phased plans (deeper detail). |
+| **CODING AGENT INSTRUCTIONS** | Onboarding / workflow for contributors and agents. |
+| **COMPLETED WORK** + long `###` history | Archive and audit trail — keep for context. |
+
+## 🔥 **NEXT UP — START HERE** (updated Mar 29, 2026)
 
 ### **1. Deploy (production server)**
-On the server, from the project root (with your usual `.env`):
+
+**Agents:** Do not ask how production is hosted unless this section is wrong or the user says it changed. Facts below were **verified on the live server** (Mar 2026).
+
+#### **Production facts (canonical)**
+| Item | Value |
+|------|--------|
+| Server user / host | `dstrad@orthoandspinetools` (SSH) |
+| Repo on disk | **`~/orthoandspinetools-main`** → `/home/dstrad/orthoandspinetools-main` |
+| Compose project name | `orthoandspinetools-main` (`docker compose ls`) |
+| Compose file | **`docker-compose.prod.yml`** (only this file for live stack) |
+| Containers | `orthoandspinetools-postgres`, `orthoandspinetools-backend`, `orthoandspinetools-frontend`, `orthoandspinetools-nginx` |
+| Secrets on server | `.env`, `.env.cloudinary` (never commit real values) |
+| Nginx | Uses bind-mounted **`nginx/nginx.conf`** from the repo; after editing it, recreate nginx: include **`nginx`** in `up -d` |
+
+#### **Industry-standard check (is this “set up correctly”?)**
+**Yes, for a typical small/medium production web app** — this matches what many teams ship: containers for API + UI + DB, reverse proxy (nginx) in front, TLS, healthchecks, persistent DB volume, secrets via env files.
+
+**Already aligned with common practice:** isolation via Docker network, restart policies, Compose-managed lifecycle, separate images for backend/frontend, static/UI served behind nginx.
+
+**Optional upgrades (maturity at scale — not required to be “professional”):** CI/CD (auto deploy on merge), dedicated **staging** environment, off-server backups + tested restore, centralized logs/metrics/alerting, IaC (Terraform etc.), multi-region or zero-downtime rollouts.
+
+#### **Routine deploy commands** (from repo root on the server)
 ```bash
+cd ~/orthoandspinetools-main
 git pull origin main
 docker compose -f docker-compose.prod.yml build --no-cache backend frontend
-docker compose -f docker-compose.prod.yml up -d
+docker compose -f docker-compose.prod.yml up -d backend frontend nginx
 ```
-*(If you use a different compose file or script, match your standard process — e.g. `./deploy.sh`.)*
+- Always add **`nginx`** to `up -d` when **`nginx/nginx.conf`** changed (e.g. upload body size).
+- **Full** rebuild everything (heavy): `docker compose -f docker-compose.prod.yml build --no-cache && docker compose -f docker-compose.prod.yml up -d` — or run **`./deploy.sh`** (includes `down`, full rebuild; more disruptive).
+
+**Migrations** after schema changes: `docker compose -f docker-compose.prod.yml exec backend npm run db:deploy` (production-safe Prisma migrate deploy — not `db:migrate`, which is for local dev).
 
 ### **2. Production QA (right after deploy)**
 1. **Home feed** — verify `/` shows posts from multiple communities (not followed-only feed).
 2. **Create Post typing** — verify title/body typing is stable on mobile + desktop (`/create-post`).
-3. **Notifications** — comment/reply should create unread bell items; mark read / mark all / dismiss work.
-4. **Admin delete** — as admin, open post menu (`...`) from Home and PostDetail and confirm delete works.
-5. If anything fails, copy the **exact toast text** and **Network response JSON**.
+3. **Create Post media (images/videos)** — upload in `Images & Video` tab and verify:
+   - image/video appears on the Home/Popular timeline
+   - image/video appears on the post detail page (`/post/:id`)
+   If it fails, capture the **exact toast text** and the **Network response JSON** for:
+   - `POST /api/upload/post-images-cloudinary` (or `post-videos-cloudinary`)
+   - `POST /api/posts` (create post)
+4. **Notifications** — comment/reply should create unread bell items; mark read / mark all / dismiss work.
+5. **Admin delete** — as admin, open post menu (`...`) from Home and PostDetail and confirm delete works.
+6. If anything fails, copy the **exact toast text** and **Network response JSON**.
 
 ### **3. Backlog (when QA is green)**
-- **Admin hardening (NEXT STEP)** — Ensure admin moderation capabilities are consistently available:
-  - Add explicit admin fallback action in post UI (if moderation permissions endpoint fails).
-  - Audit admin paths for delete/lock/pin/report actions across Home, Popular, PostDetail.
-  - Add targeted regression checks for admin role/session refresh edge cases.
+- **Admin hardening** — ✅ `/admin` gate + tab queries use JWT `isAdmin` or permissions; **Recent content** tab has inline Open / Lock / Pin / Delete (posts) and Delete (comments). ✅ Comment menus trust `user.isAdmin` if permissions fetch fails (matches post `ModerationMenu`).
+  - Remaining: reporting flow + triage; optional admin post search; regression tests for session edge cases.
 - **Content** — Remove or hide obvious test posts on the live home feed (“Test”, “d”, etc.) — manual in DB/admin or add a moderation tool later.
-- **TODO hygiene** — ✅ Duplicate priorities condensed: summary at ~line 454, extended at ~line 1115.
-- **Physician verification** — ✅ `isVerifiedPhysician` on post/comment author queries; Admin → Users **Verify MD** / **Unverify MD**; **MD ✓** badge on feeds/post detail.
+- **Post media save/display regression (WIP)** — create-post images still not reliably displayed after upload.
+  - Known work done: timeline + post-detail rendering hardened; create-post sends `attachments` (not `media`) and preserves Cloudinary fields; backend validation allows attachments even if `content` is empty.
+  - Next debug when reproducing: confirm the backend actually creates `post_attachments` rows on `POST /api/posts` (check `data.attachments.length` in the response + verify Prisma errors in backend logs).
+- **TODO hygiene** — ✅ Duplicate priorities condensed: **NEXT PRIORITIES (summary)** + **NEXT PRIORITIES (extended roadmap)** below.
+- **Physician verification** — ✅ `isVerifiedPhysician` on post/comment author queries; Admin → Users **Verify Physician** / **Unverify Physician**; **Physician ✓** badge on feeds/post detail.
 
 **Recently shipped:**
 
+- **Post media pipeline hardening (Mar 2026, ongoing WIP)** — Create post sends `attachments`; timeline/detail use `PostAttachments` + MIME/URL fallbacks; backend validates content-with-attachments; `createPost` parses `{ success, data }`; `index.css` Tailwind `ring-ring` fix unblocked Docker frontend builds; SPA `index.html` cache headers in `frontend/nginx.conf`. **Display/save still under investigation** (see backlog).
 - **Notification system v1 (Mar 24, 2026)** — Added `Notification` model + migration, backend service/routes (`/api/notifications`, unread count, read, read-all, delete), comment/reply triggers, header bell dropdown with unread badge + actions, and graceful degradation if notifications table is missing.
 - **Home feed behavior (Mar 24, 2026)** — `/` now uses all-community posts (`/api/posts`) instead of followed-community-only feed for logged-in users.
 - **Create Post text-entry fix (Mar 24, 2026)** — stabilized editor typing on mobile/desktop; added true plain-markdown textarea mode; fixed overlays that could block taps in text fields.
@@ -48,7 +90,7 @@ docker compose -f docker-compose.prod.yml up -d
 ### **MANDATORY STARTUP CHECKLIST** ⚠️
 **Before starting ANY work, you MUST:**
 
-1. **📖 READ THIS TODO.md FILE COMPLETELY** - Understand current project status, completed work, and pending tasks
+1. **📖 READ THIS TODO.md FILE COMPLETELY** - Understand current project status, completed work, and pending tasks. **Production layout:** see **NEXT UP → §1 Deploy** (paths, `docker-compose.prod.yml`, container names) — do not re-ask the user to “find out” deploy unless that section is stale.
 2. **🌐 CHECK LIVE SITE STATUS** - Visit `https://orthoandspinetools.com` to verify current functionality
 3. **🔍 REVIEW CODEBASE STRUCTURE** - Understand the project architecture and recent changes
 4. **📋 CHECK PRE-SESSION CHECKLIST** - Review critical issues and immediate action items
@@ -445,45 +487,41 @@ For detailed changelog of all completed work, see `CHANGELOG.md`.
 - **Current Data**: 34 posts, 4 users, 9 communities (as of December 10, 2025)
 - **Data Source**: All community data loaded from PostgreSQL database
 
----
-- **Backend API** - Complete with authentication, posts, comments, voting
-- **Database** - PostgreSQL with medical schema
-- **Authentication** - JWT-based user system
-- **File Upload** - Image upload for tools and X-rays
-- **Voting System** - Upvote/downvote for posts and comments
-- **Comment System** - Nested replies and discussions
-- **Audit Logging** - HIPAA compliance tracking
-- **Security** - Rate limiting, CORS, input validation
-- **Frontend UI** - Reddit-style light theme with responsive design
-- **Deployment** - Live on production server
+### **Platform snapshot** *(high level — not a substitute for NEXT UP)*
+- **Backend API** — authentication, posts, comments, voting
+- **Database** — PostgreSQL + Prisma
+- **File upload** — tools, X-rays, avatars, post media (Cloudinary when configured)
+- **Audit logging** — HIPAA-oriented action logging
+- **Security** — rate limiting, CORS, input validation
+- **Frontend** — Reddit-style UI (Vite + React + Tailwind)
+- **Deployment** — Docker Compose + nginx (see `docker-compose.prod.yml`)
 
-### 🚧 **In Progress**
-- **Content Population** - Need to add initial posts and communities
-- **User Registration Testing** - Verify authentication flow works end-to-end
-- **Mobile Responsiveness** - Ensure the Reddit-style design works on mobile
+### 🚧 **Known gaps / WIP** *(see **NEXT UP** for current QA)*
+- **Post media (create-post)** — images/videos not reliably saved or shown on timeline/detail; debug `POST /api/posts` + `post_attachments` (documented in NEXT UP backlog).
+- **Content / polish** — test posts on live home feed; ongoing moderation and real content.
+- **Regression QA** — run **NEXT UP → Production QA** after each deploy.
 
 ## 📋 **NEXT PRIORITIES** (summary)
 
-> **Longer backlog** (notifications, etc.) is under **NEXT PRIORITIES (extended)** later in this file (~line 1115).
+**Canonical checklist:** use **NEXT UP — START HERE** at the top of this file first (deploy, QA, **post media WIP**).
 
-### **Immediate (Next 1-2 hours)**
-1. **Profile & avatar QA** — After deploy: profile page load, Cloudinary avatar display, Profile Settings save/remove photo, confirm error messages from API surface correctly (see **NEXT UP — START HERE** above).
-2. **Test user registration and login** - Verify authentication flow works end-to-end over HTTPS
-3. **Create initial content** - Add sample posts and communities to populate the site
-4. **Test core functionality** - Voting, commenting, post creation with SSL
-5. **Mobile responsiveness** - Ensure the Reddit-style design works on mobile devices
+> **Longer backlog** (notifications phases, tests, deployment checklists): **NEXT PRIORITIES (extended roadmap)** — search that heading in this file.
 
-### **Short Term (Next 1-2 days)**
-1. **Content Management** - Add more medical specialty communities
-2. **User Experience** - Improve navigation and user flows
-3. **Performance** - Optimize loading times and responsiveness
-4. **Error Handling** - Add better error messages and loading states
+### **Immediate** *(supplement — confirm on live site; may overlap completed work elsewhere)*
+1. **Post media** — same as **NEXT UP → Production QA item 3** and backlog **Post media save/display regression (WIP)**.
+2. **Profile & avatar QA** — profile load, Cloudinary avatar, Profile Settings save/remove photo; errors should surface via `apiErrorMessage`-style responses.
+3. **Auth smoke test** — registration + login over HTTPS after deploy.
+4. **Core flows** — voting, commenting, text post creation; SSL/proxy sanity.
 
-### **Medium Term (Next week)**
-1. **Advanced Features** - Search functionality, user profiles, messaging
-2. **Medical Tools Database** - Implement the tools catalog
-3. **Professional Networking** - User connections and following
-4. **Content Moderation** - Admin tools and moderation features
+### **Short term**
+1. **Content** — remove/hide obvious test posts on home; add real specialty content as needed.
+2. **UX / performance** — navigation polish, perceived load time, clearer empty/loading states.
+3. **Admin hardening** — reporting/triage, optional admin post search, session edge-case tests (see backlog in NEXT UP).
+
+### **Medium term**
+1. **Search & discovery** — improve search UX and results quality.
+2. **Medical tools catalog** — if still a product goal, spec + API + UI.
+3. **Networking / moderation** — follows, notifications expansion, moderator workflows beyond current menus.
 
 ## 🏥 **KEY FEATURES IMPLEMENTED**
 
@@ -1085,11 +1123,13 @@ The platform focuses on:
 **Note**: For detailed changelog of all completed work, see `CHANGELOG.md`.
 
 ### 🔍 **Resolved Issues** (See CHANGELOG.md for details)
-All previously identified issues have been resolved:
+**Note:** This list is **historical**. Active regressions live under **NEXT UP** (e.g. **post media WIP**).
+
+Issues that were resolved at the time:
 - ✅ Backend Health Check - Fixed (December 7, 2025)
 - ✅ Cloudinary Configuration - Fixed (December 7, 2025)
 - ✅ Share Button - Fixed (December 8, 2025)
-- ✅ Create Post Upload Area - Fixed (December 8, 2025)
+- ✅ Create Post Upload Area - Fixed (December 8, 2025) — *UI/click target; separate from current **post image save/display** regression*
 - ✅ Formatting Icons - Fixed (December 8, 2025)
 - ✅ WYSIWYG Editor - Implemented (December 8, 2025)
 - ✅ Medical Tools Sidebar - Removed (December 8, 2025)
@@ -1098,10 +1138,10 @@ All previously identified issues have been resolved:
 ## 🚀 **CURRENT SYSTEM STATUS**
 
 **Live Site**: https://orthoandspinetools.com  
-**Database**: 34 posts, 4 users, 9 communities, operational  
-**Status**: 🚀 **FULLY OPERATIONAL**  
-**Last Major Update**: December 8, 2025 - Mobile optimization complete, share button fixed, WYSIWYG editor implemented  
-**Last Review**: December 8, 2025 - All pages mobile-optimized, responsive design implemented, share functionality working
+**Database**: 34 posts, 4 users, 9 communities, operational *(counts approximate — verify in admin/DB if needed)*  
+**Status**: **Operational with known WIP** — **create-post image/video** save or timeline display not fully verified fixed (see **NEXT UP**).  
+**Last Major Update**: Mar 2026 — notifications v1, home feed = all communities, create-post typing fixes, post media hardening attempts (ongoing).  
+**Last Review**: Mar 29, 2026 — TODO.md cleanup; align status with active WIP.
 
 ### **🖥️ SERVER UPDATES STATUS** ✅ **CURRENT (December 2025)**
 - ✅ **Docker**: 29.1.2 (upgraded from 28.4.0 on December 7, 2025)
@@ -1113,12 +1153,12 @@ All previously identified issues have been resolved:
 - **Note**: Use `docker compose` (without hyphen) for all commands going forward
 - **See**: `SERVER_UPDATES_EVALUATION.md` for detailed evaluation
 
-## 📋 **NEXT PRIORITIES** (extended)
+## 📋 **NEXT PRIORITIES (extended roadmap)**
 
 **Archive — completed work (high level):**
 - ✅ **Tags** (Dec 2025) — Community tags, CreatePost, PostCard/PostDetail; routes on `communities` router.
 - ✅ **Share button** (Dec 2025) — `ShareButton.tsx` positioning / z-index / click-outside.
-- ✅ **Verified physician** (Mar 2026) — `isVerifiedPhysician` on post + comment author selects (`posts.ts`, `comments.ts`); admin user list includes flag; **Verify MD** / **Unverify MD** in `AdminDashboard`; **MD ✓** inline badge (`VerifiedPhysicianInline`) on Home, Popular, Profile, Community, Search, `PostCard`, PostDetail; `PUT /api/auth/verify/:userId` unchanged.
+- ✅ **Verified physician** (Mar 2026) — `isVerifiedPhysician` on post + comment author selects (`posts.ts`, `comments.ts`); admin user list includes flag; **Verify Physician** / **Unverify Physician** in `AdminDashboard`; **Physician ✓** inline badge (`VerifiedPhysicianInline`) on Home, Popular, Profile, Community, Search, `PostCard`, PostDetail; `PUT /api/auth/verify/:userId` unchanged.
 
 **Optional later:** Profile-page verify controls for admins; moderator-only verify (currently admin-only API).
 

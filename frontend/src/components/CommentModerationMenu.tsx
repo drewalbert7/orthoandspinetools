@@ -54,11 +54,10 @@ const CommentModerationMenu: React.FC<CommentModerationMenuProps> = ({
     },
   });
 
-  // Check if user can moderate this comment
   const canModerate = React.useMemo(() => {
-    if (!user || !permissions) return false;
-    
-    // Admin can moderate everything
+    if (!user) return false;
+    if (user.isAdmin) return true;
+    if (!permissions) return false;
     if (permissions.isAdmin) return true;
     
     // Check if user is moderator of this community

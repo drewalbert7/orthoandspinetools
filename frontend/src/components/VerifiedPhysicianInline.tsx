@@ -6,7 +6,7 @@ const VerifiedPhysicianInline: React.FC<{ className?: string }> = ({ className =
     className={`ml-1 inline-flex items-center px-1 py-0.5 rounded text-[10px] font-medium bg-blue-100 text-blue-800 border border-blue-200 ${className}`}
     title="Verified physician"
   >
-    MD ✓
+    Physician ✓
   </span>
 );
 

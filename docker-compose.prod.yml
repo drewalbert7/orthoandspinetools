@@ -58,8 +58,8 @@ services:
       context: ./frontend
       dockerfile: Dockerfile
       args:
-        # Must match how users reach the site (apex vs www). Baked in at `npm run build`.
-        VITE_API_URL: ${VITE_API_URL:-https://orthoandspinetools.com/api}
+        # Same-origin /api (proxied by nginx to backend). Override only if API is on another host.
+        VITE_API_URL: ${VITE_API_URL:-/api}
     container_name: orthoandspinetools-frontend
     depends_on:
       backend:

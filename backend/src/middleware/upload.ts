@@ -47,7 +47,9 @@ const ALLOWED_MIME_TYPES = {
     'image/jpg', 
     'image/png',
     'image/gif',
-    'image/webp'
+    'image/webp',
+    'image/heic',
+    'image/heif',
   ],
   videos: [
     'video/mp4',
@@ -58,7 +60,7 @@ const ALLOWED_MIME_TYPES = {
 
 // Allowed file extensions (must match MIME types)
 const ALLOWED_EXTENSIONS = {
-  images: ['.jpg', '.jpeg', '.png', '.gif', '.webp'],
+  images: ['.jpg', '.jpeg', '.png', '.gif', '.webp', '.heic', '.heif'],
   videos: ['.mp4', '.webm', '.mov']
 };
 

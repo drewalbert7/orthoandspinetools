@@ -242,3 +242,8 @@ export const getThumbnailUrl = (publicId: string, size: number = 300): string =>
     format: 'auto'
   });
 };
+
+/** Safe for public `/upload/status` — boolean only, no credentials. */
+export function isCloudinaryMediaReady(): boolean {
+  return isCloudinaryConfigured();
+}

@@ -9,7 +9,7 @@ const api = axios.create({
 });
 
 /** Backend errorHandler sends `{ error: string }`; some routes use `message`. */
-function apiErrorMessage(error: unknown, fallback: string): string {
+export function apiErrorMessage(error: unknown, fallback: string): string {
   const err = error as {
     response?: { data?: { message?: string; error?: string } };
     message?: string;
@@ -653,8 +653,8 @@ class ApiService {
         width: item.width,
         height: item.height,
       }));
-    } catch (error: any) {
-      throw new Error(error.response?.data?.message || 'Failed to upload images');
+    } catch (error: unknown) {
+      throw new Error(apiErrorMessage(error, 'Failed to upload images'));
     }
   }
 
@@ -689,9 +689,22 @@ class ApiService {
         width: item.width,
         height: item.height,
       }));
-    } catch (error: any) {
-      throw new Error(error.response?.data?.message || 'Failed to upload videos');
+    } catch (error: unknown) {
+      throw new Error(apiErrorMessage(error, 'Failed to upload videos'));
     }
+  }
+
+  /** Public readiness for post media (no secrets). */
+  async getUploadStatus(): Promise<{
+    cloudinaryConfigured: boolean;
+    limits: { imageMb: number; videoMb: number };
+  }> {
+    const response = await api.get('/upload/status');
+    const data = response.data?.data;
+    if (!data || typeof data.cloudinaryConfigured !== 'boolean') {
+      throw new Error('Invalid upload status response');
+    }
+    return data;
   }
 
   async uploadAvatar(file: File): Promise<{ path: string; filename: string; originalName: string; size: number; mimetype: string; width: number; height: number }> {

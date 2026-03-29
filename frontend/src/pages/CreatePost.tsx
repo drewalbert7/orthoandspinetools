@@ -23,7 +23,7 @@ import React, { useState, useEffect, useLayoutEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { apiService, Community, CommunityTag } from '../services/apiService';
+import { apiService, apiErrorMessage, Community, CommunityTag } from '../services/apiService';
 import { useAuth } from '../contexts/AuthContext';
 import toast from 'react-hot-toast';
 import MarkdownEditor, { MarkdownEditorHandle } from '../components/MarkdownEditor';
@@ -91,6 +91,13 @@ const CreatePost: React.FC = () => {
     // Tags are optional, so errors are handled gracefully by React Query
   });
 
+  const { data: uploadStatus } = useQuery({
+    queryKey: ['uploadStatus'],
+    queryFn: () => apiService.getUploadStatus(),
+    staleTime: 10 * 60 * 1000,
+    retry: 1,
+  });
+
   // Reset selected tags when community changes
   useEffect(() => {
     setSelectedTags([]);
@@ -143,6 +150,10 @@ const CreatePost: React.FC = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!title.trim() || !selectedCommunity) return;
+    if (postType === 'images' && uploadedMedia.length === 0) {
+      toast.error('Add at least one image or video before posting.');
+      return;
+    }
 
     setIsSubmitting(true);
     setError('');
@@ -195,8 +206,8 @@ const CreatePost: React.FC = () => {
       await queryClient.invalidateQueries({ queryKey: ['feed'] });
       toast.success('Post created successfully!');
       navigate('/');
-    } catch (error: any) {
-      const errorMessage = error.message || 'Failed to create post';
+    } catch (error: unknown) {
+      const errorMessage = apiErrorMessage(error, 'Failed to create post');
       setError(errorMessage);
       toast.error(errorMessage);
     } finally {
@@ -261,9 +272,9 @@ const CreatePost: React.FC = () => {
       }
 
       setUploadedMedia(prev => [...prev, ...uploadedFiles]);
-    } catch (error) {
+    } catch (error: unknown) {
       console.error('Error uploading media:', error);
-      alert('Failed to upload media. Please try again.');
+      toast.error(apiErrorMessage(error, 'Failed to upload media. Please try again.'));
     } finally {
       setIsUploading(false);
     }
@@ -355,7 +366,12 @@ const CreatePost: React.FC = () => {
     }
   };
 
-  const isPostDisabled = !title.trim() || !selectedCommunity;
+  const imagesTabNeedsMedia = postType === 'images' && uploadedMedia.length === 0;
+  const isPostDisabled =
+    !title.trim() ||
+    !selectedCommunity ||
+    imagesTabNeedsMedia ||
+    (postType === 'images' && isUploading);
 
 
   return (
@@ -373,6 +389,13 @@ const CreatePost: React.FC = () => {
         {error && (
           <div className="mb-4 sm:mb-6 bg-red-50 border border-red-200 text-red-700 px-3 sm:px-4 py-2 sm:py-3 rounded-md text-sm sm:text-base">
             {error}
+          </div>
+        )}
+
+        {uploadStatus && uploadStatus.cloudinaryConfigured === false && (
+          <div className="mb-4 sm:mb-6 bg-amber-50 border border-amber-200 text-amber-900 px-3 sm:px-4 py-2 sm:py-3 rounded-md text-sm">
+            Post image and video uploads require Cloudinary to be configured on the server. Text posts still work. Ask an admin to set{' '}
+            <code className="text-xs bg-amber-100 px-1 rounded">CLOUDINARY_*</code> env vars and redeploy the backend.
           </div>
         )}
 
@@ -757,14 +780,16 @@ const CreatePost: React.FC = () => {
                     <path d="M28 8H12a4 4 0 00-4 4v20m32-12v8m0 0v8a4 4 0 01-4 4H12a4 4 0 01-4-4v-4m32-4l-3.172-3.172a4 4 0 00-5.656 0L28 28M8 32l9.172-9.172a4 4 0 015.656 0L28 28m0 0l4 4m4-24h8m-4-4v8m-12 4h.02" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
                   </svg>
                   <p className="mt-2 text-xs sm:text-sm text-gray-600">Drag and Drop or click to upload media</p>
-                  <p className="mt-1 text-xs text-gray-500">Images and videos supported</p>
+                  <p className="mt-1 text-xs text-gray-500">
+                    JPEG, PNG, GIF, WebP, HEIC · MP4, WebM, MOV · up to {uploadStatus?.limits.imageMb ?? 20} MB per image (server limit)
+                  </p>
                   <input
                     type="file"
                     accept="image/*,video/*"
                     multiple
                     onChange={handleMediaUpload}
-                    disabled={isUploading}
-                    className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
+                    disabled={isUploading || uploadStatus?.cloudinaryConfigured === false}
+                    className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10 disabled:cursor-not-allowed"
                   />
                   {isUploading && (
                     <div className="mt-4 flex items-center justify-center">

@@ -2,61 +2,106 @@ import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '../contexts/AuthContext';
 import { apiService } from '../services/apiService';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import toast from 'react-hot-toast';
 
 type TabType = 'users' | 'moderation' | 'communities' | 'analytics';
 
 const AdminDashboard: React.FC = () => {
   const { user: currentUser } = useAuth();
-  const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [activeTab, setActiveTab] = useState<TabType>('users');
   const [searchTerm, setSearchTerm] = useState('');
   const [page, setPage] = useState(1);
 
-  // Check if user is admin
-  const { data: permissions } = useQuery({
+  const { data: permissions, isFetched, isError } = useQuery({
     queryKey: ['moderation-permissions'],
     queryFn: () => apiService.getModerationPermissions(),
     enabled: !!currentUser,
+    retry: 1,
   });
 
-  React.useEffect(() => {
-    if (permissions && !permissions.isAdmin) {
-      toast.error('Access denied. Admin privileges required.');
-      navigate('/');
-    }
-  }, [permissions, navigate]);
+  const isAdminUser = !!(currentUser?.isAdmin || permissions?.isAdmin);
 
-  // Fetch users
   const { data: usersData, isLoading: usersLoading } = useQuery({
     queryKey: ['admin-users', page, searchTerm],
     queryFn: () => apiService.getModerationUsers(page, 20, searchTerm || undefined),
-    enabled: activeTab === 'users' && !!permissions?.isAdmin,
+    enabled: activeTab === 'users' && isAdminUser,
   });
 
   const [moderationType, setModerationType] = useState<'post' | 'comment'>('post');
 
-  // Fetch moderation queue
   const { data: moderationData, isLoading: moderationLoading } = useQuery({
     queryKey: ['moderation-queue', moderationType, page],
     queryFn: () => apiService.getModerationQueue(moderationType, page, 20),
-    enabled: activeTab === 'moderation' && !!permissions?.isAdmin,
+    enabled: activeTab === 'moderation' && isAdminUser,
   });
 
-  // Fetch communities for admin
   const { data: communitiesData, isLoading: communitiesLoading } = useQuery({
     queryKey: ['admin-communities'],
     queryFn: () => apiService.getCommunities(),
-    enabled: activeTab === 'communities' && !!permissions?.isAdmin,
+    enabled: activeTab === 'communities' && isAdminUser,
   });
 
-  // Fetch analytics
   const { data: statsData, isLoading: statsLoading } = useQuery({
     queryKey: ['admin-stats'],
     queryFn: () => apiService.getAdminStats(),
-    enabled: activeTab === 'analytics' && !!permissions?.isAdmin,
+    enabled: activeTab === 'analytics' && isAdminUser,
+  });
+
+  const invalidateContentCaches = () => {
+    queryClient.invalidateQueries({ queryKey: ['moderation-queue'] });
+    queryClient.invalidateQueries({ queryKey: ['posts'] });
+    queryClient.invalidateQueries({ queryKey: ['post'] });
+    queryClient.invalidateQueries({ queryKey: ['feed'] });
+    queryClient.invalidateQueries({ queryKey: ['search-posts'] });
+    queryClient.invalidateQueries({ queryKey: ['admin-stats'] });
+  };
+
+  const adminDeletePostMutation = useMutation({
+    mutationFn: (postId: string) => apiService.deletePost(postId),
+    onSuccess: () => {
+      invalidateContentCaches();
+      toast.success('Post deleted');
+    },
+    onError: (error: any) => {
+      toast.error(error.message || 'Failed to delete post');
+    },
+  });
+
+  const adminLockPostMutation = useMutation({
+    mutationFn: ({ postId, locked }: { postId: string; locked: boolean }) =>
+      apiService.lockPost(postId, locked),
+    onSuccess: (_data, { locked }) => {
+      invalidateContentCaches();
+      toast.success(locked ? 'Post locked' : 'Post unlocked');
+    },
+    onError: (error: any) => {
+      toast.error(error.message || 'Failed to lock/unlock post');
+    },
+  });
+
+  const adminPinPostMutation = useMutation({
+    mutationFn: ({ postId, pinned }: { postId: string; pinned: boolean }) =>
+      apiService.pinPost(postId, pinned),
+    onSuccess: (_data, { pinned }) => {
+      invalidateContentCaches();
+      toast.success(pinned ? 'Post pinned' : 'Post unpinned');
+    },
+    onError: (error: any) => {
+      toast.error(error.message || 'Failed to pin/unpin post');
+    },
+  });
+
+  const adminDeleteCommentMutation = useMutation({
+    mutationFn: (commentId: string) => apiService.deleteComment(commentId),
+    onSuccess: () => {
+      invalidateContentCaches();
+      toast.success('Comment deleted');
+    },
+    onError: (error: any) => {
+      toast.error(error.message || 'Failed to delete comment');
+    },
   });
 
   // Ban/Unban user mutation
@@ -114,7 +159,17 @@ const AdminDashboard: React.FC = () => {
     );
   }
 
-  if (!permissions?.isAdmin) {
+  if (!isAdminUser) {
+    if (!isFetched && !isError && !currentUser.isAdmin) {
+      return (
+        <div className="max-w-6xl mx-auto">
+          <div className="text-center py-12">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto" />
+            <p className="mt-4 text-gray-600">Checking access…</p>
+          </div>
+        </div>
+      );
+    }
     return (
       <div className="max-w-6xl mx-auto">
         <div className="text-center py-12">
@@ -140,7 +195,7 @@ const AdminDashboard: React.FC = () => {
         <div className="flex border-b border-gray-200">
           {[
             { id: 'users', label: 'Users', icon: '👥' },
-            { id: 'moderation', label: 'Moderation Queue', icon: '🔍' },
+            { id: 'moderation', label: 'Recent content', icon: '🔍' },
             { id: 'communities', label: 'Communities', icon: '🏥' },
             { id: 'analytics', label: 'Analytics', icon: '📊' },
           ].map((tab) => (
@@ -328,7 +383,7 @@ const AdminDashboard: React.FC = () => {
                                     : 'text-blue-600 hover:text-blue-900'
                                 } disabled:opacity-50`}
                               >
-                                {user.isVerifiedPhysician ? 'Unverify MD' : 'Verify MD'}
+                                {user.isVerifiedPhysician ? 'Unverify Physician' : 'Verify Physician'}
                               </button>
                             </td>
                           </tr>
@@ -372,6 +427,9 @@ const AdminDashboard: React.FC = () => {
 
           {activeTab === 'moderation' && (
             <div>
+              <p className="text-sm text-gray-600 mb-4">
+                Latest posts and comments site-wide. This is not a reported-items queue; use actions below or open the thread for full context.
+              </p>
               <div className="mb-4 flex gap-2">
                 <button
                   onClick={() => { setModerationType('post'); setPage(1); }}
@@ -393,58 +451,135 @@ const AdminDashboard: React.FC = () => {
               {moderationLoading ? (
                 <div className="text-center py-8">
                   <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
-                  <p className="mt-4 text-gray-600">Loading moderation queue...</p>
+                  <p className="mt-4 text-gray-600">Loading recent content…</p>
                 </div>
               ) : moderationData?.items && moderationData.items.length > 0 ? (
                 <div className="space-y-4">
                   {moderationType === 'post'
-                    ? moderationData.items.map((post: any) => (
+                    ? moderationData.items.map((post: any) => {
+                        const isLocked = Boolean(post.isLocked);
+                        const isPinned = Boolean(post.isPinned);
+                        const busyPost =
+                          (adminDeletePostMutation.isPending && adminDeletePostMutation.variables === post.id) ||
+                          (adminLockPostMutation.isPending && adminLockPostMutation.variables?.postId === post.id) ||
+                          (adminPinPostMutation.isPending && adminPinPostMutation.variables?.postId === post.id);
+                        return (
                         <div key={post.id} className="border border-gray-200 rounded-md p-4">
-                          <div className="flex items-start justify-between">
-                            <div className="flex-1">
+                          <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
+                            <div className="flex-1 min-w-0">
                               <Link
                                 to={`/post/${post.id}`}
-                                className="text-lg font-medium text-gray-900 hover:text-blue-600"
+                                className="text-lg font-medium text-gray-900 hover:text-blue-600 break-words"
                               >
                                 {post.title}
                               </Link>
                               <p className="text-sm text-gray-600 mt-1">
                                 by u/{post.author?.username} in o/{post.community?.name}
+                                {isLocked && <span className="ml-2 text-amber-700">Locked</span>}
+                                {isPinned && <span className="ml-2 text-blue-700">Pinned</span>}
                               </p>
                               <p className="text-sm text-gray-500 mt-2">
                                 {post._count?.comments || 0} comments • {post._count?.votes || 0} votes
                               </p>
                             </div>
-                            <Link
-                              to={`/post/${post.id}`}
-                              className="px-3 py-1 bg-blue-600 text-white rounded-md text-sm hover:bg-blue-700"
-                            >
-                              Review
-                            </Link>
+                            <div className="flex flex-wrap items-center gap-2 shrink-0">
+                              <Link
+                                to={`/post/${post.id}`}
+                                className="px-3 py-1.5 bg-blue-600 text-white rounded-md text-sm hover:bg-blue-700"
+                              >
+                                Open
+                              </Link>
+                              <button
+                                type="button"
+                                disabled={busyPost}
+                                onClick={() =>
+                                  adminLockPostMutation.mutate({ postId: post.id, locked: !isLocked })
+                                }
+                                className="px-3 py-1.5 border border-gray-300 rounded-md text-sm hover:bg-gray-50 disabled:opacity-50"
+                              >
+                                {isLocked ? 'Unlock' : 'Lock'}
+                              </button>
+                              <button
+                                type="button"
+                                disabled={busyPost}
+                                onClick={() =>
+                                  adminPinPostMutation.mutate({ postId: post.id, pinned: !isPinned })
+                                }
+                                className="px-3 py-1.5 border border-gray-300 rounded-md text-sm hover:bg-gray-50 disabled:opacity-50"
+                              >
+                                {isPinned ? 'Unpin' : 'Pin'}
+                              </button>
+                              <button
+                                type="button"
+                                disabled={busyPost}
+                                onClick={() => {
+                                  if (
+                                    window.confirm(
+                                      'Delete this post? This cannot be undone.'
+                                    )
+                                  ) {
+                                    adminDeletePostMutation.mutate(post.id);
+                                  }
+                                }}
+                                className="px-3 py-1.5 border border-red-200 text-red-700 rounded-md text-sm hover:bg-red-50 disabled:opacity-50"
+                              >
+                                Delete
+                              </button>
+                            </div>
                           </div>
                         </div>
-                      ))
-                    : moderationData.items.map((comment: any) => (
+                      );
+                      })
+                    : moderationData.items.map((comment: any) => {
+                        const busyComment =
+                          adminDeleteCommentMutation.isPending &&
+                          adminDeleteCommentMutation.variables === comment.id;
+                        return (
                         <div key={comment.id} className="border border-gray-200 rounded-md p-4">
-                          <div className="flex items-start justify-between">
-                            <div className="flex-1">
-                              <p className="text-sm text-gray-900 line-clamp-2">{comment.content}</p>
+                          <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
+                            <div className="flex-1 min-w-0">
+                              <p className="text-sm text-gray-900 line-clamp-3 break-words">{comment.content}</p>
                               <p className="text-sm text-gray-600 mt-1">
-                                by u/{comment.author?.username} on post: {comment.post?.title}
+                                by u/{comment.author?.username} on{' '}
+                                <Link
+                                  to={`/post/${comment.post?.id}`}
+                                  className="text-blue-600 hover:text-blue-800"
+                                >
+                                  {comment.post?.title || 'post'}
+                                </Link>
                               </p>
                               <p className="text-sm text-gray-500 mt-2">
                                 {comment._count?.replies || 0} replies • {comment._count?.votes || 0} votes
                               </p>
                             </div>
-                            <Link
-                              to={`/post/${comment.post?.id}`}
-                              className="px-3 py-1 bg-blue-600 text-white rounded-md text-sm hover:bg-blue-700"
-                            >
-                              Review
-                            </Link>
+                            <div className="flex flex-wrap items-center gap-2 shrink-0">
+                              <Link
+                                to={`/post/${comment.post?.id}`}
+                                className="px-3 py-1.5 bg-blue-600 text-white rounded-md text-sm hover:bg-blue-700"
+                              >
+                                Open thread
+                              </Link>
+                              <button
+                                type="button"
+                                disabled={busyComment}
+                                onClick={() => {
+                                  if (
+                                    window.confirm(
+                                      'Delete this comment? This cannot be undone.'
+                                    )
+                                  ) {
+                                    adminDeleteCommentMutation.mutate(comment.id);
+                                  }
+                                }}
+                                className="px-3 py-1.5 border border-red-200 text-red-700 rounded-md text-sm hover:bg-red-50 disabled:opacity-50"
+                              >
+                                Delete
+                              </button>
+                            </div>
                           </div>
                         </div>
-                      ))}
+                      );
+                      })}
                   {moderationData.pagination && moderationData.pagination.pages > 1 && (
                     <div className="mt-4 flex items-center justify-between">
                       <span className="text-sm text-gray-500">
@@ -471,7 +606,7 @@ const AdminDashboard: React.FC = () => {
                 </div>
               ) : (
                 <div className="text-center py-8 text-gray-500">
-                  <p>No items in moderation queue</p>
+                  <p>No items to show</p>
                 </div>
               )}
             </div>

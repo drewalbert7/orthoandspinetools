@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'https://orthoandspinetools.com/api';
+const API_BASE_URL = import.meta.env.VITE_API_URL || '/api';
 
 // No default Content-Type — JSON default breaks multipart (same as apiService).
 const api = axios.create({

@@ -5,7 +5,7 @@ import { prisma } from '../lib/prisma';
 import { logger } from '../utils/logger';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
-import { body, param, validationResult } from 'express-validator';
+import { body, param, query, validationResult } from 'express-validator';
 
 const router = Router();
 
@@ -467,106 +467,155 @@ router.put('/change-password', authenticate, [
   });
 }));
 
-// Get user profile with posts and communities
-router.get('/profile', authenticate, asyncHandler(async (req: AuthRequest, res: Response) => {
-  const user = await prisma.user.findUnique({
-    where: { id: req.user!.id },
+const profilePostCommentInclude = {
+  posts: {
+    orderBy: { createdAt: 'desc' as const },
+    where: { isDeleted: false },
     include: {
-      posts: {
-        take: 50, // Increased limit for profile page
-        orderBy: { createdAt: 'desc' },
-        where: {
-          isDeleted: false,
+      community: {
+        select: {
+          id: true,
+          name: true,
+          slug: true,
+          profileImage: true,
         },
-        include: {
+      },
+      votes: {
+        select: {
+          id: true,
+          type: true,
+          userId: true,
+        },
+      },
+      attachments: true,
+      _count: {
+        select: {
+          comments: true,
+          votes: true,
+        },
+      },
+    },
+  },
+  comments: {
+    orderBy: { createdAt: 'desc' as const },
+    where: { isDeleted: false },
+    include: {
+      post: {
+        select: {
+          id: true,
+          title: true,
           community: {
             select: {
               id: true,
               name: true,
               slug: true,
-              profileImage: true,
-            }
+            },
           },
-          votes: {
-            select: {
-              id: true,
-              type: true,
-              userId: true,
-            }
-          },
-          attachments: true,
-          _count: {
-            select: {
-              comments: true,
-              votes: true,
-            }
-          }
-        }
+        },
       },
-      communities: {
+      votes: {
         select: {
           id: true,
-          name: true,
-          slug: true,
-          description: true,
-        }
-      },
-      comments: {
-        take: 50, // Get user's comments
-        orderBy: { createdAt: 'desc' },
-        where: {
-          isDeleted: false,
+          type: true,
+          userId: true,
         },
-        include: {
-          post: {
-            select: {
-              id: true,
-              title: true,
-              community: {
-                select: {
-                  id: true,
-                  name: true,
-                  slug: true,
-                }
-              }
-            }
-          },
-          votes: {
-            select: {
-              id: true,
-              type: true,
-              userId: true,
-            }
-          },
-          _count: {
-            select: {
-              replies: true,
-              votes: true,
-            }
-          }
-        }
       },
       _count: {
         select: {
-          posts: true,
-          comments: true,
-        }
-      }
+          replies: true,
+          votes: true,
+        },
+      },
+    },
+  },
+};
+
+// Get user profile with posts and communities
+router.get(
+  '/profile',
+  authenticate,
+  [
+    query('postsPage').optional().isInt({ min: 1 }).withMessage('postsPage must be >= 1'),
+    query('postsLimit').optional().isInt({ min: 1, max: 50 }).withMessage('postsLimit must be 1-50'),
+    query('commentsPage').optional().isInt({ min: 1 }).withMessage('commentsPage must be >= 1'),
+    query('commentsLimit').optional().isInt({ min: 0, max: 50 }).withMessage('commentsLimit must be 0-50'),
+  ],
+  asyncHandler(async (req: AuthRequest, res: Response) => {
+    const val = validationResult(req);
+    if (!val.isEmpty()) {
+      throw new AppError(val.array().map((e) => e.msg).join(', '), 400);
     }
-  });
 
-  if (!user) {
-    throw new AppError('User not found', 404);
-  }
+    const postsPage = Math.max(1, parseInt(String(req.query.postsPage || '1'), 10) || 1);
+    const postsLimit = Math.min(50, Math.max(1, parseInt(String(req.query.postsLimit || '50'), 10) || 50));
+    const postsSkip = (postsPage - 1) * postsLimit;
 
-  // Get real karma data from UserKarma table
-  const userKarma = await prisma.userKarma.findUnique({
-    where: { userId: user.id }
-  });
+    const commentsPage = Math.max(1, parseInt(String(req.query.commentsPage || '1'), 10) || 1);
+    const commentsLimitRaw = parseInt(String(req.query.commentsLimit ?? '50'), 10);
+    const commentsLimit = Number.isFinite(commentsLimitRaw)
+      ? Math.min(50, Math.max(0, commentsLimitRaw))
+      : 50;
+    const commentsSkip = (commentsPage - 1) * commentsLimit;
 
-  const karma = userKarma?.totalKarma || 0;
+    const omitComments =
+      req.query.omitComments === '1' ||
+      req.query.omitComments === 'true' ||
+      commentsLimit === 0;
 
-  res.json({
+    const [postsTotal, commentsTotal] = await Promise.all([
+      prisma.post.count({ where: { authorId: req.user!.id, isDeleted: false } }),
+      prisma.comment.count({ where: { authorId: req.user!.id, isDeleted: false } }),
+    ]);
+
+    const user = await prisma.user.findUnique({
+      where: { id: req.user!.id },
+      include: {
+        posts: {
+          ...profilePostCommentInclude.posts,
+          skip: postsSkip,
+          take: postsLimit,
+        },
+        communities: {
+          select: {
+            id: true,
+            name: true,
+            slug: true,
+            description: true,
+            profileImage: true,
+            _count: {
+              select: { members: true },
+            },
+          },
+        },
+        ...(omitComments
+          ? {}
+          : {
+              comments: {
+                ...profilePostCommentInclude.comments,
+                skip: commentsSkip,
+                take: commentsLimit,
+              },
+            }),
+      },
+    });
+
+    if (!user) {
+      throw new AppError('User not found', 404);
+    }
+
+    const userKarma = await prisma.userKarma.findUnique({
+      where: { userId: user.id },
+    });
+
+    const karma = userKarma?.totalKarma || 0;
+    const postsRows = ((user as any).posts as any[]) || [];
+    const commentsRows = ((user as any).comments as any[]) || [];
+
+    const postsHasMore = postsSkip + postsRows.length < postsTotal;
+    const commentsHasMore =
+      !omitComments && commentsLimit > 0 && commentsSkip + commentsRows.length < commentsTotal;
+
+    res.json({
     success: true,
     data: {
       user: {
@@ -595,11 +644,11 @@ router.get('/profile', authenticate, asyncHandler(async (req: AuthRequest, res: 
         commentKarma: userKarma?.commentKarma || 0,
         awardKarma: userKarma?.awardKarma || 0,
         totalKarma: karma,
-        postsCount: (user as any)._count?.posts || 0,
-        commentsCount: (user as any)._count?.comments || 0,
+        postsCount: postsTotal,
+        commentsCount: commentsTotal,
         communitiesCount: ((user as any).communities as any[])?.length || 0,
       },
-      posts: (((user as any).posts as any[]) || []).map((post: any) => {
+      posts: postsRows.map((post: any) => {
         const postVotes = Array.isArray(post.votes) ? post.votes : [];
         const userVote = postVotes.find((v: any) => v.userId === user.id);
         const community = post.community ?? {
@@ -648,10 +697,14 @@ router.get('/profile', authenticate, asyncHandler(async (req: AuthRequest, res: 
         };
       }),
       communities: ((user as any).communities as any[]).map((community: any) => ({
-        ...community,
-        memberCount: 0, // We'll calculate this separately if needed
+        id: community.id,
+        name: community.name,
+        slug: community.slug,
+        description: community.description,
+        profileImage: community.profileImage,
+        memberCount: community._count?.members ?? 0,
       })),
-      comments: (((user as any).comments as any[]) || []).map((comment: any) => {
+      comments: commentsRows.map((comment: any) => {
         const commentVotes = Array.isArray(comment.votes) ? comment.votes : [];
         const userVote = commentVotes.find((v: any) => v.userId === user.id);
         
@@ -697,7 +750,19 @@ router.get('/profile', authenticate, asyncHandler(async (req: AuthRequest, res: 
           replies: [] as any[],
         };
       }),
-    }
+      postsPagination: {
+        page: postsPage,
+        limit: postsLimit,
+        total: postsTotal,
+        hasMore: postsHasMore,
+      },
+      commentsPagination: {
+        page: commentsPage,
+        limit: commentsLimit,
+        total: commentsTotal,
+        hasMore: commentsHasMore,
+      },
+    },
   });
 }));
 
@@ -712,9 +777,13 @@ router.get('/communities', authenticate, asyncHandler(async (req: AuthRequest, r
           name: true,
           slug: true,
           description: true,
-        }
-      }
-    }
+          profileImage: true,
+          _count: {
+            select: { members: true },
+          },
+        },
+      },
+    },
   });
 
   if (!user) {
@@ -723,10 +792,14 @@ router.get('/communities', authenticate, asyncHandler(async (req: AuthRequest, r
 
   res.json({
     success: true,
-    data: user.communities.map(community => ({
-      ...community,
-      memberCount: 0, // We'll calculate this separately if needed
-    }))
+    data: user.communities.map((community) => ({
+      id: community.id,
+      name: community.name,
+      slug: community.slug,
+      description: community.description,
+      profileImage: community.profileImage,
+      memberCount: community._count?.members ?? 0,
+    })),
   });
 }));
 
