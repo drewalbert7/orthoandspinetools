@@ -1,11 +1,30 @@
 import { Response, NextFunction } from 'express';
 import { AuthRequest } from './auth';
 import { prisma } from '../lib/prisma';
+import { userCanCreateCommunity } from '../lib/communityPermissions';
 import { AppError } from './errorHandler';
 
 /**
  * Check if user is a global admin
  */
+export const requireCanCreateCommunity = async (req: AuthRequest, res: Response, next: NextFunction) => {
+  if (!req.user) {
+    return next(new AppError('Access denied. Authentication required.', 401));
+  }
+
+  const allowed = await userCanCreateCommunity(req.user.id);
+  if (!allowed) {
+    return next(
+      new AppError(
+        'Only site administrators and community moderators can create communities.',
+        403
+      )
+    );
+  }
+
+  next();
+};
+
 export const requireAdmin = async (req: AuthRequest, res: Response, next: NextFunction) => {
   if (!req.user) {
     return next(new AppError('Access denied. Authentication required.', 401));

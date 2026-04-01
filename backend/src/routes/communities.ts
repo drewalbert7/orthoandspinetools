@@ -2,7 +2,7 @@ import { Router, Request, Response } from 'express';
 import { asyncHandler, AppError } from '../middleware/errorHandler';
 import { trackCommunityVisitor } from '../middleware/visitorTracking';
 import { authenticate, AuthRequest } from '../middleware/auth';
-import { requireCommunityModerator } from '../middleware/authorization';
+import { requireCommunityModerator, requireCanCreateCommunity } from '../middleware/authorization';
 import { PrismaClient } from '@prisma/client';
 import { body, param, validationResult } from 'express-validator';
 
@@ -259,6 +259,138 @@ router.get('/', asyncHandler(async (_req: Request, res: Response) => {
     });
   }
 }));
+
+function slugifyFromName(name: string): string {
+  const s = name
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    .slice(0, 80);
+  return s || 'community';
+}
+
+async function uniqueCommunitySlug(base: string): Promise<string> {
+  let candidate = base;
+  let n = 2;
+  while (
+    await prisma.community.findUnique({
+      where: { slug: candidate },
+      select: { id: true },
+    })
+  ) {
+    const suffix = `-${n}`;
+    candidate = `${base.slice(0, Math.max(1, 80 - suffix.length))}${suffix}`;
+    n += 1;
+  }
+  return candidate;
+}
+
+router.post(
+  '/',
+  authenticate,
+  requireCanCreateCommunity,
+  [
+    body('name').trim().isLength({ min: 2, max: 80 }).withMessage('Name must be 2-80 characters'),
+    body('description')
+      .trim()
+      .isLength({ min: 10, max: 2000 })
+      .withMessage('Description must be 10-2000 characters'),
+    body('rules').optional().isString().isLength({ max: 10000 }),
+    body('slug')
+      .optional()
+      .trim()
+      .isLength({ min: 2, max: 80 })
+      .matches(/^[a-z0-9]+(?:-[a-z0-9]+)*$/)
+      .withMessage('Slug must use lowercase letters, numbers, and hyphens only'),
+  ],
+  asyncHandler(async (req: AuthRequest, res: Response) => {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      res.status(400).json({ errors: errors.array() });
+      return;
+    }
+
+    const name = String(req.body.name).trim();
+    const description = String(req.body.description).trim();
+    const rulesRaw = req.body.rules;
+    const rules =
+      typeof rulesRaw === 'string' && rulesRaw.trim() ? rulesRaw.trim() : null;
+    const slugInput = req.body.slug ? String(req.body.slug).trim() : '';
+
+    const nameTaken = await prisma.community.findUnique({
+      where: { name },
+      select: { id: true },
+    });
+    if (nameTaken) {
+      throw new AppError('A community with this name already exists', 400);
+    }
+
+    const baseSlug = slugInput || slugifyFromName(name);
+    if (slugInput) {
+      const slugExists = await prisma.community.findUnique({
+        where: { slug: baseSlug },
+        select: { id: true },
+      });
+      if (slugExists) {
+        throw new AppError('This URL slug is already taken', 400);
+      }
+    }
+
+    const finalSlug = slugInput ? baseSlug : await uniqueCommunitySlug(baseSlug);
+
+    const community = await prisma.community.create({
+      data: {
+        name,
+        slug: finalSlug,
+        description,
+        rules,
+        ownerId: req.user!.id,
+        members: { connect: { id: req.user!.id } },
+        moderators: {
+          create: {
+            userId: req.user!.id,
+            role: 'admin',
+          },
+        },
+      },
+      include: {
+        owner: {
+          select: {
+            id: true,
+            username: true,
+            firstName: true,
+            lastName: true,
+            specialty: true,
+          },
+        },
+        _count: {
+          select: {
+            members: true,
+            posts: true,
+          },
+        },
+      },
+    });
+
+    res.status(201).json({
+      success: true,
+      data: {
+        id: community.id,
+        name: community.name,
+        slug: community.slug,
+        description: community.description,
+        rules: community.rules,
+        ownerId: community.ownerId,
+        owner: community.owner,
+        memberCount: community._count.members,
+        postCount: community._count.posts,
+        createdAt: community.createdAt.toISOString(),
+        updatedAt: community.updatedAt.toISOString(),
+      },
+    });
+  })
+);
 
 // Tag routes must be defined BEFORE /:id route to avoid route conflicts
 // Get all tags for a community

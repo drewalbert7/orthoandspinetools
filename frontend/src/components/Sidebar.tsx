@@ -164,10 +164,19 @@ const Sidebar: React.FC<SidebarProps> = ({ isMobileOpen, onMobileClose }) => {
 
             {/* Communities Section */}
             <div className="mb-6">
-              <div className="mb-3">
+              <div className="mb-3 flex items-center justify-between gap-2">
                 <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wider">
                   Communities
                 </h3>
+                {(user?.isAdmin || user?.canCreateCommunity) && (
+                  <Link
+                    to="/create-community"
+                    onClick={onMobileClose}
+                    className="text-xs font-semibold text-blue-600 hover:text-blue-800 shrink-0"
+                  >
+                    + New
+                  </Link>
+                )}
               </div>
           <div className="space-y-1">
             {communitiesLoading ? (

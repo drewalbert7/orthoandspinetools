@@ -63,6 +63,8 @@ export interface User {
   firstName: string;
   lastName: string;
   isAdmin?: boolean;
+  /** True when the user may create new communities (site admin or existing community moderator/owner). */
+  canCreateCommunity?: boolean;
   specialty?: string;
   medicalLicense?: string;
   institution?: string;

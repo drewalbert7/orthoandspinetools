@@ -7,6 +7,7 @@ import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import { body, param, query, validationResult } from 'express-validator';
 import { enrichPostsPollData } from '../utils/postPoll';
+import { userCanCreateCommunity } from '../lib/communityPermissions';
 
 const router = Router();
 
@@ -222,13 +223,16 @@ router.post('/login', validateLogin, asyncHandler(async (req: Request, res: Resp
   // Remove password hash from response
   const { passwordHash, ...userWithoutPassword } = user;
 
+  const canCreateCommunity = await userCanCreateCommunity(user.id);
+
   res.json({
     success: true,
     message: 'Login successful',
     data: {
       user: {
         ...userWithoutPassword,
-        isAdmin: user.isAdmin || false
+        isAdmin: user.isAdmin || false,
+        canCreateCommunity,
       },
       token
     }
@@ -274,9 +278,14 @@ router.get('/me', authenticate, asyncHandler(async (req: AuthRequest, res: Respo
     throw new AppError('User not found', 404);
   }
 
+  const canCreateCommunity = await userCanCreateCommunity(user.id);
+
   res.json({
     success: true,
-    data: user
+    data: {
+      ...user,
+      canCreateCommunity,
+    },
   });
 }));
 

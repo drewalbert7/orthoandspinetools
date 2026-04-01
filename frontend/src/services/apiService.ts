@@ -570,6 +570,37 @@ class ApiService {
     }
   }
 
+  async createCommunity(body: {
+    name: string;
+    description: string;
+    rules?: string;
+    slug?: string;
+  }): Promise<{
+    id: string;
+    name: string;
+    slug: string;
+    description: string;
+    rules: string | null;
+    ownerId: string;
+    memberCount: number;
+    postCount: number;
+    createdAt: string;
+    updatedAt: string;
+  }> {
+    try {
+      const response = await api.post('/communities', body);
+      return response.data.data;
+    } catch (error: any) {
+      const msg =
+        error.response?.data?.message ||
+        error.response?.data?.error ||
+        (Array.isArray(error.response?.data?.errors) &&
+          error.response.data.errors.map((e: { msg?: string }) => e.msg).filter(Boolean).join(', ')) ||
+        'Failed to create community';
+      throw new Error(msg);
+    }
+  }
+
   async getCommunity(id: string): Promise<Community> {
     try {
       const response = await api.get(`/communities/${id}`);
