@@ -21,7 +21,7 @@ import notificationRoutes from './routes/notifications';
 
 // Import middleware
 import { errorHandler } from './middleware/errorHandler';
-import { securityHeaders, apiRateLimit, sanitizeInput, validateUploadSecurity } from './middleware/security';
+import { securityHeaders, sanitizeInput, validateUploadSecurity } from './middleware/security';
 import { logger } from './utils/logger';
 import { prisma } from './lib/prisma';
 
@@ -53,7 +53,6 @@ app.use(helmet({
 // Enhanced security middleware
 app.use(securityHeaders);
 app.use(sanitizeInput);
-app.use(apiRateLimit(100, 15 * 60 * 1000)); // 100 requests per 15 minutes
 
 // CORS configuration
 const allowedOrigins = (process.env.CORS_ORIGINS?.split(',').map(o => o.trim()).filter(Boolean)) || [
@@ -76,13 +75,14 @@ app.use(cors({
   credentials: true,
 }));
 
-// Rate limiting
+// Rate limiting (single global limiter; a second in-memory limiter was removed — it doubled effective pressure)
 const limiter = rateLimit({
-  windowMs: parseInt(process.env.RATE_LIMIT_WINDOW_MS || '900000'), // 15 minutes
-  max: parseInt(process.env.RATE_LIMIT_MAX_REQUESTS || '100'), // limit each IP to 100 requests per windowMs
+  windowMs: parseInt(process.env.RATE_LIMIT_WINDOW_MS || '900000', 10),
+  max: parseInt(process.env.RATE_LIMIT_MAX_REQUESTS || '2000', 10),
   message: 'Too many requests from this IP, please try again later.',
+  standardHeaders: true,
+  legacyHeaders: false,
   skip: (req) => {
-    // Skip rate limiting for health checks
     return req.path === '/api/health' || req.path === '/health';
   },
 });

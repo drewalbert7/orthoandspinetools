@@ -25,6 +25,9 @@ const PostCard: React.FC<{ post: Post }> = ({ post }) => {
     return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
   };
 
+  const comm = post.community;
+  const communitySlug = comm?.slug || comm?.id || '';
+
   return (
     <div className="bg-white border border-gray-200 hover:border-gray-300 transition-colors">
       {/* Content Section */}
@@ -32,13 +35,13 @@ const PostCard: React.FC<{ post: Post }> = ({ post }) => {
         {/* Post Header */}
         <div className="flex items-center space-x-1 text-xs text-gray-500 mb-1">
           <Link 
-            to={`/community/${post.community.slug}`}
+            to={communitySlug ? `/community/${communitySlug}` : '/'}
             className="font-medium text-gray-900 hover:underline flex items-center space-x-1"
           >
-            {post.community.profileImage ? (
+            {comm?.profileImage ? (
               <img 
-                src={post.community.profileImage} 
-                alt={post.community.name}
+                src={comm.profileImage} 
+                alt={comm.name || 'Community'}
                 className="w-4 h-4 rounded-full object-cover"
               />
             ) : (
@@ -46,11 +49,11 @@ const PostCard: React.FC<{ post: Post }> = ({ post }) => {
                 <span className="text-white text-xs font-bold">o</span>
               </div>
             )}
-            <span>o/{post.community.name}</span>
+            <span>o/{comm?.name ?? 'community'}</span>
           </Link>
           <span>•</span>
           <span className="inline-flex items-center flex-wrap gap-x-0">
-            Posted by u/{post.author.username}
+            Posted by u/{post.author?.username ?? 'unknown'}
             {post.author.isVerifiedPhysician && <VerifiedPhysicianInline />}
           </span>
           <span>•</span>
