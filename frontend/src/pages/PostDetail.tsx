@@ -9,6 +9,7 @@ import CommentModerationMenu from '../components/CommentModerationMenu';
 import ModerationMenu from '../components/ModerationMenu';
 import ShareButton from '../components/ShareButton';
 import VerifiedPhysicianInline from '../components/VerifiedPhysicianInline';
+import PostPollBlock from '../components/PostPollBlock';
 
 const PostDetail: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -470,11 +471,42 @@ const PostDetail: React.FC = () => {
                 {post.title}
               </h1>
 
+              {post.type === 'link' && post.linkUrl && (
+                <a
+                  href={post.linkUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-2 text-base text-blue-600 hover:text-blue-800 font-medium break-all mb-4"
+                >
+                  {(() => {
+                    try {
+                      return new URL(post.linkUrl).hostname.replace(/^www\./, '');
+                    } catch {
+                      return post.linkUrl;
+                    }
+                  })()}
+                  <svg className="w-4 h-4 shrink-0 opacity-70" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden>
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                  </svg>
+                </a>
+              )}
+
               {/* Content */}
               {post.content && (
                 <div className="text-gray-800 leading-relaxed mb-6 whitespace-pre-wrap">
                   {post.content}
                 </div>
+              )}
+
+              {post.type === 'poll' && Array.isArray(post.pollOptions) && (
+                <PostPollBlock
+                  postId={post.id}
+                  pollOptions={post.pollOptions}
+                  pollEndsAt={post.pollEndsAt}
+                  pollVoteCounts={post.pollVoteCounts}
+                  userPollVoteIndex={post.userPollVoteIndex}
+                  pollClosed={post.pollClosed}
+                />
               )}
 
               {/* Tags */}

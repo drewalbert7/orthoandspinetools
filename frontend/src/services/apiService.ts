@@ -80,8 +80,14 @@ export interface Post {
   content: string;
   authorId: string;
   communityId: string;
-  type?: 'discussion' | 'case_study' | 'tool_review' | 'question';
+  type?: 'discussion' | 'case_study' | 'tool_review' | 'question' | 'link' | 'poll';
   postType?: 'discussion' | 'case_study' | 'tool_review';
+  linkUrl?: string | null;
+  pollOptions?: unknown;
+  pollEndsAt?: string | null;
+  pollVoteCounts?: number[];
+  userPollVoteIndex?: number | null;
+  pollClosed?: boolean;
   specialty?: string;
   patientAge?: number;
   procedureType?: string;
@@ -314,7 +320,14 @@ function normalizePostAttachments<T extends { attachments?: unknown }>(post: T):
 
 class ApiService {
   // Posts
-  async getPosts(params: { page?: number; limit?: number; sort?: string; community?: string; q?: string } = {}): Promise<{ posts: Post[]; pagination: { page: number; pages: number } }> {
+  async getPosts(params: {
+    page?: number;
+    limit?: number;
+    sort?: string;
+    community?: string;
+    q?: string;
+    tag?: string;
+  } = {}): Promise<{ posts: Post[]; pagination: { page: number; pages: number } }> {
     try {
       const search = new URLSearchParams();
       if (params.page) search.set('page', String(params.page));
@@ -322,6 +335,7 @@ class ApiService {
       if (params.sort) search.set('sort', params.sort);
       if (params.community) search.set('community', params.community);
       if (params.q?.trim()) search.set('q', params.q.trim());
+      if (params.tag?.trim()) search.set('tag', params.tag.trim());
       const response = await api.get(`/posts?${search.toString()}`);
       const payload = response.data?.data;
       if (!payload || !Array.isArray(payload.posts)) {
@@ -367,9 +381,12 @@ class ApiService {
 
   async createPost(postData: {
     title: string;
-    content: string;
+    content?: string;
     communityId: string;
-    postType: 'discussion' | 'case_study' | 'tool_review';
+    postType: 'discussion' | 'case_study' | 'tool_review' | 'question' | 'link' | 'poll';
+    linkUrl?: string;
+    pollOptions?: string[];
+    pollEndsAt?: string;
     patientAge?: number;
     procedureType?: string;
     attachments?: Array<{
@@ -392,6 +409,7 @@ class ApiService {
       const { postType, tagIds, ...rest } = postData;
       const backendData = {
         ...rest,
+        content: rest.content ?? '',
         type: postType,
         ...(tagIds && tagIds.length > 0 && { tagIds }),
       };
@@ -508,6 +526,29 @@ class ApiService {
     }
   }
 
+  async votePoll(
+    postId: string,
+    optionIndex: number
+  ): Promise<{ pollVoteCounts: number[]; userPollVoteIndex: number | null; pollClosed: boolean }> {
+    try {
+      const response = await api.post(`/posts/${postId}/poll-vote`, { optionIndex });
+      const data = response.data?.data;
+      if (!data || !Array.isArray(data.pollVoteCounts)) {
+        throw new Error('Invalid poll vote response from server');
+      }
+      return {
+        pollVoteCounts: data.pollVoteCounts,
+        userPollVoteIndex:
+          data.userPollVoteIndex === null || data.userPollVoteIndex === undefined
+            ? null
+            : Number(data.userPollVoteIndex),
+        pollClosed: Boolean(data.pollClosed),
+      };
+    } catch (error: unknown) {
+      throw new Error(apiErrorMessage(error, 'Failed to submit vote'));
+    }
+  }
+
   async voteComment(commentId: string, value: 1 | -1): Promise<Vote> {
     try {
       const type = value === 1 ? 'upvote' : 'downvote';
@@ -598,8 +639,11 @@ class ApiService {
     try {
       const response = await api.post(`/communities/${communityId}/tags`, tagData);
       return response.data;
-    } catch (error: any) {
-      throw new Error(error.response?.data?.message || 'Failed to create tag');
+    } catch (error: unknown) {
+      const err = error as { response?: { data?: { message?: string; errors?: Array<{ msg?: string }> } } };
+      const d = err.response?.data;
+      const fromArr = Array.isArray(d?.errors) ? d!.errors!.map((e) => e.msg).filter(Boolean).join(', ') : '';
+      throw new Error(fromArr || d?.message || apiErrorMessage(error, 'Failed to create tag'));
     }
   }
 
@@ -607,8 +651,11 @@ class ApiService {
     try {
       const response = await api.put(`/communities/${communityId}/tags/${tagId}`, tagData);
       return response.data;
-    } catch (error: any) {
-      throw new Error(error.response?.data?.message || 'Failed to update tag');
+    } catch (error: unknown) {
+      const err = error as { response?: { data?: { message?: string; errors?: Array<{ msg?: string }> } } };
+      const d = err.response?.data;
+      const fromArr = Array.isArray(d?.errors) ? d!.errors!.map((e) => e.msg).filter(Boolean).join(', ') : '';
+      throw new Error(fromArr || d?.message || apiErrorMessage(error, 'Failed to update tag'));
     }
   }
 

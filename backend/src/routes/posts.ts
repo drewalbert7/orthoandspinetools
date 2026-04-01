@@ -1,4 +1,4 @@
-import { Router, Request, Response } from 'express';
+import { Router, Response, Request, NextFunction } from 'express';
 import { authenticate, optionalAuth, AuthRequest } from '../middleware/auth';
 import { requirePostModeration, canModeratePost } from '../middleware/authorization';
 import { asyncHandler, AppError } from '../middleware/errorHandler';
@@ -6,23 +6,28 @@ import { prisma } from '../lib/prisma';
 import { logger } from '../utils/logger';
 import { body, param, query, validationResult } from 'express-validator';
 import { updateUserKarma, calculateKarmaChange } from '../utils/karmaService';
+import {
+  parsePollOptionStrings,
+  normalizeLinkUrl,
+  enrichPostsPollData,
+} from '../utils/postPoll';
 
 const router = Router();
+
+function normalizeCreatePostBody(req: Request, _res: Response, next: NextFunction) {
+  const b = req.body as Record<string, unknown>;
+  const t = b.type;
+  if ((t === undefined || t === null || t === '') && typeof b.postType === 'string' && b.postType.trim()) {
+    b.type = b.postType.trim();
+  }
+  next();
+}
 
 // Validation middleware
 const validatePost = [
   body('title').trim().isLength({ min: 1, max: 200 }).withMessage('Title must be 1-200 characters'),
-  body('content')
-    .custom((value, { req }) => {
-      const v = (typeof value === 'string' ? value : '').trim();
-      const att = (req as Request).body?.attachments;
-      const hasAtt = Array.isArray(att) && att.length > 0;
-      if (hasAtt && v.length === 0) return true;
-      if (v.length >= 1 && v.length <= 10000) return true;
-      return false;
-    })
-    .withMessage('Content must be 1-10000 characters, unless the post includes at least one attachment'),
-  body('type').isIn(['discussion', 'case_study', 'tool_review', 'question']).withMessage('Invalid post type'),
+  body('content').optional(),
+  body('type').isIn(['discussion', 'case_study', 'tool_review', 'question', 'link', 'poll']).withMessage('Invalid post type'),
   body('communityId').isString().withMessage('Invalid community ID'),
   body('specialty').optional().isString().withMessage('Specialty must be a string'),
   body('caseType').optional().isString().withMessage('Case type must be a string'),
@@ -36,7 +41,7 @@ const validateVote = [
 ];
 
 // Create a new post
-router.post('/', authenticate, validatePost, asyncHandler(async (req: AuthRequest, res: Response) => {
+router.post('/', authenticate, normalizeCreatePostBody, validatePost, asyncHandler(async (req: AuthRequest, res: Response) => {
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
     throw new AppError(`Validation failed: ${errors.array().map(e => e.msg).join(', ')}`, 400);
@@ -44,8 +49,8 @@ router.post('/', authenticate, validatePost, asyncHandler(async (req: AuthReques
 
   const {
     title,
-    content,
-    type,
+    content: rawContent,
+    type: typeRaw,
     communityId,
     specialty,
     caseType,
@@ -54,6 +59,81 @@ router.post('/', authenticate, validatePost, asyncHandler(async (req: AuthReques
     attachments,
     tagIds: rawTagIds
   } = req.body;
+
+  let type =
+    typeof typeRaw === 'string' && typeRaw.trim()
+      ? typeRaw.trim()
+      : typeof (req.body as { postType?: string }).postType === 'string' &&
+          String((req.body as { postType?: string }).postType).trim()
+        ? String((req.body as { postType?: string }).postType).trim()
+        : '';
+
+  if (!type) {
+    throw new AppError('Post type is required', 400);
+  }
+
+  if (type === 'discussion') {
+    const pollParsed =
+      Array.isArray(req.body.pollOptions) && parsePollOptionStrings(req.body.pollOptions);
+    const pe = req.body.pollEndsAt;
+    const hasPollEnd = pe != null && pe !== '';
+    if (pollParsed && hasPollEnd) {
+      type = 'poll';
+    } else if (normalizeLinkUrl(req.body.linkUrl)) {
+      type = 'link';
+    }
+  }
+
+  const content = typeof rawContent === 'string' ? rawContent.trim() : '';
+  const hasAtt = Array.isArray(attachments) && attachments.length > 0;
+
+  let linkUrlValue: string | null = null;
+  let pollOptionsValue: string[] | null = null;
+  let pollEndsAtValue: Date | null = null;
+
+  if (type === 'link') {
+    const nu = normalizeLinkUrl(req.body.linkUrl);
+    if (!nu) {
+      throw new AppError('Valid link URL required (http or https)', 400);
+    }
+    linkUrlValue = nu;
+    if (content.length > 10000) {
+      throw new AppError('Body must be at most 10000 characters', 400);
+    }
+  } else if (type === 'poll') {
+    const rawOpts = req.body.pollOptions;
+    const arr = Array.isArray(rawOpts) ? rawOpts : [];
+    const parsed = parsePollOptionStrings(arr);
+    if (!parsed) {
+      throw new AppError('Poll requires 2–6 options, each 1–200 characters', 400);
+    }
+    pollOptionsValue = parsed;
+    const pe = req.body.pollEndsAt;
+    if (pe == null || pe === '') {
+      throw new AppError('Poll end time is required', 400);
+    }
+    const pollEnd = new Date(pe as string | number);
+    if (Number.isNaN(pollEnd.getTime())) {
+      throw new AppError('Invalid poll end time', 400);
+    }
+    const t = Date.now();
+    const maxEnd = t + 7 * 24 * 60 * 60 * 1000;
+    if (pollEnd.getTime() <= t) {
+      throw new AppError('Poll must end in the future', 400);
+    }
+    if (pollEnd.getTime() > maxEnd) {
+      throw new AppError('Poll duration cannot exceed 7 days', 400);
+    }
+    pollEndsAtValue = pollEnd;
+    if (content.length > 10000) {
+      throw new AppError('Body must be at most 10000 characters', 400);
+    }
+  } else if (!hasAtt && (content.length < 1 || content.length > 10000)) {
+    throw new AppError(
+      'Content must be 1-10000 characters, unless the post includes at least one attachment',
+      400
+    );
+  }
 
   // Check if community exists
   const community = await prisma.community.findUnique({
@@ -100,6 +180,9 @@ router.post('/', authenticate, validatePost, asyncHandler(async (req: AuthReques
       title,
       content,
       type,
+      linkUrl: linkUrlValue,
+      pollOptions: pollOptionsValue ?? undefined,
+      pollEndsAt: pollEndsAtValue,
       specialty,
       caseType,
       patientAge: patientAge ? parseInt(patientAge) : null,
@@ -209,9 +292,11 @@ router.post('/', authenticate, validatePost, asyncHandler(async (req: AuthReques
     }
   });
 
+  const [postOut] = await enrichPostsPollData([post], req.user!.id);
+
   res.status(201).json({
     success: true,
-    data: post
+    data: postOut
   });
 }));
 
@@ -366,6 +451,9 @@ router.get('/feed', authenticate, [
       title: post.title,
       content: post.content,
       type: post.type,
+      linkUrl: post.linkUrl,
+      pollOptions: post.pollOptions,
+      pollEndsAt: post.pollEndsAt,
       isPinned: post.isPinned,
       isLocked: post.isLocked,
       isDeleted: post.isDeleted,
@@ -397,10 +485,12 @@ router.get('/feed', authenticate, [
     }
   });
 
+  const postsEnriched = await enrichPostsPollData(postsWithVotes, req.user?.id);
+
   return res.json({
     success: true,
     data: {
-      posts: postsWithVotes,
+      posts: postsEnriched,
       pagination: {
         page,
         limit,
@@ -416,10 +506,11 @@ router.get('/', optionalAuth, [
   query('page').optional().isInt({ min: 1 }).withMessage('Page must be a positive integer'),
   query('limit').optional().isInt({ min: 1, max: 50 }).withMessage('Limit must be 1-50'),
   query('community').optional().isString().withMessage('Invalid community ID'),
-  query('type').optional().isIn(['discussion', 'case_study', 'tool_review', 'question']).withMessage('Invalid post type'),
+  query('type').optional().isIn(['discussion', 'case_study', 'tool_review', 'question', 'link', 'poll']).withMessage('Invalid post type'),
   query('specialty').optional().isString().withMessage('Specialty must be a string'),
   query('sort').optional().isIn(['newest', 'oldest', 'popular', 'controversial', 'best', 'top', 'rising']).withMessage('Invalid sort option'),
   query('q').optional().isString().isLength({ max: 200 }).withMessage('Search query too long'),
+  query('tag').optional().isString().isLength({ min: 1, max: 64 }).withMessage('Invalid tag filter'),
 ], asyncHandler(async (req: AuthRequest, res: Response) => {
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
@@ -429,7 +520,7 @@ router.get('/', optionalAuth, [
   const page = parseInt(req.query.page as string) || 1;
   const limit = parseInt(req.query.limit as string) || 20;
   const skip = (page - 1) * limit;
-  const { community, type, specialty, sort, q } = req.query;
+  const { community, type, specialty, sort, q, tag } = req.query;
 
   // Build where clause
   const where: any = {
@@ -461,6 +552,24 @@ router.get('/', optionalAuth, [
     }
     
     where.communityId = communityRecord.id;
+  }
+
+  const tagFilter = typeof tag === 'string' ? tag.trim() : '';
+  if (tagFilter) {
+    const tagRow = await prisma.communityTag.findUnique({
+      where: { id: tagFilter },
+      select: { id: true, communityId: true },
+    });
+    if (!tagRow) {
+      throw new AppError('Topic tag not found', 404);
+    }
+    if (where.communityId && tagRow.communityId !== where.communityId) {
+      throw new AppError('That topic tag does not belong to this community', 400);
+    }
+    if (!where.communityId) {
+      where.communityId = tagRow.communityId;
+    }
+    where.tags = { some: { tagId: tagRow.id } };
   }
 
   if (type) {
@@ -563,10 +672,12 @@ router.get('/', optionalAuth, [
     };
   });
 
+  const postsEnriched = await enrichPostsPollData(postsWithScores, req.user?.id);
+
   res.json({
     success: true,
     data: {
-      posts: postsWithScores,
+      posts: postsEnriched,
       pagination: {
         page,
         limit,
@@ -574,6 +685,70 @@ router.get('/', optionalAuth, [
         pages: Math.ceil(total / limit),
       }
     }
+  });
+}));
+
+const validatePollVote = [
+  param('id').isString().isLength({ min: 1 }).withMessage('Invalid post ID'),
+  body('optionIndex').isInt({ min: 0 }).withMessage('optionIndex must be a non-negative integer'),
+];
+
+router.post('/:id/poll-vote', authenticate, validatePollVote, asyncHandler(async (req: AuthRequest, res: Response) => {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    throw new AppError(`Validation failed: ${errors.array().map(e => e.msg).join(', ')}`, 400);
+  }
+
+  const { id } = req.params;
+  const optionIndex = Number(req.body.optionIndex);
+
+  const post = await prisma.post.findFirst({
+    where: { id, isDeleted: false },
+    select: { id: true, type: true, pollOptions: true, pollEndsAt: true },
+  });
+
+  if (!post || post.type !== 'poll') {
+    throw new AppError('Not a poll post', 400);
+  }
+
+  const opts = parsePollOptionStrings(post.pollOptions);
+  if (!opts || optionIndex < 0 || optionIndex >= opts.length) {
+    throw new AppError('Invalid poll option', 400);
+  }
+
+  if (post.pollEndsAt && new Date(post.pollEndsAt) <= new Date()) {
+    throw new AppError('This poll has ended', 400);
+  }
+
+  await prisma.postPollVote.upsert({
+    where: { postId_userId: { postId: id, userId: req.user!.id } },
+    create: {
+      postId: id,
+      userId: req.user!.id,
+      optionIndex,
+    },
+    update: { optionIndex },
+  });
+
+  const [enriched] = await enrichPostsPollData(
+    [
+      {
+        id: post.id,
+        type: post.type,
+        pollOptions: post.pollOptions,
+        pollEndsAt: post.pollEndsAt,
+      },
+    ],
+    req.user!.id
+  );
+
+  return res.json({
+    success: true,
+    data: {
+      pollVoteCounts: enriched.pollVoteCounts,
+      userPollVoteIndex: enriched.userPollVoteIndex,
+      pollClosed: enriched.pollClosed,
+    },
   });
 }));
 
@@ -696,19 +871,23 @@ router.get('/:id', optionalAuth, [
     };
   });
 
+  const base = {
+    ...post,
+    voteScore: upvotes - downvotes,
+    upvotes,
+    downvotes,
+    userVote: userVote ? userVote.type : null,
+    comments: commentsWithScores,
+    isLocked: post.isLocked || false,
+    isPinned: post.isPinned || false,
+    isDeleted: post.isDeleted || false,
+  };
+
+  const [dataOut] = await enrichPostsPollData([base], req.user?.id);
+
   return res.json({
     success: true,
-    data: {
-      ...post,
-      voteScore: upvotes - downvotes,
-      upvotes,
-      downvotes,
-      userVote: userVote ? userVote.type : null,
-      comments: commentsWithScores,
-      isLocked: post.isLocked || false,
-      isPinned: post.isPinned || false,
-      isDeleted: post.isDeleted || false,
-    }
+    data: dataOut,
   });
 }));
 

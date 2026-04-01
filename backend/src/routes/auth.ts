@@ -6,6 +6,7 @@ import { logger } from '../utils/logger';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import { body, param, query, validationResult } from 'express-validator';
+import { enrichPostsPollData } from '../utils/postPoll';
 
 const router = Router();
 
@@ -615,6 +616,60 @@ router.get(
     const commentsHasMore =
       !omitComments && commentsLimit > 0 && commentsSkip + commentsRows.length < commentsTotal;
 
+    const profilePostsRaw = postsRows.map((post: any) => {
+      const postVotes = Array.isArray(post.votes) ? post.votes : [];
+      const userVote = postVotes.find((v: any) => v.userId === user.id);
+      const community = post.community ?? {
+        id: post.communityId,
+        name: 'Unknown',
+        slug: 'unknown',
+        profileImage: null as string | null,
+      };
+      return {
+        id: post.id,
+        title: post.title,
+        content: post.content,
+        type: post.type,
+        linkUrl: post.linkUrl ?? null,
+        pollOptions: post.pollOptions,
+        pollEndsAt: post.pollEndsAt,
+        specialty: post.specialty,
+        createdAt: post.createdAt,
+        updatedAt: post.updatedAt,
+        authorId: user.id,
+        communityId: community.id,
+        community,
+        author: {
+          id: user.id,
+          username: user.username,
+          firstName: user.firstName,
+          lastName: user.lastName,
+          specialty: user.specialty,
+          profileImage: user.profileImage,
+          isVerifiedPhysician: user.isVerifiedPhysician,
+        },
+        attachments: post.attachments || [],
+        votes: postVotes.map((v: any) => ({
+          id: v.id || '',
+          postId: post.id,
+          userId: v.userId,
+          type: v.type,
+        })),
+        voteScore: postVotes.reduce((score: number, vote: any) => score + (vote.type === 'upvote' ? 1 : -1), 0),
+        userVote: userVote ? (userVote.type === 'upvote' ? 'upvote' : 'downvote') : null,
+        commentsCount: post._count?.comments ?? 0,
+        _count: {
+          comments: post._count?.comments ?? 0,
+          votes: post._count?.votes ?? postVotes.length,
+        },
+        isLocked: post.isLocked || false,
+        isPinned: post.isPinned || false,
+        isDeleted: post.isDeleted || false,
+      };
+    });
+
+    const profilePostsEnriched = await enrichPostsPollData(profilePostsRaw, user.id);
+
     res.json({
     success: true,
     data: {
@@ -648,54 +703,7 @@ router.get(
         commentsCount: commentsTotal,
         communitiesCount: ((user as any).communities as any[])?.length || 0,
       },
-      posts: postsRows.map((post: any) => {
-        const postVotes = Array.isArray(post.votes) ? post.votes : [];
-        const userVote = postVotes.find((v: any) => v.userId === user.id);
-        const community = post.community ?? {
-          id: post.communityId,
-          name: 'Unknown',
-          slug: 'unknown',
-          profileImage: null as string | null,
-        };
-        return {
-          id: post.id,
-          title: post.title,
-          content: post.content,
-          type: post.type,
-          specialty: post.specialty,
-          createdAt: post.createdAt,
-          updatedAt: post.updatedAt,
-          authorId: user.id,
-          communityId: community.id,
-          community,
-          author: {
-            id: user.id,
-            username: user.username,
-            firstName: user.firstName,
-            lastName: user.lastName,
-            specialty: user.specialty,
-            profileImage: user.profileImage,
-            isVerifiedPhysician: user.isVerifiedPhysician,
-          },
-          attachments: post.attachments || [],
-          votes: postVotes.map((v: any) => ({
-            id: v.id || '',
-            postId: post.id,
-            userId: v.userId,
-            type: v.type,
-          })),
-          voteScore: postVotes.reduce((score: number, vote: any) => score + (vote.type === 'upvote' ? 1 : -1), 0),
-          userVote: userVote ? (userVote.type === 'upvote' ? 'upvote' : 'downvote') : null,
-          commentsCount: post._count?.comments ?? 0,
-          _count: {
-            comments: post._count?.comments ?? 0,
-            votes: post._count?.votes ?? postVotes.length,
-          },
-          isLocked: post.isLocked || false,
-          isPinned: post.isPinned || false,
-          isDeleted: post.isDeleted || false,
-        };
-      }),
+      posts: profilePostsEnriched,
       communities: ((user as any).communities as any[]).map((community: any) => ({
         id: community.id,
         name: community.name,

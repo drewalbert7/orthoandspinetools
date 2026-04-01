@@ -21,7 +21,7 @@
 
 import React, { useState, useEffect, useLayoutEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { apiService, apiErrorMessage, Community, CommunityTag } from '../services/apiService';
 import { useAuth } from '../contexts/AuthContext';
@@ -54,6 +54,8 @@ const CreatePost: React.FC = () => {
   const [title, setTitle] = useState('');
   const [body, setBody] = useState('');
   const [linkUrl, setLinkUrl] = useState('');
+  const [pollOptionDrafts, setPollOptionDrafts] = useState<string[]>(['', '']);
+  const [pollDurationHours, setPollDurationHours] = useState<number>(24);
   // Mobile: default to plain <textarea> (reliable). Desktop: rich editor.
   const [isMarkdownMode, setIsMarkdownMode] = useState(() =>
     typeof window !== 'undefined' && window.matchMedia('(max-width: 640px)').matches
@@ -86,10 +88,25 @@ const CreatePost: React.FC = () => {
     queryKey: ['communityTags', selectedCommunity],
     queryFn: () => apiService.getCommunityTags(selectedCommunity),
     enabled: !!selectedCommunity,
-    retry: 2, // Retry failed requests twice
-    staleTime: 5 * 60 * 1000, // Consider data fresh for 5 minutes
-    // Tags are optional, so errors are handled gracefully by React Query
+    retry: 2,
+    staleTime: 5 * 60 * 1000,
   });
+
+  const { data: postingCommunity } = useQuery<Community>({
+    queryKey: ['community', selectedCommunity],
+    queryFn: () => apiService.getCommunity(selectedCommunity),
+    enabled: !!selectedCommunity,
+  });
+
+  const canManageTopicTags =
+    !!user &&
+    !!postingCommunity &&
+    (user.id === postingCommunity.ownerId ||
+      !!postingCommunity.moderators?.some((m) => m.userId === user.id) ||
+      !!user.isAdmin);
+
+  const postingCommunitySlug =
+    postingCommunity?.slug || communities?.find((c) => c.id === selectedCommunity)?.slug;
 
   const { data: uploadStatus } = useQuery({
     queryKey: ['uploadStatus'],
@@ -147,6 +164,19 @@ const CreatePost: React.FC = () => {
     return null;
   }
 
+  const normalizeSubmitUrl = (raw: string): string | null => {
+    const u = raw.trim();
+    if (!u) return null;
+    try {
+      const href = u.startsWith('http://') || u.startsWith('https://') ? u : `https://${u}`;
+      const url = new URL(href);
+      if (url.protocol !== 'http:' && url.protocol !== 'https:') return null;
+      return url.href;
+    } catch {
+      return null;
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!title.trim() || !selectedCommunity) return;
@@ -154,18 +184,37 @@ const CreatePost: React.FC = () => {
       toast.error('Add at least one image or video before posting.');
       return;
     }
+    if (postType === 'link') {
+      const nu = normalizeSubmitUrl(linkUrl);
+      if (!nu) {
+        toast.error('Enter a valid URL (http or https).');
+        return;
+      }
+    }
+    if (postType === 'poll') {
+      const opts = pollOptionDrafts.map((s) => s.trim()).filter(Boolean);
+      if (opts.length < 2) {
+        toast.error('Add at least two poll options.');
+        return;
+      }
+      if (opts.length > 6) {
+        toast.error('Polls can have at most six options.');
+        return;
+      }
+    }
 
     setIsSubmitting(true);
     setError('');
 
     try {
-      // Map postType to backend format
-      const getPostType = (type: PostType): 'discussion' | 'case_study' | 'tool_review' => {
+      const getPostType = (type: PostType): 'discussion' | 'case_study' | 'tool_review' | 'link' | 'poll' => {
         switch (type) {
           case 'text':
-          case 'link':
-          case 'poll':
             return 'discussion';
+          case 'link':
+            return 'link';
+          case 'poll':
+            return 'poll';
           case 'images':
             return 'case_study';
           default:
@@ -176,13 +225,30 @@ const CreatePost: React.FC = () => {
       // Filter out invalid tag IDs before sending
       const validTagIds = selectedTags.filter((id) => id && typeof id === 'string' && id.trim().length > 0);
 
-      const hasUploadedMedia = uploadedMedia.length > 0;
+      const hasUploadedMedia = postType === 'images' && uploadedMedia.length > 0;
+      const pollOptsTrimmed = pollOptionDrafts.map((s) => s.trim()).filter(Boolean);
+      const pollEndsAt =
+        postType === 'poll'
+          ? new Date(Date.now() + Math.min(168, Math.max(1, pollDurationHours)) * 60 * 60 * 1000).toISOString()
+          : undefined;
+
+      const apiPostType =
+        postType === 'images'
+          ? hasUploadedMedia
+            ? 'case_study'
+            : 'discussion'
+          : getPostType(postType);
+
       const postData = {
         title: title.trim(),
         content: body.trim(),
         communityId: selectedCommunity,
-        postType: hasUploadedMedia ? 'case_study' : getPostType(postType),
-        ...(postType === 'link' && linkUrl && { linkUrl: linkUrl.trim() }),
+        postType: apiPostType,
+        ...(postType === 'link' && { linkUrl: normalizeSubmitUrl(linkUrl)! }),
+        ...(postType === 'poll' && {
+          pollOptions: pollOptsTrimmed.slice(0, 6),
+          pollEndsAt,
+        }),
         ...(hasUploadedMedia && {
           attachments: uploadedMedia.map((m) => ({
             url: m.url,
@@ -367,11 +433,16 @@ const CreatePost: React.FC = () => {
   };
 
   const imagesTabNeedsMedia = postType === 'images' && uploadedMedia.length === 0;
+  const linkTabInvalid = postType === 'link' && !normalizeSubmitUrl(linkUrl);
+  const pollOptsFilled = pollOptionDrafts.map((s) => s.trim()).filter(Boolean).length;
+  const pollTabInvalid = postType === 'poll' && pollOptsFilled < 2;
   const isPostDisabled =
     !title.trim() ||
     !selectedCommunity ||
     imagesTabNeedsMedia ||
-    (postType === 'images' && isUploading);
+    (postType === 'images' && isUploading) ||
+    linkTabInvalid ||
+    pollTabInvalid;
 
 
   return (
@@ -485,7 +556,14 @@ const CreatePost: React.FC = () => {
             ].map((tab) => (
               <button
                 key={tab.id}
-                onClick={() => setPostType(tab.id as PostType)}
+                type="button"
+                onClick={() => {
+                  const next = tab.id as PostType;
+                  if (postType === 'images' && next !== 'images') {
+                    setUploadedMedia([]);
+                  }
+                  setPostType(next);
+                }}
                 className={`px-3 sm:px-4 py-2 text-xs sm:text-sm font-medium whitespace-nowrap flex-shrink-0 ${
                   postType === tab.id
                     ? 'text-blue-600 border-b-2 border-blue-600'
@@ -517,46 +595,68 @@ const CreatePost: React.FC = () => {
           </div>
         </div>
 
-        {/* Tags Selection */}
-        {selectedCommunity && communityTags && Array.isArray(communityTags) && communityTags.length > 0 && (
+        {/* Topic tags — admin-defined options for this community */}
+        {selectedCommunity && (
           <div className="mb-4 sm:mb-6">
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Tags (optional)
-            </label>
-            <div className="flex flex-wrap gap-1.5 sm:gap-2">
-              {communityTags
-                .filter((tag) => tag && tag.id && tag.name) // Filter out invalid tags
-                .map((tag) => (
-                  <button
-                    key={tag.id}
-                    type="button"
-                    onClick={() => {
-                      if (!tag.id) return;
-                      if (selectedTags.includes(tag.id)) {
-                        setSelectedTags(selectedTags.filter(id => id !== tag.id));
-                      } else {
-                        setSelectedTags([...selectedTags, tag.id]);
-                      }
-                    }}
-                    className={`px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-full text-xs sm:text-sm font-medium transition-colors ${
-                      selectedTags.includes(tag.id)
-                        ? 'bg-blue-600 text-white'
-                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                    }`}
-                    style={
-                      selectedTags.includes(tag.id) && tag.color && /^#[0-9A-Fa-f]{6}$/.test(tag.color)
-                        ? { backgroundColor: tag.color, color: 'white' }
-                        : {}
-                    }
+            <label className="block text-sm font-medium text-gray-700 mb-1">Topic tags (optional)</label>
+            <p className="text-xs text-gray-500 mb-2">
+              Choose subjects that match your post. Moderators define these for each community so everyone can find posts by topic.
+            </p>
+            {communityTags && communityTags.length > 0 ? (
+              <>
+                <div className="flex flex-wrap gap-1.5 sm:gap-2">
+                  {communityTags
+                    .filter((tag) => tag && tag.id && tag.name)
+                    .map((tag) => (
+                      <button
+                        key={tag.id}
+                        type="button"
+                        onClick={() => {
+                          if (!tag.id) return;
+                          if (selectedTags.includes(tag.id)) {
+                            setSelectedTags(selectedTags.filter((id) => id !== tag.id));
+                          } else {
+                            setSelectedTags([...selectedTags, tag.id]);
+                          }
+                        }}
+                        title={tag.description || undefined}
+                        className={`px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-full text-xs sm:text-sm font-medium transition-colors ${
+                          selectedTags.includes(tag.id)
+                            ? 'bg-blue-600 text-white'
+                            : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                        }`}
+                        style={
+                          selectedTags.includes(tag.id) && tag.color && /^#[0-9A-Fa-f]{6}$/.test(tag.color)
+                            ? { backgroundColor: tag.color, color: 'white' }
+                            : {}
+                        }
+                      >
+                        {tag.name}
+                      </button>
+                    ))}
+                </div>
+                {selectedTags.length > 0 && (
+                  <p className="mt-2 text-xs text-gray-500">
+                    {selectedTags.length} topic{selectedTags.length !== 1 ? 's' : ''} selected
+                  </p>
+                )}
+              </>
+            ) : (
+              <div className="rounded-md border border-dashed border-gray-200 bg-gray-50/80 px-3 py-3 text-sm text-gray-600">
+                <p className="mb-2">This community does not have topic tags yet.</p>
+                {canManageTopicTags && postingCommunitySlug ? (
+                  <Link
+                    to={`/community/${postingCommunitySlug}/settings`}
+                    className="text-blue-600 font-medium hover:text-blue-800 hover:underline"
                   >
-                    {tag.name}
-                  </button>
-                ))}
-            </div>
-            {selectedTags.length > 0 && (
-              <p className="mt-2 text-xs text-gray-500">
-                {selectedTags.length} tag{selectedTags.length !== 1 ? 's' : ''} selected
-              </p>
+                    Add topic tags in Community Settings
+                  </Link>
+                ) : (
+                  <p className="text-xs text-gray-500">
+                    Ask a moderator to add topic tags in community settings so posts can be labeled by subject.
+                  </p>
+                )}
+              </div>
             )}
           </div>
         )}
@@ -757,15 +857,24 @@ const CreatePost: React.FC = () => {
         )}
 
         {postType === 'link' && (
-          <div className="mb-4 sm:mb-6">
+          <div className="mb-4 sm:mb-6 space-y-3">
             <input
               type="url"
               value={linkUrl}
               onChange={(e) => setLinkUrl(e.target.value)}
-              placeholder="URL"
+              placeholder="URL (https://…)"
               autoComplete="off"
               enterKeyHint="done"
               className="w-full px-3 sm:px-4 py-2 sm:py-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm sm:text-base touch-manipulation"
+            />
+            <textarea
+              value={body}
+              onChange={(e) => setBody(e.target.value)}
+              placeholder="Comment (optional)"
+              rows={6}
+              spellCheck
+              autoComplete="off"
+              className="w-full px-3 sm:px-4 py-2 sm:py-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm sm:text-base resize-y touch-manipulation"
             />
           </div>
         )}
@@ -1016,14 +1125,68 @@ const CreatePost: React.FC = () => {
 
 
         {postType === 'poll' && (
-          <div className="mb-4 sm:mb-6">
-            <div className="text-center py-6 sm:py-8 text-gray-500">
-              <svg className="mx-auto h-8 w-8 sm:h-12 sm:w-12 text-gray-400 mb-3 sm:mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-              </svg>
-              <p className="text-base sm:text-lg font-medium">Poll functionality coming soon</p>
-              <p className="text-xs sm:text-sm">This feature is under development</p>
+          <div className="mb-4 sm:mb-6 space-y-4">
+            <p className="text-sm text-gray-600">2–6 options · poll runs up to 7 days (same as Reddit-style limits)</p>
+            <div className="space-y-2">
+              {pollOptionDrafts.map((opt, idx) => (
+                <div key={idx} className="flex gap-2 items-center">
+                  <input
+                    type="text"
+                    value={opt}
+                    maxLength={200}
+                    onChange={(e) => {
+                      const next = [...pollOptionDrafts];
+                      next[idx] = e.target.value;
+                      setPollOptionDrafts(next);
+                    }}
+                    placeholder={`Option ${idx + 1}`}
+                    className="flex-1 px-3 py-2 border border-gray-300 rounded-md text-sm sm:text-base focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                  {pollOptionDrafts.length > 2 && (
+                    <button
+                      type="button"
+                      onClick={() => setPollOptionDrafts(pollOptionDrafts.filter((_, i) => i !== idx))}
+                      className="text-sm text-red-600 px-2 py-1 hover:bg-red-50 rounded"
+                    >
+                      Remove
+                    </button>
+                  )}
+                </div>
+              ))}
             </div>
+            {pollOptionDrafts.length < 6 && (
+              <button
+                type="button"
+                onClick={() => setPollOptionDrafts([...pollOptionDrafts, ''])}
+                className="text-sm font-medium text-blue-600 hover:text-blue-800"
+              >
+                Add option
+              </button>
+            )}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Duration</label>
+              <select
+                value={pollDurationHours}
+                onChange={(e) => setPollDurationHours(Number(e.target.value))}
+                className="w-full sm:w-auto px-3 py-2 border border-gray-300 rounded-md text-sm bg-white"
+              >
+                <option value={1}>1 hour</option>
+                <option value={6}>6 hours</option>
+                <option value={12}>12 hours</option>
+                <option value={24}>1 day</option>
+                <option value={72}>3 days</option>
+                <option value={168}>7 days</option>
+              </select>
+            </div>
+            <textarea
+              value={body}
+              onChange={(e) => setBody(e.target.value)}
+              placeholder="Body text (optional)"
+              rows={5}
+              spellCheck
+              autoComplete="off"
+              className="w-full px-3 sm:px-4 py-2 sm:py-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm sm:text-base resize-y"
+            />
           </div>
         )}
 

@@ -4,6 +4,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { Post, apiService } from '../services/apiService';
 import ModerationMenu from './ModerationMenu';
 import PostAttachments from './PostAttachments';
+import PostPollBlock from './PostPollBlock';
 import ShareButton from './ShareButton';
 import VerifiedPhysicianInline from './VerifiedPhysicianInline';
 import toast from 'react-hot-toast';
@@ -58,6 +59,8 @@ const PostCard: React.FC<PostCardProps> = ({ post, onVote }) => {
       case 'case_study': return 'bg-green-100 text-green-800';
       case 'tool_review': return 'bg-blue-100 text-blue-800';
       case 'question': return 'bg-yellow-100 text-yellow-800';
+      case 'link': return 'bg-sky-100 text-sky-800';
+      case 'poll': return 'bg-violet-100 text-violet-800';
       default: return 'bg-gray-100 text-gray-800';
     }
   };
@@ -67,9 +70,20 @@ const PostCard: React.FC<PostCardProps> = ({ post, onVote }) => {
       case 'case_study': return 'Case Study';
       case 'tool_review': return 'Tool Review';
       case 'question': return 'Question';
+      case 'link': return 'Link';
+      case 'poll': return 'Poll';
       default: return 'Discussion';
     }
   };
+
+  const linkHostname = (() => {
+    if (!post.linkUrl) return '';
+    try {
+      return new URL(post.linkUrl).hostname.replace(/^www\./, '');
+    } catch {
+      return post.linkUrl;
+    }
+  })();
 
   const upvotes = (post as any).upvotes ?? (post.votes?.filter(v => v.value === 1).length || 0);
   const downvotes = (post as any).downvotes ?? (post.votes?.filter(v => v.value === -1).length || 0);
@@ -154,6 +168,21 @@ const PostCard: React.FC<PostCardProps> = ({ post, onVote }) => {
             </h2>
           </Link>
 
+          {post.type === 'link' && post.linkUrl && (
+            <a
+              href={post.linkUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              onClick={(e) => e.stopPropagation()}
+              className="inline-flex items-center gap-1.5 text-sm text-blue-600 hover:text-blue-800 hover:underline mb-2 break-all"
+            >
+              <span className="truncate max-w-[min(100%,14rem)]">{linkHostname || 'Link'}</span>
+              <svg className="w-3.5 h-3.5 shrink-0 opacity-70" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden>
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+              </svg>
+            </a>
+          )}
+
           {/* Content Preview */}
           {post.content && (
             <div className="text-sm text-gray-800 mb-3 md:mb-4 leading-relaxed">
@@ -162,6 +191,18 @@ const PostCard: React.FC<PostCardProps> = ({ post, onVote }) => {
           )}
 
           <PostAttachments attachments={post.attachments ?? []} postId={post.id} />
+
+          {post.type === 'poll' && Array.isArray(post.pollOptions) && (
+            <PostPollBlock
+              postId={post.id}
+              pollOptions={post.pollOptions}
+              pollEndsAt={post.pollEndsAt}
+              pollVoteCounts={post.pollVoteCounts}
+              userPollVoteIndex={post.userPollVoteIndex}
+              pollClosed={post.pollClosed}
+              compact
+            />
+          )}
 
           {/* Tags */}
           {post.tags && Array.isArray(post.tags) && post.tags.length > 0 && (

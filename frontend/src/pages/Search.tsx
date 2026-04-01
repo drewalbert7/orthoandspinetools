@@ -4,6 +4,7 @@ import { useQuery } from '@tanstack/react-query';
 import { apiService, Post, Community } from '../services/apiService';
 import VoteButton from '../components/VoteButton';
 import PostAttachments from '../components/PostAttachments';
+import PostPollBlock from '../components/PostPollBlock';
 import VerifiedPhysicianInline from '../components/VerifiedPhysicianInline';
 
 function PostRow({ post }: { post: Post }) {
@@ -21,8 +22,32 @@ function PostRow({ post }: { post: Post }) {
       </div>
       <Link to={`/post/${post.id}`} className="block">
         <h3 className="text-base font-medium text-gray-900 hover:text-blue-600">{post.title}</h3>
-        <p className="text-sm text-gray-700 line-clamp-2 mt-1">{post.content}</p>
+        {post.type === 'link' && post.linkUrl && (
+          <p className="text-sm text-blue-600 line-clamp-1 mt-1 break-all">
+            {(() => {
+              try {
+                return new URL(post.linkUrl).hostname.replace(/^www\./, '');
+              } catch {
+                return post.linkUrl;
+              }
+            })()}
+          </p>
+        )}
+        {post.content ? (
+          <p className="text-sm text-gray-700 line-clamp-2 mt-1">{post.content}</p>
+        ) : null}
       </Link>
+      {post.type === 'poll' && Array.isArray(post.pollOptions) && (
+        <PostPollBlock
+          postId={post.id}
+          pollOptions={post.pollOptions}
+          pollEndsAt={post.pollEndsAt}
+          pollVoteCounts={post.pollVoteCounts}
+          userPollVoteIndex={post.userPollVoteIndex}
+          pollClosed={post.pollClosed}
+          compact
+        />
+      )}
       <PostAttachments attachments={post.attachments ?? []} postId={post.id} />
       <div className="mt-2 pt-2 border-t border-gray-100">
         <VoteButton

@@ -20,6 +20,20 @@ function getPlainTextFromHtml(html: string): string {
   return div.textContent || div.innerText || '';
 }
 
+/** True when there is no real user text (ignores empty s/del/strong wrappers and ZWSP). Preserves non-text media if ever present. */
+function isEffectivelyEmptyContent(html: string): boolean {
+  if (!html || html === '<br>' || html === '<div><br></div>' || html === '<p><br></p>') return true;
+  const div = document.createElement('div');
+  div.innerHTML = html;
+  if (div.querySelector('img,video,iframe')) return false;
+  const text = (div.textContent || '')
+    .replace(/\u00a0/g, ' ')
+    .replace(/\u200b/g, '')
+    .replace(/\ufeff/g, '')
+    .trim();
+  return text.length === 0;
+}
+
 /** Compare stored markdown to what the editor DOM currently represents (avoids fighting the browser on every keystroke). */
 function markdownMatchesDom(html: string, markdown: string, toMd: (h: string) => string): boolean {
   let derived: string;
@@ -194,29 +208,57 @@ const MarkdownEditor = forwardRef<MarkdownEditorHandle, MarkdownEditorProps>(({
     }
   }, [getTextFromHtml]);
 
+  const normalizeEmptyEditorDom = useCallback((el: HTMLDivElement) => {
+    if (el.innerHTML === '<br>') return;
+    setIsUpdating(true);
+    el.innerHTML = '<br>';
+    setIsUpdating(false);
+  }, []);
+
   // Handle input - convert HTML back to markdown
   const handleInput = useCallback((e: React.FormEvent<HTMLDivElement>) => {
     if (isUpdating || composingRef.current) return;
 
-    const html = e.currentTarget.innerHTML;
+    const el = e.currentTarget;
+    const html = el.innerHTML;
+
+    if (isEffectivelyEmptyContent(html)) {
+      normalizeEmptyEditorDom(el);
+      saveCursor();
+      if (value !== '') {
+        onChange('');
+      }
+      return;
+    }
+
     const markdown = htmlToMarkdown(html);
     saveCursor();
 
-    // Only update if markdown actually changed
     if (markdown !== value) {
       onChange(markdown);
     }
-  }, [isUpdating, onChange, saveCursor, value, htmlToMarkdown]);
+  }, [isUpdating, onChange, saveCursor, value, htmlToMarkdown, normalizeEmptyEditorDom]);
 
   const flushFromDom = useCallback(() => {
     if (!editorRef.current || isUpdating) return;
-    const html = editorRef.current.innerHTML;
+    const el = editorRef.current;
+    const html = el.innerHTML;
+
+    if (isEffectivelyEmptyContent(html)) {
+      normalizeEmptyEditorDom(el);
+      saveCursor();
+      if (value !== '') {
+        onChange('');
+      }
+      return;
+    }
+
     const markdown = htmlToMarkdown(html);
     saveCursor();
     if (markdown !== value) {
       onChange(markdown);
     }
-  }, [isUpdating, onChange, saveCursor, value, htmlToMarkdown]);
+  }, [isUpdating, onChange, saveCursor, value, htmlToMarkdown, normalizeEmptyEditorDom]);
 
   // Handle paste - get plain text
   const handlePaste = useCallback((e: React.ClipboardEvent<HTMLDivElement>) => {
@@ -287,12 +329,23 @@ const MarkdownEditor = forwardRef<MarkdownEditorHandle, MarkdownEditorProps>(({
     if (!editorRef.current || isUpdating || composingRef.current) return;
 
     const currentHtml = editorRef.current.innerHTML;
-    if (markdownMatchesDom(currentHtml, value || '', htmlToMarkdown)) {
+    const v = value || '';
+
+    // Visually empty but stale wrappers (e.g. <s><br></s>) — sync to empty markdown + clean DOM
+    if (isEffectivelyEmptyContent(currentHtml) && v.trim() === '') {
+      if (currentHtml !== '<br>') {
+        setIsUpdating(true);
+        editorRef.current.innerHTML = '<br>';
+        setIsUpdating(false);
+      }
       return;
     }
 
-    const currentRendered = markdownToHtml(value || '');
-    const v = value || '';
+    if (markdownMatchesDom(currentHtml, v, htmlToMarkdown)) {
+      return;
+    }
+
+    const currentRendered = markdownToHtml(v);
 
     // Clear editor when value cleared from outside
     if (!v.trim()) {

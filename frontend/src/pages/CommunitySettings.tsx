@@ -17,6 +17,10 @@ const CommunitySettings: React.FC = () => {
   const [newTagName, setNewTagName] = useState('');
   const [newTagColor, setNewTagColor] = useState('#3B82F6');
   const [newTagDescription, setNewTagDescription] = useState('');
+  const [editingTagId, setEditingTagId] = useState<string | null>(null);
+  const [editTagName, setEditTagName] = useState('');
+  const [editTagColor, setEditTagColor] = useState('#3B82F6');
+  const [editTagDescription, setEditTagDescription] = useState('');
 
   // Fetch community details
   const { data: community, isLoading } = useQuery<Community>({
@@ -60,6 +64,51 @@ const CommunitySettings: React.FC = () => {
       toast.error(error.message || 'Failed to delete tag');
     },
   });
+
+  const updateTagMutation = useMutation({
+    mutationFn: ({
+      tagId,
+      data,
+    }: {
+      tagId: string;
+      data: { name: string; color?: string; description?: string };
+    }) => apiService.updateCommunityTag(community!.id, tagId, data),
+    onSuccess: () => {
+      refetchTags();
+      queryClient.invalidateQueries({ queryKey: ['communityTags'] });
+      setEditingTagId(null);
+      toast.success('Tag updated');
+    },
+    onError: (error: Error) => {
+      toast.error(error.message || 'Failed to update tag');
+    },
+  });
+
+  const startEditTag = (tag: CommunityTag) => {
+    setEditingTagId(tag.id);
+    setEditTagName(tag.name);
+    setEditTagColor(tag.color && /^#[0-9A-Fa-f]{6}$/.test(tag.color) ? tag.color : '#3B82F6');
+    setEditTagDescription(tag.description || '');
+  };
+
+  const cancelEditTag = () => {
+    setEditingTagId(null);
+  };
+
+  const saveEditTag = () => {
+    if (!editingTagId || !editTagName.trim()) {
+      toast.error('Tag name is required');
+      return;
+    }
+    updateTagMutation.mutate({
+      tagId: editingTagId,
+      data: {
+        name: editTagName.trim(),
+        color: editTagColor,
+        description: editTagDescription.trim() || undefined,
+      },
+    });
+  };
 
   const handleCreateTag = () => {
     if (!newTagName.trim()) {
@@ -385,16 +434,23 @@ const CommunitySettings: React.FC = () => {
           />
         )}
 
-        {/* Tags Section - For moderators/admins */}
+        {/* Topic tags — options members pick when posting; filter feed by topic */}
         {canEdit && (
           <div className="mb-8">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-lg font-semibold text-gray-900">Community Tags</h2>
+            <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 mb-4">
+              <div>
+                <h2 className="text-lg font-semibold text-gray-900">Topic tags for posts</h2>
+                <p className="text-sm text-gray-600 mt-1 max-w-xl">
+                  Define the subjects and interests people can attach to posts (e.g. &quot;Arthroscopy&quot;, &quot;Research&quot;,
+                  &quot;Career&quot;). Members choose from this list when creating a post; everyone can filter the community feed by topic.
+                </p>
+              </div>
               <button
+                type="button"
                 onClick={() => setShowAddTagForm(!showAddTagForm)}
-                className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors text-sm font-medium"
+                className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors text-sm font-medium shrink-0"
               >
-                {showAddTagForm ? 'Cancel' : 'Add Tag'}
+                {showAddTagForm ? 'Cancel' : 'Add topic tag'}
               </button>
             </div>
 
@@ -404,13 +460,13 @@ const CommunitySettings: React.FC = () => {
                 <div className="space-y-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Tag Name *
+                      Tag name *
                     </label>
                     <input
                       type="text"
                       value={newTagName}
                       onChange={(e) => setNewTagName(e.target.value)}
-                      placeholder="e.g., Case Study, Tool Review, Question"
+                      placeholder="e.g. Trauma, Pediatrics, Technique"
                       className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                     />
                   </div>
@@ -427,22 +483,23 @@ const CommunitySettings: React.FC = () => {
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Description (optional)
+                      Short description (optional)
                     </label>
                     <textarea
                       value={newTagDescription}
                       onChange={(e) => setNewTagDescription(e.target.value)}
-                      placeholder="Brief description of what this tag is for"
+                      placeholder="Shown as a hint when people hover the tag"
                       rows={2}
                       className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                     />
                   </div>
                   <button
+                    type="button"
                     onClick={handleCreateTag}
                     disabled={createTagMutation.isPending}
                     className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                   >
-                    {createTagMutation.isPending ? 'Creating...' : 'Create Tag'}
+                    {createTagMutation.isPending ? 'Creating...' : 'Create topic tag'}
                   </button>
                 </div>
               </div>
@@ -454,36 +511,90 @@ const CommunitySettings: React.FC = () => {
                 communityTags.map((tag) => (
                   <div
                     key={tag.id}
-                    className="flex items-center justify-between p-3 border border-gray-200 rounded-md bg-white"
+                    className="p-3 border border-gray-200 rounded-md bg-white space-y-3"
                   >
-                    <div className="flex items-center space-x-3">
-                      <div
-                        className="w-4 h-4 rounded-full"
-                        style={{ backgroundColor: tag.color || '#3B82F6' }}
-                      />
-                      <div>
-                        <div className="font-medium text-gray-900">{tag.name}</div>
-                        {tag.description && (
-                          <div className="text-sm text-gray-500">{tag.description}</div>
-                        )}
+                    {editingTagId === tag.id ? (
+                      <div className="space-y-3">
+                        <input
+                          type="text"
+                          value={editTagName}
+                          onChange={(e) => setEditTagName(e.target.value)}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
+                          placeholder="Tag name"
+                        />
+                        <input
+                          type="color"
+                          value={editTagColor}
+                          onChange={(e) => setEditTagColor(e.target.value)}
+                          className="w-full h-9 border border-gray-300 rounded-md cursor-pointer"
+                        />
+                        <textarea
+                          value={editTagDescription}
+                          onChange={(e) => setEditTagDescription(e.target.value)}
+                          rows={2}
+                          placeholder="Description (optional)"
+                          className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
+                        />
+                        <div className="flex gap-2">
+                          <button
+                            type="button"
+                            onClick={saveEditTag}
+                            disabled={updateTagMutation.isPending}
+                            className="px-3 py-1.5 bg-blue-600 text-white text-sm rounded-md hover:bg-blue-700 disabled:opacity-50"
+                          >
+                            Save
+                          </button>
+                          <button
+                            type="button"
+                            onClick={cancelEditTag}
+                            className="px-3 py-1.5 border border-gray-300 text-sm rounded-md hover:bg-gray-50"
+                          >
+                            Cancel
+                          </button>
+                        </div>
                       </div>
-                    </div>
-                    <button
-                      onClick={() => {
-                        if (window.confirm(`Are you sure you want to delete the tag "${tag.name}"?`)) {
-                          deleteTagMutation.mutate(tag.id);
-                        }
-                      }}
-                      disabled={deleteTagMutation.isPending}
-                      className="px-3 py-1 text-red-600 hover:bg-red-50 rounded-md transition-colors disabled:opacity-50"
-                    >
-                      Delete
-                    </button>
+                    ) : (
+                      <div className="flex items-center justify-between gap-2">
+                        <div className="flex items-center space-x-3 min-w-0">
+                          <div
+                            className="w-4 h-4 rounded-full shrink-0"
+                            style={{ backgroundColor: tag.color || '#3B82F6' }}
+                          />
+                          <div className="min-w-0">
+                            <div className="font-medium text-gray-900 truncate">{tag.name}</div>
+                            {tag.description && (
+                              <div className="text-sm text-gray-500 line-clamp-2">{tag.description}</div>
+                            )}
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-1 shrink-0">
+                          <button
+                            type="button"
+                            onClick={() => startEditTag(tag)}
+                            className="px-3 py-1 text-sm text-blue-600 hover:bg-blue-50 rounded-md"
+                          >
+                            Edit
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              if (window.confirm(`Delete topic tag "${tag.name}"? Posts keep their content; this tag is removed from posts.`)) {
+                                deleteTagMutation.mutate(tag.id);
+                              }
+                            }}
+                            disabled={deleteTagMutation.isPending}
+                            className="px-3 py-1 text-sm text-red-600 hover:bg-red-50 rounded-md transition-colors disabled:opacity-50"
+                          >
+                            Delete
+                          </button>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 ))
               ) : (
-                <div className="text-center py-8 text-gray-500">
-                  <p>No tags yet. Add tags to help categorize posts in this community.</p>
+                <div className="text-center py-8 text-gray-500 border border-dashed border-gray-200 rounded-md">
+                  <p>No topic tags yet. Add at least a few so members can label what their post is about.</p>
                 </div>
               )}
             </div>

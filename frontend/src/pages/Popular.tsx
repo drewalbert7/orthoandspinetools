@@ -4,6 +4,7 @@ import { Link } from 'react-router-dom';
 import { apiService, Post } from '../services/apiService';
 import VoteButton from '../components/VoteButton';
 import PostAttachments from '../components/PostAttachments';
+import PostPollBlock from '../components/PostPollBlock';
 import ShareButton from '../components/ShareButton';
 import VerifiedPhysicianInline from '../components/VerifiedPhysicianInline';
 
@@ -60,10 +61,35 @@ const PostCard: React.FC<{ post: Post }> = ({ post }) => {
           <h3 className="text-base sm:text-lg font-medium text-gray-900 mb-2 hover:text-blue-600 transition-colors leading-tight">
             {post.title}
           </h3>
-          <p className="text-gray-800 text-xs sm:text-sm leading-relaxed mb-3 line-clamp-3">
-            {post.content}
-          </p>
+          {post.type === 'link' && post.linkUrl && (
+            <p className="text-xs sm:text-sm text-blue-600 mb-2 line-clamp-1 break-all">
+              {(() => {
+                try {
+                  return new URL(post.linkUrl).hostname.replace(/^www\./, '');
+                } catch {
+                  return post.linkUrl;
+                }
+              })()}
+            </p>
+          )}
+          {post.content ? (
+            <p className="text-gray-800 text-xs sm:text-sm leading-relaxed mb-3 line-clamp-3">
+              {post.content}
+            </p>
+          ) : null}
         </Link>
+
+        {post.type === 'poll' && Array.isArray(post.pollOptions) && (
+          <PostPollBlock
+            postId={post.id}
+            pollOptions={post.pollOptions}
+            pollEndsAt={post.pollEndsAt}
+            pollVoteCounts={post.pollVoteCounts}
+            userPollVoteIndex={post.userPollVoteIndex}
+            pollClosed={post.pollClosed}
+            compact
+          />
+        )}
 
         {/* Attachments Preview - Reddit Style */}
         <PostAttachments attachments={post.attachments ?? []} postId={post.id} />

@@ -1,16 +1,19 @@
 import React, { useState } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useParams, Link, useSearchParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { apiService, Post, Community } from '../services/apiService';
+import { apiService, Post, Community, CommunityTag } from '../services/apiService';
 import VoteButton from '../components/VoteButton';
 import ShareButton from '../components/ShareButton';
 import { useAuth } from '../contexts/AuthContext';
 import PostAttachments from '../components/PostAttachments';
+import PostPollBlock from '../components/PostPollBlock';
 import VerifiedPhysicianInline from '../components/VerifiedPhysicianInline';
 
 const CommunityPage: React.FC = () => {
   const { slug } = useParams<{ slug: string }>();
   const { user } = useAuth();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const tagFilter = (searchParams.get('tag') || '').trim();
   const [sortBy, setSortBy] = useState<'newest' | 'oldest' | 'popular' | 'controversial'>('newest');
 
   // Fetch community details
@@ -20,12 +23,32 @@ const CommunityPage: React.FC = () => {
     enabled: !!slug,
   });
 
+  const { data: topicTags } = useQuery<CommunityTag[]>({
+    queryKey: ['communityTags', communityData?.id],
+    queryFn: () => apiService.getCommunityTags(communityData!.id),
+    enabled: !!communityData?.id,
+  });
+
   // Fetch posts for this community
   const { data: postsData, isLoading: postsLoading } = useQuery<Post[]>({
-    queryKey: ['posts', 'community', slug, sortBy],
-    queryFn: () => apiService.getPosts({ community: slug!, sort: sortBy }).then((res) => res.posts),
+    queryKey: ['posts', 'community', slug, sortBy, tagFilter],
+    queryFn: () =>
+      apiService
+        .getPosts({
+          community: slug!,
+          sort: sortBy,
+          ...(tagFilter ? { tag: tagFilter } : {}),
+        })
+        .then((res) => res.posts),
     enabled: !!slug,
   });
+
+  const setTopicFilter = (tagId: string | null) => {
+    const next = new URLSearchParams(searchParams);
+    if (tagId) next.set('tag', tagId);
+    else next.delete('tag');
+    setSearchParams(next, { replace: true });
+  };
 
 
   const formatDate = (dateString: string) => {
@@ -144,11 +167,11 @@ const CommunityPage: React.FC = () => {
             </div>
 
             {/* Feed Controls */}
-            <div className="px-6 py-3 border-t border-gray-200 flex items-center justify-between">
-              <div className="flex items-center space-x-4">
+            <div className="px-6 py-3 border-t border-gray-200 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <div className="flex flex-wrap items-center gap-3">
                 <select 
                   value={sortBy} 
-                  onChange={(e) => setSortBy(e.target.value as any)}
+                  onChange={(e) => setSortBy(e.target.value as 'newest' | 'oldest' | 'popular' | 'controversial')}
                   className="px-3 py-1 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                 >
                   <option value="newest">New</option>
@@ -157,12 +180,12 @@ const CommunityPage: React.FC = () => {
                   <option value="controversial">Controversial</option>
                 </select>
                 <div className="flex items-center space-x-1">
-                  <button className="p-1 hover:bg-gray-100 rounded">
+                  <button type="button" className="p-1 hover:bg-gray-100 rounded" aria-hidden>
                     <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 10h16M4 14h16M4 18h16" />
                     </svg>
                   </button>
-                  <button className="p-1 hover:bg-gray-100 rounded">
+                  <button type="button" className="p-1 hover:bg-gray-100 rounded" aria-hidden>
                     <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" />
                     </svg>
@@ -170,6 +193,51 @@ const CommunityPage: React.FC = () => {
                 </div>
               </div>
             </div>
+
+            {topicTags && topicTags.length > 0 && (
+              <div className="px-6 pb-4 border-b border-gray-100">
+                <div className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-2">
+                  Topics (set by moderators)
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setTopicFilter(null)}
+                    className={`px-3 py-1 rounded-full text-sm font-medium border transition-colors ${
+                      !tagFilter
+                        ? 'bg-gray-900 text-white border-gray-900'
+                        : 'bg-white text-gray-700 border-gray-200 hover:border-gray-300'
+                    }`}
+                  >
+                    All posts
+                  </button>
+                  {topicTags
+                    .filter((t) => t?.id && t?.name)
+                    .map((t) => (
+                      <button
+                        key={t.id}
+                        type="button"
+                        onClick={() => setTopicFilter(t.id)}
+                        className={`px-3 py-1 rounded-full text-sm font-medium border transition-colors ${
+                          tagFilter === t.id
+                            ? 'text-white border-transparent'
+                            : 'bg-gray-50 text-gray-800 border-gray-200 hover:border-gray-300'
+                        }`}
+                        style={
+                          tagFilter === t.id && t.color && /^#[0-9A-Fa-f]{6}$/.test(t.color)
+                            ? { backgroundColor: t.color, borderColor: t.color }
+                            : tagFilter === t.id
+                              ? { backgroundColor: '#111827', borderColor: '#111827' }
+                              : undefined
+                        }
+                        title={t.description || t.name}
+                      >
+                        {t.name}
+                      </button>
+                    ))}
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Posts Feed */}
@@ -181,11 +249,27 @@ const CommunityPage: React.FC = () => {
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                   </svg>
                 </div>
-                <h3 className="text-lg font-semibold text-gray-900 mb-2">No posts yet</h3>
-                <p className="text-gray-600 mb-4">Be the first to share something in o/{community.name}!</p>
+                {tagFilter ? (
+                  <>
+                    <h3 className="text-lg font-semibold text-gray-900 mb-2">No posts with this topic</h3>
+                    <p className="text-gray-600 mb-4">Try another topic or clear the filter to see all posts.</p>
+                    <button
+                      type="button"
+                      onClick={() => setTopicFilter(null)}
+                      className="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md hover:bg-gray-50 transition-colors mr-2"
+                    >
+                      Show all posts
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    <h3 className="text-lg font-semibold text-gray-900 mb-2">No posts yet</h3>
+                    <p className="text-gray-600 mb-4">Be the first to share something in o/{community.name}!</p>
+                  </>
+                )}
                 <Link 
                   to="/create-post" 
-                  className="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
+                  className="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors mt-2"
                 >
                   <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
@@ -218,6 +302,17 @@ const CommunityPage: React.FC = () => {
                     <h2 className="text-xl font-semibold text-gray-900 mb-3 hover:text-blue-600 cursor-pointer">
                       <Link to={`/post/${post.id}`}>{post.title}</Link>
                     </h2>
+                    {post.type === 'link' && post.linkUrl && (
+                      <p className="text-sm text-blue-600 mb-3 break-all">
+                        {(() => {
+                          try {
+                            return new URL(post.linkUrl).hostname.replace(/^www\./, '');
+                          } catch {
+                            return post.linkUrl;
+                          }
+                        })()}
+                      </p>
+                    )}
                     {post.content && (
                       <div className="text-gray-700 mb-4">
                         {post.content.length > 300 ? (
@@ -232,7 +327,18 @@ const CommunityPage: React.FC = () => {
                         )}
                       </div>
                     )}
-                    
+                    {post.type === 'poll' && Array.isArray(post.pollOptions) && (
+                      <PostPollBlock
+                        postId={post.id}
+                        pollOptions={post.pollOptions}
+                        pollEndsAt={post.pollEndsAt}
+                        pollVoteCounts={post.pollVoteCounts}
+                        userPollVoteIndex={post.userPollVoteIndex}
+                        pollClosed={post.pollClosed}
+                        compact
+                      />
+                    )}
+
                     {/* Attachments Preview - Reddit Style */}
                     <PostAttachments attachments={post.attachments ?? []} postId={post.id} />
                   </div>

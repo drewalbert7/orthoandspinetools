@@ -58,8 +58,23 @@ model User {
   contributions     CommunityContribution[]
   karma             UserKarma?
   notifications     Notification[]
+  postPollVotes     PostPollVote[]
   
   @@map("users")
+}
+
+model PostPollVote {
+  id          String   @id @default(cuid())
+  postId      String   @map("post_id")
+  userId      String   @map("user_id")
+  optionIndex Int      @map("option_index")
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  post Post @relation(fields: [postId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([postId, userId])
+  @@map("post_poll_votes")
 }
 
 // In-app notifications (replies, comments on your posts, etc.)
@@ -139,7 +154,10 @@ model Post {
   id                String    @id @default(cuid())
   title             String
   content           String
-  type              String    @default("discussion") // discussion, case_study, tool_review, question
+  type              String    @default("discussion") // discussion, case_study, tool_review, question, link, poll
+  linkUrl           String?   @map("link_url")
+  pollOptions       Json?     @map("poll_options")
+  pollEndsAt        DateTime? @map("poll_ends_at")
   isPinned          Boolean   @default(false)
   isLocked          Boolean   @default(false)
   isDeleted         Boolean   @default(false)
@@ -163,6 +181,7 @@ model Post {
   attachments       PostAttachment[]
   votes             PostVote[]
   tags              PostTag[]
+  pollVotes         PostPollVote[]
   
   @@map("posts")
 }
