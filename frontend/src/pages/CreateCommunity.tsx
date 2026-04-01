@@ -23,9 +23,9 @@ const CreateCommunity: React.FC = () => {
     let cancelled = false;
     (async () => {
       try {
-        await refreshUser();
-      } catch {
-        /* keep cached user */
+        if (user.canCreateCommunity === undefined) {
+          await refreshUser();
+        }
       } finally {
         if (!cancelled) setPermissionReady(true);
       }
@@ -33,7 +33,7 @@ const CreateCommunity: React.FC = () => {
     return () => {
       cancelled = true;
     };
-  }, [user, navigate, refreshUser]);
+  }, [user?.id, navigate, refreshUser]);
 
   const explicitlyDenied = user?.canCreateCommunity === false;
 

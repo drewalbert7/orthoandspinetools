@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, useMemo, ReactNode } from 'react';
 import { authService, LoginCredentials, RegisterData, User } from '../services/authService';
 
 interface AuthContextType {
@@ -67,7 +67,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     initAuth();
   }, []);
 
-  const login = async (credentials: LoginCredentials) => {
+  const login = useCallback(async (credentials: LoginCredentials) => {
     try {
       console.log('AuthContext: Starting login process...');
       const response = await authService.login(credentials);
@@ -78,48 +78,48 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       console.error('AuthContext: Login error:', error);
       throw error;
     }
-  };
+  }, []);
 
-  const register = async (userData: RegisterData) => {
+  const register = useCallback(async (userData: RegisterData) => {
     try {
       const response = await authService.register(userData);
       setUser(response.user);
     } catch (error) {
       throw error;
     }
-  };
+  }, []);
 
-  const logout = () => {
+  const logout = useCallback(() => {
     setUser(null);
     authService.logout();
-  };
+  }, []);
 
-  const updateProfile = async (userData: Partial<User>) => {
+  const updateProfile = useCallback(async (userData: Partial<User>) => {
     const updatedUser = await authService.updateProfile(userData);
-    // PUT /me omits some fields (e.g. isAdmin); merge so header & menus stay correct.
     setUser((prev) => (prev ? { ...prev, ...updatedUser } : updatedUser));
-  };
+  }, []);
 
-  const refreshUser = async () => {
+  const refreshUser = useCallback(async () => {
     try {
       const refreshedUser = await authService.refreshUser();
-      // Merge so we never drop fields if the client User type is wider than the payload.
       setUser((prev) => (prev ? { ...prev, ...refreshedUser } : refreshedUser));
     } catch (error) {
       console.error('Failed to refresh user:', error);
-      // Don't throw - just log the error
     }
-  };
+  }, []);
 
-  const value: AuthContextType = {
-    user,
-    loading,
-    login,
-    register,
-    logout,
-    updateProfile,
-    refreshUser,
-  };
+  const value: AuthContextType = useMemo(
+    () => ({
+      user,
+      loading,
+      login,
+      register,
+      logout,
+      updateProfile,
+      refreshUser,
+    }),
+    [user, loading, login, register, logout, updateProfile, refreshUser]
+  );
 
   return (
     <AuthContext.Provider value={value}>
