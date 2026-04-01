@@ -21,7 +21,7 @@
 
 import React, { useState, useEffect, useLayoutEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate, Link, useSearchParams } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { apiService, apiErrorMessage, Community, CommunityTag } from '../services/apiService';
 import { useAuth } from '../contexts/AuthContext';
@@ -47,6 +47,7 @@ type UploadedPostMedia = {
 
 const CreatePost: React.FC = () => {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const queryClient = useQueryClient();
   const { user } = useAuth();
   const [selectedCommunity, setSelectedCommunity] = useState<string>('');
@@ -76,6 +77,7 @@ const CreatePost: React.FC = () => {
   const communityMenuPortalRef = useRef<HTMLDivElement>(null);
   const editorRef = useRef<MarkdownEditorHandle | null>(null);
   const imagesEditorRef = useRef<MarkdownEditorHandle | null>(null);
+  const appliedCommunityParamRef = useRef<string | null>(null);
 
   // Fetch communities
   const { data: communities, isLoading: communitiesLoading } = useQuery<Community[]>({
@@ -114,6 +116,20 @@ const CreatePost: React.FC = () => {
     staleTime: 10 * 60 * 1000,
     retry: 1,
   });
+
+  const communityFromUrl = (searchParams.get('community') || '').trim();
+
+  useEffect(() => {
+    if (!communities?.length || !communityFromUrl) return;
+    if (appliedCommunityParamRef.current === communityFromUrl) return;
+    const match = communities.find(
+      (c) => c.id === communityFromUrl || c.slug === communityFromUrl
+    );
+    if (match) {
+      setSelectedCommunity(match.id);
+      appliedCommunityParamRef.current = communityFromUrl;
+    }
+  }, [communities, communityFromUrl]);
 
   // Reset selected tags when community changes
   useEffect(() => {

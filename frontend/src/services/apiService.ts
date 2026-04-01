@@ -149,6 +149,7 @@ export interface Community {
   name: string;
   slug: string;
   description: string;
+  rules?: string;
   profileImage?: string;
   bannerImage?: string;
   ownerId?: string;

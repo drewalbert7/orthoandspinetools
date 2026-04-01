@@ -9,6 +9,35 @@ import PostAttachments from '../components/PostAttachments';
 import PostPollBlock from '../components/PostPollBlock';
 import VerifiedPhysicianInline from '../components/VerifiedPhysicianInline';
 
+const SORT_OPTIONS = [
+  { value: 'newest' as const, label: 'New' },
+  { value: 'oldest' as const, label: 'Old' },
+  { value: 'popular' as const, label: 'Top' },
+  { value: 'controversial' as const, label: 'Controversial' },
+];
+
+function formatRelativeTime(dateString: string): string {
+  const t = new Date(dateString).getTime();
+  if (Number.isNaN(t)) return '';
+  const sec = Math.floor((Date.now() - t) / 1000);
+  if (sec < 45) return 'now';
+  const min = Math.floor(sec / 60);
+  if (min < 60) return `${min}m`;
+  const hr = Math.floor(min / 60);
+  if (hr < 24) return `${hr}h`;
+  const d = Math.floor(hr / 24);
+  if (d < 7) return `${d}d`;
+  return new Date(dateString).toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+}
+
+function linkHostname(url: string): string {
+  try {
+    return new URL(url).hostname.replace(/^www\./, '');
+  } catch {
+    return url;
+  }
+}
+
 const CommunityPage: React.FC = () => {
   const { slug } = useParams<{ slug: string }>();
   const { user } = useAuth();
@@ -16,7 +45,6 @@ const CommunityPage: React.FC = () => {
   const tagFilter = (searchParams.get('tag') || '').trim();
   const [sortBy, setSortBy] = useState<'newest' | 'oldest' | 'popular' | 'controversial'>('newest');
 
-  // Fetch community details
   const { data: communityData, isLoading: communityLoading } = useQuery<Community>({
     queryKey: ['community', slug],
     queryFn: () => apiService.getCommunity(slug!),
@@ -29,7 +57,6 @@ const CommunityPage: React.FC = () => {
     enabled: !!communityData?.id,
   });
 
-  // Fetch posts for this community
   const { data: postsData, isLoading: postsLoading } = useQuery<Post[]>({
     queryKey: ['posts', 'community', slug, sortBy, tagFilter],
     queryFn: () =>
@@ -40,7 +67,7 @@ const CommunityPage: React.FC = () => {
           ...(tagFilter ? { tag: tagFilter } : {}),
         })
         .then((res) => res.posts),
-    enabled: !!slug,
+    enabled: !!slug && !!communityData,
   });
 
   const setTopicFilter = (tagId: string | null) => {
@@ -50,166 +77,143 @@ const CommunityPage: React.FC = () => {
     setSearchParams(next, { replace: true });
   };
 
-
-  const formatDate = (dateString: string) => {
-    const date = new Date(dateString);
-    const now = new Date();
-    const diffInHours = Math.floor((now.getTime() - date.getTime()) / (1000 * 60 * 60));
-    
-    if (diffInHours < 1) return 'now';
-    if (diffInHours < 24) return `${diffInHours} hr. ago`;
-    const diffInDays = Math.floor(diffInHours / 24);
-    if (diffInDays < 7) return `${diffInDays} days ago`;
-    return date.toLocaleDateString();
-  };
-
-
-  if (communityLoading || postsLoading) {
+  if (communityLoading) {
     return (
-      <div className="max-w-6xl mx-auto px-3 sm:px-4">
-        <div className="flex items-center justify-center min-h-64">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
-          <span className="ml-3 text-gray-600">Loading community...</span>
+      <div className="min-h-[50vh] flex items-center justify-center px-4">
+        <div className="flex flex-col items-center gap-3">
+          <div className="h-10 w-10 rounded-full border-2 border-gray-200 border-t-orange-500 animate-spin" />
+          <span className="text-sm text-gray-500">Loading community…</span>
         </div>
       </div>
     );
   }
 
   const community = communityData;
-  const posts = postsData || [];
+  const posts = postsData ?? [];
+  const canManage =
+    !!user &&
+    (user.id === community?.ownerId ||
+      !!community?.moderators?.some((m) => m.userId === user.id) ||
+      !!user.isAdmin);
 
   if (!community) {
     return (
-      <div className="max-w-6xl mx-auto px-3 sm:px-4">
-        <div className="text-center py-12">
-          <h1 className="text-2xl font-bold text-gray-900 mb-4">Community not found</h1>
-          <p className="text-gray-600 mb-4">The community "o/{slug}" doesn't exist.</p>
-          <Link to="/" className="text-blue-600 hover:text-blue-800">
-            Go back to home
-          </Link>
-        </div>
+      <div className="max-w-6xl mx-auto px-4 py-12 text-center">
+        <h1 className="text-xl font-bold text-gray-900 mb-2">Community not found</h1>
+        <p className="text-gray-600 mb-6">o/{slug} does not exist or is unavailable.</p>
+        <Link to="/" className="text-sm font-medium text-blue-600 hover:text-blue-800">
+          ← Back to home
+        </Link>
       </div>
     );
   }
 
+  const createPostHref = `/create-post?community=${encodeURIComponent(community.id)}`;
+
   return (
-    <div className="max-w-6xl mx-auto px-3 sm:px-4">
-      <div className="flex flex-col lg:flex-row gap-4 lg:gap-6">
-        {/* Main Content */}
-        <div className="flex-1">
-          {/* Community Header */}
-          <div className="bg-white border border-gray-200 rounded-md mb-4">
-            {/* Banner */}
-            <div className="h-32 relative">
+    <div className="max-w-6xl mx-auto px-2 sm:px-4 pb-8">
+      <div className="flex flex-col lg:flex-row gap-4 lg:gap-6 lg:items-start">
+        <div className="flex-1 min-w-0 order-1">
+          <div className="bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden mb-3 sm:mb-4">
+            <div className="relative h-24 sm:h-32 bg-gradient-to-br from-slate-700 to-slate-900">
               {community.bannerImage ? (
-                <img 
-                  src={community.bannerImage} 
-                  alt={`${community.name} banner`}
-                  className="w-full h-32 object-cover"
+                <img
+                  src={community.bannerImage}
+                  alt=""
+                  className="absolute inset-0 w-full h-full object-cover"
                 />
-              ) : (
-                <div className="h-32 bg-gradient-to-r from-blue-500 to-purple-600"></div>
-              )}
-              <div className="absolute bottom-0 left-6 transform translate-y-1/2">
-                <div className="w-20 h-20 bg-white rounded-full border-4 border-white flex items-center justify-center">
+              ) : null}
+              <div className="absolute -bottom-8 left-3 sm:left-5">
+                <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-full bg-white ring-4 ring-white shadow-md flex items-center justify-center overflow-hidden">
                   {community.profileImage ? (
-                    <img 
-                      src={community.profileImage} 
-                      alt={community.name}
-                      className="w-16 h-16 rounded-full object-cover"
+                    <img
+                      src={community.profileImage}
+                      alt=""
+                      className="w-full h-full object-cover"
                     />
                   ) : (
-                    <div className="w-16 h-16 bg-blue-600 rounded-full flex items-center justify-center">
-                      <span className="text-white font-bold text-xl">o/</span>
+                    <div className="w-full h-full bg-blue-600 flex items-center justify-center">
+                      <span className="text-white font-bold text-lg sm:text-xl">o/</span>
                     </div>
                   )}
                 </div>
               </div>
             </div>
-            
-            {/* Community Info */}
-            <div className="pt-12 pb-4 px-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <h1 className="text-2xl font-bold text-gray-900">o/{community.name}</h1>
-                  <p className="text-gray-600">{community.description}</p>
+
+            <div className="pt-10 sm:pt-11 px-3 sm:px-5 pb-4">
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
+                <div className="min-w-0 pt-1">
+                  <h1 className="text-xl sm:text-2xl font-bold text-gray-900 tracking-tight truncate">
+                    o/{community.name}
+                  </h1>
+                  <p className="text-sm text-gray-600 mt-1 line-clamp-3 sm:line-clamp-none [overflow-wrap:anywhere]">
+                    {community.description}
+                  </p>
                 </div>
-                <div className="flex items-center space-x-3">
-                  <Link 
-                    to="/create-post" 
-                    className="px-4 py-2 bg-blue-600 text-white rounded-full hover:bg-blue-700 transition-colors font-medium"
+                <div className="flex flex-wrap items-center gap-2 shrink-0">
+                  <Link
+                    to={createPostHref}
+                    className="inline-flex items-center justify-center min-h-[44px] px-4 rounded-full bg-blue-600 text-white text-sm font-semibold hover:bg-blue-700 active:bg-blue-800 transition-colors touch-manipulation"
                   >
-                    + Create Post
+                    Create post
                   </Link>
-                  <button className="px-4 py-2 border border-gray-300 rounded-full hover:bg-gray-50 transition-colors">
-                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-5 5v-5zM4.5 19.5a2.5 2.5 0 01-2.5-2.5V6a2.5 2.5 0 012.5-2.5h15A2.5 2.5 0 0122 6v11a2.5 2.5 0 01-2.5 2.5h-15z" />
-                    </svg>
-                  </button>
-                  {/* Settings button for community owners/moderators/admins */}
-                  {user && (community.ownerId === user.id || community.moderators?.some(mod => mod.userId === user.id) || user.isAdmin) && (
-                    <Link 
+                  {canManage && (
+                    <Link
                       to={`/community/${community.slug}/settings`}
-                      className="px-4 py-2 border border-gray-300 rounded-full hover:bg-gray-50 transition-colors"
-                      title="Community Settings"
+                      className="inline-flex items-center justify-center min-h-[44px] min-w-[44px] rounded-full border border-gray-300 text-gray-700 hover:bg-gray-50 touch-manipulation"
+                      title="Community settings"
+                      aria-label="Community settings"
                     >
-                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden>
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"
+                        />
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
                       </svg>
                     </Link>
                   )}
-                  <button className="px-4 py-2 bg-blue-600 text-white rounded-full hover:bg-blue-700 transition-colors font-medium">
-                    Joined
-                  </button>
                 </div>
               </div>
             </div>
 
-            {/* Feed Controls */}
-            <div className="px-6 py-3 border-t border-gray-200 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-              <div className="flex flex-wrap items-center gap-3">
-                <select 
-                  value={sortBy} 
-                  onChange={(e) => setSortBy(e.target.value as 'newest' | 'oldest' | 'popular' | 'controversial')}
-                  className="px-3 py-1 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                >
-                  <option value="newest">New</option>
-                  <option value="oldest">Oldest</option>
-                  <option value="popular">Popular</option>
-                  <option value="controversial">Controversial</option>
-                </select>
-                <div className="flex items-center space-x-1">
-                  <button type="button" className="p-1 hover:bg-gray-100 rounded" aria-hidden>
-                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 10h16M4 14h16M4 18h16" />
-                    </svg>
+            <div className="border-t border-gray-200 bg-gray-50/80 px-2 sm:px-4 py-2">
+              <div className="flex gap-1 overflow-x-auto pb-1 [-webkit-overflow-scrolling:touch] sm:flex-wrap sm:overflow-visible sm:pb-0">
+                {SORT_OPTIONS.map((opt) => (
+                  <button
+                    key={opt.value}
+                    type="button"
+                    onClick={() => setSortBy(opt.value)}
+                    className={`shrink-0 min-h-[40px] px-3 sm:px-4 rounded-full text-sm font-semibold transition-colors touch-manipulation ${
+                      sortBy === opt.value
+                        ? 'bg-gray-900 text-white'
+                        : 'bg-white text-gray-600 border border-gray-200 hover:bg-gray-100'
+                    }`}
+                  >
+                    {opt.label}
                   </button>
-                  <button type="button" className="p-1 hover:bg-gray-100 rounded" aria-hidden>
-                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" />
-                    </svg>
-                  </button>
-                </div>
+                ))}
               </div>
             </div>
 
             {topicTags && topicTags.length > 0 && (
-              <div className="px-6 pb-4 border-b border-gray-100">
-                <div className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-2">
-                  Topics (set by moderators)
-                </div>
-                <div className="flex flex-wrap gap-2">
+              <div className="px-2 sm:px-4 py-3 border-t border-gray-100 bg-white">
+                <p className="text-[11px] font-semibold uppercase tracking-wider text-gray-400 mb-2 px-1">
+                  Topics
+                </p>
+                <div className="flex gap-2 overflow-x-auto pb-1 [-webkit-overflow-scrolling:touch] sm:flex-wrap sm:overflow-visible">
                   <button
                     type="button"
                     onClick={() => setTopicFilter(null)}
-                    className={`px-3 py-1 rounded-full text-sm font-medium border transition-colors ${
+                    className={`shrink-0 min-h-[36px] px-3 rounded-full text-sm font-medium border transition-colors touch-manipulation ${
                       !tagFilter
                         ? 'bg-gray-900 text-white border-gray-900'
                         : 'bg-white text-gray-700 border-gray-200 hover:border-gray-300'
                     }`}
                   >
-                    All posts
+                    All
                   </button>
                   {topicTags
                     .filter((t) => t?.id && t?.name)
@@ -218,7 +222,8 @@ const CommunityPage: React.FC = () => {
                         key={t.id}
                         type="button"
                         onClick={() => setTopicFilter(t.id)}
-                        className={`px-3 py-1 rounded-full text-sm font-medium border transition-colors ${
+                        title={t.description || t.name}
+                        className={`shrink-0 min-h-[36px] px-3 rounded-full text-sm font-medium border transition-colors touch-manipulation max-w-[200px] truncate ${
                           tagFilter === t.id
                             ? 'text-white border-transparent'
                             : 'bg-gray-50 text-gray-800 border-gray-200 hover:border-gray-300'
@@ -230,7 +235,6 @@ const CommunityPage: React.FC = () => {
                               ? { backgroundColor: '#111827', borderColor: '#111827' }
                               : undefined
                         }
-                        title={t.description || t.name}
                       >
                         {t.name}
                       </button>
@@ -240,206 +244,209 @@ const CommunityPage: React.FC = () => {
             )}
           </div>
 
-          {/* Posts Feed */}
-          <div className="space-y-4">
-            {posts.length === 0 ? (
-              <div className="bg-white border border-gray-200 rounded-md p-8 text-center">
-                <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <svg className="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                  </svg>
-                </div>
-                {tagFilter ? (
-                  <>
-                    <h3 className="text-lg font-semibold text-gray-900 mb-2">No posts with this topic</h3>
-                    <p className="text-gray-600 mb-4">Try another topic or clear the filter to see all posts.</p>
+          <div className="space-y-3 sm:space-y-2">
+            {postsLoading && (
+              <>
+                {[0, 1, 2].map((i) => (
+                  <div
+                    key={i}
+                    className="flex rounded-lg border border-gray-200 bg-white overflow-hidden animate-pulse"
+                  >
+                    <div className="w-12 sm:w-14 bg-gray-100 shrink-0" />
+                    <div className="flex-1 p-4 space-y-2">
+                      <div className="h-4 bg-gray-100 rounded w-3/4" />
+                      <div className="h-3 bg-gray-100 rounded w-full" />
+                      <div className="h-3 bg-gray-100 rounded w-5/6" />
+                    </div>
+                  </div>
+                ))}
+              </>
+            )}
+
+            {!postsLoading && posts.length === 0 && (
+              <div className="rounded-lg border border-gray-200 bg-white p-8 text-center">
+                <h3 className="text-base font-semibold text-gray-900 mb-1">
+                  {tagFilter ? 'No posts with this topic' : 'No posts yet'}
+                </h3>
+                <p className="text-sm text-gray-600 mb-4">
+                  {tagFilter
+                    ? 'Try another topic or view all posts.'
+                    : `Be the first to post in o/${community.name}.`}
+                </p>
+                <div className="flex flex-col sm:flex-row gap-2 justify-center items-center">
+                  {tagFilter && (
                     <button
                       type="button"
                       onClick={() => setTopicFilter(null)}
-                      className="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md hover:bg-gray-50 transition-colors mr-2"
+                      className="min-h-[44px] px-4 rounded-full border border-gray-300 text-sm font-medium text-gray-700 hover:bg-gray-50 touch-manipulation"
                     >
-                      Show all posts
+                      Clear topic filter
                     </button>
-                  </>
-                ) : (
-                  <>
-                    <h3 className="text-lg font-semibold text-gray-900 mb-2">No posts yet</h3>
-                    <p className="text-gray-600 mb-4">Be the first to share something in o/{community.name}!</p>
-                  </>
-                )}
-                <Link 
-                  to="/create-post" 
-                  className="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors mt-2"
-                >
-                  <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                  </svg>
-                  Create Post
-                </Link>
+                  )}
+                  <Link
+                    to={createPostHref}
+                    className="inline-flex items-center justify-center min-h-[44px] px-5 rounded-full bg-blue-600 text-white text-sm font-semibold hover:bg-blue-700 touch-manipulation"
+                  >
+                    Create post
+                  </Link>
+                </div>
               </div>
-            ) : (
+            )}
+
+            {!postsLoading &&
               posts.map((post) => (
-                <div key={post.id} className="bg-white border border-gray-200 rounded-md overflow-hidden">
-                  {/* Post Header */}
-                  <div className="px-4 py-3 border-b border-gray-100">
-                    <div className="flex items-center space-x-2 text-sm text-gray-500">
-                      <div className="w-6 h-6 bg-blue-600 rounded-full flex items-center justify-center">
-                        <span className="text-white text-xs font-bold">o/</span>
-                      </div>
-                      <span>o/{community.name}</span>
-                      <span>•</span>
-                      <span className="inline-flex items-center flex-wrap gap-x-0">
-                        Posted by u/{post.author?.username || 'Unknown'}
-                        {post.author?.isVerifiedPhysician && <VerifiedPhysicianInline />}
-                      </span>
-                      <span>•</span>
-                      <span>{formatDate(post.createdAt)}</span>
-                    </div>
-                  </div>
-
-                  {/* Post Content */}
-                  <div className="px-4 py-4">
-                    <h2 className="text-xl font-semibold text-gray-900 mb-3 hover:text-blue-600 cursor-pointer">
-                      <Link to={`/post/${post.id}`}>{post.title}</Link>
-                    </h2>
-                    {post.type === 'link' && post.linkUrl && (
-                      <p className="text-sm text-blue-600 mb-3 break-all">
-                        {(() => {
-                          try {
-                            return new URL(post.linkUrl).hostname.replace(/^www\./, '');
-                          } catch {
-                            return post.linkUrl;
-                          }
-                        })()}
-                      </p>
-                    )}
-                    {post.content && (
-                      <div className="text-gray-700 mb-4">
-                        {post.content.length > 300 ? (
-                          <>
-                            {post.content.substring(0, 300)}...
-                            <Link to={`/post/${post.id}`} className="text-blue-600 hover:text-blue-800 ml-1">
-                              read more
-                            </Link>
-                          </>
-                        ) : (
-                          post.content
-                        )}
-                      </div>
-                    )}
-                    {post.type === 'poll' && Array.isArray(post.pollOptions) && (
-                      <PostPollBlock
-                        postId={post.id}
-                        pollOptions={post.pollOptions}
-                        pollEndsAt={post.pollEndsAt}
-                        pollVoteCounts={post.pollVoteCounts}
-                        userPollVoteIndex={post.userPollVoteIndex}
-                        pollClosed={post.pollClosed}
-                        compact
-                      />
-                    )}
-
-                    {/* Attachments Preview - Reddit Style */}
-                    <PostAttachments attachments={post.attachments ?? []} postId={post.id} />
-                  </div>
-
-                  {/* Post Actions */}
-                  <div className="px-3 sm:px-4 py-2 sm:py-3 bg-gray-50 flex items-center flex-wrap gap-3 sm:gap-4 lg:gap-6 text-xs sm:text-sm">
+                <article
+                  key={post.id}
+                  className="flex rounded-lg border border-gray-200 bg-white overflow-hidden hover:border-gray-300 transition-colors shadow-sm"
+                >
+                  <div className="hidden sm:flex flex-col items-stretch bg-gray-50 border-r border-gray-100 shrink-0 w-11 sm:w-14">
                     <VoteButton
                       postId={post.id}
-                      initialVoteScore={post.voteScore || 0}
-                      initialUserVote={post.userVote || null}
-                      size="md"
+                      initialVoteScore={post.voteScore ?? 0}
+                      initialUserVote={post.userVote ?? null}
+                      size="sm"
+                      layout="column"
                     />
-                    <button className="flex items-center space-x-1 text-gray-500 hover:text-gray-700">
-                      <svg className="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
-                      </svg>
-                      <span className="hidden sm:inline">{post.commentsCount || post._count?.comments || 0} comments</span>
-                      <span className="sm:hidden">{post.commentsCount || post._count?.comments || 0}</span>
-                    </button>
-                    <ShareButton
-                      url={`/post/${post.id}`}
-                      title={post.title}
-                      type="post"
-                    />
-                    <button className="flex items-center space-x-1 text-gray-500 hover:text-gray-700">
-                      <svg className="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" />
-                      </svg>
-                      <span className="hidden sm:inline">Save</span>
-                    </button>
                   </div>
+                  <div className="flex-1 min-w-0 flex flex-col">
+                    <div className="px-3 sm:px-4 pt-3 pb-1">
+                      <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-gray-500">
+                        <span className="hidden sm:inline text-gray-400">o/{community.name}</span>
+                        <span className="hidden sm:inline text-gray-300">·</span>
+                        <span className="inline-flex items-center gap-x-1 flex-wrap">
+                          <span className="text-gray-500">u/{post.author?.username ?? 'unknown'}</span>
+                          {post.author?.isVerifiedPhysician && <VerifiedPhysicianInline />}
+                        </span>
+                        <span className="text-gray-300">·</span>
+                        <time dateTime={post.createdAt}>{formatRelativeTime(post.createdAt)}</time>
+                      </div>
+                      <h2 className="mt-1.5 text-base sm:text-lg font-semibold text-gray-900 leading-snug [overflow-wrap:anywhere]">
+                        <Link to={`/post/${post.id}`} className="hover:text-blue-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 rounded">
+                          {post.title}
+                        </Link>
+                      </h2>
+                      {post.type === 'link' && post.linkUrl && (
+                        <a
+                          href={post.linkUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="mt-1 inline-flex items-center gap-1 text-sm text-blue-600 hover:text-blue-800 max-w-full"
+                        >
+                          <span className="truncate">{linkHostname(post.linkUrl)}</span>
+                          <svg className="w-3.5 h-3.5 shrink-0 opacity-70" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden>
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                          </svg>
+                        </a>
+                      )}
+                    </div>
+                    <div className="px-3 sm:px-4 pb-2">
+                      {post.content ? (
+                        <p className="text-sm text-gray-700 line-clamp-3 [overflow-wrap:anywhere]">
+                          {post.content.length > 280 ? `${post.content.slice(0, 280)}…` : post.content}
+                          {post.content.length > 280 && (
+                            <Link to={`/post/${post.id}`} className="text-blue-600 hover:underline ml-1 font-medium whitespace-nowrap">
+                              more
+                            </Link>
+                          )}
+                        </p>
+                      ) : null}
+                      {post.type === 'poll' && Array.isArray(post.pollOptions) && (
+                        <div className="mt-2">
+                          <PostPollBlock
+                            postId={post.id}
+                            pollOptions={post.pollOptions}
+                            pollEndsAt={post.pollEndsAt}
+                            pollVoteCounts={post.pollVoteCounts}
+                            userPollVoteIndex={post.userPollVoteIndex}
+                            pollClosed={post.pollClosed}
+                            compact
+                          />
+                        </div>
+                      )}
+                      <div className="mt-2">
+                        <PostAttachments attachments={post.attachments ?? []} postId={post.id} />
+                      </div>
+                    </div>
+                    <div className="mt-auto flex flex-wrap items-center gap-1 sm:gap-2 px-2 sm:px-3 py-2 border-t border-gray-100 bg-white">
+                      <div className="sm:hidden">
+                        <VoteButton
+                          postId={post.id}
+                          initialVoteScore={post.voteScore ?? 0}
+                          initialUserVote={post.userVote ?? null}
+                          size="sm"
+                          layout="row"
+                        />
+                      </div>
+                      <Link
+                        to={`/post/${post.id}`}
+                        className="inline-flex items-center gap-1.5 min-h-[40px] px-2.5 rounded-full text-xs sm:text-sm font-semibold text-gray-600 hover:bg-gray-100 touch-manipulation"
+                      >
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden>
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+                        </svg>
+                        {post.commentsCount ?? post._count?.comments ?? 0}
+                      </Link>
+                      <ShareButton url={`/post/${post.id}`} title={post.title} type="post" />
+                    </div>
+                  </div>
+                </article>
+              ))}
+          </div>
+        </div>
+
+        <aside className="w-full lg:w-72 xl:w-80 shrink-0 order-2 lg:order-2 space-y-3">
+          <div className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
+            <h2 className="text-xs font-bold uppercase tracking-wider text-gray-400 mb-2">About</h2>
+            <p className="text-sm text-gray-800 leading-relaxed [overflow-wrap:anywhere]">{community.description}</p>
+            <dl className="mt-4 space-y-2 text-sm border-t border-gray-100 pt-4">
+              <div className="flex justify-between gap-2">
+                <dt className="text-gray-500">Members</dt>
+                <dd className="font-semibold text-gray-900 tabular-nums">
+                  {(community.memberCount ?? 0).toLocaleString()}
+                </dd>
+              </div>
+              <div className="flex justify-between gap-2">
+                <dt className="text-gray-500">Posts</dt>
+                <dd className="font-semibold text-gray-900 tabular-nums">
+                  {(community.postCount ?? 0).toLocaleString()}
+                </dd>
+              </div>
+              {community.createdAt && (
+                <div className="flex justify-between gap-2">
+                  <dt className="text-gray-500">Created</dt>
+                  <dd className="font-medium text-gray-800 text-right">
+                    {new Date(community.createdAt).toLocaleDateString(undefined, {
+                      year: 'numeric',
+                      month: 'short',
+                      day: 'numeric',
+                    })}
+                  </dd>
                 </div>
-              ))
+              )}
+            </dl>
+            {canManage && (
+              <Link
+                to={`/community/${community.slug}/settings`}
+                className="mt-4 block w-full text-center min-h-[44px] leading-[44px] rounded-full border border-gray-300 text-sm font-semibold text-gray-800 hover:bg-gray-50 touch-manipulation"
+              >
+                Manage community
+              </Link>
             )}
           </div>
-        </div>
 
-        {/* Right Sidebar */}
-        <div className="w-full lg:w-80 flex-shrink-0">
-          {/* Community Info */}
-          <div className="bg-white border border-gray-200 rounded-md p-4 mb-4">
-            <h3 className="font-semibold text-gray-900 mb-3">{community.description}</h3>
-            <div className="space-y-2 text-sm text-gray-500 mb-4">
-              <div className="flex items-center space-x-2">
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                </svg>
-                <span>Created {new Date(community.createdAt || '').toLocaleDateString()}</span>
+          <div className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
+            <h2 className="text-xs font-bold uppercase tracking-wider text-gray-400 mb-2">Rules</h2>
+            {community.rules?.trim() ? (
+              <div className="text-sm text-gray-700 whitespace-pre-wrap [overflow-wrap:anywhere] leading-relaxed">
+                {community.rules.trim()}
               </div>
-              <div className="flex items-center space-x-2">
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
-                <span>Public</span>
-              </div>
-            </div>
-            <div className="space-y-2 text-sm">
-              <div className="flex justify-between">
-                <span className="text-gray-500">Members</span>
-                <span className="font-medium">{community.memberCount ? community.memberCount.toLocaleString() : '0'}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-gray-500">Posts</span>
-                <span className="font-medium">{community.postCount ? community.postCount.toLocaleString() : '0'}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-gray-500">Weekly Visitors</span>
-                <span className="font-medium text-blue-600">{community.weeklyVisitors ? community.weeklyVisitors.toLocaleString() : '0'}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-gray-500">Weekly Contributions</span>
-                <span className="font-medium text-green-600">{community.weeklyContributions ? community.weeklyContributions.toLocaleString() : '0'}</span>
-              </div>
-            </div>
+            ) : (
+              <p className="text-sm text-gray-500 leading-relaxed">
+                No rules have been published yet. Moderators can add them in community settings.
+              </p>
+            )}
           </div>
-
-          {/* Community Rules */}
-          <div className="bg-white border border-gray-200 rounded-md p-4">
-            <h3 className="font-semibold text-gray-900 mb-3">o/{community.name} RULES</h3>
-            <div className="space-y-2 text-sm">
-              <div className="flex items-center justify-between">
-                <span className="text-gray-700">1. Be respectful</span>
-                <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                </svg>
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="text-gray-700">2. Stay on topic</span>
-                <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                </svg>
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="text-gray-700">3. No spam</span>
-                <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                </svg>
-              </div>
-            </div>
-          </div>
-        </div>
+        </aside>
       </div>
     </div>
   );

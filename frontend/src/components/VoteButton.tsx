@@ -9,6 +9,8 @@ interface VoteButtonProps {
   onVoteChange?: (newScore: number, newUserVote: 'upvote' | 'downvote' | null) => void;
   disabled?: boolean;
   size?: 'sm' | 'md' | 'lg';
+  /** Reddit-style vertical vote rail (feed cards) */
+  layout?: 'row' | 'column';
 }
 
 const VoteButton: React.FC<VoteButtonProps> = ({
@@ -17,7 +19,8 @@ const VoteButton: React.FC<VoteButtonProps> = ({
   initialUserVote,
   onVoteChange,
   disabled = false,
-  size = 'md'
+  size = 'md',
+  layout = 'row',
 }) => {
   const queryClient = useQueryClient();
   const [voteScore, setVoteScore] = useState(initialVoteScore);
@@ -77,39 +80,66 @@ const VoteButton: React.FC<VoteButtonProps> = ({
     lg: 'text-base'
   };
 
+  const isCol = layout === 'column';
+  const btnPad = isCol ? 'p-2 min-h-[44px] min-w-[44px] flex items-center justify-center' : 'p-1';
+  const wrap = isCol
+    ? `flex flex-col items-center justify-start gap-0.5 w-full max-w-[52px] py-1 ${
+        userVote === 'upvote'
+          ? 'bg-orange-50/80'
+          : userVote === 'downvote'
+            ? 'bg-blue-50/80'
+            : 'bg-transparent'
+      }`
+    : `flex items-center space-x-1 px-2 py-1 rounded-md border border-gray-200 hover:border-gray-300 ${
+        userVote === 'upvote' ? 'bg-orange-50 border-orange-200' : 
+        userVote === 'downvote' ? 'bg-blue-50 border-blue-200' : 
+        'bg-gray-50 hover:bg-gray-100'
+      }`;
+
   return (
-    <div className={`flex items-center space-x-1 px-2 py-1 rounded-md border border-gray-200 hover:border-gray-300 transition-colors ${
-      userVote === 'upvote' ? 'bg-orange-50 border-orange-200' : 
-      userVote === 'downvote' ? 'bg-blue-50 border-blue-200' : 
-      'bg-gray-50 hover:bg-gray-100'
-    } ${isVoting || disabled ? 'opacity-50 cursor-not-allowed' : ''}`}>
-      {/* Upvote Arrow */}
-      <button 
+    <div
+      className={`${wrap} rounded-md transition-colors ${
+        isCol ? '' : 'border'
+      } ${isVoting || disabled ? 'opacity-50 cursor-not-allowed' : ''}`}
+    >
+      <button
+        type="button"
         onClick={() => handleVote('upvote')}
         disabled={isVoting || disabled}
-        className="p-1 hover:bg-gray-200 rounded transition-colors"
+        className={`${btnPad} rounded hover:bg-black/5 active:bg-black/10 transition-colors touch-manipulation`}
+        aria-label="Upvote"
       >
-        <svg className={`${sizeClasses[size]} ${userVote === 'upvote' ? 'text-orange-500' : 'text-gray-600'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <svg
+          className={`${sizeClasses[size]} ${userVote === 'upvote' ? 'text-orange-500' : 'text-gray-600'}`}
+          fill="none"
+          stroke="currentColor"
+          viewBox="0 0 24 24"
+        >
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" />
         </svg>
       </button>
-      
-      {/* Vote Score */}
-      <span className={`${textSizeClasses[size]} font-medium px-1 ${
-        userVote === 'upvote' ? 'text-orange-600' : 
-        userVote === 'downvote' ? 'text-blue-600' : 
-        'text-gray-700'
-      }`}>
-        {voteScore}
+
+      <span
+        className={`${textSizeClasses[size]} font-bold tabular-nums leading-none py-0.5 ${
+          userVote === 'upvote' ? 'text-orange-600' : userVote === 'downvote' ? 'text-blue-600' : 'text-gray-800'
+        }`}
+      >
+        {voteScore > 999 ? `${(voteScore / 1000).toFixed(1)}k` : voteScore}
       </span>
-      
-      {/* Downvote Arrow */}
-      <button 
+
+      <button
+        type="button"
         onClick={() => handleVote('downvote')}
         disabled={isVoting || disabled}
-        className="p-1 hover:bg-gray-200 rounded transition-colors"
+        className={`${btnPad} rounded hover:bg-black/5 active:bg-black/10 transition-colors touch-manipulation`}
+        aria-label="Downvote"
       >
-        <svg className={`${sizeClasses[size]} ${userVote === 'downvote' ? 'text-blue-500' : 'text-gray-600'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <svg
+          className={`${sizeClasses[size]} ${userVote === 'downvote' ? 'text-blue-500' : 'text-gray-600'}`}
+          fill="none"
+          stroke="currentColor"
+          viewBox="0 0 24 24"
+        >
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
         </svg>
       </button>
