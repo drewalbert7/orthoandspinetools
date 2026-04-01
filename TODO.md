@@ -11,6 +11,11 @@
 
 ## 🔥 **NEXT UP — START HERE** (updated Mar 29, 2026)
 
+### **0. Deploy status — verify live (after each ship)**
+- [ ] From laptop: `git push origin main` then on server `cd ~/orthoandspinetools-main && git pull origin main && docker compose -f docker-compose.prod.yml up -d --build backend frontend` (add **`nginx`** if `nginx/nginx.conf` changed).
+- [ ] **https://orthoandspinetools.com** — home loads; open a **post** and **community**; hit **`/startups`** if that feature is in the build.
+- [ ] Optional: set **`VITE_SITE_URL=https://orthoandspinetools.com`** for frontend image builds so canonicals/JSON-LD use the public origin even when `window` is odd.
+
 ### **1. Deploy (production server)**
 
 **Agents:** Do not ask how production is hosted unless this section is wrong or the user says it changed. Facts below were **verified on the live server** (Mar 2026).
@@ -57,8 +62,11 @@ docker compose -f docker-compose.prod.yml up -d backend frontend nginx
 4. **Notifications** — comment/reply should create unread bell items; mark read / mark all / dismiss work.
 5. **Admin delete** — as admin, open post menu (`...`) from Home and PostDetail and confirm delete works.
 6. If anything fails, copy the **exact toast text** and **Network response JSON**.
+7. **SEO smoke** — `View Page Source` on a post (expect shell only; JSON-LD is JS-injected). In DevTools Elements, confirm **`<title>`** and **`meta description`** update after load. Optional: `curl -sI https://orthoandspinetools.com/robots.txt` and `/llms.txt` return **200**.
 
 ### **3. Backlog (when QA is green)**
+- **SEO & LLM discoverability (Mar 2026 — in progress)** — Shipped: client-side **`DocumentMeta`** + JSON-LD (`WebSite`, `CollectionPage`, `DiscussionForumPosting`, `DiscussionForum`, breadcrumbs) on **Home**, **Community**, **Post**; **`frontend/public/robots.txt`**, **`llms.txt`**, static **`sitemap.xml`**; **`.env.example`** documents **`VITE_SITE_URL`**. Sidebar **Startups** + **`GET /api/posts?tagMatch=…`** for cross-community topic tags.
+  - **Still TODO:** Most social crawlers need **SSR, prerender, or edge HTML** for `/post/:id` (first response must include `og:*` / title) — SPA-only meta is insufficient for many link previews. Add a **dynamic sitemap** (all posts + communities). Confirm production Docker build passes **`VITE_SITE_URL`**. Re-run **Lighthouse / Rich Results** after prerender exists.
 - **Admin hardening** — ✅ `/admin` gate + tab queries use JWT `isAdmin` or permissions; **Recent content** tab has inline Open / Lock / Pin / Delete (posts) and Delete (comments). ✅ Comment menus trust `user.isAdmin` if permissions fetch fails (matches post `ModerationMenu`).
   - Remaining: reporting flow + triage; optional admin post search; regression tests for session edge cases.
 - **Content** — Remove or hide obvious test posts on the live home feed (“Test”, “d”, etc.) — manual in DB/admin or add a moderation tool later.

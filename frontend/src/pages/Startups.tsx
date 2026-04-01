@@ -3,10 +3,12 @@ import { useQuery } from '@tanstack/react-query';
 import { apiService } from '../services/apiService';
 import FeedPostCard from '../components/FeedPostCard';
 
+const STARTUP_TAG_MATCH = 'startup';
+
 type SortOption = 'best' | 'hot' | 'newest' | 'top' | 'rising';
 
-const Popular: React.FC = () => {
-  const [sortBy, setSortBy] = useState<SortOption>('best');
+const Startups: React.FC = () => {
+  const [sortBy, setSortBy] = useState<SortOption>('newest');
   const [selectedCommunity, setSelectedCommunity] = useState<string>('all');
 
   const { data: communities } = useQuery({
@@ -15,21 +17,21 @@ const Popular: React.FC = () => {
   });
 
   const { data: postsData, isLoading: postsLoading } = useQuery({
-    queryKey: ['popular-posts', sortBy, selectedCommunity],
+    queryKey: ['startups-posts', sortBy, selectedCommunity],
     queryFn: () => {
       const params: {
         limit: number;
         sort: SortOption;
+        tagMatch: string;
         community?: string;
       } = {
         limit: 25,
         sort: sortBy,
+        tagMatch: STARTUP_TAG_MATCH,
       };
-
       if (selectedCommunity !== 'all') {
         params.community = selectedCommunity;
       }
-
       return apiService.getPosts(params);
     },
     staleTime: 30 * 1000,
@@ -49,17 +51,23 @@ const Popular: React.FC = () => {
   return (
     <div className="max-w-4xl mx-auto px-3 sm:px-4">
       <div className="bg-white border border-gray-200 p-3 sm:p-4 mb-4">
-        <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 sm:gap-0">
-          <h1 className="text-lg sm:text-xl font-semibold text-gray-900">Popular</h1>
+        <div className="flex flex-col gap-3 sm:gap-4">
+          <div>
+            <h1 className="text-lg sm:text-xl font-semibold text-gray-900">Startups</h1>
+            <p className="text-sm text-gray-600 mt-1">
+              Posts tagged with topics whose name or description includes the word startup (matches Startup,
+              Startups, etc.) across all communities.
+            </p>
+          </div>
 
-          <div className="flex items-center flex-wrap gap-2 sm:gap-4">
-            <div className="relative">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-end gap-2 sm:gap-4">
+            <div className="relative w-full sm:w-auto">
               <select
                 value={selectedCommunity}
                 onChange={(e) => setSelectedCommunity(e.target.value)}
-                className="appearance-none bg-white border border-gray-300 rounded-md px-3 py-2 pr-8 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                className="w-full sm:w-auto appearance-none bg-white border border-gray-300 rounded-md px-3 py-2 pr-8 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
               >
-                <option value="all">All Communities</option>
+                <option value="all">All communities</option>
                 {communities?.map((community) => (
                   <option key={community.id} value={community.id}>
                     {community.name}
@@ -73,11 +81,11 @@ const Popular: React.FC = () => {
               </div>
             </div>
 
-            <div className="relative">
+            <div className="relative w-full sm:w-auto">
               <select
                 value={sortBy}
                 onChange={(e) => setSortBy(e.target.value as SortOption)}
-                className="appearance-none bg-white border border-gray-300 rounded-md px-3 py-2 pr-8 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                className="w-full sm:w-auto appearance-none bg-white border border-gray-300 rounded-md px-3 py-2 pr-8 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
               >
                 {sortOptions.map((option) => (
                   <option key={option.value} value={option.value}>
@@ -105,11 +113,10 @@ const Popular: React.FC = () => {
           posts.map((post) => <FeedPostCard key={post.id} post={post} />)
         ) : (
           <div className="bg-white border border-gray-200 p-4 sm:p-6 text-center">
-            <p className="text-gray-500">No posts available</p>
+            <p className="text-gray-500">No startup-tagged posts yet</p>
             <p className="text-sm text-gray-400 mt-2">
-              {selectedCommunity !== 'all'
-                ? 'No posts in this community yet'
-                : 'No posts available yet'}
+              Moderators can add topic tags like “Startups” in community settings; tag posts when creating or
+              editing.
             </p>
           </div>
         )}
@@ -118,4 +125,4 @@ const Popular: React.FC = () => {
   );
 };
 
-export default Popular;
+export default Startups;

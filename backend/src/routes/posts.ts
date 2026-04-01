@@ -511,6 +511,11 @@ router.get('/', optionalAuth, [
   query('sort').optional().isIn(['newest', 'oldest', 'popular', 'controversial', 'best', 'top', 'rising']).withMessage('Invalid sort option'),
   query('q').optional().isString().isLength({ max: 200 }).withMessage('Search query too long'),
   query('tag').optional().isString().isLength({ min: 1, max: 64 }).withMessage('Invalid tag filter'),
+  query('tagMatch')
+    .optional()
+    .trim()
+    .isLength({ min: 2, max: 64 })
+    .withMessage('tagMatch must be 2-64 characters'),
 ], asyncHandler(async (req: AuthRequest, res: Response) => {
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
@@ -520,7 +525,7 @@ router.get('/', optionalAuth, [
   const page = parseInt(req.query.page as string) || 1;
   const limit = parseInt(req.query.limit as string) || 20;
   const skip = (page - 1) * limit;
-  const { community, type, specialty, sort, q, tag } = req.query;
+  const { community, type, specialty, sort, q, tag, tagMatch } = req.query;
 
   // Build where clause
   const where: any = {
@@ -570,6 +575,28 @@ router.get('/', optionalAuth, [
       where.communityId = tagRow.communityId;
     }
     where.tags = { some: { tagId: tagRow.id } };
+  } else {
+    const tagMatchRaw = typeof tagMatch === 'string' ? tagMatch.trim() : '';
+    if (tagMatchRaw.length >= 2) {
+      const matchingTags = await prisma.communityTag.findMany({
+        where: {
+          OR: [
+            { name: { contains: tagMatchRaw, mode: 'insensitive' } },
+            { description: { contains: tagMatchRaw, mode: 'insensitive' } },
+          ],
+        },
+        select: { id: true, communityId: true },
+      });
+      let tagIds = matchingTags.map((t) => t.id);
+      if (where.communityId) {
+        tagIds = matchingTags.filter((t) => t.communityId === where.communityId).map((t) => t.id);
+      }
+      if (tagIds.length === 0) {
+        where.id = { in: [] as string[] };
+      } else {
+        where.tags = { some: { tagId: { in: tagIds } } };
+      }
+    }
   }
 
   if (type) {

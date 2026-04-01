@@ -159,6 +159,18 @@ const Sidebar: React.FC<SidebarProps> = ({ isMobileOpen, onMobileClose }) => {
             <span className="font-medium">Popular</span>
           </Link>
 
+          <Link
+            to="/startups"
+            className={`flex items-center space-x-3 px-3 py-2 rounded-lg transition-colors ${
+              isActive('/startups') ? 'bg-blue-100 text-blue-700' : 'text-gray-700 hover:bg-gray-100'
+            }`}
+            onClick={onMobileClose}
+          >
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+            </svg>
+            <span className="font-medium">Startups</span>
+          </Link>
 
         </nav>
 

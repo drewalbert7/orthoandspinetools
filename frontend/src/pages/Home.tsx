@@ -1,7 +1,9 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
 import { apiService, Post } from '../services/apiService';
+import { DocumentMeta } from '../components/DocumentMeta';
+import { buildHomeJsonLd, SEO_DEFAULTS } from '../lib/seo';
 import { useAuth } from '../contexts/AuthContext';
 import VoteButton from '../components/VoteButton';
 import PostAttachments from '../components/PostAttachments';
@@ -141,6 +143,8 @@ const PostCard: React.FC<{ post: Post }> = ({ post }) => {
 const Home: React.FC = () => {
   const { user } = useAuth();
 
+  const homeJsonLd = useMemo(() => buildHomeJsonLd(), []);
+
   // Home should be a global feed across all communities.
   const { data, isLoading, isError, error } = useQuery({
     queryKey: ['posts', 'home'],
@@ -163,7 +167,12 @@ const Home: React.FC = () => {
 
   return (
     <div className="max-w-4xl mx-auto px-2 sm:px-4">
-      {/* Posts Feed */}
+      <DocumentMeta
+        title="Home"
+        description={SEO_DEFAULTS.description}
+        canonicalPath="/"
+        jsonLd={homeJsonLd}
+      />
       <div className="space-y-2 p-2 sm:p-4">
         {(isLoading || feedFallbackLoading) ? (
           <div className="flex items-center justify-center py-8">

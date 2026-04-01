@@ -328,6 +328,8 @@ class ApiService {
     community?: string;
     q?: string;
     tag?: string;
+    /** Match topic tags whose name or description contains this string (all communities unless `community` is set). */
+    tagMatch?: string;
   } = {}): Promise<{ posts: Post[]; pagination: { page: number; pages: number } }> {
     try {
       const search = new URLSearchParams();
@@ -337,6 +339,7 @@ class ApiService {
       if (params.community) search.set('community', params.community);
       if (params.q?.trim()) search.set('q', params.q.trim());
       if (params.tag?.trim()) search.set('tag', params.tag.trim());
+      if (params.tagMatch?.trim()) search.set('tagMatch', params.tagMatch.trim());
       const response = await api.get(`/posts?${search.toString()}`);
       const payload = response.data?.data;
       if (!payload || !Array.isArray(payload.posts)) {

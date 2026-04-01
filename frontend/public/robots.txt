@@ -1,0 +1,7 @@
+User-agent: *
+Allow: /
+
+# Login/register are allowed to crawl but low value; adjust if you prefer otherwise.
+Disallow: /api/
+
+Sitemap: https://orthoandspinetools.com/sitemap.xml

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useParams, Link, useSearchParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { apiService, Post, Community, CommunityTag } from '../services/apiService';
@@ -8,6 +8,8 @@ import { useAuth } from '../contexts/AuthContext';
 import PostAttachments from '../components/PostAttachments';
 import PostPollBlock from '../components/PostPollBlock';
 import VerifiedPhysicianInline from '../components/VerifiedPhysicianInline';
+import { DocumentMeta } from '../components/DocumentMeta';
+import { buildCommunityJsonLd, SEO_DEFAULTS, stripToPlainText } from '../lib/seo';
 
 const SORT_OPTIONS = [
   { value: 'newest' as const, label: 'New' },
@@ -70,6 +72,17 @@ const CommunityPage: React.FC = () => {
     enabled: !!slug && !!communityData,
   });
 
+  const communityJsonLd = useMemo(
+    () => (communityData ? buildCommunityJsonLd(communityData, slug!) : null),
+    [communityData, slug]
+  );
+
+  const communityMetaDescription = useMemo(() => {
+    if (!communityData?.description) return SEO_DEFAULTS.description;
+    const t = stripToPlainText(communityData.description, 260);
+    return `${t} — o/${communityData.name} on ${SEO_DEFAULTS.siteName}`;
+  }, [communityData]);
+
   const setTopicFilter = (tagId: string | null) => {
     const next = new URLSearchParams(searchParams);
     if (tagId) next.set('tag', tagId);
@@ -99,6 +112,11 @@ const CommunityPage: React.FC = () => {
   if (!community) {
     return (
       <div className="max-w-6xl mx-auto px-4 py-12 text-center">
+        <DocumentMeta
+          title="Community not found"
+          description="The requested community does not exist or is unavailable."
+          noIndex
+        />
         <h1 className="text-xl font-bold text-gray-900 mb-2">Community not found</h1>
         <p className="text-gray-600 mb-6">o/{slug} does not exist or is unavailable.</p>
         <Link to="/" className="text-sm font-medium text-blue-600 hover:text-blue-800">
@@ -112,6 +130,13 @@ const CommunityPage: React.FC = () => {
 
   return (
     <div className="max-w-6xl mx-auto px-2 sm:px-4 pb-8">
+      <DocumentMeta
+        title={`o/${community.name}`}
+        description={communityMetaDescription}
+        canonicalPath={`/community/${slug}`}
+        ogImage={community.bannerImage || community.profileImage}
+        jsonLd={communityJsonLd}
+      />
       <div className="flex flex-col lg:flex-row gap-4 lg:gap-6 lg:items-start">
         <div className="flex-1 min-w-0 order-1">
           <div className="bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden mb-3 sm:mb-4">

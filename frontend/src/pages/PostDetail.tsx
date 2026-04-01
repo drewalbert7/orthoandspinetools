@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiService, Comment } from '../services/apiService';
@@ -10,6 +10,8 @@ import ModerationMenu from '../components/ModerationMenu';
 import ShareButton from '../components/ShareButton';
 import VerifiedPhysicianInline from '../components/VerifiedPhysicianInline';
 import PostPollBlock from '../components/PostPollBlock';
+import { DocumentMeta } from '../components/DocumentMeta';
+import { buildPostJsonLd, postDescription, postOgImage, SEO_DEFAULTS } from '../lib/seo';
 
 const PostDetail: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -44,6 +46,9 @@ const PostDetail: React.FC = () => {
     enabled: !!post?.community?.id,
   });
 
+  const postJsonLd = useMemo(() => (post ? buildPostJsonLd(post) : null), [post]);
+  const metaDescription = useMemo(() => (post ? postDescription(post) : ''), [post]);
+  const ogImage = useMemo(() => (post ? postOgImage(post) : undefined), [post]);
 
   // Create comment mutation with optimistic updates (Reddit-style)
   const createCommentMutation = useMutation({
@@ -199,7 +204,11 @@ const PostDetail: React.FC = () => {
     };
 
     return (
-      <div key={comment.id} className={`${depth > 0 ? 'ml-6 border-l-2 border-gray-200 pl-4' : ''}`}>
+      <div
+        key={comment.id}
+        id={`comment-${comment.id}`}
+        className={`${depth > 0 ? 'ml-6 border-l-2 border-gray-200 pl-4' : ''}`}
+      >
         <div className="mb-4">
           {/* Comment Header */}
           <div className="flex items-center space-x-2 text-xs text-gray-500 mb-1">
@@ -350,6 +359,11 @@ const PostDetail: React.FC = () => {
   if (postError || !post) {
     return (
       <div className="max-w-6xl mx-auto px-3 sm:px-4 py-4 sm:py-6">
+        <DocumentMeta
+          title="Post not found"
+          description="This discussion may have been removed or the link is invalid."
+          noIndex
+        />
         <div className="text-center py-12">
           <h1 className="text-2xl font-bold text-gray-900 mb-4">Post not found</h1>
           <p className="text-gray-600 mb-4">The post you're looking for doesn't exist or has been removed.</p>
@@ -361,15 +375,27 @@ const PostDetail: React.FC = () => {
     );
   }
 
-
   return (
     <div className="max-w-6xl mx-auto px-3 sm:px-4 py-4 sm:py-6">
+      <DocumentMeta
+        title={post.title}
+        description={metaDescription || SEO_DEFAULTS.description}
+        canonicalPath={`/post/${post.id}`}
+        ogType="article"
+        ogImage={ogImage}
+        jsonLd={postJsonLd}
+      />
       <div className="flex flex-col lg:flex-row gap-4 lg:gap-6">
         {/* Main Content */}
         <div className="flex-1">
 
           {/* Main Post */}
-          <div className="bg-white border border-gray-200 rounded-md mb-4 overflow-hidden">
+          <article
+            className="bg-white border border-gray-200 rounded-md mb-4 overflow-hidden"
+            aria-labelledby="post-title-heading"
+            itemScope
+            itemType="https://schema.org/DiscussionForumPosting"
+          >
             <div className="p-4">
               {/* Header */}
               <div className="flex items-center justify-between mb-4">
@@ -394,7 +420,7 @@ const PostDetail: React.FC = () => {
                     <div className="flex items-center space-x-2 text-sm">
                       {post.community ? (
                         <Link 
-                          to={`/community/${post.community.id || post.communityId}`}
+                          to={`/community/${post.community.slug || post.community.id || post.communityId}`}
                           className="font-semibold hover:underline text-gray-900"
                         >
                           o/{post.community.name || 'Unknown'}
@@ -403,7 +429,13 @@ const PostDetail: React.FC = () => {
                         <span className="font-semibold text-gray-900">o/Unknown</span>
                       )}
                       <span className="text-gray-500">•</span>
-                      <span className="text-gray-500">{formatDate(post.createdAt)}</span>
+                      <time
+                        className="text-gray-500"
+                        dateTime={post.createdAt}
+                        itemProp="datePublished"
+                      >
+                        {formatDate(post.createdAt)}
+                      </time>
                     </div>
                     <div className="text-sm text-gray-500 inline-flex items-center flex-wrap gap-x-0">
                       {post.author ? (
@@ -467,7 +499,11 @@ const PostDetail: React.FC = () => {
               </div>
 
               {/* Title */}
-              <h1 className="text-2xl font-bold text-gray-900 mb-4 leading-tight">
+              <h1
+                id="post-title-heading"
+                className="text-2xl font-bold text-gray-900 mb-4 leading-tight"
+                itemProp="headline"
+              >
                 {post.title}
               </h1>
 
@@ -655,7 +691,7 @@ const PostDetail: React.FC = () => {
               )}
             </div>
             </div>
-          </div>
+          </article>
 
           {/* Comment Input - Reddit Style */}
           {user && post && !post.isLocked && (
@@ -722,7 +758,7 @@ const PostDetail: React.FC = () => {
           )}
 
           {/* Comments Section */}
-          <div className="space-y-4">
+          <section className="space-y-4" aria-label="Comments">
             {/* Sort and Search */}
             <div className="flex items-center justify-between">
               <div className="flex items-center space-x-4">
@@ -776,7 +812,7 @@ const PostDetail: React.FC = () => {
                 <p>No comments yet. Be the first to share your thoughts!</p>
               </div>
             )}
-          </div>
+          </section>
         </div>
 
         {/* Right Sidebar */}

@@ -12,6 +12,7 @@ import RegisterForm from './components/RegisterForm';
 // Pages
 import Home from './pages/Home';
 import Popular from './pages/Popular';
+import Startups from './pages/Startups';
 import PostDetail from './pages/PostDetail';
 import CreatePost from './pages/CreatePost';
 import Profile from './pages/Profile';
@@ -63,6 +64,7 @@ function App() {
                 <Routes>
                   <Route path="/" element={<Home />} />
                   <Route path="/popular" element={<Popular />} />
+                  <Route path="/startups" element={<Startups />} />
                   <Route path="/search" element={<Search />} />
                   <Route path="/login" element={<LoginForm />} />
                   <Route path="/register" element={<RegisterForm />} />
