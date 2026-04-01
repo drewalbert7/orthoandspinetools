@@ -13,9 +13,11 @@ const ProfileSettings: React.FC = () => {
   const queryClient = useQueryClient();
   const [activeTab, setActiveTab] = useState<'profile' | 'password' | 'admin'>('profile');
 
-  // Fetch current profile data
+  // Dedicated key: Profile.tsx uses useInfiniteQuery with ['user-profile', id] — same key breaks this query (cache shape is { pages } not UserProfile).
+  const profileSettingsQueryKey = ['user-profile-settings', user?.id] as const;
+
   const { data: userProfileData, isLoading } = useQuery({
-    queryKey: ['user-profile', user?.id],
+    queryKey: profileSettingsQueryKey,
     queryFn: () => apiService.getUserProfile(),
     enabled: !!user,
   });
@@ -26,6 +28,7 @@ const ProfileSettings: React.FC = () => {
     onSuccess: async () => {
       await refreshUser();
       queryClient.invalidateQueries({ queryKey: ['user-profile', user?.id] });
+      queryClient.invalidateQueries({ queryKey: profileSettingsQueryKey });
       toast.success('Profile updated successfully!');
     },
     onError: (error: any) => {

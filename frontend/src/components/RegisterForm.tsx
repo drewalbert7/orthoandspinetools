@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { RegisterFormData } from '../services/authService';
+import BrandLogo from './BrandLogo';
 
 const RegisterForm: React.FC = () => {
   const { register } = useAuth();
@@ -82,8 +83,10 @@ const RegisterForm: React.FC = () => {
     <div className="min-h-screen flex items-center justify-center bg-reddit-dark py-12 px-4 sm:px-6 lg:px-8">
       <div className="max-w-md w-full space-y-8">
         <div>
-          <div className="mx-auto h-12 w-12 bg-reddit-orange rounded-lg flex items-center justify-center">
-            <span className="text-white font-bold text-xl">O</span>
+          <div className="flex justify-center">
+            <div className="rounded-xl bg-white px-5 py-3 shadow-sm border border-gray-200/80">
+              <BrandLogo heightClass="h-14" maxWidthClass="max-w-[min(100%,16rem)]" />
+            </div>
           </div>
           <h2 className="mt-6 text-center text-3xl font-extrabold text-reddit">
             Create your account

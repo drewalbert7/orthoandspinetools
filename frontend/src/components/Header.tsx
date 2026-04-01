@@ -4,6 +4,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { Menu, X } from 'lucide-react';
 import toast from 'react-hot-toast';
 import UserAvatar from './UserAvatar';
+import BrandLogo from './BrandLogo';
 import NotificationItem from './NotificationItem';
 import { useNotifications } from '../hooks/useNotifications';
 import type { AppNotification } from '../services/apiService';
@@ -109,28 +110,9 @@ const Header: React.FC<HeaderProps> = ({ isMobileSidebarOpen, onMobileSidebarTog
             </button>
             
             {/* Logo and Brand */}
-            <Link to="/" className="flex items-center space-x-2">
-              <div className="w-8 h-8 bg-reddit-orange rounded-lg flex items-center justify-center">
-                {/* Hammer Icon - exact match to provided image */}
-                <svg 
-                  className="w-6 h-6 text-white" 
-                  viewBox="0 0 24 24" 
-                  fill="currentColor"
-                  preserveAspectRatio="xMidYMid meet"
-                >
-                  {/* Thick circular border - unbroken black line, consistent line weight */}
-                  <circle cx="12" cy="12" r="10" fill="none" stroke="currentColor" strokeWidth="2.5" />
-                  {/* Hammer head - left rectangular striking face (solid thick black block) */}
-                  <rect x="6.5" y="7.2" width="3.5" height="2.6" />
-                  {/* Hammer head - right side tapers outward then narrows to flat wedge-like shape */}
-                  <path d="M10 7.2 L13.2 6.5 L13.8 8.5 L13.2 9.8 L10 9.8 Z" />
-                  {/* Small rectangular protrusion on top center of hammer head (eye where handle inserts) */}
-                  <rect x="9.3" y="5.8" width="1.4" height="1.4" />
-                  {/* Hammer handle - thick vertical line/rectangle extending down from center of head */}
-                  <rect x="10.8" y="9.8" width="2.4" height="5.2" />
-                </svg>
-              </div>
-              <span className="text-xl font-bold text-reddit hidden sm:block">
+            <Link to="/" className="flex items-center gap-2 min-w-0 shrink-0" aria-label="OrthoAndSpineTools home">
+              <BrandLogo heightClass="h-8 sm:h-9" maxWidthClass="max-w-[min(100%,10rem)] sm:max-w-[12rem]" />
+              <span className="text-xl font-bold text-reddit hidden sm:inline truncate">
                 OrthoAndSpineTools
               </span>
             </Link>
