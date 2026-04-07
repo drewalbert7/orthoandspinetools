@@ -1,5 +1,6 @@
 import { PrismaClient } from '@prisma/client';
 import bcrypt from 'bcryptjs';
+import { ensureDefaultCommunityTags } from '../src/lib/defaultCommunityTags';
 
 const prisma = new PrismaClient();
 
@@ -101,7 +102,8 @@ async function main() {
       update: {},
       create: communityData
     });
-    console.log(`Community created: ${community.name}`);
+    await ensureDefaultCommunityTags(prisma, community.id);
+    console.log(`Community ready: ${community.name}`);
   }
 
   console.log('Database seeding completed!');

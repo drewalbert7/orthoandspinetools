@@ -2,9 +2,8 @@ import type { Community, Post } from '../services/apiService';
 
 export const SEO_DEFAULTS = {
   siteName: 'OrthoAndSpineTools',
-  title: 'OrthoAndSpineTools — Medical community for orthopedics & spine',
-  description:
-    'Professional community for orthopedic and spine specialists: case discussion, tools, education, and peer networking.',
+  title: 'OrthoAndSpineTools — Hunt for the Best Innovations on the Market',
+  description: 'Ortho and Spine Tools - Hunt for the Best Innovations on the Market',
 } as const;
 
 export function getSiteOrigin(): string {

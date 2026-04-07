@@ -55,8 +55,8 @@ const Startups: React.FC = () => {
           <div>
             <h1 className="text-lg sm:text-xl font-semibold text-gray-900">Startups</h1>
             <p className="text-sm text-gray-600 mt-1">
-              Posts tagged with topics whose name or description includes the word startup (matches Startup,
-              Startups, etc.) across all communities.
+              Posts tagged with the Startup topic (or any topic whose name or description contains “startup”)
+              across communities. Every community has a default Startup topic tag on the create-post screen.
             </p>
           </div>
 
@@ -115,8 +115,8 @@ const Startups: React.FC = () => {
           <div className="bg-white border border-gray-200 p-4 sm:p-6 text-center">
             <p className="text-gray-500">No startup-tagged posts yet</p>
             <p className="text-sm text-gray-400 mt-2">
-              Moderators can add topic tags like “Startups” in community settings; tag posts when creating or
-              editing.
+              Create a post and select the Startup topic tag (available in every community). Moderators can add
+              more tags in community settings.
             </p>
           </div>
         )}

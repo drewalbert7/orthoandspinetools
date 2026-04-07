@@ -91,8 +91,8 @@ const RegisterForm: React.FC = () => {
           <h2 className="mt-6 text-center text-3xl font-extrabold text-reddit">
             Create your account
           </h2>
-          <p className="mt-2 text-center text-sm text-reddit-text-muted">
-            Join the orthopedic and spine professional community
+          <p className="mt-2 text-center text-sm text-reddit-text-muted max-w-md mx-auto px-1">
+            Ortho and Spine Tools - Hunt for the Best Innovations on the Market
           </p>
         </div>
         

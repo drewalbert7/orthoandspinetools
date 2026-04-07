@@ -5,6 +5,7 @@ import { authenticate, AuthRequest } from '../middleware/auth';
 import { requireCommunityModerator, requireCanCreateCommunity } from '../middleware/authorization';
 import { PrismaClient } from '@prisma/client';
 import { body, param, validationResult } from 'express-validator';
+import { ensureDefaultCommunityTags } from '../lib/defaultCommunityTags';
 
 const router = Router();
 const prisma = new PrismaClient();
@@ -372,6 +373,8 @@ router.post(
         },
       },
     });
+
+    await ensureDefaultCommunityTags(prisma, community.id);
 
     res.status(201).json({
       success: true,

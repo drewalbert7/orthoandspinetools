@@ -1,4 +1,5 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useRef, useEffect, useLayoutEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiService, Comment } from '../services/apiService';
@@ -13,6 +14,9 @@ import PostPollBlock from '../components/PostPollBlock';
 import { DocumentMeta } from '../components/DocumentMeta';
 import { buildPostJsonLd, postDescription, postOgImage, SEO_DEFAULTS } from '../lib/seo';
 
+const Z_POST_MORE_BACKDROP = 11460;
+const Z_POST_MORE_MENU = 11470;
+
 const PostDetail: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
@@ -24,6 +28,9 @@ const PostDetail: React.FC = () => {
   const [replyContent, setReplyContent] = useState('');
   const [commentSort, setCommentSort] = useState('best');
   const [showMoreOptions, setShowMoreOptions] = useState(false);
+  const [moreMenuPos, setMoreMenuPos] = useState({ top: 0, left: 0 });
+  const postMoreAnchorRef = useRef<HTMLDivElement>(null);
+  const postMoreMenuRef = useRef<HTMLDivElement>(null);
 
   // Fetch post details
   const { data: post, isLoading: postLoading, error: postError } = useQuery({
@@ -45,6 +52,44 @@ const PostDetail: React.FC = () => {
     queryFn: () => apiService.getCommunity(post!.community.id),
     enabled: !!post?.community?.id,
   });
+
+  useLayoutEffect(() => {
+    if (!showMoreOptions || !postMoreAnchorRef.current) return;
+
+    const rect = postMoreAnchorRef.current.getBoundingClientRect();
+    const menuWidth = 192;
+    const menuHeight = 240;
+    const gutter = 8;
+
+    let left = rect.right - menuWidth;
+    let top = rect.bottom + gutter;
+
+    if (left < gutter) left = gutter;
+    if (left + menuWidth > window.innerWidth - gutter) {
+      left = window.innerWidth - menuWidth - gutter;
+    }
+
+    if (top + menuHeight > window.innerHeight - gutter) {
+      top = rect.top - menuHeight - gutter;
+    }
+    if (top < gutter) top = gutter;
+
+    setMoreMenuPos({ top, left });
+  }, [showMoreOptions]);
+
+  useEffect(() => {
+    if (!showMoreOptions) return;
+
+    const onDown = (e: MouseEvent) => {
+      const t = e.target as Node;
+      if (postMoreAnchorRef.current?.contains(t)) return;
+      if (postMoreMenuRef.current?.contains(t)) return;
+      setShowMoreOptions(false);
+    };
+
+    document.addEventListener('mousedown', onDown, true);
+    return () => document.removeEventListener('mousedown', onDown, true);
+  }, [showMoreOptions]);
 
   const postJsonLd = useMemo(() => (post ? buildPostJsonLd(post) : null), [post]);
   const metaDescription = useMemo(() => (post ? postDescription(post) : ''), [post]);
@@ -391,7 +436,7 @@ const PostDetail: React.FC = () => {
 
           {/* Main Post */}
           <article
-            className="bg-white border border-gray-200 rounded-md mb-4 overflow-hidden"
+            className="bg-white border border-gray-200 rounded-md mb-4"
             aria-labelledby="post-title-heading"
             itemScope
             itemType="https://schema.org/DiscussionForumPosting"
@@ -452,50 +497,75 @@ const PostDetail: React.FC = () => {
                   </div>
                 </div>
 
-                {/* More Options Menu */}
-                <div className="relative">
-                  <button 
+                <div ref={postMoreAnchorRef} className="relative inline-flex">
+                  <button
+                    type="button"
                     onClick={() => setShowMoreOptions(!showMoreOptions)}
                     className="w-8 h-8 rounded-full hover:bg-gray-100 flex items-center justify-center transition-colors"
+                    aria-expanded={showMoreOptions}
+                    aria-haspopup="menu"
                   >
                     <svg className="w-4 h-4 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z" />
                     </svg>
                   </button>
-                  
-                  {/* Dropdown Menu */}
-                  {showMoreOptions && (
-                    <div className="absolute right-0 top-10 w-48 bg-white border border-gray-200 rounded-md shadow-lg z-10">
-                      <div className="py-1">
-                        <button className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-600">
-                          <svg className="w-4 h-4 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                </div>
+
+                {showMoreOptions &&
+                  typeof document !== 'undefined' &&
+                  createPortal(
+                    <>
+                      <div
+                        className="fixed inset-0"
+                        style={{ zIndex: Z_POST_MORE_BACKDROP }}
+                        onClick={() => setShowMoreOptions(false)}
+                        aria-hidden
+                      />
+                      <div
+                        ref={postMoreMenuRef}
+                        className="fixed w-48 bg-white border border-gray-200 rounded-lg shadow-xl py-1 ring-1 ring-black/5"
+                        style={{
+                          top: moreMenuPos.top,
+                          left: moreMenuPos.left,
+                          zIndex: Z_POST_MORE_MENU,
+                        }}
+                        role="menu"
+                        aria-label="Post options"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        <button
+                          type="button"
+                          className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-600"
+                          role="menuitem"
+                        >
+                          <svg className="w-4 h-4 mr-3 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-5 5-5-5h5v-5a7.5 7.5 0 00-15 0v5h5l-5 5-5-5h5v-5a7.5 7.5 0 0115 0v5z" />
                           </svg>
                           Follow post
                         </button>
-                        <div className="border-t border-gray-100"></div>
-                        <button className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-50">
-                          <svg className="w-4 h-4 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <div className="border-t border-gray-100" />
+                        <button type="button" className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-50" role="menuitem">
+                          <svg className="w-4 h-4 mr-3 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" />
                           </svg>
                           Save
                         </button>
-                        <button className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-50">
-                          <svg className="w-4 h-4 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <button type="button" className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-50" role="menuitem">
+                          <svg className="w-4 h-4 mr-3 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.878 9.878L3 3m6.878 6.878L21 21" />
                           </svg>
                           Hide
                         </button>
-                        <button className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-50">
-                          <svg className="w-4 h-4 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <button type="button" className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-50" role="menuitem">
+                          <svg className="w-4 h-4 mr-3 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 21v-4m0 0V5a2 2 0 012-2h6.5l1 1H21l-3 6 3 6h-8.5l-1-1H5a2 2 0 00-2 2zm9-13.5V9" />
                           </svg>
                           Report
                         </button>
                       </div>
-                    </div>
+                    </>,
+                    document.body
                   )}
-                </div>
               </div>
 
               {/* Title */}
