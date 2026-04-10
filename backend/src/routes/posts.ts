@@ -85,7 +85,8 @@ router.post('/', authenticate, normalizeCreatePostBody, validatePost, asyncHandl
   }
 
   const content = typeof rawContent === 'string' ? rawContent.trim() : '';
-  const hasAtt = Array.isArray(attachments) && attachments.length > 0;
+  const attachmentList = Array.isArray(attachments) ? attachments : [];
+  const hasAtt = attachmentList.length > 0;
 
   let linkUrlValue: string | null = null;
   let pollOptionsValue: string[] | null = null;
@@ -189,27 +190,39 @@ router.post('/', authenticate, normalizeCreatePostBody, validatePost, asyncHandl
       procedureType,
       authorId: req.user!.id,
       communityId,
-      attachments: attachments ? {
-        create: attachments.map((attachment: any) => {
-          const url = String(attachment.url || '').trim();
+      attachments: hasAtt ? {
+        create: attachmentList.map((raw: unknown) => {
+          const attachment = raw as Record<string, unknown>;
+          const url = String(
+            attachment.url ||
+              attachment.cloudinaryUrl ||
+              attachment.secure_url ||
+              attachment.path ||
+              ''
+          ).trim();
           if (!url) {
             throw new AppError('Each attachment must include a valid url', 400);
           }
-          const mime =
-            typeof attachment.mimetype === 'string' && attachment.mimetype.trim()
-              ? attachment.mimetype.trim()
-              : 'application/octet-stream';
+          const mimeRaw =
+            (typeof attachment.mimetype === 'string' && attachment.mimetype.trim()
+              ? attachment.mimetype
+              : typeof attachment.mimeType === 'string' && attachment.mimeType.trim()
+                ? attachment.mimeType
+                : '') || 'application/octet-stream';
+          const mime = mimeRaw.trim();
           const size = Number(attachment.size);
+          const optStr = (v: unknown): string | undefined =>
+            typeof v === 'string' && v.trim() ? v.trim() : undefined;
           return {
             filename: String(attachment.filename || 'file').slice(0, 500),
             originalName: String(attachment.originalName || attachment.filename || 'file').slice(0, 500),
             mimeType: mime,
             size: Number.isFinite(size) && size >= 0 ? Math.floor(size) : 0,
             path: url,
-            cloudinaryPublicId: attachment.cloudinaryPublicId || undefined,
+            cloudinaryPublicId: optStr(attachment.cloudinaryPublicId),
             cloudinaryUrl: url,
-            optimizedUrl: attachment.optimizedUrl || undefined,
-            thumbnailUrl: attachment.thumbnailUrl || undefined,
+            optimizedUrl: optStr(attachment.optimizedUrl),
+            thumbnailUrl: optStr(attachment.thumbnailUrl),
             width: (() => {
               const n = attachment.width != null ? parseInt(String(attachment.width), 10) : NaN;
               return Number.isFinite(n) ? n : undefined;

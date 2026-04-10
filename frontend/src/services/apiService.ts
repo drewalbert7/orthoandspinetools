@@ -313,9 +313,33 @@ export interface NotificationsPage {
 
 function normalizePostAttachments<T extends { attachments?: unknown }>(post: T): T & { attachments: Attachment[] } {
   const a = post.attachments;
+  const raw = Array.isArray(a) ? a : [];
+  const attachments: Attachment[] = raw.map((item) => {
+    const x = item as Record<string, unknown> & Partial<Attachment>;
+    const path = typeof x.path === 'string' ? x.path : '';
+    const cloud =
+      typeof x.cloudinaryUrl === 'string'
+        ? x.cloudinaryUrl
+        : typeof (x as { cloudinary_url?: string }).cloudinary_url === 'string'
+          ? (x as { cloudinary_url: string }).cloudinary_url
+          : '';
+    const mime =
+      typeof x.mimeType === 'string' && x.mimeType.trim()
+        ? x.mimeType.trim()
+        : typeof x.mimetype === 'string' && x.mimetype.trim()
+          ? x.mimetype.trim()
+          : 'application/octet-stream';
+    const merged: Attachment = {
+      ...(x as Attachment),
+      mimeType: mime,
+      path: path || cloud || (typeof x.filename === 'string' ? x.filename : ''),
+      cloudinaryUrl: cloud || path || x.cloudinaryUrl,
+    };
+    return merged;
+  });
   return {
     ...post,
-    attachments: Array.isArray(a) ? (a as Attachment[]) : [],
+    attachments,
   };
 }
 
