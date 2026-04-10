@@ -2,8 +2,8 @@ import type { Community, Post } from '../services/apiService';
 
 export const SEO_DEFAULTS = {
   siteName: 'OrthoAndSpineTools',
-  title: 'OrthoAndSpineTools — Hunt for the Best Innovations on the Market',
-  description: 'Ortho and Spine Tools - Hunt for the Best Innovations on the Market',
+  title: 'OrthoAndSpineTools — Hunt for the Best',
+  description: 'Ortho and Spine Tools - Hunt for the Best',
 } as const;
 
 export function getSiteOrigin(): string {

@@ -92,7 +92,7 @@ const RegisterForm: React.FC = () => {
             Create your account
           </h2>
           <p className="mt-2 text-center text-sm text-reddit-text-muted max-w-md mx-auto px-1">
-            Ortho and Spine Tools - Hunt for the Best Innovations on the Market
+            Ortho and Spine Tools - Hunt for the Best
           </p>
         </div>
         

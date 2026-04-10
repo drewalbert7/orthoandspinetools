@@ -9,7 +9,16 @@
 | **CODING AGENT INSTRUCTIONS** | Onboarding / workflow for contributors and agents. |
 | **COMPLETED WORK** + long `###` history | Archive and audit trail — keep for context. |
 
-## 🔥 **NEXT UP — START HERE** (updated Mar 29, 2026)
+## 🔥 **NEXT UP — START HERE** (updated Apr 10, 2026)
+
+### **Goals (current session — Apr 10, 2026)**
+- [x] **Brand copy** — Site tagline shortened to **"Ortho and Spine Tools - Hunt for the Best"** everywhere it drives SEO/UI (`SEO_DEFAULTS`, `index.html`, registration hero, `llms.txt`).
+- [ ] **Production** — After `git push`, on server: `git pull` + rebuild **frontend** so title/meta and bundle match (see §1). Confirm `View Source` / Elements show new default title/description on home after load.
+- [ ] **Ongoing** — Post media save/display WIP, SSR/prerender for link previews, NEXT UP Production QA after each deploy.
+
+### **Changes saved in repo (Apr 10, 2026)**
+- **Tagline** — `frontend/src/lib/seo.ts`, `frontend/index.html`, `frontend/src/components/RegisterForm.tsx`, `frontend/public/llms.txt`: removed "Innovations on the Market"; default document title is `OrthoAndSpineTools — Hunt for the Best`.
+- **Create Post (earlier commit)** — Format toolbar on **Images & Video** tab: `onMouseDown={(e) => e.preventDefault()}` on buttons (same as main tab) so inline formatting/toggle does not lose text selection.
 
 ### **0. Deploy status — verify live (after each ship)**
 - [ ] From laptop: `git push origin main` then on server `cd ~/orthoandspinetools-main && git pull origin main && docker compose -f docker-compose.prod.yml up -d --build backend frontend` (add **`nginx`** if `nginx/nginx.conf` changed).
@@ -78,6 +87,7 @@ docker compose -f docker-compose.prod.yml up -d backend frontend nginx
 
 **Recently shipped:**
 
+- **Site tagline (Apr 10, 2026)** — Public tagline is **Ortho and Spine Tools - Hunt for the Best** across SEO defaults, SPA shell `index.html`, register page copy, and `llms.txt`.
 - **Post media pipeline hardening (Mar 2026, ongoing WIP)** — Create post sends `attachments`; timeline/detail use `PostAttachments` + MIME/URL fallbacks; backend validates content-with-attachments; `createPost` parses `{ success, data }`; `index.css` Tailwind `ring-ring` fix unblocked Docker frontend builds; SPA `index.html` cache headers in `frontend/nginx.conf`. **Display/save still under investigation** (see backlog).
 - **Notification system v1 (Mar 24, 2026)** — Added `Notification` model + migration, backend service/routes (`/api/notifications`, unread count, read, read-all, delete), comment/reply triggers, header bell dropdown with unread badge + actions, and graceful degradation if notifications table is missing.
 - **Home feed behavior (Mar 24, 2026)** — `/` now uses all-community posts (`/api/posts`) instead of followed-community-only feed for logged-in users.
@@ -798,7 +808,7 @@ The platform focuses on:
 
 ---
 
-**Last Updated**: March 2026 - Site evaluation and nginx SSL reload completed  
+**Last Updated**: April 10, 2026 — Tagline + TODO checkpoint; deploy frontend on server to make copy live.  
 **Status**: 🚀 **LIVE AND FUNCTIONAL** - Database connection verified, all features operational  
 **SSL Status**: 🔒 **SECURE** - HTTPS verified with valid certificate (served cert expires **May 10, 2026**). If browsers show expired SSL but `nginx/ssl/certs/fullchain.pem` on disk is newer, run: `docker compose -f docker-compose.prod.yml exec nginx nginx -t && docker compose -f docker-compose.prod.yml exec nginx nginx -s reload`  
 **Database Status**: 🔗 **CONNECTED** - PostgreSQL authentication working, startup verification active (7 posts, 4 users, 9 communities). Password: `secure_password_123` (in .env). If postgres container recreated, run: `ALTER USER postgres WITH PASSWORD 'secure_password_123';` then restart backend.  
@@ -1148,8 +1158,8 @@ Issues that were resolved at the time:
 **Live Site**: https://orthoandspinetools.com  
 **Database**: 34 posts, 4 users, 9 communities, operational *(counts approximate — verify in admin/DB if needed)*  
 **Status**: **Operational with known WIP** — **create-post image/video** save or timeline display not fully verified fixed (see **NEXT UP**).  
-**Last Major Update**: Mar 2026 — notifications v1, home feed = all communities, create-post typing fixes, post media hardening attempts (ongoing).  
-**Last Review**: Mar 29, 2026 — TODO.md cleanup; align status with active WIP.
+**Last Major Update**: Apr 2026 — tagline copy; create-post Images-tab toolbar selection fix; prior Mar 2026 work (notifications v1, home feed, create-post typing, post media WIP).  
+**Last Review**: Apr 10, 2026 — TODO.md goals/changes; commit tagline + doc; verify deploy on server.
 
 ### **🖥️ SERVER UPDATES STATUS** ✅ **CURRENT (December 2025)**
 - ✅ **Docker**: 29.1.2 (upgraded from 28.4.0 on December 7, 2025)
