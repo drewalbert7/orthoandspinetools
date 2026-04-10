@@ -57,10 +57,8 @@ const CreatePost: React.FC = () => {
   const [linkUrl, setLinkUrl] = useState('');
   const [pollOptionDrafts, setPollOptionDrafts] = useState<string[]>(['', '']);
   const [pollDurationHours, setPollDurationHours] = useState<number>(24);
-  // Mobile: default to plain <textarea> (reliable). Desktop: rich editor.
-  const [isMarkdownMode, setIsMarkdownMode] = useState(() =>
-    typeof window !== 'undefined' && window.matchMedia('(max-width: 640px)').matches
-  );
+  // false = rich MarkdownEditor (formatting toolbar works). true = plain textarea for raw Markdown only.
+  const [isMarkdownMode, setIsMarkdownMode] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState('');
   const [showCommunityDropdown, setShowCommunityDropdown] = useState(false);
