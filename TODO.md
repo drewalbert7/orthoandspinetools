@@ -13,7 +13,7 @@
 
 ### **Goals (current session — Apr 10, 2026)**
 - [x] **Brand copy** — Site tagline shortened to **"Ortho and Spine Tools - Hunt for the Best"** everywhere it drives SEO/UI (`SEO_DEFAULTS`, `index.html`, registration hero, `llms.txt`).
-- [ ] **Production** — After `git push`, on server: `git pull` + rebuild **frontend** so title/meta and bundle match (see §1). Confirm `View Source` / Elements show new default title/description on home after load.
+- [x] **Production (Apr 10, 2026)** — Pushed `main`, server `git pull` + `docker compose -f docker-compose.prod.yml build --no-cache frontend` + `up -d frontend`. Verified `https://orthoandspinetools.com/` HTML: title **OrthoAndSpineTools — Hunt for the Best**, meta description matches tagline.
 - [ ] **Ongoing** — Post media save/display WIP, SSR/prerender for link previews, NEXT UP Production QA after each deploy.
 
 ### **Changes saved in repo (Apr 10, 2026)**
