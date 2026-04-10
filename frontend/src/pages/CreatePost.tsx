@@ -28,6 +28,8 @@ import { useAuth } from '../contexts/AuthContext';
 import toast from 'react-hot-toast';
 import MarkdownEditor, { MarkdownEditorHandle } from '../components/MarkdownEditor';
 
+type RichEditor = MarkdownEditorHandle | null;
+
 type PostType = 'text' | 'images' | 'link' | 'poll';
 
 type UploadedPostMedia = {
@@ -364,53 +366,51 @@ const CreatePost: React.FC = () => {
     setUploadedMedia(prev => prev.filter(media => media.filename !== filename));
   };
 
-  // Formatting button handlers - work with markdown editor
-  const handleFormatBold = (editor: { insertMarkdown: (before: string, after: string, placeholder: string) => void } | null) => {
+  const handleFormatBold = (editor: RichEditor) => {
     if (!editor) return;
-    editor.insertMarkdown('**', '**', 'bold text');
+    editor.toggleInlineFormat('bold');
   };
 
-  const handleFormatItalic = (editor: { insertMarkdown: (before: string, after: string, placeholder: string) => void } | null) => {
+  const handleFormatItalic = (editor: RichEditor) => {
     if (!editor) return;
-    editor.insertMarkdown('*', '*', 'italic text');
+    editor.toggleInlineFormat('italic');
   };
 
-  const handleFormatStrikethrough = (editor: { insertMarkdown: (before: string, after: string, placeholder: string) => void } | null) => {
+  const handleFormatStrikethrough = (editor: RichEditor) => {
     if (!editor) return;
-    editor.insertMarkdown('~~', '~~', 'strikethrough text');
+    editor.toggleInlineFormat('strike');
   };
 
-  const handleFormatSuperscript = (editor: { insertMarkdown: (before: string, after: string, placeholder: string) => void } | null) => {
+  const handleFormatSuperscript = (editor: RichEditor) => {
     if (!editor) return;
-    editor.insertMarkdown('^', '^', 'superscript');
+    editor.toggleInlineFormat('superscript');
   };
 
-  const handleFormatCode = (editor: { insertMarkdown: (before: string, after: string, placeholder: string) => void } | null) => {
+  const handleFormatCode = (editor: RichEditor) => {
     if (!editor) return;
-    const selectedText = body; // We'll check for newlines in the selection
-    if (selectedText.includes('\n')) {
+    if (body.includes('\n')) {
       editor.insertMarkdown('```\n', '\n```', 'code block');
     } else {
-      editor.insertMarkdown('`', '`', 'code');
+      editor.toggleInlineFormat('code');
     }
   };
 
-  const handleFormatLink = (editor: { insertMarkdown: (before: string, after: string, placeholder: string) => void } | null) => {
+  const handleFormatLink = (editor: RichEditor) => {
     if (!editor) return;
     editor.insertMarkdown('[', '](url)', 'link text');
   };
 
-  const handleFormatImage = (editor: { insertMarkdown: (before: string, after: string, placeholder: string) => void } | null) => {
+  const handleFormatImage = (editor: RichEditor) => {
     if (!editor) return;
     editor.insertMarkdown('![', '](image-url)', 'alt text');
   };
 
-  const handleFormatVideo = (editor: { insertMarkdown: (before: string, after: string, placeholder: string) => void } | null) => {
+  const handleFormatVideo = (editor: RichEditor) => {
     if (!editor) return;
     editor.insertMarkdown('![', '](video-url)', 'video description');
   };
 
-  const handleFormatBulletList = (editor: { insertMarkdown: (before: string, after: string, placeholder: string) => void } | null) => {
+  const handleFormatBulletList = (editor: RichEditor) => {
     if (!editor) return;
     if (body.includes('\n')) {
       // Multi-line: add bullet to each line
@@ -422,7 +422,7 @@ const CreatePost: React.FC = () => {
     }
   };
 
-  const handleFormatNumberedList = (editor: { insertMarkdown: (before: string, after: string, placeholder: string) => void } | null) => {
+  const handleFormatNumberedList = (editor: RichEditor) => {
     if (!editor) return;
     if (body.includes('\n')) {
       // Multi-line: add numbers to each line
@@ -434,7 +434,7 @@ const CreatePost: React.FC = () => {
     }
   };
 
-  const handleFormatQuote = (editor: { insertMarkdown: (before: string, after: string, placeholder: string) => void } | null) => {
+  const handleFormatQuote = (editor: RichEditor) => {
     if (!editor) return;
     if (body.includes('\n')) {
       // Multi-line: add quote to each line

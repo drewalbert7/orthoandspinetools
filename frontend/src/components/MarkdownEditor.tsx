@@ -10,8 +10,11 @@ interface MarkdownEditorProps {
   onKeyDown?: (e: React.KeyboardEvent) => void;
 }
 
+export type ToggleInlineKind = 'bold' | 'italic' | 'strike' | 'superscript' | 'code';
+
 export interface MarkdownEditorHandle {
   insertMarkdown: (before: string, after: string, placeholder: string) => void;
+  toggleInlineFormat: (kind: ToggleInlineKind) => void;
 }
 
 function getPlainTextFromHtml(html: string): string {
@@ -87,6 +90,114 @@ function fixCaretIfOrphaned(root: HTMLElement): void {
   nr.collapse(false);
   sel.removeAllRanges();
   sel.addRange(nr);
+}
+
+function unwrapElement(el: HTMLElement): void {
+  const parent = el.parentNode;
+  if (!parent) return;
+  while (el.firstChild) {
+    parent.insertBefore(el.firstChild, el);
+  }
+  parent.removeChild(el);
+}
+
+function findFormattingAncestor(node: Node, root: HTMLElement, tagNames: string[]): HTMLElement | null {
+  let n: Node | null = node.nodeType === Node.TEXT_NODE ? node.parentNode : node;
+  while (n && n !== root) {
+    if (n.nodeType === Node.ELEMENT_NODE) {
+      const name = (n as HTMLElement).tagName;
+      if (tagNames.includes(name)) {
+        return n as HTMLElement;
+      }
+    }
+    n = n.parentNode;
+  }
+  return null;
+}
+
+function wrapperIsTextAndBrOnly(el: HTMLElement): boolean {
+  for (const child of Array.from(el.childNodes)) {
+    if (child.nodeType === Node.TEXT_NODE) continue;
+    if (child.nodeType === Node.ELEMENT_NODE && (child as Element).tagName === 'BR') continue;
+    return false;
+  }
+  return true;
+}
+
+function getOffsetsInElement(el: HTMLElement, range: Range): [number, number] | null {
+  try {
+    if (!el.contains(range.startContainer) || !el.contains(range.endContainer)) return null;
+    const rs = document.createRange();
+    rs.selectNodeContents(el);
+    rs.setEnd(range.startContainer, range.startOffset);
+    const start = rs.toString().length;
+    const re = document.createRange();
+    re.selectNodeContents(el);
+    re.setEnd(range.endContainer, range.endOffset);
+    const end = re.toString().length;
+    if (start > end) return null;
+    return [start, end];
+  } catch {
+    return null;
+  }
+}
+
+function splitPlainTextWrapper(el: HTMLElement, wrapTag: string, start: number, end: number): void {
+  const text = el.textContent ?? '';
+  const before = text.slice(0, start);
+  const mid = text.slice(start, end);
+  const after = text.slice(end);
+  const parent = el.parentNode;
+  if (!parent) return;
+  const frag = document.createDocumentFragment();
+  if (before) {
+    const w = document.createElement(wrapTag);
+    w.textContent = before;
+    frag.appendChild(w);
+  }
+  if (mid) {
+    frag.appendChild(document.createTextNode(mid));
+  }
+  if (after) {
+    const w = document.createElement(wrapTag);
+    w.textContent = after;
+    frag.appendChild(w);
+  }
+  parent.replaceChild(frag, el);
+}
+
+const INLINE_TOGGLE: Record<
+  ToggleInlineKind,
+  { tags: string[]; wrapTag: string; placeholder: string }
+> = {
+  bold: { tags: ['STRONG', 'B'], wrapTag: 'strong', placeholder: 'bold text' },
+  italic: { tags: ['EM', 'I'], wrapTag: 'em', placeholder: 'italic text' },
+  strike: { tags: ['S', 'STRIKE', 'DEL'], wrapTag: 's', placeholder: 'strikethrough text' },
+  superscript: { tags: ['SUP'], wrapTag: 'sup', placeholder: 'superscript' },
+  code: { tags: ['CODE'], wrapTag: 'code', placeholder: 'code' },
+};
+
+function getActiveRangeInRoot(root: HTMLElement): Range | null {
+  let sel = window.getSelection();
+  if (!sel || sel.rangeCount === 0) {
+    const r = document.createRange();
+    r.selectNodeContents(root);
+    r.collapse(false);
+    sel = window.getSelection();
+    sel?.removeAllRanges();
+    sel?.addRange(r);
+    return sel?.rangeCount ? sel.getRangeAt(0) : null;
+  }
+  const r0 = sel.getRangeAt(0);
+  if (!root.contains(r0.commonAncestorContainer)) {
+    const r = document.createRange();
+    r.selectNodeContents(root);
+    r.collapse(false);
+    sel.removeAllRanges();
+    sel.addRange(r);
+    return sel.getRangeAt(0);
+  }
+  return r0;
 }
 
 const MarkdownEditor = forwardRef<MarkdownEditorHandle, MarkdownEditorProps>(({
@@ -373,31 +484,8 @@ const MarkdownEditor = forwardRef<MarkdownEditorHandle, MarkdownEditorProps>(({
 
     const root = editorRef.current;
     root.focus();
-    let sel = window.getSelection();
 
-    const ensureRangeInsideEditor = (): Range | null => {
-      if (!sel || sel.rangeCount === 0) {
-        const r = document.createRange();
-        r.selectNodeContents(root);
-        r.collapse(false);
-        sel = window.getSelection();
-        sel?.removeAllRanges();
-        sel?.addRange(r);
-        return sel?.rangeCount ? sel.getRangeAt(0) : null;
-      }
-      const r0 = sel.getRangeAt(0);
-      if (!root.contains(r0.commonAncestorContainer)) {
-        const r = document.createRange();
-        r.selectNodeContents(root);
-        r.collapse(false);
-        sel.removeAllRanges();
-        sel.addRange(r);
-        return sel.getRangeAt(0);
-      }
-      return r0;
-    };
-
-    const range = ensureRangeInsideEditor();
+    const range = getActiveRangeInRoot(root);
     if (!range) return;
 
     const selectedText = range.toString();
@@ -459,19 +547,80 @@ const MarkdownEditor = forwardRef<MarkdownEditorHandle, MarkdownEditorProps>(({
     const endRange = document.createRange();
     endRange.setStartAfter(node);
     endRange.collapse(true);
-    sel = window.getSelection();
-    sel?.removeAllRanges();
-    sel?.addRange(endRange);
+    const selAfter = window.getSelection();
+    selAfter?.removeAllRanges();
+    selAfter?.addRange(endRange);
 
     removeEmptyInlineFormatElements(root);
     const markdown = htmlToMarkdown(root.innerHTML);
     onChange(markdown);
   }, [isUpdating, onChange, htmlToMarkdown]);
 
-  // Expose insertMarkdown via ref
+  const toggleInlineFormat = useCallback(
+    (kind: ToggleInlineKind) => {
+      if (!editorRef.current || isUpdating) return;
+      const root = editorRef.current;
+      root.focus();
+      const range = getActiveRangeInRoot(root);
+      if (!range) return;
+
+      const cfg = INLINE_TOGGLE[kind];
+      const ancestor = findFormattingAncestor(range.commonAncestorContainer, root, cfg.tags);
+      const codeInPre = kind === 'code' && ancestor?.closest('pre');
+
+      if (ancestor && root.contains(ancestor) && !codeInPre) {
+        if (range.collapsed) {
+          unwrapElement(ancestor);
+        } else if (wrapperIsTextAndBrOnly(ancestor)) {
+          const offsets = getOffsetsInElement(ancestor, range);
+          const len = (ancestor.textContent || '').length;
+          if (offsets && offsets[0] === 0 && offsets[1] === len) {
+            unwrapElement(ancestor);
+          } else if (offsets) {
+            splitPlainTextWrapper(ancestor, cfg.wrapTag, offsets[0], offsets[1]);
+          } else {
+            unwrapElement(ancestor);
+          }
+        } else {
+          const offsets = getOffsetsInElement(ancestor, range);
+          const len = (ancestor.textContent || '').length;
+          if (offsets && offsets[0] === 0 && offsets[1] === len) {
+            unwrapElement(ancestor);
+          } else {
+            unwrapElement(ancestor);
+          }
+        }
+
+        removeEmptyInlineFormatElements(root);
+        fixCaretIfOrphaned(root);
+        onChange(htmlToMarkdown(root.innerHTML));
+        return;
+      }
+
+      const selectedText = range.toString();
+      const text = selectedText || cfg.placeholder;
+      range.deleteContents();
+      const wrap = document.createElement(cfg.wrapTag);
+      wrap.textContent = text;
+      range.insertNode(wrap);
+
+      const endRange = document.createRange();
+      endRange.setStartAfter(wrap);
+      endRange.collapse(true);
+      const selAfter = window.getSelection();
+      selAfter?.removeAllRanges();
+      selAfter?.addRange(endRange);
+
+      removeEmptyInlineFormatElements(root);
+      onChange(htmlToMarkdown(root.innerHTML));
+    },
+    [isUpdating, onChange, htmlToMarkdown]
+  );
+
   useImperativeHandle(ref, () => ({
     insertMarkdown,
-  }), [insertMarkdown]);
+    toggleInlineFormat,
+  }), [insertMarkdown, toggleInlineFormat]);
 
   // Update HTML when markdown changes externally (formatting buttons / programmatic).
   // Do NOT reset the DOM when the editor already represents the same markdown — that breaks typing (esp. mobile).
