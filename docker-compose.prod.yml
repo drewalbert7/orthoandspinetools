@@ -60,6 +60,8 @@ services:
       args:
         # Same-origin /api (proxied by nginx to backend). Override only if API is on another host.
         VITE_API_URL: ${VITE_API_URL:-/api}
+        # Canonical origin for SEO/JSON-LD at build time (browser still uses window.location when available).
+        VITE_SITE_URL: ${VITE_SITE_URL:-https://orthoandspinetools.com}
     container_name: orthoandspinetools-frontend
     depends_on:
       backend:
