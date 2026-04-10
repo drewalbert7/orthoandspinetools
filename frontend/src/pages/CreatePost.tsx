@@ -684,6 +684,7 @@ const CreatePost: React.FC = () => {
                 {/* Bold */}
                 <button 
                   type="button"
+                  onMouseDown={(e) => e.preventDefault()}
                   onClick={() => handleFormatBold(editorRef.current)}
                   className="p-1.5 sm:p-2 hover:bg-gray-100 rounded-md flex-shrink-0" 
                   title="Bold (Ctrl+B)"
@@ -695,6 +696,7 @@ const CreatePost: React.FC = () => {
                 {/* Italic */}
                 <button 
                   type="button"
+                  onMouseDown={(e) => e.preventDefault()}
                   onClick={() => handleFormatItalic(editorRef.current)}
                   className="p-1.5 sm:p-2 hover:bg-gray-100 rounded-md flex-shrink-0" 
                   title="Italic (Ctrl+I)"
@@ -706,6 +708,7 @@ const CreatePost: React.FC = () => {
                 {/* Strikethrough */}
                 <button 
                   type="button"
+                  onMouseDown={(e) => e.preventDefault()}
                   onClick={() => handleFormatStrikethrough(editorRef.current)}
                   className="p-1.5 sm:p-2 hover:bg-gray-100 rounded-md flex-shrink-0" 
                   title="Strikethrough"
@@ -717,6 +720,7 @@ const CreatePost: React.FC = () => {
                 {/* Superscript */}
                 <button 
                   type="button"
+                  onMouseDown={(e) => e.preventDefault()}
                   onClick={() => handleFormatSuperscript(editorRef.current)}
                   className="p-1.5 sm:p-2 hover:bg-gray-100 rounded-md flex-shrink-0" 
                   title="Superscript"
@@ -726,6 +730,7 @@ const CreatePost: React.FC = () => {
                 {/* Code */}
                 <button 
                   type="button"
+                  onMouseDown={(e) => e.preventDefault()}
                   onClick={() => handleFormatCode(editorRef.current)}
                   className="p-1.5 sm:p-2 hover:bg-gray-100 rounded-md flex-shrink-0" 
                   title="Code"
@@ -737,6 +742,7 @@ const CreatePost: React.FC = () => {
                 {/* Link */}
                 <button 
                   type="button"
+                  onMouseDown={(e) => e.preventDefault()}
                   onClick={() => handleFormatLink(editorRef.current)}
                   className="p-1.5 sm:p-2 hover:bg-gray-100 rounded-md flex-shrink-0" 
                   title="Link"
@@ -748,6 +754,7 @@ const CreatePost: React.FC = () => {
                 {/* Image */}
                 <button 
                   type="button"
+                  onMouseDown={(e) => e.preventDefault()}
                   onClick={() => handleFormatImage(editorRef.current)}
                   className="p-1.5 sm:p-2 hover:bg-gray-100 rounded-md flex-shrink-0" 
                   title="Image"
@@ -759,6 +766,7 @@ const CreatePost: React.FC = () => {
                 {/* Video */}
                 <button 
                   type="button"
+                  onMouseDown={(e) => e.preventDefault()}
                   onClick={() => handleFormatVideo(editorRef.current)}
                   className="p-1.5 sm:p-2 hover:bg-gray-100 rounded-md flex-shrink-0" 
                   title="Video"
@@ -770,6 +778,7 @@ const CreatePost: React.FC = () => {
                 {/* Bullet List */}
                 <button 
                   type="button"
+                  onMouseDown={(e) => e.preventDefault()}
                   onClick={() => handleFormatBulletList(editorRef.current)}
                   className="p-1.5 sm:p-2 hover:bg-gray-100 rounded-md flex-shrink-0" 
                   title="Bullet List"
@@ -781,6 +790,7 @@ const CreatePost: React.FC = () => {
                 {/* Numbered List */}
                 <button 
                   type="button"
+                  onMouseDown={(e) => e.preventDefault()}
                   onClick={() => handleFormatNumberedList(editorRef.current)}
                   className="p-1.5 sm:p-2 hover:bg-gray-100 rounded-md flex-shrink-0" 
                   title="Numbered List"
@@ -792,6 +802,7 @@ const CreatePost: React.FC = () => {
                 {/* Quote */}
                 <button 
                   type="button"
+                  onMouseDown={(e) => e.preventDefault()}
                   onClick={() => handleFormatQuote(editorRef.current)}
                   className="p-1.5 sm:p-2 hover:bg-gray-100 rounded-md flex-shrink-0" 
                   title="Quote"
@@ -966,6 +977,7 @@ const CreatePost: React.FC = () => {
                     {/* Bold */}
                     <button 
                       type="button"
+                      onMouseDown={(e) => e.preventDefault()}
                       onClick={() => handleFormatBold(imagesEditorRef.current)}
                       className="p-1.5 sm:p-2 hover:bg-gray-100 rounded-md flex-shrink-0" 
                       title="Bold (Ctrl+B)"
@@ -977,6 +989,7 @@ const CreatePost: React.FC = () => {
                     {/* Italic */}
                     <button 
                       type="button"
+                      onMouseDown={(e) => e.preventDefault()}
                       onClick={() => handleFormatItalic(imagesEditorRef.current)}
                       className="p-1.5 sm:p-2 hover:bg-gray-100 rounded-md flex-shrink-0" 
                       title="Italic (Ctrl+I)"
@@ -988,6 +1001,7 @@ const CreatePost: React.FC = () => {
                     {/* Strikethrough */}
                     <button 
                       type="button"
+                      onMouseDown={(e) => e.preventDefault()}
                       onClick={() => handleFormatStrikethrough(imagesEditorRef.current)}
                       className="p-1.5 sm:p-2 hover:bg-gray-100 rounded-md flex-shrink-0" 
                       title="Strikethrough"
@@ -999,6 +1013,7 @@ const CreatePost: React.FC = () => {
                     {/* Superscript */}
                     <button 
                       type="button"
+                      onMouseDown={(e) => e.preventDefault()}
                       onClick={() => handleFormatSuperscript(imagesEditorRef.current)}
                       className="p-1.5 sm:p-2 hover:bg-gray-100 rounded-md flex-shrink-0" 
                       title="Superscript"
@@ -1018,6 +1033,7 @@ const CreatePost: React.FC = () => {
                     {/* Link */}
                     <button 
                       type="button"
+                      onMouseDown={(e) => e.preventDefault()}
                       onClick={() => handleFormatLink(imagesEditorRef.current)}
                       className="p-1.5 sm:p-2 hover:bg-gray-100 rounded-md flex-shrink-0" 
                       title="Link"
@@ -1029,6 +1045,7 @@ const CreatePost: React.FC = () => {
                     {/* Bullet List */}
                     <button 
                       type="button"
+                      onMouseDown={(e) => e.preventDefault()}
                       onClick={() => handleFormatBulletList(imagesEditorRef.current)}
                       className="p-1.5 sm:p-2 hover:bg-gray-100 rounded-md flex-shrink-0" 
                       title="Bullet List"
@@ -1040,6 +1057,7 @@ const CreatePost: React.FC = () => {
                     {/* Numbered List */}
                     <button 
                       type="button"
+                      onMouseDown={(e) => e.preventDefault()}
                       onClick={() => handleFormatNumberedList(imagesEditorRef.current)}
                       className="p-1.5 sm:p-2 hover:bg-gray-100 rounded-md flex-shrink-0" 
                       title="Numbered List"
@@ -1051,6 +1069,7 @@ const CreatePost: React.FC = () => {
                     {/* Quote */}
                     <button 
                       type="button"
+                      onMouseDown={(e) => e.preventDefault()}
                       onClick={() => handleFormatQuote(imagesEditorRef.current)}
                       className="p-1.5 sm:p-2 hover:bg-gray-100 rounded-md flex-shrink-0" 
                       title="Quote"
@@ -1062,6 +1081,7 @@ const CreatePost: React.FC = () => {
                     {/* Code Block */}
                     <button 
                       type="button"
+                      onMouseDown={(e) => e.preventDefault()}
                       onClick={() => handleFormatCode(imagesEditorRef.current)}
                       className="p-1.5 sm:p-2 hover:bg-gray-100 rounded-md flex-shrink-0" 
                       title="Code Block"
@@ -1071,6 +1091,7 @@ const CreatePost: React.FC = () => {
                     {/* Inline Code */}
                     <button 
                       type="button"
+                      onMouseDown={(e) => e.preventDefault()}
                       onClick={() => handleFormatCode(imagesEditorRef.current)}
                       className="p-1.5 sm:p-2 hover:bg-gray-100 rounded-md flex-shrink-0" 
                       title="Inline Code"
