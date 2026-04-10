@@ -38,6 +38,14 @@ function isEffectivelyEmptyContent(html: string): boolean {
   return text.length === 0;
 }
 
+function normalizeMarkdownForCompare(s: string): string {
+  return (s || '')
+    .replace(/\r\n/g, '\n')
+    .replace(/\n{3,}/g, '\n\n')
+    .replace(/(?:~~\s*~~)+/g, '')
+    .trimEnd();
+}
+
 /** Compare stored markdown to what the editor DOM currently represents (avoids fighting the browser on every keystroke). */
 function markdownMatchesDom(html: string, markdown: string, toMd: (h: string) => string): boolean {
   let derived: string;
@@ -46,9 +54,39 @@ function markdownMatchesDom(html: string, markdown: string, toMd: (h: string) =>
   } catch {
     derived = getPlainTextFromHtml(html);
   }
-  const a = (derived || '').replace(/\r\n/g, '\n').trimEnd();
-  const b = (markdown || '').replace(/\r\n/g, '\n').trimEnd();
+  const a = normalizeMarkdownForCompare(derived);
+  const b = normalizeMarkdownForCompare(markdown);
   return a === b;
+}
+
+/** Remove empty inline format wrappers the browser often leaves after deleting text (esp. strikethrough). */
+function removeEmptyInlineFormatElements(root: HTMLElement): void {
+  const selector = 's, strike, del, strong, b, em, i, sup';
+  let removed = true;
+  while (removed) {
+    removed = false;
+    const list = Array.from(root.querySelectorAll(selector));
+    for (const el of list) {
+      if (!root.contains(el)) continue;
+      if (el.closest('pre')) continue;
+      const raw = el.textContent ?? '';
+      if (!isWhitespaceOnly(raw)) continue;
+      el.parentNode?.removeChild(el);
+      removed = true;
+    }
+  }
+}
+
+function fixCaretIfOrphaned(root: HTMLElement): void {
+  const sel = window.getSelection();
+  if (!sel?.rangeCount) return;
+  const r = sel.getRangeAt(0);
+  if (root.contains(r.commonAncestorContainer)) return;
+  const nr = document.createRange();
+  nr.selectNodeContents(root);
+  nr.collapse(false);
+  sel.removeAllRanges();
+  sel.addRange(nr);
 }
 
 const MarkdownEditor = forwardRef<MarkdownEditorHandle, MarkdownEditorProps>(({
@@ -62,7 +100,7 @@ const MarkdownEditor = forwardRef<MarkdownEditorHandle, MarkdownEditorProps>(({
   const editorRef = useRef<HTMLDivElement>(null);
   const composingRef = useRef(false);
   const [isUpdating, setIsUpdating] = useState(false);
-  const [cursorPos, setCursorPos] = useState(0);
+  const cursorPosRef = useRef(0);
 
   // Configure marked
   marked.setOptions({
@@ -87,14 +125,14 @@ const MarkdownEditor = forwardRef<MarkdownEditorHandle, MarkdownEditorProps>(({
     if (!editorRef.current) return;
     const selection = window.getSelection();
     if (!selection || selection.rangeCount === 0) return;
-    
+
     const range = selection.getRangeAt(0);
     const preRange = range.cloneRange();
     preRange.selectNodeContents(editorRef.current);
     preRange.setEnd(range.endContainer, range.endOffset);
-    
+
     const text = getTextFromHtml(editorRef.current.innerHTML);
-    setCursorPos(Math.min(preRange.toString().length, text.length));
+    cursorPosRef.current = Math.min(preRange.toString().length, text.length);
   }, []);
 
   // Restore cursor
@@ -201,6 +239,7 @@ const MarkdownEditor = forwardRef<MarkdownEditorHandle, MarkdownEditorProps>(({
           case 'li':
             return `- ${children.trim()}\n`;
           case 'sup':
+            if (isWhitespaceOnly(children)) return '';
             return `^${children}^`;
           default:
             return children;
@@ -244,7 +283,9 @@ const MarkdownEditor = forwardRef<MarkdownEditorHandle, MarkdownEditorProps>(({
       return;
     }
 
-    const markdown = htmlToMarkdown(html);
+    removeEmptyInlineFormatElements(el);
+    fixCaretIfOrphaned(el);
+    const markdown = htmlToMarkdown(el.innerHTML);
     saveCursor();
 
     if (markdown !== value) {
@@ -266,12 +307,42 @@ const MarkdownEditor = forwardRef<MarkdownEditorHandle, MarkdownEditorProps>(({
       return;
     }
 
-    const markdown = htmlToMarkdown(html);
+    removeEmptyInlineFormatElements(el);
+    fixCaretIfOrphaned(el);
+    const markdown = htmlToMarkdown(el.innerHTML);
     saveCursor();
     if (markdown !== value) {
       onChange(markdown);
     }
   }, [isUpdating, onChange, saveCursor, value, htmlToMarkdown, normalizeEmptyEditorDom]);
+
+  const flushAfterDelete = useCallback(() => {
+    if (!editorRef.current || isUpdating || composingRef.current) return;
+    const el = editorRef.current;
+    if (isEffectivelyEmptyContent(el.innerHTML)) {
+      normalizeEmptyEditorDom(el);
+      saveCursor();
+      if (value !== '') {
+        onChange('');
+      }
+      return;
+    }
+    removeEmptyInlineFormatElements(el);
+    fixCaretIfOrphaned(el);
+    const markdown = htmlToMarkdown(el.innerHTML);
+    saveCursor();
+    if (markdown !== value) {
+      onChange(markdown);
+    }
+  }, [isUpdating, onChange, saveCursor, value, htmlToMarkdown, normalizeEmptyEditorDom]);
+
+  const handleKeyUp = useCallback(
+    (e: React.KeyboardEvent<HTMLDivElement>) => {
+      if (e.key !== 'Backspace' && e.key !== 'Delete') return;
+      requestAnimationFrame(flushAfterDelete);
+    },
+    [flushAfterDelete]
+  );
 
   // Handle paste - get plain text
   const handlePaste = useCallback((e: React.ClipboardEvent<HTMLDivElement>) => {
@@ -392,6 +463,7 @@ const MarkdownEditor = forwardRef<MarkdownEditorHandle, MarkdownEditorProps>(({
     sel?.removeAllRanges();
     sel?.addRange(endRange);
 
+    removeEmptyInlineFormatElements(root);
     const markdown = htmlToMarkdown(root.innerHTML);
     onChange(markdown);
   }, [isUpdating, onChange, htmlToMarkdown]);
@@ -437,7 +509,7 @@ const MarkdownEditor = forwardRef<MarkdownEditorHandle, MarkdownEditorProps>(({
 
     setIsUpdating(true);
     const wasFocused = document.activeElement === editorRef.current;
-    const savedPos = cursorPos;
+    const savedPos = cursorPosRef.current;
 
     editorRef.current.innerHTML = currentRendered;
 
@@ -450,7 +522,7 @@ const MarkdownEditor = forwardRef<MarkdownEditorHandle, MarkdownEditorProps>(({
     } else {
       setIsUpdating(false);
     }
-  }, [value, markdownToHtml, cursorPos, restoreCursor, isUpdating, htmlToMarkdown]);
+  }, [value, markdownToHtml, restoreCursor, isUpdating, htmlToMarkdown]);
 
   return (
     <>
@@ -460,7 +532,10 @@ const MarkdownEditor = forwardRef<MarkdownEditorHandle, MarkdownEditorProps>(({
         suppressContentEditableWarning
         onInput={handleInput}
         onPaste={handlePaste}
-        onKeyDown={onKeyDown}
+        onKeyDown={(e) => {
+          onKeyDown?.(e);
+        }}
+        onKeyUp={handleKeyUp}
         onBlur={saveCursor}
         onCompositionStart={() => {
           composingRef.current = true;
