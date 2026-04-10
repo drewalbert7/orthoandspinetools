@@ -21,6 +21,10 @@ function getPlainTextFromHtml(html: string): string {
 }
 
 /** True when there is no real user text (ignores empty s/del/strong wrappers and ZWSP). Preserves non-text media if ever present. */
+function isWhitespaceOnly(s: string): boolean {
+  return !s.replace(/[\s\u00a0\u200b\ufeff]/g, '').length;
+}
+
 function isEffectivelyEmptyContent(html: string): boolean {
   if (!html || html === '<br>' || html === '<div><br></div>' || html === '<p><br></p>') return true;
   const div = document.createElement('div');
@@ -159,15 +163,19 @@ const MarkdownEditor = forwardRef<MarkdownEditorHandle, MarkdownEditorProps>(({
         switch (tag) {
           case 'strong':
           case 'b':
+            if (isWhitespaceOnly(children)) return '';
             return `**${children}**`;
           case 'em':
           case 'i':
+            if (isWhitespaceOnly(children)) return '';
             return `*${children}*`;
           case 's':
           case 'strike':
           case 'del':
+            if (isWhitespaceOnly(children)) return '';
             return `~~${children}~~`;
           case 'code':
+            if (isWhitespaceOnly(children)) return '';
             return `\`${children}\``;
           case 'pre':
             const codeContent = el.querySelector('code')?.textContent || children;
@@ -177,6 +185,11 @@ const MarkdownEditor = forwardRef<MarkdownEditorHandle, MarkdownEditorProps>(({
           case 'a':
             const href = el.getAttribute('href') || '';
             return `[${children}](${href})`;
+          case 'img': {
+            const src = el.getAttribute('src') || '';
+            const alt = el.getAttribute('alt') || '';
+            return `![${alt}](${src})`;
+          }
           case 'br':
             return '\n';
           case 'p':
@@ -199,9 +212,9 @@ const MarkdownEditor = forwardRef<MarkdownEditorHandle, MarkdownEditorProps>(({
     
     try {
       let markdown = walk(tempDiv).trim();
-      // Clean up extra newlines
+      markdown = markdown.replace(/(?:~~\s*~~)+/g, '');
       markdown = markdown.replace(/\n{3,}/g, '\n\n');
-      return markdown;
+      return markdown.trim();
     } catch {
       // Fallback to plain text
       return getTextFromHtml(html);
@@ -284,39 +297,104 @@ const MarkdownEditor = forwardRef<MarkdownEditorHandle, MarkdownEditorProps>(({
     }
   }, [onChange]);
 
-  // Insert markdown at cursor position
   const insertMarkdown = useCallback((before: string, after: string, placeholder: string) => {
     if (!editorRef.current || isUpdating) return;
-    
-    editorRef.current.focus();
-    const selection = window.getSelection();
-    
-    // Get current text content to find cursor position
-    const currentText = getTextFromHtml(editorRef.current.innerHTML);
-    let insertPos = currentText.length;
-    
-    if (selection && selection.rangeCount > 0) {
-      const range = selection.getRangeAt(0);
-      const preRange = range.cloneRange();
-      preRange.selectNodeContents(editorRef.current);
-      preRange.setEnd(range.endContainer, range.endOffset);
-      insertPos = preRange.toString().length;
+
+    const root = editorRef.current;
+    root.focus();
+    let sel = window.getSelection();
+
+    const ensureRangeInsideEditor = (): Range | null => {
+      if (!sel || sel.rangeCount === 0) {
+        const r = document.createRange();
+        r.selectNodeContents(root);
+        r.collapse(false);
+        sel = window.getSelection();
+        sel?.removeAllRanges();
+        sel?.addRange(r);
+        return sel?.rangeCount ? sel.getRangeAt(0) : null;
+      }
+      const r0 = sel.getRangeAt(0);
+      if (!root.contains(r0.commonAncestorContainer)) {
+        const r = document.createRange();
+        r.selectNodeContents(root);
+        r.collapse(false);
+        sel.removeAllRanges();
+        sel.addRange(r);
+        return sel.getRangeAt(0);
+      }
+      return r0;
+    };
+
+    const range = ensureRangeInsideEditor();
+    if (!range) return;
+
+    const selectedText = range.toString();
+    const text = selectedText || placeholder;
+    range.deleteContents();
+
+    let node: Node;
+
+    if (before === '**' && after === '**') {
+      const el = document.createElement('strong');
+      el.textContent = text;
+      node = el;
+    } else if (before === '~~' && after === '~~') {
+      const el = document.createElement('s');
+      el.textContent = text;
+      node = el;
+    } else if (before === '*' && after === '*') {
+      const el = document.createElement('em');
+      el.textContent = text;
+      node = el;
+    } else if (before === '^' && after === '^') {
+      const el = document.createElement('sup');
+      el.textContent = text;
+      node = el;
+    } else if (before === '`' && after === '`') {
+      const el = document.createElement('code');
+      el.textContent = text;
+      node = el;
+    } else if (before === '```\n' && after === '\n```') {
+      const pre = document.createElement('pre');
+      const code = document.createElement('code');
+      code.textContent = text;
+      pre.appendChild(code);
+      node = pre;
+    } else if (before === '[' && after === '](url)') {
+      const a = document.createElement('a');
+      a.href = 'https://';
+      a.textContent = text;
+      a.rel = 'noopener noreferrer';
+      node = a;
+    } else if (before === '![' && (after === '](image-url)' || after === '](video-url)')) {
+      const img = document.createElement('img');
+      img.src = 'https://';
+      img.alt = text;
+      img.setAttribute('draggable', 'false');
+      node = img;
+    } else if (before === '- ' && after === '') {
+      node = document.createTextNode(`- ${text}\n`);
+    } else if (before === '1. ' && after === '') {
+      node = document.createTextNode(`1. ${text}\n`);
+    } else if (before === '> ' && after === '') {
+      node = document.createTextNode(`> ${text}\n`);
+    } else {
+      node = document.createTextNode(`${before}${text}${after}`);
     }
-    
-    // Get selected text
-    const selectedText = selection?.toString() || '';
-    const textToInsert = selectedText || placeholder;
-    
-    // Insert markdown syntax at position
-    const newMarkdown = 
-      value.substring(0, insertPos - selectedText.length) + 
-      before + textToInsert + after + 
-      value.substring(insertPos);
-    
-    onChange(newMarkdown);
-    
-    // Focus will be restored after HTML update
-  }, [value, onChange, isUpdating, getTextFromHtml]);
+
+    range.insertNode(node);
+
+    const endRange = document.createRange();
+    endRange.setStartAfter(node);
+    endRange.collapse(true);
+    sel = window.getSelection();
+    sel?.removeAllRanges();
+    sel?.addRange(endRange);
+
+    const markdown = htmlToMarkdown(root.innerHTML);
+    onChange(markdown);
+  }, [isUpdating, onChange, htmlToMarkdown]);
 
   // Expose insertMarkdown via ref
   useImperativeHandle(ref, () => ({
@@ -416,6 +494,11 @@ const MarkdownEditor = forwardRef<MarkdownEditorHandle, MarkdownEditorProps>(({
         }
         [contenteditable] s, [contenteditable] strike, [contenteditable] del {
           text-decoration: line-through;
+          text-decoration-thickness: max(1px, 0.07em);
+          text-decoration-skip-ink: none;
+          color: inherit;
+          background: transparent;
+          opacity: 0.95;
         }
         [contenteditable] code {
           background-color: #f3f4f6;
