@@ -5,7 +5,7 @@ import VoteButton from './VoteButton';
 import PostAttachments from './PostAttachments';
 import PostPollBlock from './PostPollBlock';
 import ShareButton from './ShareButton';
-import VerifiedPhysicianInline from './VerifiedPhysicianInline';
+import AuthorVerificationsInline from './AuthorVerificationsInline';
 
 function formatTimeAgo(date: Date): string {
   const now = new Date();
@@ -49,7 +49,7 @@ const FeedPostCard: React.FC<{ post: Post }> = ({ post }) => {
           <span>•</span>
           <span className="inline-flex items-center flex-wrap gap-x-0">
             Posted by u/{post.author?.username ?? 'unknown'}
-            {post.author?.isVerifiedPhysician && <VerifiedPhysicianInline />}
+            <AuthorVerificationsInline author={post.author} />
           </span>
           <span>•</span>
           <span>{formatTimeAgo(new Date(post.createdAt))}</span>

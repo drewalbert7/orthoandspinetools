@@ -104,6 +104,7 @@ router.post('/', authenticate, validateComment, asyncHandler(async (req: AuthReq
           specialty: true,
           profileImage: true,
           isVerifiedPhysician: true,
+          isVerifiedFounder: true,
         }
       },
       parent: {
@@ -127,6 +128,7 @@ router.post('/', authenticate, validateComment, asyncHandler(async (req: AuthReq
               specialty: true,
               profileImage: true,
               isVerifiedPhysician: true,
+              isVerifiedFounder: true,
             }
           },
           votes: {
@@ -306,6 +308,7 @@ router.get('/post/:postId', optionalAuth, [
             specialty: true,
             profileImage: true,
             isVerifiedPhysician: true,
+            isVerifiedFounder: true,
           }
         },
         votes: {
@@ -330,6 +333,7 @@ router.get('/post/:postId', optionalAuth, [
                 specialty: true,
                 profileImage: true,
                 isVerifiedPhysician: true,
+                isVerifiedFounder: true,
               }
             },
             votes: {
@@ -435,6 +439,7 @@ router.get('/:id', optionalAuth, [
           specialty: true,
           profileImage: true,
           isVerifiedPhysician: true,
+          isVerifiedFounder: true,
         }
       },
       post: {
@@ -465,6 +470,7 @@ router.get('/:id', optionalAuth, [
               specialty: true,
               profileImage: true,
               isVerifiedPhysician: true,
+              isVerifiedFounder: true,
             }
           },
           votes: {
@@ -723,6 +729,7 @@ router.put('/:id', authenticate, [
           specialty: true,
           profileImage: true,
           isVerifiedPhysician: true,
+          isVerifiedFounder: true,
         }
       },
       post: {

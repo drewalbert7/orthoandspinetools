@@ -7,7 +7,7 @@ import ShareButton from '../components/ShareButton';
 import { useAuth } from '../contexts/AuthContext';
 import PostAttachments from '../components/PostAttachments';
 import PostPollBlock from '../components/PostPollBlock';
-import VerifiedPhysicianInline from '../components/VerifiedPhysicianInline';
+import AuthorVerificationsInline from '../components/AuthorVerificationsInline';
 import { DocumentMeta } from '../components/DocumentMeta';
 import { buildCommunityJsonLd, SEO_DEFAULTS, stripToPlainText } from '../lib/seo';
 
@@ -340,7 +340,7 @@ const CommunityPage: React.FC = () => {
                         <span className="hidden sm:inline text-gray-300">·</span>
                         <span className="inline-flex items-center gap-x-1 flex-wrap">
                           <span className="text-gray-500">u/{post.author?.username ?? 'unknown'}</span>
-                          {post.author?.isVerifiedPhysician && <VerifiedPhysicianInline />}
+                          <AuthorVerificationsInline author={post.author} />
                         </span>
                         <span className="text-gray-300">·</span>
                         <time dateTime={post.createdAt}>{formatRelativeTime(post.createdAt)}</time>

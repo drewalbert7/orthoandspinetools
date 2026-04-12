@@ -5,7 +5,7 @@ import { apiService, Post, Community } from '../services/apiService';
 import VoteButton from '../components/VoteButton';
 import PostAttachments from '../components/PostAttachments';
 import PostPollBlock from '../components/PostPollBlock';
-import VerifiedPhysicianInline from '../components/VerifiedPhysicianInline';
+import AuthorVerificationsInline from '../components/AuthorVerificationsInline';
 
 function PostRow({ post }: { post: Post }) {
   return (
@@ -17,7 +17,7 @@ function PostRow({ post }: { post: Post }) {
         <span className="inline-flex items-center flex-wrap gap-x-0">
           {' '}
           • u/{post.author?.username}
-          {post.author?.isVerifiedPhysician && <VerifiedPhysicianInline />}
+          <AuthorVerificationsInline author={post.author} />
         </span>
       </div>
       <Link to={`/post/${post.id}`} className="block">

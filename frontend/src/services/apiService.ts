@@ -192,6 +192,7 @@ export interface User {
   website?: string;
   isEmailVerified: boolean;
   isVerifiedPhysician?: boolean;
+  isVerifiedFounder?: boolean;
   createdAt: string;
   updatedAt: string;
   lastLoginAt?: string;
@@ -1067,6 +1068,15 @@ class ApiService {
       return response.data.data;
     } catch (error: unknown) {
       throw new Error(apiErrorMessage(error, 'Failed to verify physician'));
+    }
+  }
+
+  async verifyFounder(userId: string, isVerified: boolean): Promise<User> {
+    try {
+      const response = await api.put(`/auth/verify-founder/${userId}`, { isVerified });
+      return response.data.data;
+    } catch (error: unknown) {
+      throw new Error(apiErrorMessage(error, 'Failed to verify founder'));
     }
   }
 

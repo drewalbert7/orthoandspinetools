@@ -6,7 +6,7 @@ import ModerationMenu from './ModerationMenu';
 import PostAttachments from './PostAttachments';
 import PostPollBlock from './PostPollBlock';
 import ShareButton from './ShareButton';
-import VerifiedPhysicianInline from './VerifiedPhysicianInline';
+import AuthorVerificationsInline from './AuthorVerificationsInline';
 import toast from 'react-hot-toast';
 
 interface PostCardProps {
@@ -147,7 +147,7 @@ const PostCard: React.FC<PostCardProps> = ({ post, onVote }) => {
                 <Link to={`/user/${post.author.username || 'unknown'}`} className="hover:underline text-gray-700">
                   u/{post.author.username || 'unknown'}
                 </Link>
-                {post.author.isVerifiedPhysician && <VerifiedPhysicianInline />}
+                <AuthorVerificationsInline author={post.author} />
               </span>
             ) : (
               <span className="text-gray-700">u/unknown</span>

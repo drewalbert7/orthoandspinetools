@@ -30,7 +30,7 @@ import MarkdownEditor, { MarkdownEditorHandle } from '../components/MarkdownEdit
 
 type RichEditor = MarkdownEditorHandle | null;
 
-type PostType = 'text' | 'images' | 'link' | 'poll';
+type PostType = 'text' | 'images';
 
 type UploadedPostMedia = {
   url: string;
@@ -56,9 +56,6 @@ const CreatePost: React.FC = () => {
   const [postType, setPostType] = useState<PostType>('text');
   const [title, setTitle] = useState('');
   const [body, setBody] = useState('');
-  const [linkUrl, setLinkUrl] = useState('');
-  const [pollOptionDrafts, setPollOptionDrafts] = useState<string[]>(['', '']);
-  const [pollDurationHours, setPollDurationHours] = useState<number>(24);
   // false = rich MarkdownEditor (formatting toolbar works). true = plain textarea for raw Markdown only.
   const [isMarkdownMode, setIsMarkdownMode] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -180,19 +177,6 @@ const CreatePost: React.FC = () => {
     return null;
   }
 
-  const normalizeSubmitUrl = (raw: string): string | null => {
-    const u = raw.trim();
-    if (!u) return null;
-    try {
-      const href = u.startsWith('http://') || u.startsWith('https://') ? u : `https://${u}`;
-      const url = new URL(href);
-      if (url.protocol !== 'http:' && url.protocol !== 'https:') return null;
-      return url.href;
-    } catch {
-      return null;
-    }
-  };
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!title.trim() || !selectedCommunity) return;
@@ -200,71 +184,23 @@ const CreatePost: React.FC = () => {
       toast.error('Add at least one image or video before posting.');
       return;
     }
-    if (postType === 'link') {
-      const nu = normalizeSubmitUrl(linkUrl);
-      if (!nu) {
-        toast.error('Enter a valid URL (http or https).');
-        return;
-      }
-    }
-    if (postType === 'poll') {
-      const opts = pollOptionDrafts.map((s) => s.trim()).filter(Boolean);
-      if (opts.length < 2) {
-        toast.error('Add at least two poll options.');
-        return;
-      }
-      if (opts.length > 6) {
-        toast.error('Polls can have at most six options.');
-        return;
-      }
-    }
-
     setIsSubmitting(true);
     setError('');
 
     try {
-      const getPostType = (type: PostType): 'discussion' | 'case_study' | 'tool_review' | 'link' | 'poll' => {
-        switch (type) {
-          case 'text':
-            return 'discussion';
-          case 'link':
-            return 'link';
-          case 'poll':
-            return 'poll';
-          case 'images':
-            return 'case_study';
-          default:
-            return 'discussion';
-        }
-      };
-
       // Filter out invalid tag IDs before sending
       const validTagIds = selectedTags.filter((id) => id && typeof id === 'string' && id.trim().length > 0);
 
       const hasUploadedMedia = postType === 'images' && uploadedMedia.length > 0;
-      const pollOptsTrimmed = pollOptionDrafts.map((s) => s.trim()).filter(Boolean);
-      const pollEndsAt =
-        postType === 'poll'
-          ? new Date(Date.now() + Math.min(168, Math.max(1, pollDurationHours)) * 60 * 60 * 1000).toISOString()
-          : undefined;
 
-      const apiPostType =
-        postType === 'images'
-          ? hasUploadedMedia
-            ? 'case_study'
-            : 'discussion'
-          : getPostType(postType);
+      const apiPostType: 'discussion' | 'case_study' =
+        postType === 'images' ? 'case_study' : 'discussion';
 
       const postData = {
         title: title.trim(),
         content: body.trim(),
         communityId: selectedCommunity,
         postType: apiPostType,
-        ...(postType === 'link' && { linkUrl: normalizeSubmitUrl(linkUrl)! }),
-        ...(postType === 'poll' && {
-          pollOptions: pollOptsTrimmed.slice(0, 6),
-          pollEndsAt,
-        }),
         ...(hasUploadedMedia && {
           attachments: uploadedMedia.map((m) => ({
             url: m.url,
@@ -447,16 +383,11 @@ const CreatePost: React.FC = () => {
   };
 
   const imagesTabNeedsMedia = postType === 'images' && uploadedMedia.length === 0;
-  const linkTabInvalid = postType === 'link' && !normalizeSubmitUrl(linkUrl);
-  const pollOptsFilled = pollOptionDrafts.map((s) => s.trim()).filter(Boolean).length;
-  const pollTabInvalid = postType === 'poll' && pollOptsFilled < 2;
   const isPostDisabled =
     !title.trim() ||
     !selectedCommunity ||
     imagesTabNeedsMedia ||
-    (postType === 'images' && isUploading) ||
-    linkTabInvalid ||
-    pollTabInvalid;
+    (postType === 'images' && isUploading);
 
 
   return (
@@ -565,8 +496,6 @@ const CreatePost: React.FC = () => {
             {[
               { id: 'text', label: 'Text' },
               { id: 'images', label: 'Images & Video' },
-              { id: 'link', label: 'Link' },
-              { id: 'poll', label: 'Poll' }
             ].map((tab) => (
               <button
                 key={tab.id}
@@ -881,29 +810,6 @@ const CreatePost: React.FC = () => {
           </div>
         )}
 
-        {postType === 'link' && (
-          <div className="mb-4 sm:mb-6 space-y-3">
-            <input
-              type="url"
-              value={linkUrl}
-              onChange={(e) => setLinkUrl(e.target.value)}
-              placeholder="URL (https://…)"
-              autoComplete="off"
-              enterKeyHint="done"
-              className="w-full px-3 sm:px-4 py-2 sm:py-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm sm:text-base touch-manipulation"
-            />
-            <textarea
-              value={body}
-              onChange={(e) => setBody(e.target.value)}
-              placeholder="Comment (optional)"
-              rows={6}
-              spellCheck
-              autoComplete="off"
-              className="w-full px-3 sm:px-4 py-2 sm:py-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm sm:text-base resize-y touch-manipulation"
-            />
-          </div>
-        )}
-
         {postType === 'images' && (
           <div className="mb-4 sm:mb-6">
             <div className="space-y-4 sm:space-y-6">
@@ -1155,73 +1061,6 @@ const CreatePost: React.FC = () => {
                 </div>
               </div>
             </div>
-          </div>
-        )}
-
-
-        {postType === 'poll' && (
-          <div className="mb-4 sm:mb-6 space-y-4">
-            <p className="text-sm text-gray-600">2–6 options · poll runs up to 7 days (same as Reddit-style limits)</p>
-            <div className="space-y-2">
-              {pollOptionDrafts.map((opt, idx) => (
-                <div key={idx} className="flex gap-2 items-center">
-                  <input
-                    type="text"
-                    value={opt}
-                    maxLength={200}
-                    onChange={(e) => {
-                      const next = [...pollOptionDrafts];
-                      next[idx] = e.target.value;
-                      setPollOptionDrafts(next);
-                    }}
-                    placeholder={`Option ${idx + 1}`}
-                    className="flex-1 px-3 py-2 border border-gray-300 rounded-md text-sm sm:text-base focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  />
-                  {pollOptionDrafts.length > 2 && (
-                    <button
-                      type="button"
-                      onClick={() => setPollOptionDrafts(pollOptionDrafts.filter((_, i) => i !== idx))}
-                      className="text-sm text-red-600 px-2 py-1 hover:bg-red-50 rounded"
-                    >
-                      Remove
-                    </button>
-                  )}
-                </div>
-              ))}
-            </div>
-            {pollOptionDrafts.length < 6 && (
-              <button
-                type="button"
-                onClick={() => setPollOptionDrafts([...pollOptionDrafts, ''])}
-                className="text-sm font-medium text-blue-600 hover:text-blue-800"
-              >
-                Add option
-              </button>
-            )}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Duration</label>
-              <select
-                value={pollDurationHours}
-                onChange={(e) => setPollDurationHours(Number(e.target.value))}
-                className="w-full sm:w-auto px-3 py-2 border border-gray-300 rounded-md text-sm bg-white"
-              >
-                <option value={1}>1 hour</option>
-                <option value={6}>6 hours</option>
-                <option value={12}>12 hours</option>
-                <option value={24}>1 day</option>
-                <option value={72}>3 days</option>
-                <option value={168}>7 days</option>
-              </select>
-            </div>
-            <textarea
-              value={body}
-              onChange={(e) => setBody(e.target.value)}
-              placeholder="Body text (optional)"
-              rows={5}
-              spellCheck
-              autoComplete="off"
-              className="w-full px-3 sm:px-4 py-2 sm:py-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm sm:text-base resize-y"
-            />
           </div>
         )}
 

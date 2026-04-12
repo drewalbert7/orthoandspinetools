@@ -9,7 +9,7 @@ import toast from 'react-hot-toast';
 import CommentModerationMenu from '../components/CommentModerationMenu';
 import ModerationMenu from '../components/ModerationMenu';
 import ShareButton from '../components/ShareButton';
-import VerifiedPhysicianInline from '../components/VerifiedPhysicianInline';
+import AuthorVerificationsInline from '../components/AuthorVerificationsInline';
 import PostPollBlock from '../components/PostPollBlock';
 import { DocumentMeta } from '../components/DocumentMeta';
 import { buildPostJsonLd, postDescription, postOgImage, SEO_DEFAULTS } from '../lib/seo';
@@ -266,7 +266,7 @@ const PostDetail: React.FC = () => {
               <Link to={`/user/${comment.author.username}`} className="hover:underline text-gray-700 font-medium">
                 {comment.author.username}
               </Link>
-              {comment.author.isVerifiedPhysician && <VerifiedPhysicianInline />}
+              <AuthorVerificationsInline author={comment.author} />
             </span>
             <span>{formatDate(comment.createdAt)}</span>
           </div>
@@ -488,7 +488,7 @@ const PostDetail: React.FC = () => {
                           <Link to={`/user/${post.author.username || 'unknown'}`} className="hover:underline text-gray-700">
                             {post.author.username || 'unknown'}
                           </Link>
-                          {post.author.isVerifiedPhysician && <VerifiedPhysicianInline />}
+                          <AuthorVerificationsInline author={post.author} />
                         </>
                       ) : (
                         <span className="text-gray-700">unknown</span>

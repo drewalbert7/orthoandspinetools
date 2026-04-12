@@ -1,5 +1,6 @@
 import React from 'react';
 import VerifiedBadge from './VerifiedBadge';
+import FounderBadge from './FounderBadge';
 
 interface UserAvatarProps {
   user: {
@@ -8,6 +9,7 @@ interface UserAvatarProps {
     username?: string;
     profileImage?: string | null;
     isVerifiedPhysician?: boolean;
+    isVerifiedFounder?: boolean;
   };
   size?: 'xs' | 'sm' | 'md' | 'lg' | 'xl';
   showBadge?: boolean;
@@ -81,6 +83,12 @@ const UserAvatar: React.FC<UserAvatarProps> = ({
       </div>
       {showBadge && user.isVerifiedPhysician && (
         <VerifiedBadge size={badgeSize} />
+      )}
+      {showBadge && user.isVerifiedFounder && (
+        <FounderBadge
+          size={badgeSize}
+          className={user.isVerifiedPhysician ? 'left-0 right-auto' : ''}
+        />
       )}
     </div>
   );

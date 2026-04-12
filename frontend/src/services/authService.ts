@@ -75,6 +75,7 @@ export interface User {
   website?: string;
   isEmailVerified: boolean;
   isVerifiedPhysician?: boolean;
+  isVerifiedFounder?: boolean;
   createdAt: string;
   updatedAt: string;
 }

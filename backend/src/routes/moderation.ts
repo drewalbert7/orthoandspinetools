@@ -173,6 +173,7 @@ router.get('/users', authenticate, requireAdmin, [
       isAdmin: true,
       isActive: true,
       isVerifiedPhysician: true,
+      isVerifiedFounder: true,
       specialty: true,
       createdAt: true,
       lastLoginAt: true,

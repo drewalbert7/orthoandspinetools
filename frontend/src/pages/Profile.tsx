@@ -7,7 +7,7 @@ import VoteButton from '../components/VoteButton';
 import PostAttachments from '../components/PostAttachments';
 import PostPollBlock from '../components/PostPollBlock';
 import ShareButton from '../components/ShareButton';
-import VerifiedPhysicianInline from '../components/VerifiedPhysicianInline';
+import AuthorVerificationsInline from '../components/AuthorVerificationsInline';
 import { formatDistanceToNow } from 'date-fns';
 
 type TabType = 'posts' | 'comments';
@@ -57,7 +57,7 @@ const PostCard: React.FC<{ post: Post }> = ({ post }) => {
           <span>•</span>
           <span className="inline-flex items-center flex-wrap gap-x-0">
             Posted by u/{post.author?.username || 'Unknown'}
-            {post.author?.isVerifiedPhysician && <VerifiedPhysicianInline />}
+            <AuthorVerificationsInline author={post.author} />
           </span>
           <span>•</span>
           <span>{formatTimeAgo(new Date(post.createdAt))}</span>
@@ -340,6 +340,11 @@ const Profile: React.FC = () => {
                       {profileUser.isVerifiedPhysician && (
                         <span className="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800 border border-blue-200">
                           Verified Physician
+                        </span>
+                      )}
+                      {profileUser.isVerifiedFounder && (
+                        <span className="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-amber-100 text-amber-900 border border-amber-200">
+                          Verified Founder
                         </span>
                       )}
                     </p>

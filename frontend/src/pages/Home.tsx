@@ -9,7 +9,7 @@ import VoteButton from '../components/VoteButton';
 import PostAttachments from '../components/PostAttachments';
 import PostPollBlock from '../components/PostPollBlock';
 import ShareButton from '../components/ShareButton';
-import VerifiedPhysicianInline from '../components/VerifiedPhysicianInline';
+import AuthorVerificationsInline from '../components/AuthorVerificationsInline';
 
 // PostCard component for displaying individual posts
 const PostCard: React.FC<{ post: Post }> = ({ post }) => {
@@ -56,7 +56,7 @@ const PostCard: React.FC<{ post: Post }> = ({ post }) => {
           <span>•</span>
           <span className="inline-flex items-center flex-wrap gap-x-0">
             Posted by u/{post.author?.username ?? 'unknown'}
-            {post.author.isVerifiedPhysician && <VerifiedPhysicianInline />}
+            <AuthorVerificationsInline author={post.author} />
           </span>
           <span>•</span>
           <span>{formatTimeAgo(new Date(post.createdAt))}</span>

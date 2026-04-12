@@ -21,6 +21,7 @@ model User {
   isActive          Boolean   @default(true)
   isAdmin           Boolean   @default(false) @map("is_admin")  // Admin privileges
   isVerifiedPhysician Boolean @default(false) @map("is_verified_physician")  // Verified physician badge
+  isVerifiedFounder   Boolean @default(false) @map("is_verified_founder")    // Verified founder badge
   
   // Medical credentials
   medicalLicense    String?

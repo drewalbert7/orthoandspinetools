@@ -170,6 +170,7 @@ router.post('/login', validateLogin, asyncHandler(async (req: Request, res: Resp
       isEmailVerified: true,
       isAdmin: true,
       isVerifiedPhysician: true,
+      isVerifiedFounder: true,
       lastLoginAt: true,
     }
   });
@@ -261,6 +262,7 @@ router.get('/me', authenticate, asyncHandler(async (req: AuthRequest, res: Respo
       isEmailVerified: true,
       isAdmin: true,
       isVerifiedPhysician: true,
+      isVerifiedFounder: true,
       createdAt: true,
       updatedAt: true,
       lastLoginAt: true,
@@ -656,6 +658,7 @@ router.get(
           specialty: user.specialty,
           profileImage: user.profileImage,
           isVerifiedPhysician: user.isVerifiedPhysician,
+          isVerifiedFounder: user.isVerifiedFounder,
         },
         attachments: post.attachments || [],
         votes: postVotes.map((v: any) => ({
@@ -690,6 +693,7 @@ router.get(
         lastName: user.lastName,
         isAdmin: user.isAdmin,
         isVerifiedPhysician: user.isVerifiedPhysician,
+        isVerifiedFounder: user.isVerifiedFounder,
         specialty: user.specialty,
         subSpecialty: user.subSpecialty,
         institution: user.institution,
@@ -750,6 +754,7 @@ router.get(
             specialty: user.specialty,
             profileImage: user.profileImage,
             isVerifiedPhysician: user.isVerifiedPhysician,
+            isVerifiedFounder: user.isVerifiedFounder,
           },
           votes: commentVotes.map((v: any) => ({
             id: v.id || '',
@@ -1029,6 +1034,7 @@ router.put('/verify/:userId', authenticate, [
       firstName: true,
       lastName: true,
       isVerifiedPhysician: true,
+      isVerifiedFounder: true,
     }
   });
 
@@ -1046,6 +1052,7 @@ router.put('/verify/:userId', authenticate, [
       firstName: true,
       lastName: true,
       isVerifiedPhysician: true,
+      isVerifiedFounder: true,
       profileImage: true,
     }
   });
@@ -1076,6 +1083,82 @@ router.put('/verify/:userId', authenticate, [
   res.json({
     success: true,
     message: `Physician ${isVerified ? 'verified' : 'unverified'} successfully`,
+    data: updatedUser
+  });
+}));
+
+// Verify/Unverify founder (Admin only)
+router.put('/verify-founder/:userId', authenticate, [
+  param('userId').isString().isLength({ min: 1 }).withMessage('Invalid user ID'),
+  body('isVerified').isBoolean().withMessage('isVerified must be a boolean'),
+], asyncHandler(async (req: AuthRequest, res: Response) => {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    throw new AppError(`Validation failed: ${errors.array().map(e => e.msg).join(', ')}`, 400);
+  }
+
+  const { userId } = req.params;
+  const { isVerified } = req.body;
+
+  if (!req.user!.isAdmin) {
+    throw new AppError('Only administrators can verify founders', 403);
+  }
+
+  const userToVerify = await prisma.user.findUnique({
+    where: { id: userId },
+    select: {
+      id: true,
+      username: true,
+      firstName: true,
+      lastName: true,
+      isVerifiedPhysician: true,
+      isVerifiedFounder: true,
+    }
+  });
+
+  if (!userToVerify) {
+    throw new AppError('User not found', 404);
+  }
+
+  const updatedUser = await prisma.user.update({
+    where: { id: userId },
+    data: { isVerifiedFounder: isVerified },
+    select: {
+      id: true,
+      username: true,
+      firstName: true,
+      lastName: true,
+      isVerifiedPhysician: true,
+      isVerifiedFounder: true,
+      profileImage: true,
+    }
+  });
+
+  await prisma.auditLog.create({
+    data: {
+      userId: req.user!.id,
+      action: isVerified ? 'VERIFY_FOUNDER' : 'UNVERIFY_FOUNDER',
+      resource: 'user',
+      resourceId: userId,
+      details: {
+        verifiedUserId: userId,
+        verifiedUsername: userToVerify.username,
+        isVerified: isVerified,
+      },
+      ipAddress: req.ip,
+      userAgent: req.get('User-Agent'),
+    }
+  });
+
+  logger.info(`${isVerified ? 'Verified' : 'Unverified'} founder: ${userToVerify.username}`, {
+    adminId: req.user!.id,
+    userId: userId,
+    isVerified: isVerified
+  });
+
+  res.json({
+    success: true,
+    message: `Founder ${isVerified ? 'verified' : 'unverified'} successfully`,
     data: updatedUser
   });
 }));

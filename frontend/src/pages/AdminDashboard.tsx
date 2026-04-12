@@ -139,10 +139,27 @@ const AdminDashboard: React.FC = () => {
       queryClient.invalidateQueries({ queryKey: ['posts'] });
       queryClient.invalidateQueries({ queryKey: ['feed'] });
       queryClient.invalidateQueries({ queryKey: ['search-posts'] });
+      queryClient.invalidateQueries({ queryKey: ['user-profile'] });
       toast.success('Physician verification updated');
     },
     onError: (error: any) => {
       toast.error(error.message || 'Failed to update physician verification');
+    },
+  });
+
+  const verifyFounderMutation = useMutation({
+    mutationFn: ({ userId, isVerified }: { userId: string; isVerified: boolean }) =>
+      apiService.verifyFounder(userId, isVerified),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin-users'] });
+      queryClient.invalidateQueries({ queryKey: ['posts'] });
+      queryClient.invalidateQueries({ queryKey: ['feed'] });
+      queryClient.invalidateQueries({ queryKey: ['search-posts'] });
+      queryClient.invalidateQueries({ queryKey: ['user-profile'] });
+      toast.success('Founder verification updated');
+    },
+    onError: (error: any) => {
+      toast.error(error.message || 'Failed to update founder verification');
     },
   });
 
@@ -255,6 +272,9 @@ const AdminDashboard: React.FC = () => {
                             Physician
                           </th>
                           <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Founder
+                          </th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                             Activity
                           </th>
                           <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -305,6 +325,17 @@ const AdminDashboard: React.FC = () => {
                                 }`}
                               >
                                 {user.isVerifiedPhysician ? 'Verified' : 'Not verified'}
+                              </span>
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap">
+                              <span
+                                className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
+                                  user.isVerifiedFounder
+                                    ? 'bg-amber-100 text-amber-900'
+                                    : 'bg-gray-100 text-gray-600'
+                                }`}
+                              >
+                                {user.isVerifiedFounder ? 'Verified' : 'Not verified'}
                               </span>
                             </td>
                             <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
@@ -384,6 +415,32 @@ const AdminDashboard: React.FC = () => {
                                 } disabled:opacity-50`}
                               >
                                 {user.isVerifiedPhysician ? 'Unverify Physician' : 'Verify Physician'}
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  const next = !user.isVerifiedFounder;
+                                  if (
+                                    window.confirm(
+                                      next
+                                        ? `Verify ${user.username} as a founder?`
+                                        : `Remove verified founder status from ${user.username}?`
+                                    )
+                                  ) {
+                                    verifyFounderMutation.mutate({
+                                      userId: user.id,
+                                      isVerified: next,
+                                    });
+                                  }
+                                }}
+                                disabled={verifyFounderMutation.isPending}
+                                className={`${
+                                  user.isVerifiedFounder
+                                    ? 'text-gray-600 hover:text-gray-900'
+                                    : 'text-amber-700 hover:text-amber-900'
+                                } disabled:opacity-50`}
+                              >
+                                {user.isVerifiedFounder ? 'Unverify Founder' : 'Verify Founder'}
                               </button>
                             </td>
                           </tr>
