@@ -15,6 +15,10 @@ export type ToggleInlineKind = 'bold' | 'italic' | 'strike' | 'superscript' | 'c
 export interface MarkdownEditorHandle {
   insertMarkdown: (before: string, after: string, placeholder: string) => void;
   toggleInlineFormat: (kind: ToggleInlineKind) => void;
+  /** Current markdown derived from the editor DOM (use before applying whole-body transforms). */
+  getMarkdownFromDom: () => string;
+  /** Insert or wrap selection in a link with the given URL. */
+  insertLink: (href: string) => void;
 }
 
 function getPlainTextFromHtml(html: string): string {
@@ -617,10 +621,61 @@ const MarkdownEditor = forwardRef<MarkdownEditorHandle, MarkdownEditorProps>(({
     [isUpdating, onChange, htmlToMarkdown]
   );
 
-  useImperativeHandle(ref, () => ({
-    insertMarkdown,
-    toggleInlineFormat,
-  }), [insertMarkdown, toggleInlineFormat]);
+  const getMarkdownFromDom = useCallback(() => {
+    if (!editorRef.current) return '';
+    removeEmptyInlineFormatElements(editorRef.current);
+    fixCaretIfOrphaned(editorRef.current);
+    return htmlToMarkdown(editorRef.current.innerHTML);
+  }, [htmlToMarkdown]);
+
+  const insertLink = useCallback(
+    (href: string) => {
+      if (!editorRef.current || isUpdating) return;
+      const root = editorRef.current;
+      root.focus();
+      const range = getActiveRangeInRoot(root);
+      if (!range) return;
+      const trimmed = (href || '').trim();
+      if (!trimmed) return;
+      let safeHref = trimmed;
+      try {
+        const u = new URL(trimmed);
+        if (u.protocol !== 'http:' && u.protocol !== 'https:') return;
+        safeHref = u.toString();
+      } catch {
+        return;
+      }
+      const selectedText = range.toString();
+      const text = selectedText || 'link text';
+      range.deleteContents();
+      const a = document.createElement('a');
+      a.href = safeHref;
+      a.textContent = text;
+      a.rel = 'noopener noreferrer';
+      a.target = '_blank';
+      range.insertNode(a);
+      const endRange = document.createRange();
+      endRange.setStartAfter(a);
+      endRange.collapse(true);
+      const selAfter = window.getSelection();
+      selAfter?.removeAllRanges();
+      selAfter?.addRange(endRange);
+      removeEmptyInlineFormatElements(root);
+      onChange(htmlToMarkdown(root.innerHTML));
+    },
+    [isUpdating, onChange, htmlToMarkdown]
+  );
+
+  useImperativeHandle(
+    ref,
+    () => ({
+      insertMarkdown,
+      toggleInlineFormat,
+      getMarkdownFromDom,
+      insertLink,
+    }),
+    [insertMarkdown, toggleInlineFormat, getMarkdownFromDom, insertLink]
+  );
 
   // Update HTML when markdown changes externally (formatting buttons / programmatic).
   // Do NOT reset the DOM when the editor already represents the same markdown — that breaks typing (esp. mobile).
