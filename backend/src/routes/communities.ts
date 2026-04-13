@@ -251,6 +251,20 @@ router.get('/', asyncHandler(async (_req: Request, res: Response) => {
         weeklyContributions: 13,
         createdAt: '2024-01-15T00:00:00Z',
         updatedAt: '2024-01-15T00:00:00Z'
+      },
+      {
+        id: 'biologics',
+        name: 'Biologics',
+        slug: 'biologics',
+        description:
+          'Community for orthopedic biologics including PRP, bone marrow aspirate concentrate (BMAC), adipose-derived therapies, growth factors, and evidence-based discussion for spine and joint applications.',
+        specialty: 'Orthopedic Biologics',
+        memberCount: 120,
+        postCount: 12,
+        weeklyVisitors: 18,
+        weeklyContributions: 6,
+        createdAt: '2024-01-15T00:00:00Z',
+        updatedAt: '2024-01-15T00:00:00Z'
       }
     ];
 
@@ -878,6 +892,21 @@ router.get('/:id', trackCommunityVisitor, asyncHandler(async (req: Request, res:
         postCount: 94,
         weeklyVisitors: 21,
         weeklyContributions: 13,
+        createdAt: '2024-01-15T00:00:00Z',
+        updatedAt: '2024-01-15T00:00:00Z',
+        rules: '1. Be respectful\n2. Stay on topic\n3. No spam'
+      },
+      {
+        id: 'biologics',
+        name: 'Biologics',
+        slug: 'biologics',
+        description:
+          'Community for orthopedic biologics including PRP, bone marrow aspirate concentrate (BMAC), adipose-derived therapies, growth factors, and evidence-based discussion for spine and joint applications.',
+        specialty: 'Orthopedic Biologics',
+        memberCount: 120,
+        postCount: 12,
+        weeklyVisitors: 18,
+        weeklyContributions: 6,
         createdAt: '2024-01-15T00:00:00Z',
         updatedAt: '2024-01-15T00:00:00Z',
         rules: '1. Be respectful\n2. Stay on topic\n3. No spam'
