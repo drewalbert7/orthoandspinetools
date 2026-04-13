@@ -9,6 +9,7 @@ import PostAttachments from '../components/PostAttachments';
 import PostPollBlock from '../components/PostPollBlock';
 import AuthorVerificationsInline from '../components/AuthorVerificationsInline';
 import MarkdownContent from '../components/MarkdownContent';
+import PostDeviceDisclaimer from '../components/PostDeviceDisclaimer';
 import { DocumentMeta } from '../components/DocumentMeta';
 import { buildCommunityJsonLd, SEO_DEFAULTS, stripToPlainText } from '../lib/seo';
 
@@ -366,6 +367,7 @@ const CommunityPage: React.FC = () => {
                       )}
                     </div>
                     <div className="px-3 sm:px-4 pb-2">
+                      <PostDeviceDisclaimer post={post} variant="compact" className="mb-2" />
                       {post.content ? (
                         <MarkdownContent lineClamp={3} className="text-sm text-gray-700 [overflow-wrap:anywhere]">
                           {post.content}

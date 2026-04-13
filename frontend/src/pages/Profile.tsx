@@ -9,6 +9,7 @@ import PostPollBlock from '../components/PostPollBlock';
 import ShareButton from '../components/ShareButton';
 import AuthorVerificationsInline from '../components/AuthorVerificationsInline';
 import MarkdownContent from '../components/MarkdownContent';
+import PostDeviceDisclaimer from '../components/PostDeviceDisclaimer';
 import { formatDistanceToNow } from 'date-fns';
 
 type TabType = 'posts' | 'comments';
@@ -86,6 +87,7 @@ const PostCard: React.FC<{ post: Post }> = ({ post }) => {
             })()}
           </a>
         )}
+        <PostDeviceDisclaimer post={post} variant="compact" className="mb-2" />
         {post.content ? (
           <MarkdownContent lineClamp={3} className="mb-3 text-xs text-gray-800 [overflow-wrap:anywhere] sm:text-sm">
             {post.content}

@@ -5,6 +5,7 @@ import VoteButton from './VoteButton';
 import PostAttachments from './PostAttachments';
 import PostPollBlock from './PostPollBlock';
 import MarkdownContent from './MarkdownContent';
+import PostDeviceDisclaimer from './PostDeviceDisclaimer';
 import ShareButton from './ShareButton';
 import AuthorVerificationsInline from './AuthorVerificationsInline';
 
@@ -77,6 +78,7 @@ const FeedPostCard: React.FC<{ post: Post }> = ({ post }) => {
             })()}
           </a>
         )}
+        <PostDeviceDisclaimer post={post} variant="compact" className="mb-2" />
         {post.content ? (
           <MarkdownContent lineClamp={3} className="mb-3 text-xs text-gray-800 [overflow-wrap:anywhere] sm:text-sm">
             {post.content}

@@ -14,6 +14,7 @@ import PostPollBlock from '../components/PostPollBlock';
 import { DocumentMeta } from '../components/DocumentMeta';
 import { buildPostJsonLd, postDescription, postOgImage, SEO_DEFAULTS } from '../lib/seo';
 import MarkdownContent from '../components/MarkdownContent';
+import PostDeviceDisclaimer from '../components/PostDeviceDisclaimer';
 
 const Z_POST_MORE_BACKDROP = 11460;
 const Z_POST_MORE_MENU = 11470;
@@ -575,6 +576,8 @@ const PostDetail: React.FC = () => {
               >
                 {post.title}
               </h1>
+
+              <PostDeviceDisclaimer post={post} variant="full" className="mb-4" />
 
               {post.type === 'link' && post.linkUrl && (
                 <a

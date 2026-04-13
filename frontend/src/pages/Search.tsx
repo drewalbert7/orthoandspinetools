@@ -7,6 +7,7 @@ import PostAttachments from '../components/PostAttachments';
 import PostPollBlock from '../components/PostPollBlock';
 import AuthorVerificationsInline from '../components/AuthorVerificationsInline';
 import MarkdownContent from '../components/MarkdownContent';
+import PostDeviceDisclaimer from '../components/PostDeviceDisclaimer';
 
 function PostRow({ post }: { post: Post }) {
   return (
@@ -40,6 +41,7 @@ function PostRow({ post }: { post: Post }) {
           })()}
         </a>
       )}
+      <PostDeviceDisclaimer post={post} variant="compact" className="mt-2" />
       {post.content ? (
         <MarkdownContent lineClamp={2} className="mt-1 text-sm text-gray-700 [overflow-wrap:anywhere]">
           {post.content}

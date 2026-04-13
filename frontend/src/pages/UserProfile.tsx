@@ -1,9 +1,10 @@
 import React, { useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { apiService } from '../services/apiService';
+import { apiService, type Post } from '../services/apiService';
 import { formatDistanceToNow } from 'date-fns';
 import MarkdownContent from '../components/MarkdownContent';
+import PostDeviceDisclaimer from '../components/PostDeviceDisclaimer';
 
 const UserProfile: React.FC = () => {
   const { username } = useParams<{ username: string }>();
@@ -173,6 +174,7 @@ const UserProfile: React.FC = () => {
                       <h3 className="text-base sm:text-lg font-semibold text-gray-900 mb-2 break-words">
                         {post.title}
                       </h3>
+                      <PostDeviceDisclaimer post={post as Post} variant="compact" className="mb-2" />
                       {post.content && (
                         <MarkdownContent lineClamp={3} className="mb-3 text-sm text-gray-700 [overflow-wrap:anywhere] sm:text-base">
                           {post.content}

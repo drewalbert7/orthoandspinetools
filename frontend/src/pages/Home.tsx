@@ -11,6 +11,7 @@ import PostPollBlock from '../components/PostPollBlock';
 import ShareButton from '../components/ShareButton';
 import AuthorVerificationsInline from '../components/AuthorVerificationsInline';
 import MarkdownContent from '../components/MarkdownContent';
+import PostDeviceDisclaimer from '../components/PostDeviceDisclaimer';
 
 // PostCard component for displaying individual posts
 const PostCard: React.FC<{ post: Post }> = ({ post }) => {
@@ -85,6 +86,7 @@ const PostCard: React.FC<{ post: Post }> = ({ post }) => {
             })()}
           </a>
         )}
+        <PostDeviceDisclaimer post={post} variant="compact" className="mb-2" />
         {post.content ? (
           <MarkdownContent lineClamp={3} className="mb-3 text-sm text-gray-800 [overflow-wrap:anywhere]">
             {post.content}

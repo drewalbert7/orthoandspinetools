@@ -8,6 +8,7 @@ import PostPollBlock from './PostPollBlock';
 import ShareButton from './ShareButton';
 import AuthorVerificationsInline from './AuthorVerificationsInline';
 import MarkdownContent from './MarkdownContent';
+import PostDeviceDisclaimer from './PostDeviceDisclaimer';
 import toast from 'react-hot-toast';
 
 interface PostCardProps {
@@ -183,6 +184,8 @@ const PostCard: React.FC<PostCardProps> = ({ post, onVote }) => {
               </svg>
             </a>
           )}
+
+          <PostDeviceDisclaimer post={post} variant="compact" className="mb-2" />
 
           {/* Content Preview */}
           {post.content && (

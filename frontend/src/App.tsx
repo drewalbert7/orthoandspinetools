@@ -23,6 +23,7 @@ import CreateCommunity from './pages/CreateCommunity';
 import AdminDashboard from './pages/AdminDashboard';
 import Search from './pages/Search';
 import GoogleAnalytics from './components/GoogleAnalytics';
+import SitePolicyBanner from './components/SitePolicyBanner';
 
 // Context
 import { AuthProvider } from './contexts/AuthContext';
@@ -57,6 +58,7 @@ function App() {
               isMobileSidebarOpen={isMobileSidebarOpen}
               onMobileSidebarToggle={toggleMobileSidebar}
             />
+            <SitePolicyBanner />
             <div className="flex min-w-0">
               <Sidebar 
                 isMobileOpen={isMobileSidebarOpen}
