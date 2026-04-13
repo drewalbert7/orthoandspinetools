@@ -22,6 +22,7 @@ import CommunitySettings from './pages/CommunitySettings';
 import CreateCommunity from './pages/CreateCommunity';
 import AdminDashboard from './pages/AdminDashboard';
 import Search from './pages/Search';
+import GoogleAnalytics from './components/GoogleAnalytics';
 
 // Context
 import { AuthProvider } from './contexts/AuthContext';
@@ -50,6 +51,7 @@ function App() {
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
         <Router>
+          <GoogleAnalytics />
           <div className="min-h-screen bg-white">
             <Header 
               isMobileSidebarOpen={isMobileSidebarOpen}
