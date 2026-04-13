@@ -4,6 +4,7 @@ import { Post } from '../services/apiService';
 import VoteButton from './VoteButton';
 import PostAttachments from './PostAttachments';
 import PostPollBlock from './PostPollBlock';
+import MarkdownContent from './MarkdownContent';
 import ShareButton from './ShareButton';
 import AuthorVerificationsInline from './AuthorVerificationsInline';
 
@@ -59,23 +60,28 @@ const FeedPostCard: React.FC<{ post: Post }> = ({ post }) => {
           <h3 className="text-base sm:text-lg font-medium text-gray-900 mb-2 hover:text-blue-600 transition-colors leading-tight">
             {post.title}
           </h3>
-          {post.type === 'link' && post.linkUrl && (
-            <p className="text-xs sm:text-sm text-blue-600 mb-2 line-clamp-1 break-all">
-              {(() => {
-                try {
-                  return new URL(post.linkUrl).hostname.replace(/^www\./, '');
-                } catch {
-                  return post.linkUrl;
-                }
-              })()}
-            </p>
-          )}
-          {post.content ? (
-            <p className="text-gray-800 text-xs sm:text-sm leading-relaxed mb-3 line-clamp-3">
-              {post.content}
-            </p>
-          ) : null}
         </Link>
+        {post.type === 'link' && post.linkUrl && (
+          <a
+            href={post.linkUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="mb-2 line-clamp-1 break-all text-xs text-blue-600 hover:text-blue-800 sm:text-sm"
+          >
+            {(() => {
+              try {
+                return new URL(post.linkUrl).hostname.replace(/^www\./, '');
+              } catch {
+                return post.linkUrl;
+              }
+            })()}
+          </a>
+        )}
+        {post.content ? (
+          <MarkdownContent lineClamp={3} className="mb-3 text-xs text-gray-800 [overflow-wrap:anywhere] sm:text-sm">
+            {post.content}
+          </MarkdownContent>
+        ) : null}
 
         {post.type === 'poll' && Array.isArray(post.pollOptions) && (
           <PostPollBlock

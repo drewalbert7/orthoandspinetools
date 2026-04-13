@@ -55,12 +55,12 @@ function App() {
               isMobileSidebarOpen={isMobileSidebarOpen}
               onMobileSidebarToggle={toggleMobileSidebar}
             />
-            <div className="flex">
+            <div className="flex min-w-0">
               <Sidebar 
                 isMobileOpen={isMobileSidebarOpen}
                 onMobileClose={() => setIsMobileSidebarOpen(false)}
               />
-              <main className="flex-1 p-3 sm:p-4 md:p-6">
+              <main className="min-w-0 w-full flex-1 p-3 sm:p-4 md:p-6">
                 <Routes>
                   <Route path="/" element={<Home />} />
                   <Route path="/popular" element={<Popular />} />

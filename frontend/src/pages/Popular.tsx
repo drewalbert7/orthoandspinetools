@@ -47,7 +47,7 @@ const Popular: React.FC = () => {
   ];
 
   return (
-    <div className="max-w-4xl mx-auto px-3 sm:px-4">
+    <div className="mx-auto min-w-0 max-w-4xl px-3 sm:px-4">
       <div className="bg-white border border-gray-200 p-3 sm:p-4 mb-4">
         <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 sm:gap-0">
           <h1 className="text-lg sm:text-xl font-semibold text-gray-900">Popular</h1>

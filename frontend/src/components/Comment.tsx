@@ -4,6 +4,7 @@ import { Comment as CommentType } from '../types';
 import { formatDistanceToNow } from 'date-fns';
 import CommentModerationMenu from './CommentModerationMenu';
 import ShareButton from './ShareButton';
+import MarkdownContent from './MarkdownContent';
 
 interface CommentProps {
   comment: CommentType;
@@ -103,9 +104,7 @@ const Comment: React.FC<CommentProps> = ({
             </div>
 
             {/* Comment Content */}
-            <div className="text-sm text-gray-900 mb-3">
-              {comment.content}
-            </div>
+            <MarkdownContent className="mb-3 text-sm text-gray-900 [overflow-wrap:anywhere]">{comment.content}</MarkdownContent>
 
             {/* Actions */}
             <div className="flex items-center space-x-4 text-xs text-gray-500">

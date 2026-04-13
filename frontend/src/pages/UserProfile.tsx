@@ -3,6 +3,7 @@ import { useParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { apiService } from '../services/apiService';
 import { formatDistanceToNow } from 'date-fns';
+import MarkdownContent from '../components/MarkdownContent';
 
 const UserProfile: React.FC = () => {
   const { username } = useParams<{ username: string }>();
@@ -59,7 +60,7 @@ const UserProfile: React.FC = () => {
   const comments = commentsData || [];
 
   return (
-    <div className="max-w-4xl mx-auto px-2 sm:px-4">
+    <div className="mx-auto min-w-0 max-w-4xl px-2 sm:px-4">
       {/* User Header */}
       <div className="bg-white border border-gray-200 rounded-md p-3 sm:p-4 md:p-6 mb-3 sm:mb-4">
         <div className="flex flex-col sm:flex-row items-start space-y-3 sm:space-y-0 sm:space-x-4">
@@ -173,7 +174,9 @@ const UserProfile: React.FC = () => {
                         {post.title}
                       </h3>
                       {post.content && (
-                        <p className="text-sm sm:text-base text-gray-700 mb-3 line-clamp-3 break-words">{post.content}</p>
+                        <MarkdownContent lineClamp={3} className="mb-3 text-sm text-gray-700 [overflow-wrap:anywhere] sm:text-base">
+                          {post.content}
+                        </MarkdownContent>
                       )}
                       <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs sm:text-sm text-gray-500">
                         <span>{post._count?.comments || 0} comments</span>
@@ -213,7 +216,9 @@ const UserProfile: React.FC = () => {
                         <span className="hidden sm:inline">•</span>
                         <span>{formatDistanceToNow(new Date(comment.createdAt))} ago</span>
                       </div>
-                      <p className="text-sm sm:text-base text-gray-700 break-words">{comment.content}</p>
+                      <MarkdownContent className="text-sm text-gray-700 [overflow-wrap:anywhere] sm:text-base">
+                        {comment.content}
+                      </MarkdownContent>
                       <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs sm:text-sm text-gray-500 mt-2">
                         <span>{comment._count?.replies || 0} replies</span>
                         <span className="hidden sm:inline">•</span>

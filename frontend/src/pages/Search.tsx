@@ -6,6 +6,7 @@ import VoteButton from '../components/VoteButton';
 import PostAttachments from '../components/PostAttachments';
 import PostPollBlock from '../components/PostPollBlock';
 import AuthorVerificationsInline from '../components/AuthorVerificationsInline';
+import MarkdownContent from '../components/MarkdownContent';
 
 function PostRow({ post }: { post: Post }) {
   return (
@@ -22,21 +23,28 @@ function PostRow({ post }: { post: Post }) {
       </div>
       <Link to={`/post/${post.id}`} className="block">
         <h3 className="text-base font-medium text-gray-900 hover:text-blue-600">{post.title}</h3>
-        {post.type === 'link' && post.linkUrl && (
-          <p className="text-sm text-blue-600 line-clamp-1 mt-1 break-all">
-            {(() => {
-              try {
-                return new URL(post.linkUrl).hostname.replace(/^www\./, '');
-              } catch {
-                return post.linkUrl;
-              }
-            })()}
-          </p>
-        )}
-        {post.content ? (
-          <p className="text-sm text-gray-700 line-clamp-2 mt-1">{post.content}</p>
-        ) : null}
       </Link>
+      {post.type === 'link' && post.linkUrl && (
+        <a
+          href={post.linkUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="mt-1 line-clamp-1 break-all text-sm text-blue-600 hover:text-blue-800"
+        >
+          {(() => {
+            try {
+              return new URL(post.linkUrl).hostname.replace(/^www\./, '');
+            } catch {
+              return post.linkUrl;
+            }
+          })()}
+        </a>
+      )}
+      {post.content ? (
+        <MarkdownContent lineClamp={2} className="mt-1 text-sm text-gray-700 [overflow-wrap:anywhere]">
+          {post.content}
+        </MarkdownContent>
+      ) : null}
       {post.type === 'poll' && Array.isArray(post.pollOptions) && (
         <PostPollBlock
           postId={post.id}
@@ -91,7 +99,7 @@ const Search: React.FC = () => {
 
   if (!q) {
     return (
-      <div className="max-w-3xl mx-auto px-2">
+      <div className="mx-auto min-w-0 max-w-3xl px-2">
         <h1 className="text-xl font-bold text-gray-900 mb-2">Search</h1>
         <p className="text-gray-600 mb-4">Find posts by title or text, and communities by name.</p>
         <form
@@ -124,7 +132,7 @@ const Search: React.FC = () => {
   const posts = postsData?.posts || [];
 
   return (
-    <div className="max-w-3xl mx-auto px-2">
+    <div className="mx-auto min-w-0 max-w-3xl px-2">
       <h1 className="text-xl font-bold text-gray-900 mb-1">Search results</h1>
       <p className="text-sm text-gray-600 mb-6">
         For &quot;<span className="font-medium">{q}</span>&quot;

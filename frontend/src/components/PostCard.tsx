@@ -7,6 +7,7 @@ import PostAttachments from './PostAttachments';
 import PostPollBlock from './PostPollBlock';
 import ShareButton from './ShareButton';
 import AuthorVerificationsInline from './AuthorVerificationsInline';
+import MarkdownContent from './MarkdownContent';
 import toast from 'react-hot-toast';
 
 interface PostCardProps {
@@ -185,9 +186,9 @@ const PostCard: React.FC<PostCardProps> = ({ post, onVote }) => {
 
           {/* Content Preview */}
           {post.content && (
-            <div className="text-sm text-gray-800 mb-3 md:mb-4 leading-relaxed">
-              {post.content.length > 200 ? `${post.content.substring(0, 200)}...` : post.content}
-            </div>
+            <MarkdownContent lineClamp={4} className="text-sm text-gray-800 mb-3 md:mb-4 [overflow-wrap:anywhere]">
+              {post.content}
+            </MarkdownContent>
           )}
 
           <PostAttachments attachments={post.attachments ?? []} postId={post.id} />

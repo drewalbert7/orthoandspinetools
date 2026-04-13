@@ -3,6 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '../contexts/AuthContext';
 import { apiService } from '../services/apiService';
 import { Link } from 'react-router-dom';
+import MarkdownContent from '../components/MarkdownContent';
 import toast from 'react-hot-toast';
 
 type TabType = 'users' | 'moderation' | 'communities' | 'analytics';
@@ -595,7 +596,9 @@ const AdminDashboard: React.FC = () => {
                         <div key={comment.id} className="border border-gray-200 rounded-md p-4">
                           <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
                             <div className="flex-1 min-w-0">
-                              <p className="text-sm text-gray-900 line-clamp-3 break-words">{comment.content}</p>
+                              <MarkdownContent lineClamp={3} className="text-sm text-gray-900 [overflow-wrap:anywhere]">
+                                {comment.content}
+                              </MarkdownContent>
                               <p className="text-sm text-gray-600 mt-1">
                                 by u/{comment.author?.username} on{' '}
                                 <Link

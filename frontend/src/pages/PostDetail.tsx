@@ -13,6 +13,7 @@ import AuthorVerificationsInline from '../components/AuthorVerificationsInline';
 import PostPollBlock from '../components/PostPollBlock';
 import { DocumentMeta } from '../components/DocumentMeta';
 import { buildPostJsonLd, postDescription, postOgImage, SEO_DEFAULTS } from '../lib/seo';
+import MarkdownContent from '../components/MarkdownContent';
 
 const Z_POST_MORE_BACKDROP = 11460;
 const Z_POST_MORE_MENU = 11470;
@@ -272,9 +273,7 @@ const PostDetail: React.FC = () => {
           </div>
 
           {/* Comment Content */}
-          <div className="text-gray-800 leading-relaxed mb-2">
-            {comment.content}
-          </div>
+          <MarkdownContent className="text-gray-800 mb-2 text-sm">{comment.content}</MarkdownContent>
 
           {/* Comment Actions */}
           <div className="flex items-center space-x-4 text-xs">
@@ -390,7 +389,7 @@ const PostDetail: React.FC = () => {
 
   if (postLoading) {
     return (
-      <div className="max-w-6xl mx-auto px-3 sm:px-4 py-4 sm:py-6">
+      <div className="mx-auto min-w-0 max-w-6xl px-3 sm:px-4 py-4 sm:py-6">
         <div className="animate-pulse">
           <div className="h-8 bg-gray-200 rounded mb-4"></div>
           <div className="h-4 bg-gray-200 rounded mb-2"></div>
@@ -403,7 +402,7 @@ const PostDetail: React.FC = () => {
 
   if (postError || !post) {
     return (
-      <div className="max-w-6xl mx-auto px-3 sm:px-4 py-4 sm:py-6">
+      <div className="mx-auto min-w-0 max-w-6xl px-3 sm:px-4 py-4 sm:py-6">
         <DocumentMeta
           title="Post not found"
           description="This discussion may have been removed or the link is invalid."
@@ -421,7 +420,7 @@ const PostDetail: React.FC = () => {
   }
 
   return (
-    <div className="max-w-6xl mx-auto px-3 sm:px-4 py-4 sm:py-6">
+    <div className="mx-auto min-w-0 max-w-6xl px-3 sm:px-4 py-4 sm:py-6">
       <DocumentMeta
         title={post.title}
         description={metaDescription || SEO_DEFAULTS.description}
@@ -599,9 +598,7 @@ const PostDetail: React.FC = () => {
 
               {/* Content */}
               {post.content && (
-                <div className="text-gray-800 leading-relaxed mb-6 whitespace-pre-wrap">
-                  {post.content}
-                </div>
+                <MarkdownContent className="text-gray-800 mb-6 text-base [overflow-wrap:anywhere]">{post.content}</MarkdownContent>
               )}
 
               {post.type === 'poll' && Array.isArray(post.pollOptions) && (

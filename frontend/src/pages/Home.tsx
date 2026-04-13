@@ -10,6 +10,7 @@ import PostAttachments from '../components/PostAttachments';
 import PostPollBlock from '../components/PostPollBlock';
 import ShareButton from '../components/ShareButton';
 import AuthorVerificationsInline from '../components/AuthorVerificationsInline';
+import MarkdownContent from '../components/MarkdownContent';
 
 // PostCard component for displaying individual posts
 const PostCard: React.FC<{ post: Post }> = ({ post }) => {
@@ -67,23 +68,28 @@ const PostCard: React.FC<{ post: Post }> = ({ post }) => {
           <h3 className="text-lg font-medium text-gray-900 mb-2 hover:text-blue-600 transition-colors leading-tight">
             {post.title}
           </h3>
-          {post.type === 'link' && post.linkUrl && (
-            <p className="text-sm text-blue-600 mb-2 line-clamp-1 break-all">
-              {(() => {
-                try {
-                  return new URL(post.linkUrl).hostname.replace(/^www\./, '');
-                } catch {
-                  return post.linkUrl;
-                }
-              })()}
-            </p>
-          )}
-          {post.content ? (
-            <p className="text-gray-800 text-sm leading-relaxed mb-3 line-clamp-3">
-              {post.content}
-            </p>
-          ) : null}
         </Link>
+        {post.type === 'link' && post.linkUrl && (
+          <a
+            href={post.linkUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="mb-2 line-clamp-1 break-all text-sm text-blue-600 hover:text-blue-800"
+          >
+            {(() => {
+              try {
+                return new URL(post.linkUrl).hostname.replace(/^www\./, '');
+              } catch {
+                return post.linkUrl;
+              }
+            })()}
+          </a>
+        )}
+        {post.content ? (
+          <MarkdownContent lineClamp={3} className="mb-3 text-sm text-gray-800 [overflow-wrap:anywhere]">
+            {post.content}
+          </MarkdownContent>
+        ) : null}
 
         {post.type === 'poll' && Array.isArray(post.pollOptions) && (
           <PostPollBlock
@@ -166,7 +172,7 @@ const Home: React.FC = () => {
     : (feedFallbackData?.posts || []);
 
   return (
-    <div className="max-w-4xl mx-auto px-2 sm:px-4">
+    <div className="mx-auto min-w-0 max-w-4xl px-2 sm:px-4">
       <DocumentMeta
         title="Home"
         description={SEO_DEFAULTS.description}

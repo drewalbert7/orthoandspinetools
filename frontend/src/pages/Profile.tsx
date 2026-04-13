@@ -8,6 +8,7 @@ import PostAttachments from '../components/PostAttachments';
 import PostPollBlock from '../components/PostPollBlock';
 import ShareButton from '../components/ShareButton';
 import AuthorVerificationsInline from '../components/AuthorVerificationsInline';
+import MarkdownContent from '../components/MarkdownContent';
 import { formatDistanceToNow } from 'date-fns';
 
 type TabType = 'posts' | 'comments';
@@ -68,23 +69,28 @@ const PostCard: React.FC<{ post: Post }> = ({ post }) => {
           <h3 className="text-base sm:text-lg font-medium text-gray-900 mb-2 hover:text-blue-600 transition-colors leading-tight">
             {post.title}
           </h3>
-          {post.type === 'link' && post.linkUrl && (
-            <p className="text-xs sm:text-sm text-blue-600 mb-2 line-clamp-1 break-all">
-              {(() => {
-                try {
-                  return new URL(post.linkUrl).hostname.replace(/^www\./, '');
-                } catch {
-                  return post.linkUrl;
-                }
-              })()}
-            </p>
-          )}
-          {post.content ? (
-            <p className="text-gray-800 text-xs sm:text-sm leading-relaxed mb-3 line-clamp-3">
-              {post.content}
-            </p>
-          ) : null}
         </Link>
+        {post.type === 'link' && post.linkUrl && (
+          <a
+            href={post.linkUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="mb-2 line-clamp-1 break-all text-xs text-blue-600 hover:text-blue-800 sm:text-sm"
+          >
+            {(() => {
+              try {
+                return new URL(post.linkUrl).hostname.replace(/^www\./, '');
+              } catch {
+                return post.linkUrl;
+              }
+            })()}
+          </a>
+        )}
+        {post.content ? (
+          <MarkdownContent lineClamp={3} className="mb-3 text-xs text-gray-800 [overflow-wrap:anywhere] sm:text-sm">
+            {post.content}
+          </MarkdownContent>
+        ) : null}
 
         {post.type === 'poll' && Array.isArray(post.pollOptions) && (
           <PostPollBlock
@@ -202,7 +208,7 @@ const Profile: React.FC = () => {
 
   if (!user) {
     return (
-      <div className="max-w-4xl mx-auto px-2 sm:px-4 md:px-6">
+      <div className="mx-auto min-w-0 max-w-4xl px-2 sm:px-4 md:px-6">
         <div className="text-center py-6 sm:py-8 md:py-12">
           <h1 className="text-lg sm:text-xl md:text-2xl font-bold text-gray-900 mb-3 sm:mb-4">Please sign in to view your profile</h1>
           <Link to="/login" className="text-blue-600 hover:text-blue-800">
@@ -544,7 +550,9 @@ const Profile: React.FC = () => {
                           <span className="hidden sm:inline">•</span>
                           <span>{formatDistanceToNow(new Date(comment.createdAt), { addSuffix: true })}</span>
                         </div>
-                        <p className="text-gray-800 text-xs sm:text-sm leading-relaxed mb-3 break-words">{comment.content}</p>
+                        <MarkdownContent className="mb-3 text-xs text-gray-800 [overflow-wrap:anywhere] sm:text-sm">
+                          {comment.content}
+                        </MarkdownContent>
                         <div className="flex flex-wrap items-center gap-3 sm:gap-4 text-xs text-gray-500 pt-2 border-t border-gray-100">
                           <div className="flex items-center space-x-1">
                             <svg className="w-3 h-3 sm:w-4 sm:h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">

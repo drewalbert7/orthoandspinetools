@@ -8,6 +8,7 @@ import { useAuth } from '../contexts/AuthContext';
 import PostAttachments from '../components/PostAttachments';
 import PostPollBlock from '../components/PostPollBlock';
 import AuthorVerificationsInline from '../components/AuthorVerificationsInline';
+import MarkdownContent from '../components/MarkdownContent';
 import { DocumentMeta } from '../components/DocumentMeta';
 import { buildCommunityJsonLd, SEO_DEFAULTS, stripToPlainText } from '../lib/seo';
 
@@ -129,7 +130,7 @@ const CommunityPage: React.FC = () => {
   const createPostHref = `/create-post?community=${encodeURIComponent(community.id)}`;
 
   return (
-    <div className="max-w-6xl mx-auto px-2 sm:px-4 pb-8">
+    <div className="mx-auto min-w-0 max-w-6xl px-2 sm:px-4 pb-8">
       <DocumentMeta
         title={`o/${community.name}`}
         description={communityMetaDescription}
@@ -366,14 +367,9 @@ const CommunityPage: React.FC = () => {
                     </div>
                     <div className="px-3 sm:px-4 pb-2">
                       {post.content ? (
-                        <p className="text-sm text-gray-700 line-clamp-3 [overflow-wrap:anywhere]">
-                          {post.content.length > 280 ? `${post.content.slice(0, 280)}…` : post.content}
-                          {post.content.length > 280 && (
-                            <Link to={`/post/${post.id}`} className="text-blue-600 hover:underline ml-1 font-medium whitespace-nowrap">
-                              more
-                            </Link>
-                          )}
-                        </p>
+                        <MarkdownContent lineClamp={3} className="text-sm text-gray-700 [overflow-wrap:anywhere]">
+                          {post.content}
+                        </MarkdownContent>
                       ) : null}
                       {post.type === 'poll' && Array.isArray(post.pollOptions) && (
                         <div className="mt-2">
