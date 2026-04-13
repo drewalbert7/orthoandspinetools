@@ -10,6 +10,7 @@ import PostPollBlock from '../components/PostPollBlock';
 import AuthorVerificationsInline from '../components/AuthorVerificationsInline';
 import MarkdownContent from '../components/MarkdownContent';
 import PostDeviceDisclaimer from '../components/PostDeviceDisclaimer';
+import FeedPostCard from '../components/FeedPostCard';
 import { DocumentMeta } from '../components/DocumentMeta';
 import { buildCommunityJsonLd, SEO_DEFAULTS, stripToPlainText } from '../lib/seo';
 
@@ -19,6 +20,8 @@ const SORT_OPTIONS = [
   { value: 'popular' as const, label: 'Top' },
   { value: 'controversial' as const, label: 'Controversial' },
 ];
+
+const STARTUP_TAG_MATCH = 'startup';
 
 function formatRelativeTime(dateString: string): string {
   const t = new Date(dateString).getTime();
@@ -74,6 +77,18 @@ const CommunityPage: React.FC = () => {
     enabled: !!slug && !!communityData,
   });
 
+  const { data: featuredLaunchesData } = useQuery({
+    queryKey: ['community-startup-launches', slug],
+    queryFn: () =>
+      apiService.getPosts({
+        community: slug!,
+        sort: 'newest',
+        limit: 8,
+        tagMatch: STARTUP_TAG_MATCH,
+      }),
+    enabled: !!slug && !!communityData,
+  });
+
   const communityJsonLd = useMemo(
     () => (communityData ? buildCommunityJsonLd(communityData, slug!) : null),
     [communityData, slug]
@@ -84,6 +99,15 @@ const CommunityPage: React.FC = () => {
     const t = stripToPlainText(communityData.description, 260);
     return `${t} — o/${communityData.name} on ${SEO_DEFAULTS.siteName}`;
   }, [communityData]);
+
+  const posts = postsData ?? [];
+  const featuredLaunches = featuredLaunchesData?.posts ?? [];
+  const showFeaturedLaunches = !tagFilter && featuredLaunches.length > 0;
+  const feedPosts = useMemo(() => {
+    if (tagFilter) return posts;
+    const featuredIds = new Set(featuredLaunches.map((p) => p.id));
+    return posts.filter((p) => !featuredIds.has(p.id));
+  }, [posts, featuredLaunches, tagFilter]);
 
   const setTopicFilter = (tagId: string | null) => {
     const next = new URLSearchParams(searchParams);
@@ -104,7 +128,6 @@ const CommunityPage: React.FC = () => {
   }
 
   const community = communityData;
-  const posts = postsData ?? [];
   const canManage =
     !!user &&
     (user.id === community?.ownerId ||
@@ -129,6 +152,7 @@ const CommunityPage: React.FC = () => {
   }
 
   const createPostHref = `/create-post?community=${encodeURIComponent(community.id)}`;
+  const launchProductHref = `/create-post?mode=launch&community=${encodeURIComponent(community.id)}`;
 
   return (
     <div className="mx-auto min-w-0 max-w-6xl px-2 sm:px-4 pb-8">
@@ -178,6 +202,12 @@ const CommunityPage: React.FC = () => {
                   </p>
                 </div>
                 <div className="flex flex-wrap items-center gap-2 shrink-0">
+                  <Link
+                    to={launchProductHref}
+                    className="inline-flex items-center justify-center min-h-[44px] px-4 rounded-full border border-blue-600 text-blue-700 text-sm font-semibold hover:bg-blue-50 active:bg-blue-100 transition-colors touch-manipulation"
+                  >
+                    Launch product
+                  </Link>
                   <Link
                     to={createPostHref}
                     className="inline-flex items-center justify-center min-h-[44px] px-4 rounded-full bg-blue-600 text-white text-sm font-semibold hover:bg-blue-700 active:bg-blue-800 transition-colors touch-manipulation"
@@ -271,6 +301,39 @@ const CommunityPage: React.FC = () => {
             )}
           </div>
 
+          {showFeaturedLaunches && (
+            <section
+              className="mb-4 rounded-lg border border-gray-200 bg-white p-3 sm:p-4 shadow-sm"
+              aria-labelledby="community-featured-launches"
+            >
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-3">
+                <div>
+                  <h2 id="community-featured-launches" className="text-sm font-semibold text-gray-900">
+                    Product launches
+                  </h2>
+                  <p className="text-xs text-gray-500 mt-0.5">
+                    Recent startup launches in o/{community.name} (also listed on{' '}
+                    <Link to="/startups" className="text-blue-600 hover:underline">
+                      Startups
+                    </Link>
+                    ).
+                  </p>
+                </div>
+                <Link
+                  to={launchProductHref}
+                  className="inline-flex items-center justify-center shrink-0 min-h-[40px] px-3 rounded-full bg-blue-600 text-white text-xs font-semibold hover:bg-blue-700 touch-manipulation"
+                >
+                  Launch yours
+                </Link>
+              </div>
+              <div className="space-y-2">
+                {featuredLaunches.map((post) => (
+                  <FeedPostCard key={post.id} post={post} />
+                ))}
+              </div>
+            </section>
+          )}
+
           <div className="space-y-3 sm:space-y-2">
             {postsLoading && (
               <>
@@ -311,6 +374,12 @@ const CommunityPage: React.FC = () => {
                     </button>
                   )}
                   <Link
+                    to={launchProductHref}
+                    className="inline-flex items-center justify-center min-h-[44px] px-5 rounded-full border border-blue-600 text-blue-700 text-sm font-semibold hover:bg-blue-50 touch-manipulation"
+                  >
+                    Launch a product
+                  </Link>
+                  <Link
                     to={createPostHref}
                     className="inline-flex items-center justify-center min-h-[44px] px-5 rounded-full bg-blue-600 text-white text-sm font-semibold hover:bg-blue-700 touch-manipulation"
                   >
@@ -320,8 +389,15 @@ const CommunityPage: React.FC = () => {
               </div>
             )}
 
+            {!postsLoading && showFeaturedLaunches && feedPosts.length === 0 && posts.length > 0 && (
+              <p className="text-sm text-gray-500 py-2 px-1">
+                No additional posts in this view; try another sort or topic. Launches above always show the newest
+                startup-tagged posts in this community.
+              </p>
+            )}
+
             {!postsLoading &&
-              posts.map((post) => (
+              feedPosts.map((post) => (
                 <article
                   key={post.id}
                   className="flex rounded-lg border border-gray-200 bg-white overflow-hidden hover:border-gray-300 transition-colors shadow-sm"

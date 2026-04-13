@@ -1,13 +1,16 @@
 import React, { useState } from 'react';
+import { Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { apiService } from '../services/apiService';
 import FeedPostCard from '../components/FeedPostCard';
+import { useAuth } from '../contexts/AuthContext';
 
 const STARTUP_TAG_MATCH = 'startup';
 
 type SortOption = 'best' | 'hot' | 'newest' | 'top' | 'rising';
 
 const Startups: React.FC = () => {
+  const { user } = useAuth();
   const [sortBy, setSortBy] = useState<SortOption>('newest');
   const [selectedCommunity, setSelectedCommunity] = useState<string>('all');
 
@@ -60,7 +63,16 @@ const Startups: React.FC = () => {
             </p>
           </div>
 
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-end gap-2 sm:gap-4">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4">
+            {user && (
+              <Link
+                to="/create-post?mode=launch"
+                className="inline-flex items-center justify-center min-h-[44px] px-4 rounded-full bg-blue-600 text-white text-sm font-semibold hover:bg-blue-700 transition-colors touch-manipulation shrink-0"
+              >
+                Launch a product
+              </Link>
+            )}
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-end gap-2 sm:gap-4 sm:flex-1">
             <div className="relative w-full sm:w-auto">
               <select
                 value={selectedCommunity}
@@ -98,6 +110,7 @@ const Startups: React.FC = () => {
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
                 </svg>
               </div>
+            </div>
             </div>
           </div>
         </div>

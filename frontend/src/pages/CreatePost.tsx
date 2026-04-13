@@ -52,10 +52,12 @@ const CreatePost: React.FC = () => {
   const [searchParams] = useSearchParams();
   const queryClient = useQueryClient();
   const { user } = useAuth();
+  const isLaunchMode = searchParams.get('mode') === 'launch';
   const [selectedCommunity, setSelectedCommunity] = useState<string>('');
   const [postType, setPostType] = useState<PostType>('text');
   const [title, setTitle] = useState('');
   const [body, setBody] = useState('');
+  const [productUrl, setProductUrl] = useState('');
   // false = rich MarkdownEditor (formatting toolbar works). true = plain textarea for raw Markdown only.
   const [isMarkdownMode, setIsMarkdownMode] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -128,10 +130,32 @@ const CreatePost: React.FC = () => {
     }
   }, [communities, communityFromUrl]);
 
-  // Reset selected tags when community changes
   useEffect(() => {
-    setSelectedTags([]);
-  }, [selectedCommunity]);
+    if (isLaunchMode) {
+      setPostType('text');
+      setUploadedMedia([]);
+    }
+  }, [isLaunchMode]);
+
+  useEffect(() => {
+    if (!selectedCommunity) {
+      setSelectedTags([]);
+      return;
+    }
+    if (!isLaunchMode) {
+      setSelectedTags([]);
+      return;
+    }
+    if (!communityTags?.length) {
+      setSelectedTags([]);
+      return;
+    }
+    const hay = (s: string | undefined) => (s || '').toLowerCase();
+    const startupTag = communityTags.find(
+      (t) => hay(t.name).includes('startup') || hay(t.description).includes('startup')
+    );
+    setSelectedTags(startupTag?.id ? [startupTag.id] : []);
+  }, [selectedCommunity, isLaunchMode, communityTags]);
 
   useLayoutEffect(() => {
     if (!showCommunityDropdown) {
@@ -180,6 +204,51 @@ const CreatePost: React.FC = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!title.trim() || !selectedCommunity) return;
+
+    if (isLaunchMode) {
+      if (!body.trim()) {
+        toast.error('Add a description for your product.');
+        return;
+      }
+      let normalizedProductUrl: string;
+      try {
+        const u = new URL(productUrl.trim());
+        if (u.protocol !== 'http:' && u.protocol !== 'https:') {
+          throw new Error('invalid protocol');
+        }
+        normalizedProductUrl = u.toString();
+      } catch {
+        toast.error('Enter a valid product URL (https or http).');
+        return;
+      }
+      setIsSubmitting(true);
+      setError('');
+      try {
+        const validTagIds = selectedTags.filter((id) => id && typeof id === 'string' && id.trim().length > 0);
+        await apiService.createPost({
+          title: title.trim(),
+          content: body.trim(),
+          communityId: selectedCommunity,
+          postType: 'link',
+          linkUrl: normalizedProductUrl,
+          ...(validTagIds.length > 0 && { tagIds: validTagIds }),
+        });
+        await queryClient.invalidateQueries({ queryKey: ['posts'] });
+        await queryClient.invalidateQueries({ queryKey: ['feed'] });
+        await queryClient.invalidateQueries({ queryKey: ['startups-posts'] });
+        await queryClient.invalidateQueries({ queryKey: ['community-startup-launches'] });
+        toast.success('Product launch posted.');
+        navigate('/startups');
+      } catch (error: unknown) {
+        const errorMessage = apiErrorMessage(error, 'Failed to publish launch');
+        setError(errorMessage);
+        toast.error(errorMessage);
+      } finally {
+        setIsSubmitting(false);
+      }
+      return;
+    }
+
     if (postType === 'images' && uploadedMedia.length === 0) {
       toast.error('Add at least one image or video before posting.');
       return;
@@ -383,11 +452,21 @@ const CreatePost: React.FC = () => {
   };
 
   const imagesTabNeedsMedia = postType === 'images' && uploadedMedia.length === 0;
-  const isPostDisabled =
-    !title.trim() ||
-    !selectedCommunity ||
-    imagesTabNeedsMedia ||
-    (postType === 'images' && isUploading);
+  const launchUrlValid = (() => {
+    if (!isLaunchMode) return true;
+    try {
+      const u = new URL(productUrl.trim());
+      return u.protocol === 'http:' || u.protocol === 'https:';
+    } catch {
+      return false;
+    }
+  })();
+  const isPostDisabled = isLaunchMode
+    ? !title.trim() || !selectedCommunity || !body.trim() || !launchUrlValid || isUploading
+    : !title.trim() ||
+      !selectedCommunity ||
+      imagesTabNeedsMedia ||
+      (postType === 'images' && isUploading);
 
 
   return (
@@ -395,10 +474,26 @@ const CreatePost: React.FC = () => {
       <div className="p-3 sm:p-4 md:p-6">
         {/* Header */}
         <div className="flex items-center justify-between mb-4 sm:mb-6 md:mb-8">
-          <h1 className="text-xl sm:text-2xl font-bold text-gray-900">Create post</h1>
-          <button className="text-sm sm:text-base text-blue-600 hover:text-blue-800 font-medium px-2 sm:px-0">
-            Drafts
-          </button>
+          <div>
+            <h1 className="text-xl sm:text-2xl font-bold text-gray-900">
+              {isLaunchMode ? 'Launch a product' : 'Create post'}
+            </h1>
+            {isLaunchMode && (
+              <p className="text-sm text-gray-600 mt-1 max-w-2xl">
+                Product Hunt–style launch: pick the community that fits your product, add a link and story. With the
+                Startup topic tag, it appears on{' '}
+                <Link to="/startups" className="text-blue-600 hover:underline">
+                  Startups
+                </Link>{' '}
+                and is highlighted on that community&apos;s page.
+              </p>
+            )}
+          </div>
+          {!isLaunchMode && (
+            <button className="text-sm sm:text-base text-blue-600 hover:text-blue-800 font-medium px-2 sm:px-0">
+              Drafts
+            </button>
+          )}
         </div>
 
         {/* Error Message */}
@@ -491,33 +586,35 @@ const CreatePost: React.FC = () => {
           )}
 
         {/* Post Type Tabs */}
-        <div className="mb-4 sm:mb-6">
-          <div className="flex space-x-1 border-b border-gray-200 overflow-x-auto scrollbar-hide">
-            {[
-              { id: 'text', label: 'Text' },
-              { id: 'images', label: 'Images & Video' },
-            ].map((tab) => (
-              <button
-                key={tab.id}
-                type="button"
-                onClick={() => {
-                  const next = tab.id as PostType;
-                  if (postType === 'images' && next !== 'images') {
-                    setUploadedMedia([]);
-                  }
-                  setPostType(next);
-                }}
-                className={`px-3 sm:px-4 py-2 text-xs sm:text-sm font-medium whitespace-nowrap flex-shrink-0 ${
-                  postType === tab.id
-                    ? 'text-blue-600 border-b-2 border-blue-600'
-                    : 'text-gray-500 hover:text-gray-700'
-                }`}
-              >
-                {tab.label}
-              </button>
-            ))}
+        {!isLaunchMode && (
+          <div className="mb-4 sm:mb-6">
+            <div className="flex space-x-1 border-b border-gray-200 overflow-x-auto scrollbar-hide">
+              {[
+                { id: 'text', label: 'Text' },
+                { id: 'images', label: 'Images & Video' },
+              ].map((tab) => (
+                <button
+                  key={tab.id}
+                  type="button"
+                  onClick={() => {
+                    const next = tab.id as PostType;
+                    if (postType === 'images' && next !== 'images') {
+                      setUploadedMedia([]);
+                    }
+                    setPostType(next);
+                  }}
+                  className={`px-3 sm:px-4 py-2 text-xs sm:text-sm font-medium whitespace-nowrap flex-shrink-0 ${
+                    postType === tab.id
+                      ? 'text-blue-600 border-b-2 border-blue-600'
+                      : 'text-gray-500 hover:text-gray-700'
+                  }`}
+                >
+                  {tab.label}
+                </button>
+              ))}
+            </div>
           </div>
-        </div>
+        )}
 
         {/* Title Input — z-0 so portaled community menu (body, z~11k) always stacks above */}
         <div className="mb-4 sm:mb-6 relative z-0">
@@ -526,7 +623,7 @@ const CreatePost: React.FC = () => {
               type="text"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
-              placeholder="Title*"
+              placeholder={isLaunchMode ? 'Product name *' : 'Title*'}
               maxLength={300}
               autoComplete="off"
               enterKeyHint="done"
@@ -538,12 +635,35 @@ const CreatePost: React.FC = () => {
           </div>
         </div>
 
+        {isLaunchMode && (
+          <div className="mb-4 sm:mb-6">
+            <label htmlFor="product-url" className="block text-sm font-medium text-gray-700 mb-1">
+              Product website <span className="text-red-500">*</span>
+            </label>
+            <input
+              id="product-url"
+              type="url"
+              inputMode="url"
+              value={productUrl}
+              onChange={(e) => setProductUrl(e.target.value)}
+              placeholder="https://your-product.com"
+              autoComplete="off"
+              enterKeyHint="next"
+              className="w-full px-3 sm:px-4 py-2 sm:py-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm sm:text-base [overflow-wrap:anywhere]"
+            />
+          </div>
+        )}
+
         {/* Topic tags — admin-defined options for this community */}
         {selectedCommunity && (
           <div className="mb-4 sm:mb-6">
-            <label className="block text-sm font-medium text-gray-700 mb-1">Topic tags (optional)</label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              {isLaunchMode ? 'Topic tags' : 'Topic tags (optional)'}
+            </label>
             <p className="text-xs text-gray-500 mb-2">
-              Choose subjects that match your post. Moderators define these for each community so everyone can find posts by topic.
+              {isLaunchMode
+                ? 'The Startup topic is selected automatically when available so your launch appears on the Startups page and in this community’s featured launches.'
+                : 'Choose subjects that match your post. Moderators define these for each community so everyone can find posts by topic.'}
             </p>
             {communityTags && communityTags.length > 0 ? (
               <>
@@ -772,7 +892,11 @@ const CreatePost: React.FC = () => {
                 <textarea
                   value={body}
                   onChange={(e) => setBody(e.target.value)}
-                  placeholder="Body text (optional) — Markdown supported"
+                  placeholder={
+                    isLaunchMode
+                      ? 'Tell the community what you built — problem, solution, who it’s for (Markdown supported) *'
+                      : 'Body text (optional) — Markdown supported'
+                  }
                   rows={10}
                   spellCheck
                   autoComplete="off"
@@ -783,7 +907,11 @@ const CreatePost: React.FC = () => {
                   ref={editorRef}
                   value={body}
                   onChange={setBody}
-                  placeholder="Body text (optional)"
+                  placeholder={
+                    isLaunchMode
+                      ? 'Tell the community what you built — problem, solution, who it’s for *'
+                      : 'Body text (optional)'
+                  }
                   rows={8}
                   className="w-full resize-none text-sm sm:text-base"
                   onKeyDown={(e) => {
@@ -1066,13 +1194,15 @@ const CreatePost: React.FC = () => {
 
         {/* Action Buttons */}
         <div className="flex flex-col sm:flex-row justify-end gap-2 sm:gap-3 sm:space-x-3 mt-4 sm:mt-6">
-          <button
-            onClick={handleSaveDraft}
-            disabled={isSubmitting}
-            className="w-full sm:w-auto px-4 sm:px-6 py-2 text-sm sm:text-base text-gray-600 border border-gray-300 rounded-full hover:bg-gray-50 transition-colors disabled:opacity-50"
-          >
-            Save Draft
-          </button>
+          {!isLaunchMode && (
+            <button
+              onClick={handleSaveDraft}
+              disabled={isSubmitting}
+              className="w-full sm:w-auto px-4 sm:px-6 py-2 text-sm sm:text-base text-gray-600 border border-gray-300 rounded-full hover:bg-gray-50 transition-colors disabled:opacity-50"
+            >
+              Save Draft
+            </button>
+          )}
           <button
             onClick={handleSubmit}
             disabled={isPostDisabled || isSubmitting}
@@ -1082,7 +1212,7 @@ const CreatePost: React.FC = () => {
                 : 'bg-blue-600 text-white hover:bg-blue-700'
             }`}
           >
-            {isSubmitting ? 'Posting...' : 'Post'}
+            {isSubmitting ? (isLaunchMode ? 'Publishing…' : 'Posting...') : isLaunchMode ? 'Publish launch' : 'Post'}
           </button>
         </div>
       </div>
