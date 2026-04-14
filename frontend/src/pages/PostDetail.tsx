@@ -912,17 +912,6 @@ const PostDetail: React.FC = () => {
             )}
           </div>
 
-          {/* User Flair */}
-          <div className="bg-white border border-gray-200 rounded-md p-4">
-            <h3 className="text-sm font-bold text-gray-900 mb-3">USER FLAIR</h3>
-            <div className="flex items-center space-x-2">
-              <div className="w-6 h-6 bg-gray-300 rounded-full flex items-center justify-center">
-                <span className="text-gray-600 text-xs font-bold">?</span>
-              </div>
-              <span className="text-sm text-gray-600">{user?.username || 'Anonymous'}</span>
-            </div>
-          </div>
-
           {/* Community Rules */}
           <div className="bg-white border border-gray-200 rounded-md p-4">
             <h3 className="text-sm font-bold text-gray-900 mb-3">o/{(post.community?.name || 'COMMUNITY').toUpperCase()} RULES</h3>

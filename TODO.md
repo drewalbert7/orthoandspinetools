@@ -5,25 +5,34 @@
 |--------|---------|
 | **NEXT UP — START HERE** | **Verified production deploy facts** (paths, Compose, containers) + deploy commands + production QA + backlog. |
 | **NEXT PRIORITIES (summary)** | Short roadmap snapshot; **NEXT UP wins** if they disagree. |
-| **NEXT PRIORITIES (extended roadmap)** | Notifications and other phased plans (deeper detail). |
+| **NEXT PRIORITIES (extended roadmap)** | Notifications, **transactional email (SES)**, and other phased plans (deeper detail). |
 | **CODING AGENT INSTRUCTIONS** | Onboarding / workflow for contributors and agents. |
 | **COMPLETED WORK** + long `###` history | Archive and audit trail — keep for context. |
 
-## 🔥 **NEXT UP — START HERE** (updated Apr 10, 2026)
+## 🔥 **NEXT UP — START HERE** (updated Apr 14, 2026)
 
-### **Goals (current session — Apr 10, 2026)**
-- [x] **Brand copy** — Site tagline shortened to **"Ortho and Spine Tools - Hunt for the Best"** everywhere it drives SEO/UI (`SEO_DEFAULTS`, `index.html`, registration hero, `llms.txt`).
-- [x] **Production (Apr 10, 2026)** — Pushed `main`, server `git pull` + `docker compose -f docker-compose.prod.yml build --no-cache frontend` + `up -d frontend`. Verified `https://orthoandspinetools.com/` HTML: title **OrthoAndSpineTools — Hunt for the Best**, meta description matches tagline.
-- [ ] **Ongoing** — Post media save/display WIP, SSR/prerender for link previews, NEXT UP Production QA after each deploy.
+### **Goals (current focus — Apr 14, 2026)**
+- [x] **Brand copy** — Site tagline **"Ortho and Spine Tools - Hunt for the Best"** in `SEO_DEFAULTS`, `index.html`, registration hero, `llms.txt` (see Apr 10 notes below).
+- [x] **Link previews (social / chat unfurl)** — Shipped Apr 14, 2026: **`GET /api/og/post/:id`** returns HTML with `og:*` / `twitter:*` / `article:*`; **`nginx/nginx.conf`** `map $http_user_agent` + rewrite for known preview bots on **`/post/:id`** (Googlebot intentionally **not** in map so search indexing still gets the full SPA). **`PUBLIC_SITE_URL`** in `docker-compose.prod.yml` for canonical URLs. After **`nginx.conf`** changes: `docker compose -f docker-compose.prod.yml up -d --force-recreate nginx` (or `nginx -s reload` inside container). Smoke: `curl -A 'facebookexternalhit/1.1' https://orthoandspinetools.com/post/<id> | head`.
+- [x] **Cases + Case tag + `tagName` filter** — `/cases`, default **Case** community tag + `npm run backfill-default-tags`, `GET /posts?tagName=Case`, create-post `mode=case` (see repo history Apr 2026).
+- [x] **Share meta (client)** — `DocumentMeta` + `frontend/src/lib/seo.ts` post headlines/descriptions/OG image fallbacks for in-app and JS-aware crawlers (complements server OG HTML above).
+- [ ] **Next implementation — Amazon SES** — Transactional email: welcome after signup, email verification if enabled, **real** password-reset mail (today `forgot-password` still logs token in dev-oriented paths), optional notification digests. Use env for `AWS_SES_REGION`, credentials, verified **From** domain/DKIM; do **not** commit secrets. Prefer **async queue** or fire-and-forget after DB commit so HTTP handlers stay fast (see prior architecture notes in chat / `docs` if extended).
+- [ ] **Ongoing** — **Production QA** after each deploy (checklist §2). **Post media** save/display: still verify end-to-end if any regression reports (§3 backlog).
 
-### **Changes saved in repo (Apr 10, 2026)**
+### **Changes saved in repo (Apr 10, 2026)** *(retained — not deleted)*
 - **Tagline** — `frontend/src/lib/seo.ts`, `frontend/index.html`, `frontend/src/components/RegisterForm.tsx`, `frontend/public/llms.txt`: removed "Innovations on the Market"; default document title is `OrthoAndSpineTools — Hunt for the Best`.
 - **Create Post (earlier commit)** — Format toolbar on **Images & Video** tab: `onMouseDown={(e) => e.preventDefault()}` on buttons (same as main tab) so inline formatting/toggle does not lose text selection.
 
+### **Changes saved in repo (Apr 14, 2026)** *(addendum)*
+- **OG / nginx** — `backend/src/routes/ogPreview.ts`, `backend/src/lib/postOgPreviewHtml.ts`, `backend/src/index.ts` (`/api/og`, rate-limit skip), `nginx/nginx.conf` (bot `map` + `location ~* ^/post/`…), `docker-compose.prod.yml` (`PUBLIC_SITE_URL`).
+- **Meta** — `frontend/src/components/DocumentMeta.tsx`, `frontend/src/lib/seo.ts`, `frontend/src/pages/PostDetail.tsx` (share strings, article meta, logo fallback for `twitter:card`).
+
 ### **0. Deploy status — verify live (after each ship)**
-- [ ] From laptop: `git push origin main` then on server `cd ~/orthoandspinetools-main && git pull origin main && docker compose -f docker-compose.prod.yml up -d --build backend frontend` (add **`nginx`** if `nginx/nginx.conf` changed).
-- [ ] **https://orthoandspinetools.com** — home loads; open a **post** and **community**; hit **`/startups`** if that feature is in the build.
+- [ ] From laptop: `git push origin main` then on server `cd ~/orthoandspinetools-main && git pull origin main && docker compose -f docker-compose.prod.yml build --no-cache backend frontend && docker compose -f docker-compose.prod.yml up -d backend frontend nginx`
+- [ ] If only **`nginx/nginx.conf`** changed: `docker compose -f docker-compose.prod.yml up -d --force-recreate nginx` (or `exec nginx nginx -s reload` after `nginx -t`).
+- [ ] **https://orthoandspinetools.com** — home loads; open a **post** and **community**; **`/startups`**, **`/cases`**.
 - [ ] Optional: set **`VITE_SITE_URL=https://orthoandspinetools.com`** for frontend image builds so canonicals/JSON-LD use the public origin even when `window` is odd.
+- [ ] Optional: set **`PUBLIC_SITE_URL=https://orthoandspinetools.com`** (or www) in prod backend env so OG HTML matches primary public hostname (defaults exist in compose).
 
 ### **1. Deploy (production server)**
 
@@ -37,8 +46,8 @@
 | Compose project name | `orthoandspinetools-main` (`docker compose ls`) |
 | Compose file | **`docker-compose.prod.yml`** (only this file for live stack) |
 | Containers | `orthoandspinetools-postgres`, `orthoandspinetools-backend`, `orthoandspinetools-frontend`, `orthoandspinetools-nginx` |
-| Secrets on server | `.env`, `.env.cloudinary` (never commit real values) |
-| Nginx | Uses bind-mounted **`nginx/nginx.conf`** from the repo; after editing it, recreate nginx: include **`nginx`** in `up -d` |
+| Secrets on server | `.env`, `.env.cloudinary` (never commit real values); **future:** AWS SES keys / SMTP (see Goals → Amazon SES) |
+| Nginx | Uses bind-mounted **`nginx/nginx.conf`** from the repo; after editing it, **recreate or reload nginx** (see §0) |
 
 #### **Industry-standard check (is this “set up correctly”?)**
 **Yes, for a typical small/medium production web app** — this matches what many teams ship: containers for API + UI + DB, reverse proxy (nginx) in front, TLS, healthchecks, persistent DB volume, secrets via env files.
@@ -54,7 +63,8 @@ git pull origin main
 docker compose -f docker-compose.prod.yml build --no-cache backend frontend
 docker compose -f docker-compose.prod.yml up -d backend frontend nginx
 ```
-- Always add **`nginx`** to `up -d` when **`nginx/nginx.conf`** changed (e.g. upload body size).
+- If **`nginx/nginx.conf`** changed but images did not: `docker compose -f docker-compose.prod.yml up -d --force-recreate nginx` (bind-mounted config — recreate or reload so workers read new file).
+- Always include **`nginx`** in routine **`up -d`** when rebuilding stack after **`nginx/nginx.conf`** changes (e.g. upload body size) alongside backend/frontend.
 - **Full** rebuild everything (heavy): `docker compose -f docker-compose.prod.yml build --no-cache && docker compose -f docker-compose.prod.yml up -d` — or run **`./deploy.sh`** (includes `down`, full rebuild; more disruptive).
 
 **Migrations** after schema changes: `docker compose -f docker-compose.prod.yml exec backend npm run db:deploy` (production-safe Prisma migrate deploy — not `db:migrate`, which is for local dev).
@@ -71,11 +81,12 @@ docker compose -f docker-compose.prod.yml up -d backend frontend nginx
 4. **Notifications** — comment/reply should create unread bell items; mark read / mark all / dismiss work.
 5. **Admin delete** — as admin, open post menu (`...`) from Home and PostDetail and confirm delete works.
 6. If anything fails, copy the **exact toast text** and **Network response JSON**.
-7. **SEO smoke** — `View Page Source` on a post (expect shell only; JSON-LD is JS-injected). In DevTools Elements, confirm **`<title>`** and **`meta description`** update after load. Optional: `curl -sI https://orthoandspinetools.com/robots.txt` and `/llms.txt` return **200**.
+7. **SEO / previews smoke** — **Browsers:** `View Page Source` on `/post/:id` still shows the SPA shell; after load, DevTools Elements should show updated **`<title>`** and meta from **`DocumentMeta`**. **Preview bots:** `curl -sS -A 'facebookexternalhit/1.1' 'https://orthoandspinetools.com/post/<id>' | head` should return **HTML** with **`og:title`** (first response — no JS required). Optional: `curl -sI https://orthoandspinetools.com/robots.txt` and `/llms.txt` return **200**.
 
 ### **3. Backlog (when QA is green)**
-- **SEO & LLM discoverability (Mar 2026 — in progress)** — Shipped: client-side **`DocumentMeta`** + JSON-LD (`WebSite`, `CollectionPage`, `DiscussionForumPosting`, `DiscussionForum`, breadcrumbs) on **Home**, **Community**, **Post**; **`frontend/public/robots.txt`**, **`llms.txt`**, static **`sitemap.xml`**; **`.env.example`** documents **`VITE_SITE_URL`**. Sidebar **Startups** + **`GET /api/posts?tagMatch=…`** for cross-community topic tags.
-  - **Still TODO:** Most social crawlers need **SSR, prerender, or edge HTML** for `/post/:id` (first response must include `og:*` / title) — SPA-only meta is insufficient for many link previews. Add a **dynamic sitemap** (all posts + communities). Confirm production Docker build passes **`VITE_SITE_URL`**. Re-run **Lighthouse / Rich Results** after prerender exists.
+- **SEO & LLM discoverability (Mar 2026 — in progress; updated Apr 14, 2026)** — Shipped: client-side **`DocumentMeta`** + JSON-LD (`WebSite`, `CollectionPage`, `DiscussionForumPosting`, `DiscussionForum`, breadcrumbs) on **Home**, **Community**, **Post**; **`frontend/public/robots.txt`**, **`llms.txt`**, static **`sitemap.xml`**; **`.env.example`** documents **`VITE_SITE_URL`**. Sidebar **Startups** + **`GET /api/posts?tagMatch=…`**; **Cases** + **`GET /api/posts?tagName=…`**; **`/cases`** in sitemap/llms.
+  - **Shipped (Apr 14, 2026):** **Server-rendered OG HTML** for major link-preview user agents on **`/post/:id`** (`GET /api/og/post/:id` + nginx `map` / rewrite). Googlebot still receives the SPA for indexing.
+  - **Still TODO:** **Dynamic sitemap** (all posts + communities). Confirm production Docker build passes **`VITE_SITE_URL`** / **`PUBLIC_SITE_URL`**. Re-run **Lighthouse / Rich Results**; optional **full SSR** later if product needs first-byte identical HTML for all clients (not required for FB/Slack/LinkedIn-style unfurl now).
 - **Admin hardening** — ✅ `/admin` gate + tab queries use JWT `isAdmin` or permissions; **Recent content** tab has inline Open / Lock / Pin / Delete (posts) and Delete (comments). ✅ Comment menus trust `user.isAdmin` if permissions fetch fails (matches post `ModerationMenu`).
   - Remaining: reporting flow + triage; optional admin post search; regression tests for session edge cases.
 - **Content** — Remove or hide obvious test posts on the live home feed (“Test”, “d”, etc.) — manual in DB/admin or add a moderation tool later.
@@ -87,6 +98,8 @@ docker compose -f docker-compose.prod.yml up -d backend frontend nginx
 
 **Recently shipped:**
 
+- **OG link previews (Apr 14, 2026)** — Nginx bot `map` + internal rewrite to **`/api/og/post/:id`**; HTML meta for Facebook/Slack/LinkedIn-class crawlers; **`PUBLIC_SITE_URL`**; client **`DocumentMeta`** improvements for post shares.
+- **Cases (Apr 2026)** — `/cases` page, **`tagName`** posts filter, default **Case** tag + **`backfill-default-tags`** script, sidebar + create-post `mode=case`.
 - **Site tagline (Apr 10, 2026)** — Public tagline is **Ortho and Spine Tools - Hunt for the Best** across SEO defaults, SPA shell `index.html`, register page copy, and `llms.txt`.
 - **Post media pipeline hardening (Mar 2026, ongoing WIP)** — Create post sends `attachments`; timeline/detail use `PostAttachments` + MIME/URL fallbacks; backend validates content-with-attachments; `createPost` parses `{ success, data }`; `index.css` Tailwind `ring-ring` fix unblocked Docker frontend builds; SPA `index.html` cache headers in `frontend/nginx.conf`. **Display/save still under investigation** (see backlog).
 - **Notification system v1 (Mar 24, 2026)** — Added `Notification` model + migration, backend service/routes (`/api/notifications`, unread count, read, read-all, delete), comment/reply triggers, header bell dropdown with unread badge + actions, and graceful degradation if notifications table is missing.
@@ -100,6 +113,8 @@ docker compose -f docker-compose.prod.yml up -d backend frontend nginx
 - `PUT /auth/me`: website sanitizer; null-safe `community` on profile payload.
 - `extractPublicIdFromUrl` skips Cloudinary transformation/version path segments.
 - Avatar API prefers stable `secure_url` / `cloudinaryUrl` for stored `profileImage`.
+
+**Planned next (not shipped yet):** **Amazon SES** — transactional email per **NEXT UP → Goals** and **NEXT PRIORITIES (extended roadmap)** (heading **Transactional email — Amazon SES**).
 
 ---
 
@@ -515,26 +530,29 @@ For detailed changelog of all completed work, see `CHANGELOG.md`.
 - **Deployment** — Docker Compose + nginx (see `docker-compose.prod.yml`)
 
 ### 🚧 **Known gaps / WIP** *(see **NEXT UP** for current QA)*
-- **Post media (create-post)** — images/videos not reliably saved or shown on timeline/detail; debug `POST /api/posts` + `post_attachments` (documented in NEXT UP backlog).
+- **Transactional email** — not yet wired to SES/SMTP; password reset and welcome flows need product + implementation (see **NEXT UP → Goals → Amazon SES**).
+- **Post media (create-post)** — if regressions appear: images/videos not saved or shown on timeline/detail; debug `POST /api/posts` + `post_attachments` (NEXT UP backlog).
 - **Content / polish** — test posts on live home feed; ongoing moderation and real content.
 - **Regression QA** — run **NEXT UP → Production QA** after each deploy.
 
 ## 📋 **NEXT PRIORITIES** (summary)
 
-**Canonical checklist:** use **NEXT UP — START HERE** at the top of this file first (deploy, QA, **post media WIP**).
+**Canonical checklist:** use **NEXT UP — START HERE** at the top of this file first (deploy, QA, **Amazon SES**, **post media WIP** if regressions appear).
 
 > **Longer backlog** (notifications phases, tests, deployment checklists): **NEXT PRIORITIES (extended roadmap)** — search that heading in this file.
 
 ### **Immediate** *(supplement — confirm on live site; may overlap completed work elsewhere)*
-1. **Post media** — same as **NEXT UP → Production QA item 3** and backlog **Post media save/display regression (WIP)**.
-2. **Profile & avatar QA** — profile load, Cloudinary avatar, Profile Settings save/remove photo; errors should surface via `apiErrorMessage`-style responses.
-3. **Auth smoke test** — registration + login over HTTPS after deploy.
-4. **Core flows** — voting, commenting, text post creation; SSL/proxy sanity.
+1. **Amazon SES** — implement transactional sending (welcome, password reset email, optional verify-email); wire **`backend/.env`** / prod secrets; SES domain identity + DKIM; replace log-only reset path in **`auth`** forgot-password flow; keep sends **off the request hot path** (queue or `setImmediate` + retry policy). Document required env vars in **`.env.example`** (no secrets).
+2. **Post media** — same as **NEXT UP → Production QA item 3** and backlog **Post media save/display regression (WIP)** if issues resurface.
+3. **Profile & avatar QA** — profile load, Cloudinary avatar, Profile Settings save/remove photo; errors should surface via `apiErrorMessage`-style responses.
+4. **Auth smoke test** — registration + login over HTTPS after deploy.
+5. **Core flows** — voting, commenting, text post creation; SSL/proxy sanity; **`curl` OG smoke** (NEXT UP §2 item 7).
 
 ### **Short term**
 1. **Content** — remove/hide obvious test posts on home; add real specialty content as needed.
 2. **UX / performance** — navigation polish, perceived load time, clearer empty/loading states.
 3. **Admin hardening** — reporting/triage, optional admin post search, session edge-case tests (see backlog in NEXT UP).
+4. **Dynamic sitemap** — still listed under NEXT UP §3 backlog (SEO).
 
 ### **Medium term**
 1. **Search & discovery** — improve search UX and results quality.
@@ -808,7 +826,7 @@ The platform focuses on:
 
 ---
 
-**Last Updated**: April 10, 2026 — Tagline + TODO checkpoint; deploy frontend on server to make copy live.  
+**Last Updated**: April 14, 2026 — TODO aligned with OG previews, Cases, deploy flow, **Amazon SES** as next build target.  
 **Status**: 🚀 **LIVE AND FUNCTIONAL** - Database connection verified, all features operational  
 **SSL Status**: 🔒 **SECURE** - HTTPS verified with valid certificate (served cert expires **May 10, 2026**). If browsers show expired SSL but `nginx/ssl/certs/fullchain.pem` on disk is newer, run: `docker compose -f docker-compose.prod.yml exec nginx nginx -t && docker compose -f docker-compose.prod.yml exec nginx nginx -s reload`  
 **Database Status**: 🔗 **CONNECTED** - PostgreSQL authentication working, startup verification active (7 posts, 4 users, 9 communities). Password: `secure_password_123` (in .env). If postgres container recreated, run: `ALTER USER postgres WITH PASSWORD 'secure_password_123';` then restart backend.  
@@ -831,7 +849,7 @@ The platform focuses on:
 **Administrator Setup**: ✅ **VERIFIED** - drewalbertmd set as highest permission administrator + verified physician (isAdmin, isVerifiedPhysician). Profile badges on profile page. Promote script: `backend/scripts/promote-admin.ts`  
 **Home Feed**: ✅ **FIXED** - Empty feed fallback: when logged-in user follows no communities, Home now shows all posts instead of "No posts available"  
 **Star Unfollow**: ✅ **FIXED** (Feb 2026) - Sidebar star unfollow now works; optimisticFollows used as display source of truth (union with followedCommunityIds caused unfollow to not update UI)  
-**Next Session**: Additional security hardening, performance optimization
+**Next Session**: **Amazon SES** transactional email (welcome, reset, optional verify); then security hardening / performance as needed
 
 ### **Plain-English ops** (March 2026) ✅
 - ✅ **`docs/WHAT_TO_DO.md`** — what you actually need to do vs optional scaling; backups; deploy commands
@@ -1157,9 +1175,9 @@ Issues that were resolved at the time:
 
 **Live Site**: https://orthoandspinetools.com  
 **Database**: 34 posts, 4 users, 9 communities, operational *(counts approximate — verify in admin/DB if needed)*  
-**Status**: **Operational with known WIP** — **create-post image/video** save or timeline display not fully verified fixed (see **NEXT UP**).  
-**Last Major Update**: Apr 2026 — tagline copy; create-post Images-tab toolbar selection fix; prior Mar 2026 work (notifications v1, home feed, create-post typing, post media WIP).  
-**Last Review**: Apr 10, 2026 — TODO.md goals/changes; commit tagline + doc; verify deploy on server.
+**Status**: **Operational with known WIP** — **Transactional email** not yet on SES (see **NEXT UP**). **create-post image/video** pipeline: verify if any new regressions; historical WIP notes remain in backlog.  
+**Last Major Update**: Apr 14, 2026 — server **OG HTML** for `/post/:id` preview bots + nginx map/rewrite; client share meta; **Cases** / `tagName`; **`PUBLIC_SITE_URL`**; prior Apr/Mar work (tagline, notifications v1, home feed, create-post typing).  
+**Last Review**: Apr 14, 2026 — TODO.md accuracy pass; SES next; preserved prior sections and archive.
 
 ### **🖥️ SERVER UPDATES STATUS** ✅ **CURRENT (December 2025)**
 - ✅ **Docker**: 29.1.2 (upgraded from 28.4.0 on December 7, 2025)
@@ -1179,6 +1197,18 @@ Issues that were resolved at the time:
 - ✅ **Verified physician** (Mar 2026) — `isVerifiedPhysician` on post + comment author selects (`posts.ts`, `comments.ts`); admin user list includes flag; **Verify Physician** / **Unverify Physician** in `AdminDashboard`; **Physician ✓** inline badge (`VerifiedPhysicianInline`) on Home, Popular, Profile, Community, Search, `PostCard`, PostDetail; `PUT /api/auth/verify/:userId` unchanged.
 
 **Optional later:** Profile-page verify controls for admins; moderator-only verify (currently admin-only API).
+
+### **Transactional email — Amazon SES** 📧 **NEXT (planned)**
+**Status:** Not implemented yet — **NEXT UP → Goals** owns the checklist.  
+**Priority:** High for production polish (welcome + password reset at minimum).
+
+**Implementation sketch (non-binding — adjust during build):**
+1. **AWS** — SES in production region; verify **domain** (or single mailbox); enable **DKIM**; move out of SES sandbox (production access request).
+2. **Secrets** — `AWS_ACCESS_KEY_ID` / `AWS_SECRET_ACCESS_KEY` (or IAM role if on AWS later), `AWS_SES_REGION`, `EMAIL_FROM` / `EMAIL_FROM_NAME`; store only in server `.env` / secrets manager — **never commit**.
+3. **Backend** — Small `emailService` (AWS SDK v3 `@aws-sdk/client-ses` **or** HTTPS API); HTML + text parts; **escape** user-supplied strings in templates; **idempotency** keys for welcome; **do not block** `POST /register` / `forgot-password` on SMTP latency (queue table or at least `setImmediate` + structured logging).
+4. **Replace dev behavior** — `auth` forgot-password: stop logging reset token in production; send link to `https://orthoandspinetools.com/reset-password?token=…` (or existing route).
+5. **Compliance** — Keep email bodies generic (“You requested a password reset”); avoid PHI; if scope grows, review **HIPAA / BAA** with AWS and counsel.
+6. **Observability** — Log message IDs; handle bounce/complaint via SNS webhooks (later phase).
 
 ### **5. Notification System Implementation** 🔔 **IN PROGRESS (v1 SHIPPED)**
 **Status:** ✅ **Core implementation shipped (Mar 24, 2026); follow-ups remain**  
