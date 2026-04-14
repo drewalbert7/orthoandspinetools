@@ -8,6 +8,7 @@ import jwt from 'jsonwebtoken';
 import { body, param, query, validationResult } from 'express-validator';
 import { enrichPostsPollData } from '../utils/postPoll';
 import { userCanCreateCommunity } from '../lib/communityPermissions';
+import { getPointsLevelState } from '../utils/pointsLevel';
 
 const router = Router();
 
@@ -620,6 +621,7 @@ router.get(
     });
 
     const karma = userKarma?.totalKarma || 0;
+    const pointLevel = getPointsLevelState(karma);
     const postsRows = ((user as any).posts as any[]) || [];
     const commentsRows = ((user as any).comments as any[]) || [];
 
@@ -712,6 +714,11 @@ router.get(
         commentKarma: userKarma?.commentKarma || 0,
         awardKarma: userKarma?.awardKarma || 0,
         totalKarma: karma,
+        level: pointLevel.level,
+        maxLevel: pointLevel.maxLevel,
+        pointsToNextLevel: pointLevel.pointsToNextLevel,
+        nextLevelAtPoints: pointLevel.nextLevelAtPoints,
+        levelProgress: pointLevel.levelProgress,
         postsCount: postsTotal,
         commentsCount: commentsTotal,
         communitiesCount: ((user as any).communities as any[])?.length || 0,

@@ -5,6 +5,7 @@ import { prisma } from '../lib/prisma';
 import { logger } from '../utils/logger';
 import { param, query, validationResult } from 'express-validator';
 import { getUserKarmaStats, getTopUsersByKarma, recalculateUserKarma } from '../utils/karmaService';
+import { getPointsLevelState } from '../utils/pointsLevel';
 
 const router = Router();
 
@@ -30,6 +31,7 @@ router.get('/user/:userId', [
   }
 
   const karmaStats = await getUserKarmaStats(userId);
+  const pointLevel = getPointsLevelState(karmaStats.totalKarma);
 
   res.json({
     success: true,
@@ -40,7 +42,8 @@ router.get('/user/:userId', [
         firstName: user.firstName,
         lastName: user.lastName,
       },
-      karma: karmaStats
+      karma: karmaStats,
+      pointsLevel: pointLevel,
     }
   });
 }));
@@ -59,20 +62,24 @@ router.get('/leaderboard', [
 
   res.json({
     success: true,
-    data: topUsers.map(user => ({
-      id: user.user.id,
-      username: user.user.username,
-      firstName: user.user.firstName,
-      lastName: user.user.lastName,
-      specialty: user.user.specialty,
-      profileImage: user.user.profileImage,
-      karma: {
-        postKarma: user.postKarma,
-        commentKarma: user.commentKarma,
-        awardKarma: user.awardKarma,
-        totalKarma: user.totalKarma
-      }
-    }))
+    data: topUsers.map(user => {
+      const pl = getPointsLevelState(user.totalKarma);
+      return {
+        id: user.user.id,
+        username: user.user.username,
+        firstName: user.user.firstName,
+        lastName: user.user.lastName,
+        specialty: user.user.specialty,
+        profileImage: user.user.profileImage,
+        karma: {
+          postKarma: user.postKarma,
+          commentKarma: user.commentKarma,
+          awardKarma: user.awardKarma,
+          totalKarma: user.totalKarma,
+        },
+        pointsLevel: pl,
+      };
+    })
   });
 }));
 
@@ -98,6 +105,7 @@ router.post('/recalculate/:userId', authenticate, [
   }
 
   const karmaStats = await recalculateUserKarma(userId);
+  const pointLevel = getPointsLevelState(karmaStats.totalKarma);
 
   // Log the recalculation
   await prisma.auditLog.create({
@@ -117,13 +125,14 @@ router.post('/recalculate/:userId', authenticate, [
 
   res.json({
     success: true,
-    message: 'Karma recalculated successfully',
+    message: 'Points recalculated successfully',
     data: {
       user: {
         id: user.id,
         username: user.username,
       },
-      karma: karmaStats
+      karma: karmaStats,
+      pointsLevel: pointLevel,
     }
   });
 }));

@@ -265,34 +265,43 @@ const Sidebar: React.FC<SidebarProps> = ({ isMobileOpen, onMobileClose }) => {
                       </div>
                     </Link>
                     
-                    {/* Star Icon for Follow/Unfollow - Always visible, clickable only when logged in */}
+                    {/* Circle toggle for follow / unfollow */}
                     <button
+                      type="button"
                       onClick={(e) => {
                         if (user) {
                           handleToggleFollow(community.id, e);
                         }
                       }}
                       disabled={!user || followMutation.isPending}
-                      className={`p-1 rounded-md transition-colors ${
-                        !user || followMutation.isPending 
-                          ? 'opacity-50 cursor-not-allowed' 
-                          : 'hover:bg-gray-200'
+                      aria-pressed={isFollowed}
+                      aria-label={
+                        !user
+                          ? 'Sign in to follow communities'
+                          : isFollowed
+                            ? `Unfollow ${community.name}`
+                            : `Follow ${community.name}`
+                      }
+                      className={`no-touch-target flex h-9 w-9 shrink-0 items-center justify-center rounded-full transition-colors ${
+                        !user || followMutation.isPending
+                          ? 'opacity-50 cursor-not-allowed'
+                          : 'hover:bg-gray-200 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-teal-600'
                       }`}
                       title={!user ? 'Sign in to follow communities' : isFollowed ? 'Unfollow' : 'Follow'}
                     >
-                      <svg 
-                        className={`w-4 h-4 ${isFollowed ? 'text-yellow-500 fill-current' : 'text-gray-400'}`} 
-                        fill={isFollowed ? 'currentColor' : 'none'} 
-                        stroke="currentColor" 
+                      <svg
                         viewBox="0 0 24 24"
-                        style={{ filter: isFollowed ? 'drop-shadow(0 0 2px rgba(251, 191, 36, 0.5))' : 'none' }}
+                        className={`h-4 w-4 ${isFollowed ? 'text-teal-600' : 'text-gray-400'}`}
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth={isFollowed ? 0 : 2}
+                        aria-hidden
                       >
-                        <path 
-                          strokeLinecap="round" 
-                          strokeLinejoin="round" 
-                          strokeWidth={2} 
-                          d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z" 
-                        />
+                        {isFollowed ? (
+                          <circle cx="12" cy="12" r="8" fill="currentColor" stroke="none" />
+                        ) : (
+                          <circle cx="12" cy="12" r="8" fill="none" />
+                        )}
                       </svg>
                     </button>
                   </div>

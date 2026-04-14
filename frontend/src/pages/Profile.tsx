@@ -11,6 +11,7 @@ import AuthorVerificationsInline from '../components/AuthorVerificationsInline';
 import MarkdownContent from '../components/MarkdownContent';
 import PostDeviceDisclaimer from '../components/PostDeviceDisclaimer';
 import { formatDistanceToNow } from 'date-fns';
+import { getPointsLevelState, MAX_POINTS_LEVEL } from '../lib/pointsLevel';
 
 type TabType = 'posts' | 'comments';
 type SortOption = 'hot' | 'new' | 'top' | 'controversial';
@@ -271,19 +272,27 @@ const Profile: React.FC = () => {
     return `${firstName?.[0] || ''}${lastName?.[0] || ''}`.toUpperCase() || 'U';
   };
 
-  const formatKarma = (karma: number): string => {
-    if (karma >= 1000000) {
-      return (karma / 1000000).toFixed(1) + 'M';
-    } else if (karma >= 1000) {
-      return (karma / 1000).toFixed(1) + 'k';
+  const formatPoints = (points: number): string => {
+    if (points >= 1000000) {
+      return (points / 1000000).toFixed(1) + 'M';
+    } else if (points >= 1000) {
+      return (points / 1000).toFixed(1) + 'k';
     }
-    return karma.toString();
+    return points.toString();
   };
 
+  const pointLevel = getPointsLevelState(stats.totalKarma);
+  const levelLabel =
+    pointLevel.level >= MAX_POINTS_LEVEL
+      ? `Max (${MAX_POINTS_LEVEL})`
+      : `${pointLevel.level} / ${MAX_POINTS_LEVEL}`;
+
+  const levelAndTotalPointsDisplay = `${levelLabel} · ${formatPoints(stats.totalKarma)}`;
+
   const profileHeaderStats = [
-    { label: 'Total karma', value: formatKarma(stats.totalKarma) },
-    { label: 'Post karma', value: formatKarma(stats.postKarma) },
-    { label: 'Comment karma', value: formatKarma(stats.commentKarma) },
+    { label: 'Level · total points', value: levelAndTotalPointsDisplay },
+    { label: 'Post points', value: formatPoints(stats.postKarma) },
+    { label: 'Comment points', value: formatPoints(stats.commentKarma) },
     {
       label: 'Contributions',
       value: String(stats.postsCount + stats.commentsCount),
@@ -292,10 +301,18 @@ const Profile: React.FC = () => {
   ];
 
   const profileSidebarStats = [
-    { label: 'Total karma', value: formatKarma(stats.totalKarma) },
-    { label: 'Post karma', value: formatKarma(stats.postKarma) },
-    { label: 'Comment karma', value: formatKarma(stats.commentKarma) },
-    { label: 'Award karma', value: formatKarma(stats.awardKarma || 0) },
+    { label: 'Level · total points', value: levelAndTotalPointsDisplay },
+    { label: 'Post points', value: formatPoints(stats.postKarma) },
+    { label: 'Comment points', value: formatPoints(stats.commentKarma) },
+    { label: 'Award points', value: formatPoints(stats.awardKarma || 0) },
+    ...(pointLevel.level >= MAX_POINTS_LEVEL
+      ? []
+      : [
+          {
+            label: 'Points to next level',
+            value: String(pointLevel.pointsToNextLevel),
+          },
+        ]),
     {
       label: 'Contributions',
       value: String(stats.postsCount + stats.commentsCount),
@@ -412,6 +429,13 @@ const Profile: React.FC = () => {
                     );
                   })()}
                 </div>
+                <p className="mt-3 text-sm text-gray-700 tabular-nums flex flex-wrap items-baseline gap-x-2 gap-y-1">
+                  <span className="font-semibold text-gray-900">Level {levelLabel}</span>
+                  <span className="text-gray-400" aria-hidden>
+                    ·
+                  </span>
+                  <span className="text-gray-800">{formatPoints(stats.totalKarma)} total points</span>
+                </p>
               </div>
             </div>
 

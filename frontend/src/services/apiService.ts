@@ -213,6 +213,11 @@ export interface UserProfile {
     commentKarma: number;
     awardKarma: number;
     totalKarma: number;
+    level?: number;
+    maxLevel?: number;
+    pointsToNextLevel?: number;
+    nextLevelAtPoints?: number | null;
+    levelProgress?: number;
     postsCount: number;
     commentsCount: number;
     communitiesCount: number;
