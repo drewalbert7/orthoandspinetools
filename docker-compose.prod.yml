@@ -37,6 +37,8 @@ services:
       JWT_EXPIRES_IN: 7d
       # Backend reads CORS_ORIGINS (plural); comma-separated. Defaults in code if unset.
       CORS_ORIGINS: https://orthoandspinetools.com,https://www.orthoandspinetools.com
+      # Canonical origin for OG/HTML share previews (optional; else X-Forwarded-* from nginx)
+      PUBLIC_SITE_URL: ${PUBLIC_SITE_URL:-https://orthoandspinetools.com}
     depends_on:
       postgres:
         condition: service_healthy

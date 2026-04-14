@@ -37,13 +37,32 @@ export function stripToPlainText(raw: string, maxLen: number): string {
   return `${t.slice(0, maxLen - 1).trim()}…`;
 }
 
+function truncateForMeta(s: string, max: number): string {
+  const t = s.trim();
+  if (t.length <= max) return t;
+  return `${t.slice(0, max - 1).trim()}…`;
+}
+
+/** Browser / og:title line: title · community | site (kept reasonably short for tabs and shares). */
+export function formatPostShareHeadline(post: Post): string {
+  const maxTitle = 52;
+  const shortTitle = truncateForMeta(post.title, maxTitle);
+  const c = post.community?.name;
+  const withComm = c ? `${shortTitle} · o/${c}` : shortTitle;
+  return `${withComm} | ${SEO_DEFAULTS.siteName}`;
+}
+
+/** Open Graph / meta description: excerpt, community, site, one trust line. */
 export function postDescription(post: Post): string {
-  const fromContent = post.content ? stripToPlainText(post.content, 220) : '';
-  const comm = post.community?.name ? ` in o/${post.community.name}` : '';
-  const base = fromContent || post.title;
-  const suffix = ` Discussion for orthopedic and spine professionals.${comm}`;
-  const combined = `${base}${suffix}`;
-  return combined.length > 320 ? `${combined.slice(0, 317)}…` : combined;
+  const excerpt = post.content ? stripToPlainText(post.content, 200) : '';
+  const lead = excerpt ? excerpt : post.title;
+  const communityLabel = post.community?.name ? `o/${post.community.name}` : '';
+  const parts = [truncateForMeta(lead, 240)];
+  if (communityLabel) parts.push(communityLabel);
+  parts.push(SEO_DEFAULTS.siteName);
+  parts.push('Peer discussion for orthopedic and spine specialists.');
+  const combined = parts.join(' · ');
+  return combined.length > 300 ? `${combined.slice(0, 297)}…` : combined;
 }
 
 export function postOgImage(post: Post): string | undefined {
@@ -54,7 +73,18 @@ export function postOgImage(post: Post): string | undefined {
     const url = a.optimizedUrl || a.cloudinaryUrl || a.thumbnailUrl || a.path;
     if (url && /^https?:\/\//i.test(url)) return url;
   }
+  for (const a of atts) {
+    const mime = a.mimeType ?? '';
+    if (!mime.startsWith('video/')) continue;
+    const url = a.thumbnailUrl || a.cloudinaryUrl || a.path;
+    if (url && /^https?:\/\//i.test(url)) return url;
+  }
   return undefined;
+}
+
+/** Absolute URL for default share image (square logo; use with summary card, not large_image). */
+export function defaultShareOgImageUrl(): string {
+  return absoluteUrl('/brand-logo.png');
 }
 
 export function buildPostJsonLd(post: Post): Record<string, unknown> {

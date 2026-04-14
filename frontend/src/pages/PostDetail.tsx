@@ -12,7 +12,14 @@ import ShareButton from '../components/ShareButton';
 import AuthorVerificationsInline from '../components/AuthorVerificationsInline';
 import PostPollBlock from '../components/PostPollBlock';
 import { DocumentMeta } from '../components/DocumentMeta';
-import { buildPostJsonLd, postDescription, postOgImage, SEO_DEFAULTS } from '../lib/seo';
+import {
+  buildPostJsonLd,
+  defaultShareOgImageUrl,
+  formatPostShareHeadline,
+  postDescription,
+  postOgImage,
+  SEO_DEFAULTS,
+} from '../lib/seo';
 import MarkdownContent from '../components/MarkdownContent';
 import PostDeviceDisclaimer from '../components/PostDeviceDisclaimer';
 import PostAttachments from '../components/PostAttachments';
@@ -96,7 +103,29 @@ const PostDetail: React.FC = () => {
 
   const postJsonLd = useMemo(() => (post ? buildPostJsonLd(post) : null), [post]);
   const metaDescription = useMemo(() => (post ? postDescription(post) : ''), [post]);
-  const ogImage = useMemo(() => (post ? postOgImage(post) : undefined), [post]);
+  const primaryOgImage = useMemo(() => (post ? postOgImage(post) : undefined), [post]);
+  const shareOgImage = useMemo(
+    () => primaryOgImage ?? defaultShareOgImageUrl(),
+    [primaryOgImage]
+  );
+  const twitterCard = primaryOgImage ? 'summary_large_image' : 'summary';
+  const shareArticleMeta = useMemo(() => {
+    if (!post) return null;
+    const authorName = post.author
+      ? [post.author.firstName, post.author.lastName].filter(Boolean).join(' ').trim() || post.author.username
+      : undefined;
+    return {
+      publishedTime: post.createdAt,
+      modifiedTime: post.updatedAt || post.createdAt,
+      section: post.community?.name,
+      authorName,
+    };
+  }, [post]);
+  const ogImageAltText = useMemo(() => {
+    if (!post) return '';
+    const c = post.community?.name ? ` · o/${post.community.name}` : '';
+    return `${post.title}${c}`.slice(0, 200);
+  }, [post]);
 
   // Create comment mutation with optimistic updates (Reddit-style)
   const createCommentMutation = useMutation({
@@ -417,11 +446,15 @@ const PostDetail: React.FC = () => {
   return (
     <div className="mx-auto min-w-0 max-w-6xl px-3 sm:px-4 py-4 sm:py-6">
       <DocumentMeta
-        title={post.title}
+        title={formatPostShareHeadline(post)}
+        titleExact
         description={metaDescription || SEO_DEFAULTS.description}
         canonicalPath={`/post/${post.id}`}
         ogType="article"
-        ogImage={ogImage}
+        ogImage={shareOgImage}
+        ogImageAlt={ogImageAltText || post.title}
+        twitterCard={twitterCard}
+        articleMeta={shareArticleMeta}
         jsonLd={postJsonLd}
       />
       <div className="flex flex-col lg:flex-row gap-4 lg:gap-6">

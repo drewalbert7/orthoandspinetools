@@ -18,6 +18,7 @@ import uploadRoutes from './routes/upload';
 import karmaRoutes from './routes/karma';
 import moderationRoutes from './routes/moderation';
 import notificationRoutes from './routes/notifications';
+import ogPreviewRoutes from './routes/ogPreview';
 
 // Import middleware
 import { errorHandler } from './middleware/errorHandler';
@@ -83,7 +84,11 @@ const limiter = rateLimit({
   standardHeaders: true,
   legacyHeaders: false,
   skip: (req) => {
-    return req.path === '/api/health' || req.path === '/health';
+    return (
+      req.path === '/api/health' ||
+      req.path === '/health' ||
+      req.path.startsWith('/api/og/')
+    );
   },
 });
 app.use(limiter);
@@ -131,6 +136,9 @@ app.get('/health', (req, res) => {
 
 // Static file serving for uploads
 app.use('/uploads', express.static('uploads'));
+
+// Link-preview HTML for social crawlers (used by nginx rewrite for /post/:id)
+app.use('/api/og', ogPreviewRoutes);
 
 // API routes
 app.use('/api/auth', authRoutes);
