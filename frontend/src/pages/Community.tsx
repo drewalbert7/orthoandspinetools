@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { useParams, Link, useSearchParams } from 'react-router-dom';
+import { useParams, Link, useSearchParams, useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { apiService, Post, Community, CommunityTag } from '../services/apiService';
 import VoteButton from '../components/VoteButton';
@@ -9,10 +9,10 @@ import PostAttachments from '../components/PostAttachments';
 import PostPollBlock from '../components/PostPollBlock';
 import AuthorVerificationsInline from '../components/AuthorVerificationsInline';
 import MarkdownContent from '../components/MarkdownContent';
-import PostDeviceDisclaimer from '../components/PostDeviceDisclaimer';
 import FeedPostCard from '../components/FeedPostCard';
 import { DocumentMeta } from '../components/DocumentMeta';
 import { buildCommunityJsonLd, SEO_DEFAULTS, stripToPlainText } from '../lib/seo';
+import { navigateToPostFromFeedCardBackground } from '../lib/navigatePostFromFeedCard';
 
 const SORT_OPTIONS = [
   { value: 'newest' as const, label: 'New' },
@@ -47,6 +47,7 @@ function linkHostname(url: string): string {
 
 const CommunityPage: React.FC = () => {
   const { slug } = useParams<{ slug: string }>();
+  const navigate = useNavigate();
   const { user } = useAuth();
   const [searchParams, setSearchParams] = useSearchParams();
   const tagFilter = (searchParams.get('tag') || '').trim();
@@ -412,58 +413,63 @@ const CommunityPage: React.FC = () => {
                     />
                   </div>
                   <div className="flex-1 min-w-0 flex flex-col">
-                    <div className="px-3 sm:px-4 pt-3 pb-1">
-                      <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-gray-500">
-                        <span className="hidden sm:inline text-gray-400">o/{community.name}</span>
-                        <span className="hidden sm:inline text-gray-300">·</span>
-                        <span className="inline-flex items-center gap-x-1 flex-wrap">
-                          <span className="text-gray-500">u/{post.author?.username ?? 'unknown'}</span>
-                          <AuthorVerificationsInline author={post.author} />
-                        </span>
-                        <span className="text-gray-300">·</span>
-                        <time dateTime={post.createdAt}>{formatRelativeTime(post.createdAt)}</time>
-                      </div>
-                      <h2 className="mt-1.5 text-base sm:text-lg font-semibold text-gray-900 leading-snug [overflow-wrap:anywhere]">
-                        <Link to={`/post/${post.id}`} className="hover:text-blue-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 rounded">
-                          {post.title}
-                        </Link>
-                      </h2>
-                      {post.type === 'link' && post.linkUrl && (
-                        <a
-                          href={post.linkUrl}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="mt-1 inline-flex items-center gap-1 text-sm text-blue-600 hover:text-blue-800 max-w-full"
-                        >
-                          <span className="truncate">{linkHostname(post.linkUrl)}</span>
-                          <svg className="w-3.5 h-3.5 shrink-0 opacity-70" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden>
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
-                          </svg>
-                        </a>
-                      )}
-                    </div>
-                    <div className="px-3 sm:px-4 pb-2">
-                      <PostDeviceDisclaimer post={post} variant="compact" className="mb-2" />
-                      {post.content ? (
-                        <MarkdownContent lineClamp={3} className="text-sm text-gray-700 [overflow-wrap:anywhere]">
-                          {post.content}
-                        </MarkdownContent>
-                      ) : null}
-                      {post.type === 'poll' && Array.isArray(post.pollOptions) && (
-                        <div className="mt-2">
-                          <PostPollBlock
-                            postId={post.id}
-                            pollOptions={post.pollOptions}
-                            pollEndsAt={post.pollEndsAt}
-                            pollVoteCounts={post.pollVoteCounts}
-                            userPollVoteIndex={post.userPollVoteIndex}
-                            pollClosed={post.pollClosed}
-                            compact
-                          />
+                    <div
+                      role="presentation"
+                      className="cursor-pointer min-h-0 flex flex-col flex-1"
+                      onClick={(e) => navigateToPostFromFeedCardBackground(e, navigate, post.id)}
+                    >
+                      <div className="px-3 sm:px-4 pt-3 pb-1">
+                        <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-gray-500">
+                          <span className="hidden sm:inline text-gray-400">o/{community.name}</span>
+                          <span className="hidden sm:inline text-gray-300">·</span>
+                          <span className="inline-flex items-center gap-x-1 flex-wrap">
+                            <span className="text-gray-500">u/{post.author?.username ?? 'unknown'}</span>
+                            <AuthorVerificationsInline author={post.author} />
+                          </span>
+                          <span className="text-gray-300">·</span>
+                          <time dateTime={post.createdAt}>{formatRelativeTime(post.createdAt)}</time>
                         </div>
-                      )}
-                      <div className="mt-2">
-                        <PostAttachments attachments={post.attachments ?? []} postId={post.id} />
+                        <h2 className="mt-1.5 text-base sm:text-lg font-semibold text-gray-900 leading-snug [overflow-wrap:anywhere]">
+                          <Link to={`/post/${post.id}`} className="hover:text-blue-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 rounded">
+                            {post.title}
+                          </Link>
+                        </h2>
+                        {post.type === 'link' && post.linkUrl && (
+                          <a
+                            href={post.linkUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="mt-1 inline-flex items-center gap-1 text-sm text-blue-600 hover:text-blue-800 max-w-full"
+                          >
+                            <span className="truncate">{linkHostname(post.linkUrl)}</span>
+                            <svg className="w-3.5 h-3.5 shrink-0 opacity-70" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden>
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                            </svg>
+                          </a>
+                        )}
+                      </div>
+                      <div className="px-3 sm:px-4 pb-2">
+                        {post.content ? (
+                          <MarkdownContent lineClamp={3} className="text-sm text-gray-700 [overflow-wrap:anywhere]">
+                            {post.content}
+                          </MarkdownContent>
+                        ) : null}
+                        {post.type === 'poll' && Array.isArray(post.pollOptions) && (
+                          <div className="mt-2">
+                            <PostPollBlock
+                              postId={post.id}
+                              pollOptions={post.pollOptions}
+                              pollEndsAt={post.pollEndsAt}
+                              pollVoteCounts={post.pollVoteCounts}
+                              userPollVoteIndex={post.userPollVoteIndex}
+                              pollClosed={post.pollClosed}
+                              compact
+                            />
+                          </div>
+                        )}
+                        <div className="mt-2">
+                          <PostAttachments attachments={post.attachments ?? []} postId={post.id} />
+                        </div>
                       </div>
                     </div>
                     <div className="mt-auto flex flex-wrap items-center gap-1 sm:gap-2 px-2 sm:px-3 py-2 border-t border-gray-100 bg-white">

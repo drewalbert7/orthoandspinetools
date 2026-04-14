@@ -14,6 +14,9 @@ type DocumentMetaProps = {
   canonicalPath?: string;
   ogType?: 'website' | 'article';
   ogImage?: string;
+  /** When set with ogImage (e.g. fixed-size OG delivery URL), helps platforms size previews. */
+  ogImageWidth?: number;
+  ogImageHeight?: number;
   /** Shown as og:image:alt and helps accessibility in link previews. */
   ogImageAlt?: string;
   /** When set, overrides the default rule (large image only when `ogImage` is set). */
@@ -52,6 +55,8 @@ function clearOptionalShareMeta() {
   removeMeta('property', 'article:section');
   removeMeta('property', 'article:author');
   removeMeta('property', 'og:image:alt');
+  removeMeta('property', 'og:image:width');
+  removeMeta('property', 'og:image:height');
   removeMeta('property', 'og:locale');
 }
 
@@ -61,6 +66,8 @@ export function DocumentMeta({
   canonicalPath,
   ogType = 'website',
   ogImage,
+  ogImageWidth,
+  ogImageHeight,
   ogImageAlt,
   twitterCard,
   locale = 'en_US',
@@ -103,6 +110,14 @@ export function DocumentMeta({
 
     if (ogImage && ogImageAlt?.trim()) {
       upsertMeta('property', 'og:image:alt', ogImageAlt.trim());
+    }
+
+    if (ogImage && typeof ogImageWidth === 'number' && typeof ogImageHeight === 'number') {
+      upsertMeta('property', 'og:image:width', String(ogImageWidth));
+      upsertMeta('property', 'og:image:height', String(ogImageHeight));
+    } else {
+      removeMeta('property', 'og:image:width');
+      removeMeta('property', 'og:image:height');
     }
 
     if (articleMeta?.publishedTime?.trim()) {
@@ -172,6 +187,8 @@ export function DocumentMeta({
     canonicalPath,
     ogType,
     ogImage,
+    ogImageWidth,
+    ogImageHeight,
     ogImageAlt,
     twitterCard,
     locale,

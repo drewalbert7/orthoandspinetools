@@ -15,6 +15,7 @@ import Popular from './pages/Popular';
 import Startups from './pages/Startups';
 import Cases from './pages/Cases';
 import PostDetail from './pages/PostDetail';
+import EditPost from './pages/EditPost';
 import CreatePost from './pages/CreatePost';
 import Profile from './pages/Profile';
 import ProfileSettings from './pages/ProfileSettings';
@@ -74,6 +75,7 @@ function App() {
                   <Route path="/search" element={<Search />} />
                   <Route path="/login" element={<LoginForm />} />
                   <Route path="/register" element={<RegisterForm />} />
+                  <Route path="/post/:id/edit" element={<EditPost />} />
                   <Route path="/post/:id" element={<PostDetail />} />
                   {/* ⚠️ CRITICAL ROUTE: CreatePost page - DO NOT REMOVE without backup */}
                   <Route path="/create-post" element={<CreatePost />} />

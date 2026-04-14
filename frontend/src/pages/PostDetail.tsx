@@ -21,7 +21,6 @@ import {
   SEO_DEFAULTS,
 } from '../lib/seo';
 import MarkdownContent from '../components/MarkdownContent';
-import PostDeviceDisclaimer from '../components/PostDeviceDisclaimer';
 import PostAttachments from '../components/PostAttachments';
 
 const Z_POST_MORE_BACKDROP = 11460;
@@ -48,6 +47,11 @@ const PostDetail: React.FC = () => {
     queryFn: () => apiService.getPost(id!),
     enabled: !!id,
   });
+
+  const canEditPost = useMemo(
+    () => Boolean(user && post && !post.isLocked && !post.isDeleted && post.authorId === user.id),
+    [user, post]
+  );
 
   // Fetch comments
   const { data: comments, isLoading: commentsLoading } = useQuery({
@@ -124,7 +128,7 @@ const PostDetail: React.FC = () => {
   const ogImageAltText = useMemo(() => {
     if (!post) return '';
     const c = post.community?.name ? ` · o/${post.community.name}` : '';
-    return `${post.title}${c}`.slice(0, 200);
+    return `Preview image for discussion: ${post.title}${c}`.slice(0, 200);
   }, [post]);
 
   // Create comment mutation with optimistic updates (Reddit-style)
@@ -452,6 +456,9 @@ const PostDetail: React.FC = () => {
         canonicalPath={`/post/${post.id}`}
         ogType="article"
         ogImage={shareOgImage}
+        {...(primaryOgImage && /c_fill,w_1200,h_630/i.test(shareOgImage)
+          ? { ogImageWidth: 1200, ogImageHeight: 630 }
+          : {})}
         ogImageAlt={ogImageAltText || post.title}
         twitterCard={twitterCard}
         articleMeta={shareArticleMeta}
@@ -560,6 +567,30 @@ const PostDetail: React.FC = () => {
                         aria-label="Post options"
                         onClick={(e) => e.stopPropagation()}
                       >
+                        {canEditPost && id ? (
+                          <>
+                            <button
+                              type="button"
+                              className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-600"
+                              role="menuitem"
+                              onClick={() => {
+                                setShowMoreOptions(false);
+                                navigate(`/post/${id}/edit`);
+                              }}
+                            >
+                              <svg className="w-4 h-4 mr-3 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                  strokeWidth={2}
+                                  d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
+                                />
+                              </svg>
+                              Edit post
+                            </button>
+                            <div className="border-t border-gray-100" />
+                          </>
+                        ) : null}
                         <button
                           type="button"
                           className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-600"
@@ -603,8 +634,6 @@ const PostDetail: React.FC = () => {
               >
                 {post.title}
               </h1>
-
-              <PostDeviceDisclaimer post={post} variant="full" className="mb-4" />
 
               {post.type === 'link' && post.linkUrl && (
                 <a

@@ -52,32 +52,64 @@ export function formatPostShareHeadline(post: Post): string {
   return `${withComm} | ${SEO_DEFAULTS.siteName}`;
 }
 
-/** Open Graph / meta description: excerpt, community, site, one trust line. */
+const IMAGE_EXT_IN_URL = /\.(jpe?g|png|gif|webp|avif|bmp|heic)(\?|#|$)/i;
+
+/** Prefer 1200×630 delivery for Cloudinary image URLs (link-preview friendly). */
+export function preferredCloudinaryOgDeliveryUrl(url: string): string {
+  const u = url.trim();
+  if (!/\/image\/upload\//i.test(u)) return u;
+  if (/\/image\/upload\/[^/]*\b(c_fill|w_1200|h_630)\b/i.test(u)) return u;
+  if (/\/image\/upload\/s--/i.test(u)) return u;
+  if (!/\/image\/upload\/v\d+\//i.test(u) && !/\/image\/upload\/[\w.-]+\/v\d+\//i.test(u)) return u;
+  return u.replace(/\/image\/upload\//i, '/image/upload/c_fill,w_1200,h_630,q_auto,f_auto/');
+}
+
+function urlLooksLikeRasterImage(url: string): boolean {
+  const lower = url.toLowerCase();
+  if (/\/image\/upload\//i.test(lower)) return true;
+  return IMAGE_EXT_IN_URL.test(lower);
+}
+
+function resolveAttachmentMediaUrl(url: string | undefined | null): string | undefined {
+  if (!url) return undefined;
+  const u = url.trim();
+  if (/^https?:\/\//i.test(u)) return preferredCloudinaryOgDeliveryUrl(u);
+  if (u.startsWith('/')) return preferredCloudinaryOgDeliveryUrl(`${getSiteOrigin()}${u}`);
+  return undefined;
+}
+
+/** Open Graph / meta description: excerpt, community, author, site (≤300 chars). */
 export function postDescription(post: Post): string {
-  const excerpt = post.content ? stripToPlainText(post.content, 200) : '';
-  const lead = excerpt ? excerpt : post.title;
-  const communityLabel = post.community?.name ? `o/${post.community.name}` : '';
-  const parts = [truncateForMeta(lead, 240)];
-  if (communityLabel) parts.push(communityLabel);
+  const excerpt = post.content ? stripToPlainText(post.content, 280) : '';
+  const lead = excerpt || post.title;
+  const body = lead.length > 200 ? `${lead.slice(0, 197).trimEnd()}…` : lead;
+  const comm = post.community?.name ? `o/${post.community.name}` : '';
+  const author = post.author?.username ? `u/${post.author.username}` : '';
+  const parts = [body];
+  if (comm) parts.push(comm);
+  if (author) parts.push(author);
   parts.push(SEO_DEFAULTS.siteName);
-  parts.push('Peer discussion for orthopedic and spine specialists.');
-  const combined = parts.join(' · ');
-  return combined.length > 300 ? `${combined.slice(0, 297)}…` : combined;
+  let out = parts.join(' · ');
+  if (out.length > 300) out = `${out.slice(0, 297).trimEnd()}…`;
+  return out;
 }
 
 export function postOgImage(post: Post): string | undefined {
   const atts = post.attachments ?? [];
   for (const a of atts) {
-    const mime = a.mimeType ?? '';
-    if (!mime.startsWith('image/')) continue;
-    const url = a.optimizedUrl || a.cloudinaryUrl || a.thumbnailUrl || a.path;
-    if (url && /^https?:\/\//i.test(url)) return url;
+    const mime = (a.mimeType || '').toLowerCase();
+    const raw = a.optimizedUrl || a.cloudinaryUrl || a.thumbnailUrl || a.path;
+    const url = resolveAttachmentMediaUrl(raw);
+    if (!url) continue;
+    if (mime.startsWith('image/') || (!mime.startsWith('video/') && urlLooksLikeRasterImage(url))) {
+      return url;
+    }
   }
   for (const a of atts) {
-    const mime = a.mimeType ?? '';
+    const mime = (a.mimeType || '').toLowerCase();
     if (!mime.startsWith('video/')) continue;
-    const url = a.thumbnailUrl || a.cloudinaryUrl || a.path;
-    if (url && /^https?:\/\//i.test(url)) return url;
+    const url = resolveAttachmentMediaUrl(a.thumbnailUrl || a.cloudinaryUrl || a.path);
+    if (url) return url;
   }
   return undefined;
 }

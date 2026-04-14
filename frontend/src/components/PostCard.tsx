@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
 import { Post, apiService } from '../services/apiService';
 import ModerationMenu from './ModerationMenu';
@@ -8,8 +8,8 @@ import PostPollBlock from './PostPollBlock';
 import ShareButton from './ShareButton';
 import AuthorVerificationsInline from './AuthorVerificationsInline';
 import MarkdownContent from './MarkdownContent';
-import PostDeviceDisclaimer from './PostDeviceDisclaimer';
 import toast from 'react-hot-toast';
+import { navigateToPostFromFeedCardBackground } from '../lib/navigatePostFromFeedCard';
 
 interface PostCardProps {
   post: Post;
@@ -17,6 +17,7 @@ interface PostCardProps {
 }
 
 const PostCard: React.FC<PostCardProps> = ({ post, onVote }) => {
+  const navigate = useNavigate();
   const [isVoting, setIsVoting] = useState(false);
   const queryClient = useQueryClient();
 
@@ -163,71 +164,71 @@ const PostCard: React.FC<PostCardProps> = ({ post, onVote }) => {
             )}
           </div>
 
-          {/* Title - Larger and more prominent */}
-          <Link to={`/post/${post.id}`} className="block mb-2 md:mb-3">
-            <h2 className="text-base sm:text-lg md:text-xl font-semibold text-gray-900 hover:text-blue-700 transition-colors leading-snug break-words [overflow-wrap:anywhere]">
-              {post.title}
-            </h2>
-          </Link>
+          <div
+            role="presentation"
+            className="cursor-pointer min-h-0"
+            onClick={(e) => navigateToPostFromFeedCardBackground(e, navigate, post.id)}
+          >
+            <Link to={`/post/${post.id}`} className="block mb-2 md:mb-3">
+              <h2 className="text-base sm:text-lg md:text-xl font-semibold text-gray-900 hover:text-blue-700 transition-colors leading-snug break-words [overflow-wrap:anywhere]">
+                {post.title}
+              </h2>
+            </Link>
 
-          {post.type === 'link' && post.linkUrl && (
-            <a
-              href={post.linkUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              onClick={(e) => e.stopPropagation()}
-              className="inline-flex items-center gap-1.5 text-sm text-blue-600 hover:text-blue-800 hover:underline mb-2 break-all"
-            >
-              <span className="truncate max-w-[min(100%,14rem)]">{linkHostname || 'Link'}</span>
-              <svg className="w-3.5 h-3.5 shrink-0 opacity-70" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden>
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
-              </svg>
-            </a>
-          )}
+            {post.type === 'link' && post.linkUrl && (
+              <a
+                href={post.linkUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1.5 text-sm text-blue-600 hover:text-blue-800 hover:underline mb-2 break-all"
+              >
+                <span className="truncate max-w-[min(100%,14rem)]">{linkHostname || 'Link'}</span>
+                <svg className="w-3.5 h-3.5 shrink-0 opacity-70" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden>
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                </svg>
+              </a>
+            )}
 
-          <PostDeviceDisclaimer post={post} variant="compact" className="mb-2" />
+            {post.content && (
+              <MarkdownContent lineClamp={4} className="text-sm text-gray-800 mb-3 md:mb-4 [overflow-wrap:anywhere]">
+                {post.content}
+              </MarkdownContent>
+            )}
 
-          {/* Content Preview */}
-          {post.content && (
-            <MarkdownContent lineClamp={4} className="text-sm text-gray-800 mb-3 md:mb-4 [overflow-wrap:anywhere]">
-              {post.content}
-            </MarkdownContent>
-          )}
+            <PostAttachments attachments={post.attachments ?? []} postId={post.id} />
 
-          <PostAttachments attachments={post.attachments ?? []} postId={post.id} />
+            {post.type === 'poll' && Array.isArray(post.pollOptions) && (
+              <PostPollBlock
+                postId={post.id}
+                pollOptions={post.pollOptions}
+                pollEndsAt={post.pollEndsAt}
+                pollVoteCounts={post.pollVoteCounts}
+                userPollVoteIndex={post.userPollVoteIndex}
+                pollClosed={post.pollClosed}
+                compact
+              />
+            )}
 
-          {post.type === 'poll' && Array.isArray(post.pollOptions) && (
-            <PostPollBlock
-              postId={post.id}
-              pollOptions={post.pollOptions}
-              pollEndsAt={post.pollEndsAt}
-              pollVoteCounts={post.pollVoteCounts}
-              userPollVoteIndex={post.userPollVoteIndex}
-              pollClosed={post.pollClosed}
-              compact
-            />
-          )}
-
-          {/* Tags */}
-          {post.tags && Array.isArray(post.tags) && post.tags.length > 0 && (
-            <div className="flex flex-wrap gap-2 mb-3">
-              {post.tags
-                .filter((postTag) => postTag && postTag.tag && postTag.tag.name) // Filter out invalid tags
-                .map((postTag) => (
-                  <span
-                    key={postTag.id || `tag-${postTag.tag.id}`}
-                    className="px-2 py-0.5 rounded-full text-xs font-medium"
-                    style={
-                      postTag.tag.color && /^#[0-9A-Fa-f]{6}$/.test(postTag.tag.color)
-                        ? { backgroundColor: postTag.tag.color, color: 'white' }
-                        : { backgroundColor: '#E5E7EB', color: '#374151' }
-                    }
-                  >
-                    {postTag.tag.name}
-                  </span>
-                ))}
-            </div>
-          )}
+            {post.tags && Array.isArray(post.tags) && post.tags.length > 0 && (
+              <div className="flex flex-wrap gap-2 mb-3">
+                {post.tags
+                  .filter((postTag) => postTag && postTag.tag && postTag.tag.name)
+                  .map((postTag) => (
+                    <span
+                      key={postTag.id || `tag-${postTag.tag.id}`}
+                      className="px-2 py-0.5 rounded-full text-xs font-medium"
+                      style={
+                        postTag.tag.color && /^#[0-9A-Fa-f]{6}$/.test(postTag.tag.color)
+                          ? { backgroundColor: postTag.tag.color, color: 'white' }
+                          : { backgroundColor: '#E5E7EB', color: '#374151' }
+                      }
+                    >
+                      {postTag.tag.name}
+                    </span>
+                  ))}
+              </div>
+            )}
+          </div>
 
           {/* Actions Bar - Reddit Style */}
           <div className="flex items-center space-x-4 text-xs">

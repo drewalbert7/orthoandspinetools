@@ -463,12 +463,20 @@ class ApiService {
     }
   }
 
-  async updatePost(id: string, postData: Partial<Post>): Promise<Post> {
+  async updatePost(
+    id: string,
+    postData: { title?: string; content?: string }
+  ): Promise<Post> {
     try {
       const response = await api.put(`/posts/${id}`, postData);
-      return response.data;
-    } catch (error: any) {
-      throw new Error(error.response?.data?.message || 'Failed to update post');
+      const raw = response.data;
+      const post = raw?.data ?? raw;
+      if (!post || typeof post !== 'object' || !('id' in post)) {
+        throw new Error('Invalid update-post response from server');
+      }
+      return normalizePostAttachments(post as Post);
+    } catch (error: unknown) {
+      throw new Error(apiErrorMessage(error, 'Failed to update post'));
     }
   }
 

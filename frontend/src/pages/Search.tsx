@@ -7,9 +7,10 @@ import PostAttachments from '../components/PostAttachments';
 import PostPollBlock from '../components/PostPollBlock';
 import AuthorVerificationsInline from '../components/AuthorVerificationsInline';
 import MarkdownContent from '../components/MarkdownContent';
-import PostDeviceDisclaimer from '../components/PostDeviceDisclaimer';
+import { navigateToPostFromFeedCardBackground } from '../lib/navigatePostFromFeedCard';
 
 function PostRow({ post }: { post: Post }) {
+  const navigate = useNavigate();
   return (
     <div className="bg-white border border-gray-200 p-3 mb-2 hover:border-gray-300">
       <div className="text-xs text-gray-500 mb-1">
@@ -22,43 +23,48 @@ function PostRow({ post }: { post: Post }) {
           <AuthorVerificationsInline author={post.author} />
         </span>
       </div>
-      <Link to={`/post/${post.id}`} className="block">
-        <h3 className="text-base font-medium text-gray-900 hover:text-blue-600">{post.title}</h3>
-      </Link>
-      {post.type === 'link' && post.linkUrl && (
-        <a
-          href={post.linkUrl}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="mt-1 line-clamp-1 break-all text-sm text-blue-600 hover:text-blue-800"
-        >
-          {(() => {
-            try {
-              return new URL(post.linkUrl).hostname.replace(/^www\./, '');
-            } catch {
-              return post.linkUrl;
-            }
-          })()}
-        </a>
-      )}
-      <PostDeviceDisclaimer post={post} variant="compact" className="mt-2" />
-      {post.content ? (
-        <MarkdownContent lineClamp={2} className="mt-1 text-sm text-gray-700 [overflow-wrap:anywhere]">
-          {post.content}
-        </MarkdownContent>
-      ) : null}
-      {post.type === 'poll' && Array.isArray(post.pollOptions) && (
-        <PostPollBlock
-          postId={post.id}
-          pollOptions={post.pollOptions}
-          pollEndsAt={post.pollEndsAt}
-          pollVoteCounts={post.pollVoteCounts}
-          userPollVoteIndex={post.userPollVoteIndex}
-          pollClosed={post.pollClosed}
-          compact
-        />
-      )}
-      <PostAttachments attachments={post.attachments ?? []} postId={post.id} />
+      <div
+        role="presentation"
+        className="cursor-pointer min-h-0"
+        onClick={(e) => navigateToPostFromFeedCardBackground(e, navigate, post.id)}
+      >
+        <Link to={`/post/${post.id}`} className="block">
+          <h3 className="text-base font-medium text-gray-900 hover:text-blue-600">{post.title}</h3>
+        </Link>
+        {post.type === 'link' && post.linkUrl && (
+          <a
+            href={post.linkUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="mt-1 line-clamp-1 break-all text-sm text-blue-600 hover:text-blue-800"
+          >
+            {(() => {
+              try {
+                return new URL(post.linkUrl).hostname.replace(/^www\./, '');
+              } catch {
+                return post.linkUrl;
+              }
+            })()}
+          </a>
+        )}
+        {post.content ? (
+          <MarkdownContent lineClamp={2} className="mt-1 text-sm text-gray-700 [overflow-wrap:anywhere]">
+            {post.content}
+          </MarkdownContent>
+        ) : null}
+        {post.type === 'poll' && Array.isArray(post.pollOptions) && (
+          <PostPollBlock
+            postId={post.id}
+            pollOptions={post.pollOptions}
+            pollEndsAt={post.pollEndsAt}
+            pollVoteCounts={post.pollVoteCounts}
+            userPollVoteIndex={post.userPollVoteIndex}
+            pollClosed={post.pollClosed}
+            compact
+          />
+        )}
+        <PostAttachments attachments={post.attachments ?? []} postId={post.id} />
+      </div>
       <div className="mt-2 pt-2 border-t border-gray-100">
         <VoteButton
           postId={post.id}

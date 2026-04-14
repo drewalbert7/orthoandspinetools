@@ -4,7 +4,6 @@ import { useAuth } from '../contexts/AuthContext';
 import { apiService } from '../services/apiService';
 import { Link } from 'react-router-dom';
 import MarkdownContent from '../components/MarkdownContent';
-import PostDeviceDisclaimer from '../components/PostDeviceDisclaimer';
 import toast from 'react-hot-toast';
 
 type TabType = 'users' | 'moderation' | 'communities' | 'analytics';
@@ -537,17 +536,6 @@ const AdminDashboard: React.FC = () => {
                                 {isLocked && <span className="ml-2 text-amber-700">Locked</span>}
                                 {isPinned && <span className="ml-2 text-blue-700">Pinned</span>}
                               </p>
-                              <PostDeviceDisclaimer
-                                post={{
-                                  title: post.title,
-                                  content: post.content ?? '',
-                                  type: post.type,
-                                  linkUrl: post.linkUrl ?? undefined,
-                                  tags: post.tags,
-                                }}
-                                variant="compact"
-                                className="mt-2"
-                              />
                               <p className="text-sm text-gray-500 mt-2">
                                 {post._count?.comments || 0} comments • {post._count?.votes || 0} votes
                               </p>

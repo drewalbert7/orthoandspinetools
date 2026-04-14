@@ -1,6 +1,6 @@
 import React, { useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { apiService, Post } from '../services/apiService';
 import { DocumentMeta } from '../components/DocumentMeta';
 import { buildHomeJsonLd, SEO_DEFAULTS } from '../lib/seo';
@@ -11,10 +11,11 @@ import PostPollBlock from '../components/PostPollBlock';
 import ShareButton from '../components/ShareButton';
 import AuthorVerificationsInline from '../components/AuthorVerificationsInline';
 import MarkdownContent from '../components/MarkdownContent';
-import PostDeviceDisclaimer from '../components/PostDeviceDisclaimer';
+import { navigateToPostFromFeedCardBackground } from '../lib/navigatePostFromFeedCard';
 
 // PostCard component for displaying individual posts
 const PostCard: React.FC<{ post: Post }> = ({ post }) => {
+  const navigate = useNavigate();
   const formatTimeAgo = (date: Date) => {
     const now = new Date();
     const diffInMs = now.getTime() - date.getTime();
@@ -64,49 +65,52 @@ const PostCard: React.FC<{ post: Post }> = ({ post }) => {
           <span>{formatTimeAgo(new Date(post.createdAt))}</span>
         </div>
 
-        {/* Post Title and Content */}
-        <Link to={`/post/${post.id}`} className="block">
-          <h3 className="text-lg font-medium text-gray-900 mb-2 hover:text-blue-600 transition-colors leading-tight">
-            {post.title}
-          </h3>
-        </Link>
-        {post.type === 'link' && post.linkUrl && (
-          <a
-            href={post.linkUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="mb-2 line-clamp-1 break-all text-sm text-blue-600 hover:text-blue-800"
-          >
-            {(() => {
-              try {
-                return new URL(post.linkUrl).hostname.replace(/^www\./, '');
-              } catch {
-                return post.linkUrl;
-              }
-            })()}
-          </a>
-        )}
-        <PostDeviceDisclaimer post={post} variant="compact" className="mb-2" />
-        {post.content ? (
-          <MarkdownContent lineClamp={3} className="mb-3 text-sm text-gray-800 [overflow-wrap:anywhere]">
-            {post.content}
-          </MarkdownContent>
-        ) : null}
+        <div
+          role="presentation"
+          className="cursor-pointer min-h-0"
+          onClick={(e) => navigateToPostFromFeedCardBackground(e, navigate, post.id)}
+        >
+          <Link to={`/post/${post.id}`} className="block">
+            <h3 className="text-lg font-medium text-gray-900 mb-2 hover:text-blue-600 transition-colors leading-tight">
+              {post.title}
+            </h3>
+          </Link>
+          {post.type === 'link' && post.linkUrl && (
+            <a
+              href={post.linkUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="mb-2 line-clamp-1 break-all text-sm text-blue-600 hover:text-blue-800"
+            >
+              {(() => {
+                try {
+                  return new URL(post.linkUrl).hostname.replace(/^www\./, '');
+                } catch {
+                  return post.linkUrl;
+                }
+              })()}
+            </a>
+          )}
+          {post.content ? (
+            <MarkdownContent lineClamp={3} className="mb-3 text-sm text-gray-800 [overflow-wrap:anywhere]">
+              {post.content}
+            </MarkdownContent>
+          ) : null}
 
-        {post.type === 'poll' && Array.isArray(post.pollOptions) && (
-          <PostPollBlock
-            postId={post.id}
-            pollOptions={post.pollOptions}
-            pollEndsAt={post.pollEndsAt}
-            pollVoteCounts={post.pollVoteCounts}
-            userPollVoteIndex={post.userPollVoteIndex}
-            pollClosed={post.pollClosed}
-            compact
-          />
-        )}
+          {post.type === 'poll' && Array.isArray(post.pollOptions) && (
+            <PostPollBlock
+              postId={post.id}
+              pollOptions={post.pollOptions}
+              pollEndsAt={post.pollEndsAt}
+              pollVoteCounts={post.pollVoteCounts}
+              userPollVoteIndex={post.userPollVoteIndex}
+              pollClosed={post.pollClosed}
+              compact
+            />
+          )}
 
-        {/* Attachments Preview - Reddit Style */}
-        <PostAttachments attachments={post.attachments ?? []} postId={post.id} />
+          <PostAttachments attachments={post.attachments ?? []} postId={post.id} />
+        </div>
 
         {/* Action Bar with Voting - Reddit Style */}
         <div className="flex items-center space-x-2 text-xs text-gray-500 pt-2 border-t border-gray-100">

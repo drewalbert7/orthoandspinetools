@@ -29,6 +29,7 @@ import toast from 'react-hot-toast';
 import MarkdownEditor, { MarkdownEditorHandle } from '../components/MarkdownEditor';
 import PostEditorToolbar from '../components/PostEditorToolbar';
 import { CASE_TOPIC_DISPLAY_NAME } from '../lib/topicTags';
+import { tryApplyUrlPasteToTextarea } from '../lib/pasteUrlAsMarkdown';
 
 
 type PostType = 'text' | 'images';
@@ -77,7 +78,6 @@ const CreatePost: React.FC = () => {
   const communityButtonRef = useRef<HTMLButtonElement>(null);
   const communityMenuPortalRef = useRef<HTMLDivElement>(null);
   const editorRef = useRef<MarkdownEditorHandle | null>(null);
-  const imagesEditorRef = useRef<MarkdownEditorHandle | null>(null);
   const bodyTextareaRef = useRef<HTMLTextAreaElement | null>(null);
   const appliedCommunityParamRef = useRef<string | null>(null);
 
@@ -662,11 +662,7 @@ const CreatePost: React.FC = () => {
                   key={tab.id}
                   type="button"
                   onClick={() => {
-                    const next = tab.id as PostType;
-                    if (postType === 'images' && next !== 'images') {
-                      setUploadedMedia([]);
-                    }
-                    setPostType(next);
+                    setPostType(tab.id as PostType);
                   }}
                   className={`px-3 sm:px-4 py-2 text-xs sm:text-sm font-medium whitespace-nowrap flex-shrink-0 ${
                     postType === tab.id
@@ -810,8 +806,14 @@ const CreatePost: React.FC = () => {
           </div>
         )}
 
-        {/* Content based on post type */}
-        {(postType === 'text' || isLaunchMode) && (
+        {!isLaunchMode && postType === 'images' && (
+          <div className="mb-4 sm:mb-6">
+            <div className="space-y-4 sm:space-y-6">{renderMediaUploadZone()}</div>
+          </div>
+        )}
+
+        {/* One body editor for Text and Images tabs so title/body survive tab switches */}
+        {(isLaunchMode || postType === 'text' || postType === 'images') && (
           <div className="mb-4 sm:mb-6 rounded-lg border border-gray-200 bg-white shadow-sm overflow-hidden">
             <div className="border-b border-gray-100 bg-gray-50/80 px-2 pt-2 pb-1">
               <PostEditorToolbar
@@ -821,6 +823,7 @@ const CreatePost: React.FC = () => {
                 getEditor={() => editorRef.current}
                 bodyTextareaRef={bodyTextareaRef}
                 onTogglePlainMarkdown={() => setIsMarkdownMode(!isMarkdownMode)}
+                compact={!isLaunchMode && postType === 'images'}
               />
             </div>
             <div className="relative">
@@ -829,10 +832,13 @@ const CreatePost: React.FC = () => {
                   ref={bodyTextareaRef}
                   value={body}
                   onChange={(e) => setBody(e.target.value)}
+                  onPaste={(e) => tryApplyUrlPasteToTextarea(e, body, setBody)}
                   placeholder={
                     isLaunchMode
                       ? 'Tell the community what you built — problem, solution, who it’s for (Markdown supported) *'
-                      : 'Body text (optional) — Markdown supported'
+                      : postType === 'images'
+                        ? 'Caption or description (optional) — Markdown supported'
+                        : 'Body text (optional) — Markdown supported'
                   }
                   rows={10}
                   spellCheck
@@ -847,7 +853,9 @@ const CreatePost: React.FC = () => {
                   placeholder={
                     isLaunchMode
                       ? 'Tell the community what you built — problem, solution, who it’s for *'
-                      : 'Body text (optional)'
+                      : postType === 'images'
+                        ? 'Caption or description (optional)'
+                        : 'Body text (optional)'
                   }
                   rows={8}
                   className="w-full resize-none text-sm sm:text-base !border-0 !rounded-none focus:!ring-inset"
@@ -864,64 +872,6 @@ const CreatePost: React.FC = () => {
                   }}
                 />
               )}
-            </div>
-          </div>
-        )}
-
-        {postType === 'images' && (
-          <div className="mb-4 sm:mb-6">
-            <div className="space-y-4 sm:space-y-6">
-              {/* Upload Area */}
-              {renderMediaUploadZone()}
-
-              {/* Text Editor Section */}
-              <div className="rounded-lg border border-gray-200 bg-white shadow-sm overflow-hidden">
-                <div className="border-b border-gray-100 bg-gray-50/80 px-2 pt-2 pb-1">
-                  <PostEditorToolbar
-                    isPlainMarkdown={isMarkdownMode}
-                    body={body}
-                    setBody={setBody}
-                    getEditor={() => imagesEditorRef.current}
-                    bodyTextareaRef={bodyTextareaRef}
-                    onTogglePlainMarkdown={() => setIsMarkdownMode(!isMarkdownMode)}
-                    compact
-                  />
-                </div>
-                <div className="relative">
-                  {isMarkdownMode ? (
-                    <textarea
-                      ref={bodyTextareaRef}
-                      value={body}
-                      onChange={(e) => setBody(e.target.value)}
-                      placeholder="Caption or description (optional) — Markdown supported"
-                      rows={10}
-                      spellCheck
-                      autoComplete="off"
-                      className="w-full min-h-[12rem] px-4 py-3 border-0 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-blue-500 text-sm sm:text-base resize-y touch-manipulation"
-                    />
-                  ) : (
-                    <MarkdownEditor
-                      ref={imagesEditorRef}
-                      value={body}
-                      onChange={setBody}
-                      placeholder="Caption or description (optional)"
-                      rows={8}
-                      className="w-full resize-none text-sm sm:text-base !border-0 !rounded-none focus:!ring-inset"
-                      onKeyDown={(e) => {
-                        if (e.ctrlKey || e.metaKey) {
-                          if (e.key === 'b') {
-                            e.preventDefault();
-                            imagesEditorRef.current?.toggleInlineFormat('bold');
-                          } else if (e.key === 'i') {
-                            e.preventDefault();
-                            imagesEditorRef.current?.toggleInlineFormat('italic');
-                          }
-                        }
-                      }}
-                    />
-                  )}
-                </div>
-              </div>
             </div>
           </div>
         )}

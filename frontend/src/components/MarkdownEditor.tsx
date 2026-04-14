@@ -1,5 +1,6 @@
 import React, { useRef, useEffect, useState, useCallback, forwardRef, useImperativeHandle } from 'react';
 import { marked } from 'marked';
+import { clipboardTextAsSingleHttpUrl, markdownLinkLabelForUrl } from '../lib/pasteUrlAsMarkdown';
 
 interface MarkdownEditorProps {
   value: string;
@@ -459,29 +460,43 @@ const MarkdownEditor = forwardRef<MarkdownEditorHandle, MarkdownEditorProps>(({
     [flushAfterDelete]
   );
 
-  // Handle paste - get plain text
-  const handlePaste = useCallback((e: React.ClipboardEvent<HTMLDivElement>) => {
-    e.preventDefault();
-    const text = e.clipboardData.getData('text/plain');
-    const selection = window.getSelection();
-    
-    if (!selection || selection.rangeCount === 0) return;
-    
-    const range = selection.getRangeAt(0);
-    range.deleteContents();
-    const textNode = document.createTextNode(text);
-    range.insertNode(textNode);
-    range.setStartAfter(textNode);
-    range.collapse(true);
-    selection.removeAllRanges();
-    selection.addRange(range);
-    
-    // Update value
-    if (editorRef.current) {
-      const newText = getTextFromHtml(editorRef.current.innerHTML);
-      onChange(newText);
-    }
-  }, [onChange]);
+  const handlePaste = useCallback(
+    (e: React.ClipboardEvent<HTMLDivElement>) => {
+      e.preventDefault();
+      const text = e.clipboardData.getData('text/plain');
+      const selection = window.getSelection();
+
+      if (!selection || selection.rangeCount === 0 || !editorRef.current) return;
+
+      const range = selection.getRangeAt(0);
+      range.deleteContents();
+
+      const url = clipboardTextAsSingleHttpUrl(text);
+      let inserted: Node;
+      if (url) {
+        const a = document.createElement('a');
+        a.href = url;
+        a.textContent = markdownLinkLabelForUrl(url);
+        a.rel = 'noopener noreferrer';
+        inserted = a;
+      } else {
+        inserted = document.createTextNode(text);
+      }
+      range.insertNode(inserted);
+      range.setStartAfter(inserted);
+      range.collapse(true);
+      selection.removeAllRanges();
+      selection.addRange(range);
+
+      const el = editorRef.current;
+      removeEmptyInlineFormatElements(el);
+      fixCaretIfOrphaned(el);
+      const markdown = htmlToMarkdown(el.innerHTML);
+      saveCursor();
+      onChange(markdown);
+    },
+    [htmlToMarkdown, onChange, saveCursor]
+  );
 
   const insertMarkdown = useCallback((before: string, after: string, placeholder: string) => {
     if (!editorRef.current || isUpdating) return;

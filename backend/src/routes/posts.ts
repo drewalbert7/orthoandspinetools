@@ -1101,7 +1101,7 @@ router.post('/:id/vote', authenticate, validateVote, asyncHandler(async (req: Au
 router.put('/:id', authenticate, [
   param('id').isString().isLength({ min: 1 }).withMessage('Invalid post ID'),
   body('title').optional().trim().isLength({ min: 1, max: 200 }).withMessage('Title must be 1-200 characters'),
-  body('content').optional().trim().isLength({ min: 1, max: 10000 }).withMessage('Content must be 1-10000 characters'),
+  body('content').optional().trim().isLength({ max: 10000 }).withMessage('Content must be at most 10000 characters'),
 ], asyncHandler(async (req: AuthRequest, res: Response) => {
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
@@ -1109,11 +1109,10 @@ router.put('/:id', authenticate, [
   }
 
   const { id } = req.params;
-  const { title, content } = req.body;
+  const { title, content } = req.body as { title?: string; content?: string };
 
-  // Check if post exists and user owns it
-  const post = await prisma.post.findUnique({
-    where: { id }
+  const post = await prisma.post.findFirst({
+    where: { id, isDeleted: false },
   });
 
   if (!post) {
@@ -1124,13 +1123,20 @@ router.put('/:id', authenticate, [
     throw new AppError('Not authorized to edit this post', 403);
   }
 
-  // Update the post
+  const data: { title?: string; content?: string } = {};
+  if (typeof title === 'string') {
+    data.title = title.trim();
+  }
+  if (typeof content === 'string') {
+    data.content = content.trim();
+  }
+  if (Object.keys(data).length === 0) {
+    throw new AppError('Provide title and/or content to update', 400);
+  }
+
   const updatedPost = await prisma.post.update({
     where: { id },
-    data: {
-      ...(title && { title }),
-      ...(content && { content }),
-    },
+    data,
     include: {
       author: {
         select: {

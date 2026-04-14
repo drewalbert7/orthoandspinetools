@@ -1,12 +1,13 @@
 import React, { useState } from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams, Link, useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { apiService, type Post } from '../services/apiService';
+import { apiService } from '../services/apiService';
 import { formatDistanceToNow } from 'date-fns';
 import MarkdownContent from '../components/MarkdownContent';
-import PostDeviceDisclaimer from '../components/PostDeviceDisclaimer';
+import { navigateToPostFromFeedCardBackground } from '../lib/navigatePostFromFeedCard';
 
 const UserProfile: React.FC = () => {
+  const navigate = useNavigate();
   const { username } = useParams<{ username: string }>();
   const [activeTab, setActiveTab] = useState<'posts' | 'comments'>('posts');
 
@@ -171,15 +172,22 @@ const UserProfile: React.FC = () => {
                         <span className="hidden sm:inline">•</span>
                         <span>{formatDistanceToNow(new Date(post.createdAt))} ago</span>
                       </div>
-                      <h3 className="text-base sm:text-lg font-semibold text-gray-900 mb-2 break-words">
-                        {post.title}
-                      </h3>
-                      <PostDeviceDisclaimer post={post as Post} variant="compact" className="mb-2" />
-                      {post.content && (
-                        <MarkdownContent lineClamp={3} className="mb-3 text-sm text-gray-700 [overflow-wrap:anywhere] sm:text-base">
-                          {post.content}
-                        </MarkdownContent>
-                      )}
+                      <div
+                        role="presentation"
+                        className="cursor-pointer min-h-0"
+                        onClick={(e) => navigateToPostFromFeedCardBackground(e, navigate, post.id)}
+                      >
+                        <h3 className="text-base sm:text-lg font-semibold text-gray-900 mb-2 break-words">
+                          <Link to={`/post/${post.id}`} className="hover:text-blue-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 rounded">
+                            {post.title}
+                          </Link>
+                        </h3>
+                        {post.content && (
+                          <MarkdownContent lineClamp={3} className="mb-3 text-sm text-gray-700 [overflow-wrap:anywhere] sm:text-base">
+                            {post.content}
+                          </MarkdownContent>
+                        )}
+                      </div>
                       <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs sm:text-sm text-gray-500">
                         <span>{post._count?.comments || 0} comments</span>
                         <span className="hidden sm:inline">•</span>
