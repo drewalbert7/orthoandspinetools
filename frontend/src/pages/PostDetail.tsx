@@ -15,6 +15,7 @@ import { DocumentMeta } from '../components/DocumentMeta';
 import { buildPostJsonLd, postDescription, postOgImage, SEO_DEFAULTS } from '../lib/seo';
 import MarkdownContent from '../components/MarkdownContent';
 import PostDeviceDisclaimer from '../components/PostDeviceDisclaimer';
+import PostAttachments from '../components/PostAttachments';
 
 const Z_POST_MORE_BACKDROP = 11460;
 const Z_POST_MORE_MENU = 11470;
@@ -316,13 +317,6 @@ const PostDetail: React.FC = () => {
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6" />
               </svg>
               <span className="text-sm font-medium text-gray-700">Reply</span>
-            </button>
-
-            {/* Award Button */}
-            <button className="flex items-center justify-center w-8 h-8 rounded-full border border-gray-200 hover:border-gray-300 bg-gray-50 hover:bg-gray-100 transition-colors">
-              <svg className="w-4 h-4 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z" />
-              </svg>
             </button>
 
             {/* Share Button */}
@@ -636,74 +630,8 @@ const PostDetail: React.FC = () => {
                 </div>
               )}
 
-              {/* Attachments - Reddit Style Full Display */}
               {post.attachments && post.attachments.length > 0 && (
-                <div className="mb-6">
-                  {post.attachments.map((attachment) => {
-                    const mediaSrc =
-                      attachment.cloudinaryUrl ||
-                      attachment.path ||
-                      attachment.optimizedUrl ||
-                      attachment.thumbnailUrl ||
-                      attachment.filename;
-                    const mime = attachment.mimeType ?? '';
-                    return (
-                    <div key={attachment.id} className="mb-6">
-                      {mime.startsWith('image/') ? (
-                        <div className="bg-gray-100 rounded-lg overflow-hidden">
-                          <img
-                            src={mediaSrc}
-                            alt=""
-                            className="w-full h-auto cursor-pointer hover:opacity-95 transition-opacity"
-                            style={{ 
-                              maxHeight: '80vh',
-                              width: '100%',
-                              objectFit: 'contain'
-                            }}
-                            onClick={() => {
-                              window.open(mediaSrc, '_blank');
-                            }}
-                          />
-                        </div>
-                      ) : mime.startsWith('video/') ? (
-                        <div className="bg-gray-100 rounded-lg overflow-hidden">
-                          <video
-                            src={mediaSrc}
-                            controls
-                            className="w-full h-auto"
-                            style={{ 
-                              maxHeight: '80vh',
-                              width: '100%',
-                              objectFit: 'contain'
-                            }}
-                          />
-                        </div>
-                      ) : (
-                        <div className="border border-gray-200 rounded-lg p-6 bg-gray-50">
-                          <div className="flex items-center space-x-4">
-                            <svg className="w-12 h-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
-                            </svg>
-                            <div className="flex-1">
-                              <p className="text-lg font-medium text-gray-900">{attachment.originalName}</p>
-                              <p className="text-sm text-gray-500">
-                                {(attachment.size / 1024).toFixed(1)} KB
-                              </p>
-                            </div>
-                            <a
-                              href={attachment.path}
-                              download={attachment.originalName}
-                              className="px-4 py-2 bg-blue-600 text-white text-sm rounded-md hover:bg-blue-700 transition-colors"
-                            >
-                              Download
-                            </a>
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                    );
-                  })}
-                </div>
+                <PostAttachments attachments={post.attachments} variant="detail" />
               )}
 
             {/* Actions */}
@@ -722,13 +650,6 @@ const PostDetail: React.FC = () => {
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
                 </svg>
                 <span className="text-sm font-medium text-gray-700">{post._count?.comments ?? 0}</span>
-              </button>
-
-              {/* Awards */}
-              <button className="flex items-center justify-center w-8 h-8 rounded-full border border-gray-200 hover:border-gray-300 bg-gray-50 hover:bg-gray-100 transition-colors">
-                <svg className="w-4 h-4 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z" />
-                </svg>
               </button>
 
               {/* Share */}

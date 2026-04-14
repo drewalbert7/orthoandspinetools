@@ -19,7 +19,7 @@
  * File size should be > 800 lines (currently ~851 lines)
  */
 
-import React, { useState, useEffect, useLayoutEffect, useRef } from 'react';
+import React, { useState, useEffect, useLayoutEffect, useRef, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import { useNavigate, Link, useSearchParams } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
@@ -324,19 +324,16 @@ const CreatePost: React.FC = () => {
     console.log('Saving draft...');
   };
 
-  const handleMediaUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    const files = Array.from(event.target.files || []);
+  const processMediaFiles = useCallback(async (files: File[]) => {
     if (files.length === 0) return;
 
     setIsUploading(true);
     try {
-      // Separate images and videos
-      const imageFiles = files.filter(file => file.type.startsWith('image/'));
-      const videoFiles = files.filter(file => file.type.startsWith('video/'));
+      const imageFiles = files.filter((file) => file.type.startsWith('image/'));
+      const videoFiles = files.filter((file) => file.type.startsWith('video/'));
 
       const uploadedFiles: UploadedPostMedia[] = [];
 
-      // Upload images if any
       if (imageFiles.length > 0) {
         const uploadedImages = await apiService.uploadPostImages(imageFiles);
         uploadedFiles.push(
@@ -356,7 +353,6 @@ const CreatePost: React.FC = () => {
         );
       }
 
-      // Upload videos if any
       if (videoFiles.length > 0) {
         const uploadedVideos = await apiService.uploadPostVideos(videoFiles);
         uploadedFiles.push(
@@ -375,13 +371,36 @@ const CreatePost: React.FC = () => {
         );
       }
 
-      setUploadedMedia(prev => [...prev, ...uploadedFiles]);
+      if (uploadedFiles.length === 0) {
+        toast.error('No supported image or video files in that selection.');
+        return;
+      }
+
+      setUploadedMedia((prev) => [...prev, ...uploadedFiles]);
     } catch (error: unknown) {
       console.error('Error uploading media:', error);
       toast.error(apiErrorMessage(error, 'Failed to upload media. Please try again.'));
     } finally {
       setIsUploading(false);
     }
+  }, []);
+
+  const handleMediaUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(event.target.files || []);
+    void processMediaFiles(files);
+    event.target.value = '';
+  };
+
+  const handleMediaDrop = (event: React.DragEvent<HTMLDivElement>) => {
+    event.preventDefault();
+    event.stopPropagation();
+    const files = Array.from(event.dataTransfer.files || []);
+    void processMediaFiles(files);
+  };
+
+  const handleMediaDragOver = (event: React.DragEvent<HTMLDivElement>) => {
+    event.preventDefault();
+    event.stopPropagation();
   };
 
   const removeMedia = (filename: string) => {
@@ -412,7 +431,11 @@ const CreatePost: React.FC = () => {
 
   const renderMediaUploadZone = () => (
     <div className="space-y-3 sm:space-y-4">
-      <div className="relative border-2 border-dashed border-gray-300 rounded-lg p-4 sm:p-6 md:p-8 text-center hover:border-gray-400 transition-colors min-h-[150px] sm:min-h-[200px] flex flex-col items-center justify-center">
+      <div
+        className="relative border-2 border-dashed border-gray-300 rounded-lg p-4 sm:p-6 md:p-8 text-center hover:border-gray-400 transition-colors min-h-[150px] sm:min-h-[200px] flex flex-col items-center justify-center"
+        onDrop={handleMediaDrop}
+        onDragOver={handleMediaDragOver}
+      >
         <svg
           className="mx-auto h-8 w-8 sm:h-12 sm:w-12 text-gray-400"
           stroke="currentColor"
@@ -428,8 +451,8 @@ const CreatePost: React.FC = () => {
         </svg>
         <p className="mt-2 text-xs sm:text-sm text-gray-600">Drag and drop or click to upload</p>
         <p className="mt-1 text-xs text-gray-500">
-          JPEG, PNG, GIF, WebP, HEIC · MP4, WebM, MOV · up to {uploadStatus?.limits.imageMb ?? 20} MB per image (server
-          limit)
+          Select or drop <span className="font-medium text-gray-700">multiple</span> images or videos at once · JPEG,
+          PNG, GIF, WebP, HEIC · MP4, WebM, MOV · up to {uploadStatus?.limits.imageMb ?? 20} MB per image (server limit)
         </p>
         <input
           type="file"

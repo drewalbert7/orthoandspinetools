@@ -282,20 +282,25 @@ const Sidebar: React.FC<SidebarProps> = ({ isMobileOpen, onMobileClose }) => {
                             ? `Unfollow ${community.name}`
                             : `Follow ${community.name}`
                       }
-                      className={`no-touch-target flex h-9 w-9 shrink-0 items-center justify-center rounded-full transition-colors ${
+                      className={`no-touch-target flex h-11 w-11 shrink-0 items-center justify-center rounded-full transition-colors ${
                         !user || followMutation.isPending
                           ? 'opacity-50 cursor-not-allowed'
-                          : 'hover:bg-gray-200 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-teal-600'
+                          : 'hover:bg-gray-200 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-500'
                       }`}
                       title={!user ? 'Sign in to follow communities' : isFollowed ? 'Unfollow' : 'Follow'}
                     >
                       <svg
                         viewBox="0 0 24 24"
-                        className={`h-4 w-4 ${isFollowed ? 'text-teal-600' : 'text-gray-400'}`}
+                        className={`h-5 w-5 ${isFollowed ? 'text-yellow-500' : 'text-gray-400'}`}
                         fill="none"
                         stroke="currentColor"
                         strokeWidth={isFollowed ? 0 : 2}
                         aria-hidden
+                        style={
+                          isFollowed
+                            ? { filter: 'drop-shadow(0 0 3px rgba(234, 179, 8, 0.45))' }
+                            : undefined
+                        }
                       >
                         {isFollowed ? (
                           <circle cx="12" cy="12" r="8" fill="currentColor" stroke="none" />

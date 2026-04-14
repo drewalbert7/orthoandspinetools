@@ -43,11 +43,17 @@ interface PostAttachmentsProps {
   attachments?: TimelineAttachment[] | null;
   /** When set (e.g. feed cards), image preview links to the post; videos stay inline-playable. */
   postId?: string;
+  /** Taller preview on post detail (Reddit-style full-width). */
+  variant?: 'default' | 'detail';
 }
 
 type Enriched = { att: TimelineAttachment; src: string; kind: 'image' | 'video' | 'file' };
 
-const PostAttachments: React.FC<PostAttachmentsProps> = ({ attachments, postId }) => {
+const PostAttachments: React.FC<PostAttachmentsProps> = ({ attachments, postId, variant = 'default' }) => {
+  const isDetail = variant === 'detail';
+  const rootMb = isDetail ? 'mb-6' : 'mb-3';
+  const singleMaxH = isDetail ? '80vh' : '600px';
+  const videoMaxH = isDetail ? '80vh' : '600px';
   const list = attachments ?? [];
   if (list.length === 0) {
     return null;
@@ -82,6 +88,10 @@ const PostAttachments: React.FC<PostAttachmentsProps> = ({ attachments, postId }
   const imageItems = list
     .map((att) => enriched.find((e) => e.att.id === att.id))
     .filter((e): e is Enriched => !!e && e.kind === 'image' && !!e.src);
+
+  const videoItems = list
+    .map((att) => enriched.find((e) => e.att.id === att.id))
+    .filter((e): e is Enriched => !!e && e.kind === 'video' && !!e.src);
 
   const renderImageTile = (item: Enriched, opts: { overlayPlus?: number; tileClass?: string }) => {
     const { overlayPlus, tileClass = '' } = opts;
@@ -132,10 +142,12 @@ const PostAttachments: React.FC<PostAttachmentsProps> = ({ attachments, postId }
     );
   };
 
-  if (firstOrdered.kind === 'video') {
-    const mediaSrcV = firstOrdered.src;
+  if (imageItems.length === 0 && videoItems.length > 0) {
+    const primaryVideo = videoItems[0];
+    const mediaSrcV = primaryVideo.src;
+    const extraAfterVideo = list.length > 1;
     return (
-      <div className="mb-3">
+      <div className={rootMb}>
         <div className="relative bg-gray-100 rounded-md overflow-hidden">
           <video
             src={mediaSrcV}
@@ -143,7 +155,7 @@ const PostAttachments: React.FC<PostAttachmentsProps> = ({ attachments, postId }
             controls
             playsInline
             preload="metadata"
-            style={{ maxHeight: '600px' }}
+            style={{ maxHeight: videoMaxH }}
           />
           {postId && (
             <div className="px-2 py-1.5 border-t border-gray-200 bg-white/90">
@@ -156,7 +168,7 @@ const PostAttachments: React.FC<PostAttachmentsProps> = ({ attachments, postId }
             </div>
           )}
         </div>
-        {list.length > 1 && (
+        {extraAfterVideo && (
           <div className="text-xs text-gray-500 mt-2 text-center">
             +{list.length - 1} more attachment{list.length - 1 !== 1 ? 's' : ''}
           </div>
@@ -174,7 +186,7 @@ const PostAttachments: React.FC<PostAttachmentsProps> = ({ attachments, postId }
     const footerMore = moreCount - hiddenImageCount;
 
     return (
-      <div className="mb-3">
+      <div className={rootMb}>
         <div
           className={`grid gap-0.5 rounded-md overflow-hidden bg-gray-100 ${
             show.length === 1 ? 'grid-cols-1' : 'grid-cols-2'
@@ -196,16 +208,14 @@ const PostAttachments: React.FC<PostAttachmentsProps> = ({ attachments, postId }
     );
   }
 
-  const attachment = firstOrdered.att;
-  const mediaSrcSingle = firstOrdered.src;
-  const kind = firstOrdered.kind;
-  const sizeKb = (attachment.size ?? 0) / 1024;
-
-  return (
-    <div className="mb-3">
-      <div className="relative">
-        {kind === 'image' ? (
-          postId ? (
+  if (imageItems.length === 1) {
+    const lone = imageItems[0];
+    const mediaSrcSingle = lone.src;
+    const extraCount = list.filter((a) => a.id !== lone.att.id).length;
+    return (
+      <div className={rootMb}>
+        <div className="relative">
+          {postId ? (
             <Link
               to={`/post/${postId}`}
               className="relative bg-gray-100 rounded-md overflow-hidden block focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
@@ -214,7 +224,7 @@ const PostAttachments: React.FC<PostAttachmentsProps> = ({ attachments, postId }
                 src={mediaSrcSingle}
                 alt=""
                 className="w-full h-auto object-contain hover:opacity-95 transition-opacity rounded-md"
-                style={{ maxHeight: '600px' }}
+                style={{ maxHeight: singleMaxH }}
                 loading="lazy"
                 decoding="async"
               />
@@ -236,7 +246,63 @@ const PostAttachments: React.FC<PostAttachmentsProps> = ({ attachments, postId }
                 src={mediaSrcSingle}
                 alt=""
                 className="w-full h-auto object-contain hover:opacity-95 transition-opacity rounded-md"
-                style={{ maxHeight: '600px' }}
+                style={{ maxHeight: singleMaxH }}
+                loading="lazy"
+                decoding="async"
+              />
+            </div>
+          )}
+        </div>
+        {extraCount > 0 ? (
+          <div className="text-xs text-gray-500 mt-2 text-center">
+            +{extraCount} more attachment{extraCount !== 1 ? 's' : ''}
+          </div>
+        ) : null}
+      </div>
+    );
+  }
+
+  const attachment = firstOrdered.att;
+  const mediaSrcSingle = firstOrdered.src;
+  const kind = firstOrdered.kind;
+  const sizeKb = (attachment.size ?? 0) / 1024;
+
+  return (
+    <div className={rootMb}>
+      <div className="relative">
+        {kind === 'image' ? (
+          postId ? (
+            <Link
+              to={`/post/${postId}`}
+              className="relative bg-gray-100 rounded-md overflow-hidden block focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+            >
+              <img
+                src={mediaSrcSingle}
+                alt=""
+                className="w-full h-auto object-contain hover:opacity-95 transition-opacity rounded-md"
+                style={{ maxHeight: singleMaxH }}
+                loading="lazy"
+                decoding="async"
+              />
+            </Link>
+          ) : (
+            <div
+              className="relative bg-gray-100 rounded-md overflow-hidden cursor-pointer"
+              onClick={() => window.open(mediaSrcSingle, '_blank')}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                  e.preventDefault();
+                  window.open(mediaSrcSingle, '_blank');
+                }
+              }}
+              role="button"
+              tabIndex={0}
+            >
+              <img
+                src={mediaSrcSingle}
+                alt=""
+                className="w-full h-auto object-contain hover:opacity-95 transition-opacity rounded-md"
+                style={{ maxHeight: singleMaxH }}
                 loading="lazy"
                 decoding="async"
               />
