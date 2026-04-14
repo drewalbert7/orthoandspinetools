@@ -1,5 +1,8 @@
 import type { PrismaClient } from '@prisma/client';
 
+/** Canonical name for the cross-community “Cases” feed (`GET /posts?tagName=Case`). */
+export const DEFAULT_CASE_TOPIC_NAME = 'Case';
+
 export const DEFAULT_COMMUNITY_TOPIC_TAGS: ReadonlyArray<{
   name: string;
   color: string | null;
@@ -9,6 +12,11 @@ export const DEFAULT_COMMUNITY_TOPIC_TAGS: ReadonlyArray<{
     name: 'Startup',
     color: '#2563eb',
     description: 'Startups, companies, and entrepreneurial topics',
+  },
+  {
+    name: DEFAULT_CASE_TOPIC_NAME,
+    color: '#b45309',
+    description: 'Clinical cases, imaging, operative examples, and case-based discussion',
   },
   {
     name: 'Medical Device',

@@ -28,6 +28,7 @@ import { useAuth } from '../contexts/AuthContext';
 import toast from 'react-hot-toast';
 import MarkdownEditor, { MarkdownEditorHandle } from '../components/MarkdownEditor';
 import PostEditorToolbar from '../components/PostEditorToolbar';
+import { CASE_TOPIC_DISPLAY_NAME } from '../lib/topicTags';
 
 
 type PostType = 'text' | 'images';
@@ -53,6 +54,7 @@ const CreatePost: React.FC = () => {
   const queryClient = useQueryClient();
   const { user } = useAuth();
   const isLaunchMode = searchParams.get('mode') === 'launch';
+  const isCaseMode = searchParams.get('mode') === 'case';
   const [selectedCommunity, setSelectedCommunity] = useState<string>('');
   const [postType, setPostType] = useState<PostType>('text');
   const [title, setTitle] = useState('');
@@ -142,20 +144,30 @@ const CreatePost: React.FC = () => {
       setSelectedTags([]);
       return;
     }
-    if (!isLaunchMode) {
-      setSelectedTags([]);
+    if (isLaunchMode) {
+      if (!communityTags?.length) {
+        setSelectedTags([]);
+        return;
+      }
+      const hay = (s: string | undefined) => (s || '').toLowerCase();
+      const startupTag = communityTags.find(
+        (t) => hay(t.name).includes('startup') || hay(t.description).includes('startup')
+      );
+      setSelectedTags(startupTag?.id ? [startupTag.id] : []);
       return;
     }
-    if (!communityTags?.length) {
-      setSelectedTags([]);
+    if (isCaseMode) {
+      if (!communityTags?.length) {
+        setSelectedTags([]);
+        return;
+      }
+      const hay = (s: string | undefined) => (s || '').toLowerCase();
+      const caseTag = communityTags.find((t) => hay(t.name) === hay(CASE_TOPIC_DISPLAY_NAME));
+      setSelectedTags(caseTag?.id ? [caseTag.id] : []);
       return;
     }
-    const hay = (s: string | undefined) => (s || '').toLowerCase();
-    const startupTag = communityTags.find(
-      (t) => hay(t.name).includes('startup') || hay(t.description).includes('startup')
-    );
-    setSelectedTags(startupTag?.id ? [startupTag.id] : []);
-  }, [selectedCommunity, isLaunchMode, communityTags]);
+    setSelectedTags([]);
+  }, [selectedCommunity, isLaunchMode, isCaseMode, communityTags]);
 
   useLayoutEffect(() => {
     if (!showCommunityDropdown) {
@@ -308,8 +320,14 @@ const CreatePost: React.FC = () => {
       await apiService.createPost(postData);
       await queryClient.invalidateQueries({ queryKey: ['posts'] });
       await queryClient.invalidateQueries({ queryKey: ['feed'] });
-      toast.success('Post created successfully!');
-      navigate('/');
+      if (isCaseMode) {
+        await queryClient.invalidateQueries({ queryKey: ['cases-posts'] });
+        toast.success('Post created successfully!');
+        navigate('/cases');
+      } else {
+        toast.success('Post created successfully!');
+        navigate('/');
+      }
     } catch (error: unknown) {
       const errorMessage = apiErrorMessage(error, 'Failed to create post');
       setError(errorMessage);
@@ -514,7 +532,7 @@ const CreatePost: React.FC = () => {
         <div className="flex items-center justify-between mb-4 sm:mb-6 md:mb-8">
           <div>
             <h1 className="text-xl sm:text-2xl font-bold text-gray-900">
-              {isLaunchMode ? 'Launch a product' : 'Create post'}
+              {isLaunchMode ? 'Launch a product' : isCaseMode ? 'Create a case post' : 'Create post'}
             </h1>
             {isLaunchMode && (
               <p className="text-sm text-gray-600 mt-1 max-w-2xl">
@@ -524,6 +542,15 @@ const CreatePost: React.FC = () => {
                   Startups
                 </Link>{' '}
                 and is highlighted on that community&apos;s page.
+              </p>
+            )}
+            {isCaseMode && !isLaunchMode && (
+              <p className="text-sm text-gray-600 mt-1 max-w-2xl">
+                The {CASE_TOPIC_DISPLAY_NAME} topic tag is selected when available so your post appears on the{' '}
+                <Link to="/cases" className="text-blue-600 hover:underline">
+                  Cases
+                </Link>{' '}
+                page. You can add other topic tags if they fit.
               </p>
             )}
           </div>
@@ -715,12 +742,14 @@ const CreatePost: React.FC = () => {
         {selectedCommunity && (
           <div className="mb-4 sm:mb-6">
             <label className="block text-sm font-medium text-gray-700 mb-1">
-              {isLaunchMode ? 'Topic tags' : 'Topic tags (optional)'}
+              {isLaunchMode || isCaseMode ? 'Topic tags' : 'Topic tags (optional)'}
             </label>
             <p className="text-xs text-gray-500 mb-2">
               {isLaunchMode
                 ? 'The Startup topic is selected automatically when available so your launch appears on the Startups page and in this community’s featured launches.'
-                : 'Choose subjects that match your post. Moderators define these for each community so everyone can find posts by topic.'}
+                : isCaseMode
+                  ? `The ${CASE_TOPIC_DISPLAY_NAME} topic is selected automatically when available so your post appears on the Cases page.`
+                  : 'Choose subjects that match your post. Moderators define these for each community so everyone can find posts by topic.'}
             </p>
             {communityTags && communityTags.length > 0 ? (
               <>

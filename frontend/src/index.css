@@ -28,12 +28,21 @@
   
   /* Ensure touch targets are accessible on mobile */
   @media (max-width: 640px) {
-    button:not(.no-touch-target), 
+    button:not(.no-touch-target),
     a:not(.no-touch-target) {
       min-height: 44px;
       display: inline-flex;
       align-items: center;
       justify-content: center;
+    }
+
+    /* Main drawer: global `a:not(.no-touch-target)` uses inline-flex with higher
+       specificity than Tailwind `.flex`, so nav links sat side-by-side. Force
+       block-level flex rows only in the app sidebar. */
+    aside.app-sidebar a:not(.no-touch-target) {
+      display: flex;
+      justify-content: flex-start;
+      align-items: center;
     }
   }
 }

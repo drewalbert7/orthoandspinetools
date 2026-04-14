@@ -526,6 +526,11 @@ router.get('/', optionalAuth, [
   query('sort').optional().isIn(['newest', 'oldest', 'popular', 'controversial', 'best', 'top', 'rising']).withMessage('Invalid sort option'),
   query('q').optional().isString().isLength({ max: 200 }).withMessage('Search query too long'),
   query('tag').optional().isString().isLength({ min: 1, max: 64 }).withMessage('Invalid tag filter'),
+  query('tagName')
+    .optional()
+    .trim()
+    .isLength({ min: 1, max: 64 })
+    .withMessage('tagName must be 1-64 characters'),
   query('tagMatch')
     .optional()
     .trim()
@@ -540,7 +545,7 @@ router.get('/', optionalAuth, [
   const page = parseInt(req.query.page as string) || 1;
   const limit = parseInt(req.query.limit as string) || 20;
   const skip = (page - 1) * limit;
-  const { community, type, specialty, sort, q, tag, tagMatch } = req.query;
+  const { community, type, specialty, sort, q, tag, tagMatch, tagName } = req.query;
 
   // Build where clause
   const where: any = {
@@ -591,8 +596,23 @@ router.get('/', optionalAuth, [
     }
     where.tags = { some: { tagId: tagRow.id } };
   } else {
+    const tagNameRaw = typeof tagName === 'string' ? tagName.trim() : '';
     const tagMatchRaw = typeof tagMatch === 'string' ? tagMatch.trim() : '';
-    if (tagMatchRaw.length >= 2) {
+    if (tagNameRaw.length >= 1) {
+      const matchingByName = await prisma.communityTag.findMany({
+        where: { name: { equals: tagNameRaw, mode: 'insensitive' } },
+        select: { id: true, communityId: true },
+      });
+      let tagIds = matchingByName.map((t) => t.id);
+      if (where.communityId) {
+        tagIds = matchingByName.filter((t) => t.communityId === where.communityId).map((t) => t.id);
+      }
+      if (tagIds.length === 0) {
+        where.id = { in: [] as string[] };
+      } else {
+        where.tags = { some: { tagId: { in: tagIds } } };
+      }
+    } else if (tagMatchRaw.length >= 2) {
       const matchingTags = await prisma.communityTag.findMany({
         where: {
           OR: [

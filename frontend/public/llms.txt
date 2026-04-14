@@ -7,6 +7,7 @@
 - https://orthoandspinetools.com/ — Home feed (latest posts across communities)
 - https://orthoandspinetools.com/popular — Popular posts
 - https://orthoandspinetools.com/startups — Posts tagged with startup-related topic tags
+- https://orthoandspinetools.com/cases — Posts tagged with the Case topic across communities
 - https://orthoandspinetools.com/search — Search posts and communities
 - https://orthoandspinetools.com/post/{id} — Individual discussion threads
 - https://orthoandspinetools.com/community/{slug} — Community hubs (e.g. spine, sports)

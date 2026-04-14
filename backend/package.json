@@ -13,6 +13,7 @@
     "db:studio": "prisma studio",
     "db:seed": "tsx prisma/seed.ts",
     "promote-admin": "tsx scripts/promote-admin.ts",
+    "backfill-default-tags": "tsx scripts/backfillDefaultCommunityTags.ts",
     "test": "jest --passWithNoTests",
     "lint": "eslint \"src/**/*.ts\"",
     "lint:fix": "eslint \"src/**/*.ts\" --fix"
