@@ -34,7 +34,7 @@ export function stripToPlainText(raw: string, maxLen: number): string {
     .replace(/```[\s\S]*?```/g, ' ')
     .replace(/`[^`]+`/g, ' ')
     .replace(/\[([^\]]+)\]\([^)]+\)/g, '$1')
-    .replace(/[#>*_\-]/g, ' ')
+    .replace(/[#>*_-]/g, ' ')
     .replace(/\s+/g, ' ')
     .trim();
   if (t.length <= maxLen) return t;

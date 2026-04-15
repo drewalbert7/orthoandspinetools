@@ -9,14 +9,15 @@
 | **CODING AGENT INSTRUCTIONS** | Onboarding / workflow for contributors and agents. |
 | **COMPLETED WORK** + long `###` history | Archive and audit trail — keep for context. |
 
-## 🔥 **NEXT UP — START HERE** (updated Apr 14, 2026)
+## 🔥 **NEXT UP — START HERE** (updated Apr 15, 2026)
 
-### **Goals (current focus — Apr 14, 2026)**
+### **Goals (current focus — Apr 14–15, 2026)**
 - [x] **Brand copy** — Site tagline **"Ortho and Spine Tools - Hunt for the Best"** in `SEO_DEFAULTS`, `index.html`, registration hero, `llms.txt` (see Apr 10 notes below).
 - [x] **Link previews (social / chat unfurl)** — Shipped Apr 14, 2026: **`GET /api/og/post/:id`** returns HTML with `og:*` / `twitter:*` / `article:*`; **`nginx/nginx.conf`** `map $http_user_agent` + rewrite for known preview bots on **`/post/:id`** (Googlebot intentionally **not** in map so search indexing still gets the full SPA). **`PUBLIC_SITE_URL`** in `docker-compose.prod.yml` for canonical URLs. After **`nginx.conf`** changes: `docker compose -f docker-compose.prod.yml up -d --force-recreate nginx` (or `nginx -s reload` inside container). Smoke: `curl -A 'facebookexternalhit/1.1' https://orthoandspinetools.com/post/<id> | head`.
 - [x] **Cases + Case tag + `tagName` filter** — `/cases`, default **Case** community tag + `npm run backfill-default-tags`, `GET /posts?tagName=Case`, create-post `mode=case` (see repo history Apr 2026).
 - [x] **Share meta (client)** — `DocumentMeta` + `frontend/src/lib/seo.ts` post headlines/descriptions/OG image fallbacks for in-app and JS-aware crawlers (complements server OG HTML above).
-- [ ] **Next implementation — Amazon SES** — Transactional email: welcome after signup, email verification if enabled, **real** password-reset mail (today `forgot-password` still logs token in dev-oriented paths), optional notification digests. Use env for `AWS_SES_REGION`, credentials, verified **From** domain/DKIM; do **not** commit secrets. Prefer **async queue** or fire-and-forget after DB commit so HTTP handlers stay fast (see prior architecture notes in chat / `docs` if extended).
+- [x] **Amazon SES — password reset (code shipped Apr 15, 2026)** — `backend/src/services/emailService.ts` (`@aws-sdk/client-ses` **3.967.0**, Node 18–compatible); **`POST /auth/forgot-password`** sends reset mail via SES when **`AWS_ACCESS_KEY_ID`**, **`AWS_SECRET_ACCESS_KEY`**, **`AWS_SES_REGION`**, **`EMAIL_FROM`** are set; **`setImmediate`** so the handler returns fast; **no reset token in production logs** (dev-only `resetUrl` / `resetToken` when SES is not configured). Reset link uses **`PUBLIC_SITE_URL`**. **`POST /auth/reset-password`** accepts **`newPassword`** (frontend) or legacy **`password`**. **`docker-compose.prod.yml`** passes SES env from host `.env`; **`backend/env.example`** documents vars. Frontend: **`/forgot-password`**, **`/reset-password`** routes (`ForgotPassword.tsx`, `ResetPassword.tsx`).
+- [ ] **Amazon SES — ops & follow-ups** — In AWS: complete **verified identity** (e.g. email or domain in **same region** as `AWS_SES_REGION` — user flow in **US East Ohio = `us-east-2`**). Create **IAM** access keys; add secrets only on server `.env` (never commit). **Sandbox:** verify **To** addresses or request **production access**. Still **TODO in product:** welcome email after signup, optional verify-email, optional digests; bounce/complaint handling (SNS) later.
 - [ ] **Ongoing** — **Production QA** after each deploy (checklist §2). **Post media** save/display: still verify end-to-end if any regression reports (§3 backlog).
 
 ### **Changes saved in repo (Apr 10, 2026)** *(retained — not deleted)*
@@ -26,6 +27,10 @@
 ### **Changes saved in repo (Apr 14, 2026)** *(addendum)*
 - **OG / nginx** — `backend/src/routes/ogPreview.ts`, `backend/src/lib/postOgPreviewHtml.ts`, `backend/src/index.ts` (`/api/og`, rate-limit skip), `nginx/nginx.conf` (bot `map` + `location ~* ^/post/`…), `docker-compose.prod.yml` (`PUBLIC_SITE_URL`).
 - **Meta** — `frontend/src/components/DocumentMeta.tsx`, `frontend/src/lib/seo.ts`, `frontend/src/pages/PostDetail.tsx` (share strings, article meta, logo fallback for `twitter:card`).
+
+### **Changes saved in repo (Apr 15, 2026)** *(SES checkpoint)*
+- **SES + password reset** — `emailService.ts`, `auth.ts` forgot/reset flow, `App.tsx` + forgot/reset pages, `env.example`, `docker-compose.prod.yml`, `package.json` / lockfile.
+- **Lint** — `postOgPreviewHtml.ts` `no-useless-escape` fix (regex character class).
 
 ### **0. Deploy status — verify live (after each ship)**
 - [ ] From laptop: `git push origin main` then on server `cd ~/orthoandspinetools-main && git pull origin main && docker compose -f docker-compose.prod.yml build --no-cache backend frontend && docker compose -f docker-compose.prod.yml up -d backend frontend nginx`
@@ -46,7 +51,7 @@
 | Compose project name | `orthoandspinetools-main` (`docker compose ls`) |
 | Compose file | **`docker-compose.prod.yml`** (only this file for live stack) |
 | Containers | `orthoandspinetools-postgres`, `orthoandspinetools-backend`, `orthoandspinetools-frontend`, `orthoandspinetools-nginx` |
-| Secrets on server | `.env`, `.env.cloudinary` (never commit real values); **future:** AWS SES keys / SMTP (see Goals → Amazon SES) |
+| Secrets on server | `.env`, `.env.cloudinary` (never commit real values); **SES:** `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, `AWS_SES_REGION`, `EMAIL_FROM` (+ optional `EMAIL_FROM_NAME`) on server only (see **NEXT UP → Amazon SES — ops**) |
 | Nginx | Uses bind-mounted **`nginx/nginx.conf`** from the repo; after editing it, **recreate or reload nginx** (see §0) |
 
 #### **Industry-standard check (is this “set up correctly”?)**
@@ -82,6 +87,7 @@ docker compose -f docker-compose.prod.yml up -d backend frontend nginx
 5. **Admin delete** — as admin, open post menu (`...`) from Home and PostDetail and confirm delete works.
 6. If anything fails, copy the **exact toast text** and **Network response JSON**.
 7. **SEO / previews smoke** — **Browsers:** `View Page Source` on `/post/:id` still shows the SPA shell; after load, DevTools Elements should show updated **`<title>`** and meta from **`DocumentMeta`**. **Preview bots:** `curl -sS -A 'facebookexternalhit/1.1' 'https://orthoandspinetools.com/post/<id>' | head` should return **HTML** with **`og:title`** (first response — no JS required). Optional: `curl -sI https://orthoandspinetools.com/robots.txt` and `/llms.txt` return **200**.
+8. **Password reset email (SES)** — With SES env set on backend: **`/forgot-password`** → inbox receives link → **`/reset-password?token=…`** completes; backend logs `Password reset email dispatched` (no token in prod logs). In **sandbox**, **From** and **To** must be verified identities.
 
 ### **3. Backlog (when QA is green)**
 - **SEO & LLM discoverability (Mar 2026 — in progress; updated Apr 14, 2026)** — Shipped: client-side **`DocumentMeta`** + JSON-LD (`WebSite`, `CollectionPage`, `DiscussionForumPosting`, `DiscussionForum`, breadcrumbs) on **Home**, **Community**, **Post**; **`frontend/public/robots.txt`**, **`llms.txt`**, static **`sitemap.xml`**; **`.env.example`** documents **`VITE_SITE_URL`**. Sidebar **Startups** + **`GET /api/posts?tagMatch=…`**; **Cases** + **`GET /api/posts?tagName=…`**; **`/cases`** in sitemap/llms.
@@ -98,6 +104,7 @@ docker compose -f docker-compose.prod.yml up -d backend frontend nginx
 
 **Recently shipped:**
 
+- **Amazon SES password reset (Apr 15, 2026)** — Optional SES send from **`forgot-password`**; **`/forgot-password`** and **`/reset-password`** UI; reset API **`newPassword`** compatibility; compose/env wiring for SES vars.
 - **OG link previews (Apr 14, 2026)** — Nginx bot `map` + internal rewrite to **`/api/og/post/:id`**; HTML meta for Facebook/Slack/LinkedIn-class crawlers; **`PUBLIC_SITE_URL`**; client **`DocumentMeta`** improvements for post shares.
 - **Cases (Apr 2026)** — `/cases` page, **`tagName`** posts filter, default **Case** tag + **`backfill-default-tags`** script, sidebar + create-post `mode=case`.
 - **Site tagline (Apr 10, 2026)** — Public tagline is **Ortho and Spine Tools - Hunt for the Best** across SEO defaults, SPA shell `index.html`, register page copy, and `llms.txt`.
@@ -114,7 +121,7 @@ docker compose -f docker-compose.prod.yml up -d backend frontend nginx
 - `extractPublicIdFromUrl` skips Cloudinary transformation/version path segments.
 - Avatar API prefers stable `secure_url` / `cloudinaryUrl` for stored `profileImage`.
 
-**Planned next (not shipped yet):** **Amazon SES** — transactional email per **NEXT UP → Goals** and **NEXT PRIORITIES (extended roadmap)** (heading **Transactional email — Amazon SES**).
+**Planned next:** **SES ops** (verify identity, IAM keys on server, production access) + **welcome / verify-email** mail (see **NEXT UP → Amazon SES — ops & follow-ups** and extended roadmap).
 
 ---
 
@@ -530,7 +537,7 @@ For detailed changelog of all completed work, see `CHANGELOG.md`.
 - **Deployment** — Docker Compose + nginx (see `docker-compose.prod.yml`)
 
 ### 🚧 **Known gaps / WIP** *(see **NEXT UP** for current QA)*
-- **Transactional email** — not yet wired to SES/SMTP; password reset and welcome flows need product + implementation (see **NEXT UP → Goals → Amazon SES**).
+- **Transactional email** — ✅ Password reset via SES when env configured; welcome/verify-email not wired yet (see **NEXT UP → Amazon SES**).
 - **Post media (create-post)** — if regressions appear: images/videos not saved or shown on timeline/detail; debug `POST /api/posts` + `post_attachments` (NEXT UP backlog).
 - **Content / polish** — test posts on live home feed; ongoing moderation and real content.
 - **Regression QA** — run **NEXT UP → Production QA** after each deploy.
@@ -542,7 +549,7 @@ For detailed changelog of all completed work, see `CHANGELOG.md`.
 > **Longer backlog** (notifications phases, tests, deployment checklists): **NEXT PRIORITIES (extended roadmap)** — search that heading in this file.
 
 ### **Immediate** *(supplement — confirm on live site; may overlap completed work elsewhere)*
-1. **Amazon SES** — implement transactional sending (welcome, password reset email, optional verify-email); wire **`backend/.env`** / prod secrets; SES domain identity + DKIM; replace log-only reset path in **`auth`** forgot-password flow; keep sends **off the request hot path** (queue or `setImmediate` + retry policy). Document required env vars in **`.env.example`** (no secrets).
+1. **Amazon SES** — ✅ Password reset sending in code (`setImmediate`, **`backend/env.example`**, compose env). **You:** finish AWS verified identity + IAM keys on server `.env` (region = console region). **Still:** welcome email, optional verify-email, retry/SNS later.
 2. **Post media** — same as **NEXT UP → Production QA item 3** and backlog **Post media save/display regression (WIP)** if issues resurface.
 3. **Profile & avatar QA** — profile load, Cloudinary avatar, Profile Settings save/remove photo; errors should surface via `apiErrorMessage`-style responses.
 4. **Auth smoke test** — registration + login over HTTPS after deploy.
@@ -826,7 +833,7 @@ The platform focuses on:
 
 ---
 
-**Last Updated**: April 14, 2026 — TODO aligned with OG previews, Cases, deploy flow, **Amazon SES** as next build target.  
+**Last Updated**: April 15, 2026 — **Amazon SES password-reset code** shipped; AWS console verification (e.g. `us-east-2`) + server env + welcome/verify-email still tracked in **NEXT UP**.  
 **Status**: 🚀 **LIVE AND FUNCTIONAL** - Database connection verified, all features operational  
 **SSL Status**: 🔒 **SECURE** - HTTPS verified with valid certificate (served cert expires **May 10, 2026**). If browsers show expired SSL but `nginx/ssl/certs/fullchain.pem` on disk is newer, run: `docker compose -f docker-compose.prod.yml exec nginx nginx -t && docker compose -f docker-compose.prod.yml exec nginx nginx -s reload`  
 **Database Status**: 🔗 **CONNECTED** - PostgreSQL authentication working, startup verification active (7 posts, 4 users, 9 communities). Password: `secure_password_123` (in .env). If postgres container recreated, run: `ALTER USER postgres WITH PASSWORD 'secure_password_123';` then restart backend.  
@@ -849,7 +856,7 @@ The platform focuses on:
 **Administrator Setup**: ✅ **VERIFIED** - drewalbertmd set as highest permission administrator + verified physician (isAdmin, isVerifiedPhysician). Profile badges on profile page. Promote script: `backend/scripts/promote-admin.ts`  
 **Home Feed**: ✅ **FIXED** - Empty feed fallback: when logged-in user follows no communities, Home now shows all posts instead of "No posts available"  
 **Star Unfollow**: ✅ **FIXED** (Feb 2026) - Sidebar star unfollow now works; optimisticFollows used as display source of truth (union with followedCommunityIds caused unfollow to not update UI)  
-**Next Session**: **Amazon SES** transactional email (welcome, reset, optional verify); then security hardening / performance as needed
+**Next Session**: Finish **SES on server** (IAM keys, `EMAIL_FROM`, sandbox/production); then **welcome email** / optional **verify-email**; security hardening as needed
 
 ### **Plain-English ops** (March 2026) ✅
 - ✅ **`docs/WHAT_TO_DO.md`** — what you actually need to do vs optional scaling; backups; deploy commands
@@ -1175,9 +1182,9 @@ Issues that were resolved at the time:
 
 **Live Site**: https://orthoandspinetools.com  
 **Database**: 34 posts, 4 users, 9 communities, operational *(counts approximate — verify in admin/DB if needed)*  
-**Status**: **Operational with known WIP** — **Transactional email** not yet on SES (see **NEXT UP**). **create-post image/video** pipeline: verify if any new regressions; historical WIP notes remain in backlog.  
-**Last Major Update**: Apr 14, 2026 — server **OG HTML** for `/post/:id` preview bots + nginx map/rewrite; client share meta; **Cases** / `tagName`; **`PUBLIC_SITE_URL`**; prior Apr/Mar work (tagline, notifications v1, home feed, create-post typing).  
-**Last Review**: Apr 14, 2026 — TODO.md accuracy pass; SES next; preserved prior sections and archive.
+**Status**: **Operational with known WIP** — **SES:** reset email ships in code; live sending needs server env + AWS verification (see **NEXT UP**). **create-post image/video** pipeline: verify if any new regressions; historical WIP notes remain in backlog.  
+**Last Major Update**: Apr 15, 2026 — **Amazon SES** password-reset integration (optional send), forgot/reset routes; Apr 14 OG/Cases work unchanged in history below.  
+**Last Review**: Apr 15, 2026 — TODO.md checkpoint for SES + push to `main`.
 
 ### **🖥️ SERVER UPDATES STATUS** ✅ **CURRENT (December 2025)**
 - ✅ **Docker**: 29.1.2 (upgraded from 28.4.0 on December 7, 2025)
@@ -1198,17 +1205,16 @@ Issues that were resolved at the time:
 
 **Optional later:** Profile-page verify controls for admins; moderator-only verify (currently admin-only API).
 
-### **Transactional email — Amazon SES** 📧 **NEXT (planned)**
-**Status:** Not implemented yet — **NEXT UP → Goals** owns the checklist.  
-**Priority:** High for production polish (welcome + password reset at minimum).
+### **Transactional email — Amazon SES** 📧 **IN PROGRESS (Apr 15, 2026)**
+**Status:** ✅ **Password reset path shipped** in repo (`emailService.ts`, `auth.ts`, forgot/reset UI). **Ops:** verify SES identity + IAM keys on production `.env` (region must match console, e.g. **Ohio = `us-east-2`**). **Still TODO:** welcome on register, optional verify-email, SNS bounces (later).
 
-**Implementation sketch (non-binding — adjust during build):**
-1. **AWS** — SES in production region; verify **domain** (or single mailbox); enable **DKIM**; move out of SES sandbox (production access request).
-2. **Secrets** — `AWS_ACCESS_KEY_ID` / `AWS_SECRET_ACCESS_KEY` (or IAM role if on AWS later), `AWS_SES_REGION`, `EMAIL_FROM` / `EMAIL_FROM_NAME`; store only in server `.env` / secrets manager — **never commit**.
-3. **Backend** — Small `emailService` (AWS SDK v3 `@aws-sdk/client-ses` **or** HTTPS API); HTML + text parts; **escape** user-supplied strings in templates; **idempotency** keys for welcome; **do not block** `POST /register` / `forgot-password` on SMTP latency (queue table or at least `setImmediate` + structured logging).
-4. **Replace dev behavior** — `auth` forgot-password: stop logging reset token in production; send link to `https://orthoandspinetools.com/reset-password?token=…` (or existing route).
-5. **Compliance** — Keep email bodies generic (“You requested a password reset”); avoid PHI; if scope grows, review **HIPAA / BAA** with AWS and counsel.
-6. **Observability** — Log message IDs; handle bounce/complaint via SNS webhooks (later phase).
+**Implementation sketch (updated):**
+1. **AWS** — SES in chosen region; verify **domain** or **email**; DKIM for domain; request **production access** when ready to mail unverified recipients.
+2. **Secrets** — `AWS_ACCESS_KEY_ID` / `AWS_SECRET_ACCESS_KEY`, `AWS_SES_REGION`, `EMAIL_FROM` / `EMAIL_FROM_NAME`; server `.env` only — **never commit**.
+3. **Backend** — ✅ `emailService` + `setImmediate` send from forgot-password; HTML + text reset template; prod does not log tokens.
+4. **Welcome / verify** — Not shipped yet; same pattern as reset when implemented.
+5. **Compliance** — Generic transactional copy; avoid PHI; BAA/counsel if scope grows.
+6. **Observability** — Log message IDs on success; SNS webhooks later.
 
 ### **5. Notification System Implementation** 🔔 **IN PROGRESS (v1 SHIPPED)**
 **Status:** ✅ **Core implementation shipped (Mar 24, 2026); follow-ups remain**  

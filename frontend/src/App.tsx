@@ -24,6 +24,8 @@ import CommunitySettings from './pages/CommunitySettings';
 import CreateCommunity from './pages/CreateCommunity';
 import AdminDashboard from './pages/AdminDashboard';
 import Search from './pages/Search';
+import ForgotPassword from './pages/ForgotPassword';
+import ResetPassword from './pages/ResetPassword';
 import GoogleAnalytics from './components/GoogleAnalytics';
 import SitePolicyBanner from './components/SitePolicyBanner';
 
@@ -74,6 +76,8 @@ function App() {
                   <Route path="/cases" element={<Cases />} />
                   <Route path="/search" element={<Search />} />
                   <Route path="/login" element={<LoginForm />} />
+                  <Route path="/forgot-password" element={<ForgotPassword />} />
+                  <Route path="/reset-password" element={<ResetPassword />} />
                   <Route path="/register" element={<RegisterForm />} />
                   <Route path="/post/:id/edit" element={<EditPost />} />
                   <Route path="/post/:id" element={<PostDetail />} />

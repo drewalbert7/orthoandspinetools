@@ -39,6 +39,12 @@ services:
       CORS_ORIGINS: https://orthoandspinetools.com,https://www.orthoandspinetools.com
       # Canonical origin for OG/HTML share previews (optional; else X-Forwarded-* from nginx)
       PUBLIC_SITE_URL: ${PUBLIC_SITE_URL:-https://orthoandspinetools.com}
+      # Amazon SES (optional — omit or leave empty to skip sending; see backend/env.example)
+      AWS_SES_REGION: ${AWS_SES_REGION:-}
+      AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID:-}
+      AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY:-}
+      EMAIL_FROM: ${EMAIL_FROM:-}
+      EMAIL_FROM_NAME: ${EMAIL_FROM_NAME:-OrthoAndSpineTools}
     depends_on:
       postgres:
         condition: service_healthy

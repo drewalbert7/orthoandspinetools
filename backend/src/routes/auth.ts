@@ -9,6 +9,7 @@ import { body, param, query, validationResult } from 'express-validator';
 import { enrichPostsPollData } from '../utils/postPoll';
 import { userCanCreateCommunity } from '../lib/communityPermissions';
 import { getPointsLevelState } from '../utils/pointsLevel';
+import { isSesEmailConfigured, sendPasswordResetEmail } from '../services/emailService';
 
 const router = Router();
 
@@ -34,7 +35,13 @@ const validatePasswordReset = [
 
 const validatePasswordUpdate = [
   body('token').notEmpty().withMessage('Reset token is required'),
-  body('password').isLength({ min: 8 }).withMessage('Password must be at least 8 characters'),
+  body('newPassword').custom((value, { req }) => {
+    const p = typeof value === 'string' && value.length > 0 ? value : req.body?.password;
+    if (!p || typeof p !== 'string' || p.length < 8) {
+      throw new Error('Password must be at least 8 characters');
+    }
+    return true;
+  }),
 ];
 
 // Register new user
@@ -922,9 +929,8 @@ router.post('/forgot-password', validatePasswordReset, asyncHandler(async (req: 
 
   const { email } = req.body;
 
-  // Check if user exists
-  const user = await prisma.user.findUnique({
-    where: { email }
+  const user = await prisma.user.findFirst({
+    where: { email: { equals: email, mode: 'insensitive' } },
   });
 
   if (!user) {
@@ -943,15 +949,31 @@ router.post('/forgot-password', validatePasswordReset, asyncHandler(async (req: 
     { expiresIn: '1h' }
   );
 
-  // In production, send email with reset link
-  // For now, we'll log it (remove in production)
-  logger.info(`Password reset token for ${email}: ${resetToken}`);
+  const baseUrl = (process.env.PUBLIC_SITE_URL || 'https://orthoandspinetools.com').replace(/\/$/, '');
+  const resetUrl = `${baseUrl}/reset-password?token=${encodeURIComponent(resetToken)}`;
+
+  setImmediate(() => {
+    void (async () => {
+      const sent = await sendPasswordResetEmail({ to: user.email, resetUrl });
+      if (sent.ok) {
+        logger.info('Password reset email dispatched', { messageId: sent.messageId, userId: user.id });
+      } else if ('skipped' in sent && sent.skipped) {
+        logger.warn('Password reset email skipped (SES not configured)', { userId: user.id });
+      } else if (!sent.ok && 'error' in sent) {
+        logger.error('Password reset email failed', { userId: user.id, error: sent.error });
+      }
+    })();
+  });
+
+  if (process.env.NODE_ENV === 'development' && !isSesEmailConfigured()) {
+    logger.info('DEV: password reset link (SES not configured)', { resetUrl });
+  }
 
   res.json({
     success: true,
     message: 'If the email exists, a password reset link has been sent',
-    // Remove this in production - only for development
-    resetToken: process.env.NODE_ENV === 'development' ? resetToken : undefined
+    resetToken:
+      process.env.NODE_ENV === 'development' && !isSesEmailConfigured() ? resetToken : undefined,
   });
 }));
 
@@ -962,7 +984,8 @@ router.post('/reset-password', validatePasswordUpdate, asyncHandler(async (req: 
     throw new AppError(`Validation failed: ${errors.array().map(e => e.msg).join(', ')}`, 400);
   }
 
-  const { token, password } = req.body;
+  const { token } = req.body;
+  const password = req.body.newPassword ?? req.body.password;
 
   try {
     // Verify token
