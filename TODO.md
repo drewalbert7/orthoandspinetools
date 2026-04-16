@@ -17,7 +17,7 @@
 - [x] **Cases + Case tag + `tagName` filter** — `/cases`, default **Case** community tag + `npm run backfill-default-tags`, `GET /posts?tagName=Case`, create-post `mode=case` (see repo history Apr 2026).
 - [x] **Share meta (client)** — `DocumentMeta` + `frontend/src/lib/seo.ts` post headlines/descriptions/OG image fallbacks for in-app and JS-aware crawlers (complements server OG HTML above).
 - [x] **Amazon SES — password reset (code shipped Apr 15, 2026)** — `backend/src/services/emailService.ts` (`@aws-sdk/client-ses` **3.967.0**, Node 18–compatible); **`POST /auth/forgot-password`** sends reset mail via SES when **`AWS_ACCESS_KEY_ID`**, **`AWS_SECRET_ACCESS_KEY`**, **`AWS_SES_REGION`**, **`EMAIL_FROM`** are set; **`setImmediate`** so the handler returns fast; **no reset token in production logs** (dev-only `resetUrl` / `resetToken` when SES is not configured). Reset link uses **`PUBLIC_SITE_URL`**. **`POST /auth/reset-password`** accepts **`newPassword`** (frontend) or legacy **`password`**. **`docker-compose.prod.yml`** passes SES env from host `.env`; **`backend/env.example`** documents vars. Frontend: **`/forgot-password`**, **`/reset-password`** routes (`ForgotPassword.tsx`, `ResetPassword.tsx`).
-- [ ] **Amazon SES — ops & follow-ups** — In AWS: complete **verified identity** (e.g. email or domain in **same region** as `AWS_SES_REGION` — user flow in **US East Ohio = `us-east-2`**). Create **IAM** access keys; add secrets only on server `.env` (never commit). **Sandbox:** verify **To** addresses or request **production access**. Still **TODO in product:** welcome email after signup, optional verify-email, optional digests; bounce/complaint handling (SNS) later.
+- [ ] **Amazon SES — ops & follow-ups** — In AWS: complete **verified identity** (e.g. email or domain in **same region** as `AWS_SES_REGION` — user flow in **US East Ohio = `us-east-2`**). Create **IAM** access keys; add secrets only on server `.env` (never commit). **Sandbox:** verify **To** addresses or request **production access**. **Shipped in product:** welcome email + verify-email + resend verification UX + verified-user enforcement + SNS bounce/complaint ingestion + suppression list/admin API + digest sender + profile unsubscribe toggle. **Still TODO:** SES production-access approval, suppression Admin UI tab, optional digest frequency preferences.
 - [ ] **Ongoing** — **Production QA** after each deploy (checklist §2). **Post media** save/display: still verify end-to-end if any regression reports (§3 backlog).
 
 ### **Changes saved in repo (Apr 10, 2026)** *(retained — not deleted)*
@@ -121,7 +121,7 @@ docker compose -f docker-compose.prod.yml up -d backend frontend nginx
 - `extractPublicIdFromUrl` skips Cloudinary transformation/version path segments.
 - Avatar API prefers stable `secure_url` / `cloudinaryUrl` for stored `profileImage`.
 
-**Planned next:** **SES ops** (verify identity, IAM keys on server, production access) + **welcome / verify-email** mail (see **NEXT UP → Amazon SES — ops & follow-ups** and extended roadmap).
+**Planned next:** **SES ops** (production-access approval, sender reputation monitoring, suppression UI) + optional digest preference granularity (see **NEXT UP → Amazon SES — ops & follow-ups** and extended roadmap).
 
 ---
 
@@ -537,7 +537,7 @@ For detailed changelog of all completed work, see `CHANGELOG.md`.
 - **Deployment** — Docker Compose + nginx (see `docker-compose.prod.yml`)
 
 ### 🚧 **Known gaps / WIP** *(see **NEXT UP** for current QA)*
-- **Transactional email** — ✅ Password reset via SES when env configured; welcome/verify-email not wired yet (see **NEXT UP → Amazon SES**).
+- **Transactional email** — ✅ Password reset + welcome + verify-email + resend verification + digest summaries via SES when env configured; suppression Admin UI and optional digest frequency preferences remain future work (see **NEXT UP → Amazon SES**).
 - **Post media (create-post)** — if regressions appear: images/videos not saved or shown on timeline/detail; debug `POST /api/posts` + `post_attachments` (NEXT UP backlog).
 - **Content / polish** — test posts on live home feed; ongoing moderation and real content.
 - **Regression QA** — run **NEXT UP → Production QA** after each deploy.
@@ -549,7 +549,7 @@ For detailed changelog of all completed work, see `CHANGELOG.md`.
 > **Longer backlog** (notifications phases, tests, deployment checklists): **NEXT PRIORITIES (extended roadmap)** — search that heading in this file.
 
 ### **Immediate** *(supplement — confirm on live site; may overlap completed work elsewhere)*
-1. **Amazon SES** — ✅ Password reset sending in code (`setImmediate`, **`backend/env.example`**, compose env). **You:** finish AWS verified identity + IAM keys on server `.env` (region = console region). **Still:** welcome email, optional verify-email, retry/SNS later.
+1. **Amazon SES** — ✅ Password reset + welcome + verify-email + resend verification + digest sender in code (`setImmediate`, **`backend/env.example`**, compose env) and SNS bounce/complaint suppression handling with profile unsubscribe control. **You:** finish AWS production-access approval and set `AWS_SES_SNS_TOPIC_ARN` on server `.env` (region = console region). **Still:** suppression Admin UI tab + optional digest frequency controls.
 2. **Post media** — same as **NEXT UP → Production QA item 3** and backlog **Post media save/display regression (WIP)** if issues resurface.
 3. **Profile & avatar QA** — profile load, Cloudinary avatar, Profile Settings save/remove photo; errors should surface via `apiErrorMessage`-style responses.
 4. **Auth smoke test** — registration + login over HTTPS after deploy.
@@ -833,7 +833,7 @@ The platform focuses on:
 
 ---
 
-**Last Updated**: April 15, 2026 — **Amazon SES password-reset code** shipped; AWS console verification (e.g. `us-east-2`) + server env + welcome/verify-email still tracked in **NEXT UP**.  
+**Last Updated**: April 16, 2026 — SES stack expanded: welcome + verify-email + resend/enforcement + SNS suppression + digest + profile unsubscribe shipped; AWS production-access approval still tracked in **NEXT UP**.  
 **Status**: 🚀 **LIVE AND FUNCTIONAL** - Database connection verified, all features operational  
 **SSL Status**: 🔒 **SECURE** - HTTPS verified with valid certificate (served cert expires **May 10, 2026**). If browsers show expired SSL but `nginx/ssl/certs/fullchain.pem` on disk is newer, run: `docker compose -f docker-compose.prod.yml exec nginx nginx -t && docker compose -f docker-compose.prod.yml exec nginx nginx -s reload`  
 **Database Status**: 🔗 **CONNECTED** - PostgreSQL authentication working, startup verification active (7 posts, 4 users, 9 communities). Password: `secure_password_123` (in .env). If postgres container recreated, run: `ALTER USER postgres WITH PASSWORD 'secure_password_123';` then restart backend.  
@@ -856,7 +856,7 @@ The platform focuses on:
 **Administrator Setup**: ✅ **VERIFIED** - drewalbertmd set as highest permission administrator + verified physician (isAdmin, isVerifiedPhysician). Profile badges on profile page. Promote script: `backend/scripts/promote-admin.ts`  
 **Home Feed**: ✅ **FIXED** - Empty feed fallback: when logged-in user follows no communities, Home now shows all posts instead of "No posts available"  
 **Star Unfollow**: ✅ **FIXED** (Feb 2026) - Sidebar star unfollow now works; optimisticFollows used as display source of truth (union with followedCommunityIds caused unfollow to not update UI)  
-**Next Session**: Finish **SES on server** (IAM keys, `EMAIL_FROM`, sandbox/production); then **welcome email** / optional **verify-email**; security hardening as needed
+**Next Session**: Monitor digest outcomes and SES reputation, add suppression Admin UI, and decide on digest frequency preference UI (weekly/every 3 days/off).
 
 ### **Plain-English ops** (March 2026) ✅
 - ✅ **`docs/WHAT_TO_DO.md`** — what you actually need to do vs optional scaling; backups; deploy commands
@@ -1206,7 +1206,7 @@ Issues that were resolved at the time:
 **Optional later:** Profile-page verify controls for admins; moderator-only verify (currently admin-only API).
 
 ### **Transactional email — Amazon SES** 📧 **IN PROGRESS (Apr 15, 2026)**
-**Status:** ✅ **Password reset path shipped** in repo (`emailService.ts`, `auth.ts`, forgot/reset UI). **Ops:** verify SES identity + IAM keys on production `.env` (region must match console, e.g. **Ohio = `us-east-2`**). **Still TODO:** welcome on register, optional verify-email, SNS bounces (later).
+**Status:** ✅ Password reset + welcome + verify-email + resend/enforcement + SNS suppression + digest + profile unsubscribe shipped in repo. **Ops:** keep SES in correct region (e.g. **Ohio = `us-east-2`**) and complete/confirm production-access approval.
 
 **Implementation sketch (updated):**
 1. **AWS** — SES in chosen region; verify **domain** or **email**; DKIM for domain; request **production access** when ready to mail unverified recipients.
@@ -1214,7 +1214,7 @@ Issues that were resolved at the time:
 3. **Backend** — ✅ `emailService` + `setImmediate` send from forgot-password; HTML + text reset template; prod does not log tokens.
 4. **Welcome / verify** — Not shipped yet; same pattern as reset when implemented.
 5. **Compliance** — Generic transactional copy; avoid PHI; BAA/counsel if scope grows.
-6. **Observability** — Log message IDs on success; SNS webhooks later.
+6. **Observability** — Log message IDs on success; SNS webhooks + suppression pipeline shipped. Next: add dashboard/UI visibility for suppressions and digest performance.
 
 ### **5. Notification System Implementation** 🔔 **IN PROGRESS (v1 SHIPPED)**
 **Status:** ✅ **Core implementation shipped (Mar 24, 2026); follow-ups remain**  

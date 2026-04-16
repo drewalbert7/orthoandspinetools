@@ -18,6 +18,7 @@ model User {
   lastName          String
   passwordHash     String
   isEmailVerified   Boolean   @default(false)
+  emailDigestEnabled Boolean  @default(true) @map("email_digest_enabled")
   isActive          Boolean   @default(true)
   isAdmin           Boolean   @default(false) @map("is_admin")  // Admin privileges
   isVerifiedPhysician Boolean @default(false) @map("is_verified_physician")  // Verified physician badge
@@ -96,6 +97,19 @@ model Notification {
   @@index([userId, createdAt(sort: Desc)])
   @@index([userId, isRead])
   @@map("notifications")
+}
+
+model EmailSuppression {
+  id          String   @id @default(cuid())
+  email       String   @unique
+  reason      String
+  source      String   @default("ses_sns")
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  lastEventAt DateTime?
+
+  @@index([reason])
+  @@map("email_suppressions")
 }
 
 // Community model for medical specialties

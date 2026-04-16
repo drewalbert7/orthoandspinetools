@@ -1,12 +1,13 @@
 import React, { useEffect, useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import { LoginCredentials } from '../services/authService';
+import { LoginCredentials, authService } from '../services/authService';
 import BrandLogo from './BrandLogo';
 
 const LoginForm: React.FC = () => {
   const { login, user } = useAuth();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   // If already authenticated, redirect to profile immediately
   useEffect(() => {
     if (user) {
@@ -19,7 +20,18 @@ const LoginForm: React.FC = () => {
     password: '',
   });
   const [isLoading, setIsLoading] = useState(false);
+  const [isResendingVerification, setIsResendingVerification] = useState(false);
   const [error, setError] = useState('');
+
+  useEffect(() => {
+    const prefillEmail = searchParams.get('email');
+    if (prefillEmail) {
+      setFormData((prev) => ({ ...prev, email: prefillEmail }));
+    }
+    if (searchParams.get('verifyEmailSent') === '1') {
+      setError('Registration successful. Please verify your email before signing in.');
+    }
+  }, [searchParams]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
@@ -54,6 +66,23 @@ const LoginForm: React.FC = () => {
     }
   };
 
+  const canShowResend = error.toLowerCase().includes('email not verified') && formData.email.trim().length > 0;
+
+  const handleResendVerification = async () => {
+    const email = formData.email.trim();
+    if (!email) return;
+    setIsResendingVerification(true);
+    setError('');
+    try {
+      await authService.resendVerification(email);
+      setError('Verification email sent. Please check your inbox.');
+    } catch (err: any) {
+      setError(err.message || 'Failed to resend verification email');
+    } finally {
+      setIsResendingVerification(false);
+    }
+  };
+
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
       <div className="max-w-md w-full space-y-8">
@@ -78,7 +107,17 @@ const LoginForm: React.FC = () => {
         <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
           {error && (
             <div className="bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded-md">
-              {error}
+              <p>{error}</p>
+              {canShowResend && (
+                <button
+                  type="button"
+                  onClick={handleResendVerification}
+                  disabled={isResendingVerification}
+                  className="mt-2 inline-flex items-center text-sm font-medium text-blue-700 hover:text-blue-800 disabled:opacity-50"
+                >
+                  {isResendingVerification ? 'Resending...' : 'Resend verification email'}
+                </button>
+              )}
             </div>
           )}
           

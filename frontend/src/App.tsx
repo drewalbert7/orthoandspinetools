@@ -26,6 +26,7 @@ import AdminDashboard from './pages/AdminDashboard';
 import Search from './pages/Search';
 import ForgotPassword from './pages/ForgotPassword';
 import ResetPassword from './pages/ResetPassword';
+import VerifyEmail from './pages/VerifyEmail';
 import GoogleAnalytics from './components/GoogleAnalytics';
 import SitePolicyBanner from './components/SitePolicyBanner';
 
@@ -78,6 +79,7 @@ function App() {
                   <Route path="/login" element={<LoginForm />} />
                   <Route path="/forgot-password" element={<ForgotPassword />} />
                   <Route path="/reset-password" element={<ResetPassword />} />
+                  <Route path="/verify-email" element={<VerifyEmail />} />
                   <Route path="/register" element={<RegisterForm />} />
                   <Route path="/post/:id/edit" element={<EditPost />} />
                   <Route path="/post/:id" element={<PostDetail />} />

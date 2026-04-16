@@ -69,8 +69,8 @@ const RegisterForm: React.FC = () => {
       const { confirmPassword, ...registerData } = formData;
       console.log('Calling register with data:', registerData);
       await register(registerData);
-      console.log('Registration successful, navigating to profile');
-      navigate('/profile');
+      console.log('Registration successful, navigating to login for email verification');
+      navigate(`/login?verifyEmailSent=1&email=${encodeURIComponent(registerData.email)}`);
     } catch (err: any) {
       console.error('Registration error:', err);
       setError(err.message || 'Registration failed');

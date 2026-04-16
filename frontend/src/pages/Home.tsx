@@ -92,7 +92,7 @@ const PostCard: React.FC<{ post: Post }> = ({ post }) => {
             </a>
           )}
           {post.content ? (
-            <MarkdownContent lineClamp={3} className="mb-3 text-sm text-gray-800 [overflow-wrap:anywhere]">
+            <MarkdownContent lineClamp={8} className="mb-3 text-sm text-gray-800 [overflow-wrap:anywhere]">
               {post.content}
             </MarkdownContent>
           ) : null}

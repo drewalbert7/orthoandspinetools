@@ -612,5 +612,89 @@ router.get('/stats', authenticate, requireAdmin, asyncHandler(async (_req: AuthR
   });
 }));
 
+// List suppressed email recipients (admin only)
+router.get('/email-suppressions', authenticate, requireAdmin, [
+  query('page').optional().isInt({ min: 1 }).withMessage('Page must be a positive integer'),
+  query('limit').optional().isInt({ min: 1, max: 100 }).withMessage('Limit must be between 1 and 100'),
+  query('search').optional().isString().withMessage('Search must be a string'),
+], asyncHandler(async (req: AuthRequest, res: Response) => {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    throw new AppError(`Validation failed: ${errors.array().map(e => e.msg).join(', ')}`, 400);
+  }
+
+  const page = parseInt(req.query.page as string, 10) || 1;
+  const limit = parseInt(req.query.limit as string, 10) || 20;
+  const search = (req.query.search as string | undefined)?.trim();
+  const offset = (page - 1) * limit;
+
+  const where = search
+    ? { email: { contains: search, mode: 'insensitive' as const } }
+    : undefined;
+
+  const [items, total] = await Promise.all([
+    prisma.emailSuppression.findMany({
+      where,
+      skip: offset,
+      take: limit,
+      orderBy: [{ updatedAt: 'desc' }, { createdAt: 'desc' }],
+    }),
+    prisma.emailSuppression.count({ where }),
+  ]);
+
+  res.json({
+    success: true,
+    data: {
+      items,
+      pagination: {
+        page,
+        limit,
+        total,
+        pages: Math.ceil(total / limit),
+      },
+    },
+  });
+}));
+
+// Remove a suppressed email recipient (admin only)
+router.delete('/email-suppressions/:email', authenticate, requireAdmin, [
+  param('email').isEmail().withMessage('Valid email is required'),
+], asyncHandler(async (req: AuthRequest, res: Response) => {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    throw new AppError(`Validation failed: ${errors.array().map(e => e.msg).join(', ')}`, 400);
+  }
+
+  const email = String(req.params.email).trim().toLowerCase();
+  const existing = await prisma.emailSuppression.findUnique({ where: { email } });
+  if (!existing) {
+    throw new AppError('Suppression record not found', 404);
+  }
+
+  await prisma.emailSuppression.delete({ where: { email } });
+
+  await prisma.auditLog.create({
+    data: {
+      userId: req.user!.id,
+      action: 'REMOVE_EMAIL_SUPPRESSION',
+      resource: 'email_suppression',
+      resourceId: existing.id,
+      details: {
+        email,
+        previousReason: existing.reason,
+        source: existing.source,
+      },
+      ipAddress: req.ip,
+      userAgent: req.get('User-Agent'),
+    },
+  });
+
+  res.json({
+    success: true,
+    message: 'Email suppression removed',
+    data: { email },
+  });
+}));
+
 export default router;
 

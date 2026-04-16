@@ -10,6 +10,7 @@ export interface AuthRequest extends Request {
     username: string;
     specialty?: string;
     isAdmin?: boolean;
+    isEmailVerified?: boolean;
   };
 }
 
@@ -33,11 +34,16 @@ export const authenticate = async (req: AuthRequest, res: Response, next: NextFu
         specialty: true,
         isActive: true,
         isAdmin: true,
+        isEmailVerified: true,
       }
     });
 
     if (!user || !user.isActive) {
       throw new AppError('Invalid token or user not found.', 401);
+    }
+
+    if (!user.isEmailVerified) {
+      throw new AppError('Email not verified. Please verify your email before continuing.', 403);
     }
 
     req.user = user;
@@ -82,10 +88,11 @@ export const optionalAuth = async (req: AuthRequest, res: Response, next: NextFu
           username: true,
           specialty: true,
           isActive: true,
+          isEmailVerified: true,
         }
       });
 
-      if (user && user.isActive) {
+      if (user && user.isActive && user.isEmailVerified) {
         req.user = user;
       }
     }

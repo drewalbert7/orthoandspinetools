@@ -191,6 +191,7 @@ export interface User {
   location?: string;
   website?: string;
   isEmailVerified: boolean;
+  emailDigestEnabled?: boolean;
   isVerifiedPhysician?: boolean;
   isVerifiedFounder?: boolean;
   createdAt: string;

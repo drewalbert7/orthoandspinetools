@@ -60,6 +60,7 @@ const ProfileSettings: React.FC = () => {
     yearsExperience: '',
     location: '',
     website: '',
+    emailDigestEnabled: true,
   });
   const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
   const [profileImage, setProfileImage] = useState<string | null>(null);
@@ -84,6 +85,7 @@ const ProfileSettings: React.FC = () => {
         yearsExperience: user.yearsExperience?.toString() || '',
         location: user.location || '',
         website: user.website || '',
+        emailDigestEnabled: user.emailDigestEnabled !== false,
       });
       setProfileImage(user.profileImage || null);
     }
@@ -118,9 +120,13 @@ const ProfileSettings: React.FC = () => {
 
   const handleProfileChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
+    const nextValue =
+      e.target instanceof HTMLInputElement && e.target.type === 'checkbox'
+        ? e.target.checked
+        : value;
     setFormData(prev => ({
       ...prev,
-      [name]: value,
+      [name]: nextValue,
     }));
   };
 
@@ -187,6 +193,7 @@ const ProfileSettings: React.FC = () => {
     if (formData.yearsExperience) updateData.yearsExperience = parseInt(formData.yearsExperience);
     if (formData.location) updateData.location = formData.location;
     if (formData.website) updateData.website = formData.website;
+    updateData.emailDigestEnabled = formData.emailDigestEnabled;
     if (profileImage !== null) updateData.profileImage = profileImage;
 
     profileMutation.mutate(updateData);
@@ -511,6 +518,27 @@ const ProfileSettings: React.FC = () => {
                   />
                 </div>
               </div>
+            </div>
+
+            {/* Email Preferences */}
+            <div>
+              <h2 className="text-lg font-semibold text-gray-900 mb-4">Email Preferences</h2>
+              <label className="flex items-start space-x-3 rounded-md border border-gray-200 p-4">
+                <input
+                  type="checkbox"
+                  name="emailDigestEnabled"
+                  checked={formData.emailDigestEnabled}
+                  onChange={handleProfileChange}
+                  className="mt-1 h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                />
+                <span>
+                  <span className="block text-sm font-medium text-gray-900">Digest summary emails</span>
+                  <span className="block text-sm text-gray-600">
+                    Receive periodic email summaries based on your notifications and followed communities.
+                    Uncheck to unsubscribe from digest emails.
+                  </span>
+                </span>
+              </label>
             </div>
 
             {/* Submit Button */}

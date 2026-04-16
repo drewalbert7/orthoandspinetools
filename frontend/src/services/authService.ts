@@ -74,6 +74,7 @@ export interface User {
   location?: string;
   website?: string;
   isEmailVerified: boolean;
+  emailDigestEnabled?: boolean;
   isVerifiedPhysician?: boolean;
   isVerifiedFounder?: boolean;
   createdAt: string;
@@ -102,7 +103,7 @@ export interface RegisterFormData extends RegisterData {
 }
 
 export interface AuthResponse {
-  token: string;
+  token?: string;
   user: User;
 }
 
@@ -114,7 +115,9 @@ class AuthService {
       const { token, user } = response.data.data;
       
       // Store token and user data
-      localStorage.setItem('token', token);
+      if (token) {
+        localStorage.setItem('token', token);
+      }
       localStorage.setItem('user', JSON.stringify(user));
       
       return { token, user };
@@ -131,9 +134,14 @@ class AuthService {
       console.log('API response:', response.data);
       const { token, user } = response.data.data;
       
-      // Store token and user data
-      localStorage.setItem('token', token);
-      localStorage.setItem('user', JSON.stringify(user));
+      // Registration now requires email verification before sign-in.
+      if (token) {
+        localStorage.setItem('token', token);
+        localStorage.setItem('user', JSON.stringify(user));
+      } else {
+        localStorage.removeItem('token');
+        localStorage.removeItem('user');
+      }
       
       return { token, user };
     } catch (error: any) {
@@ -233,6 +241,28 @@ class AuthService {
       await api.post('/auth/reset-password', { token, newPassword });
     } catch (error: unknown) {
       throw new Error(apiErrorMessage(error, 'Failed to reset password'));
+    }
+  }
+
+  // Verify email
+  async verifyEmail(token: string): Promise<void> {
+    try {
+      await api.post('/auth/verify-email', { token });
+      const user = this.getCurrentUser();
+      if (user && !user.isEmailVerified) {
+        localStorage.setItem('user', JSON.stringify({ ...user, isEmailVerified: true }));
+      }
+    } catch (error: unknown) {
+      throw new Error(apiErrorMessage(error, 'Failed to verify email'));
+    }
+  }
+
+  // Resend verification email
+  async resendVerification(email: string): Promise<void> {
+    try {
+      await api.post('/auth/resend-verification', { email });
+    } catch (error: unknown) {
+      throw new Error(apiErrorMessage(error, 'Failed to resend verification email'));
     }
   }
 }

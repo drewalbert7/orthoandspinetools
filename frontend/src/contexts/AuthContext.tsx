@@ -83,7 +83,11 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const register = useCallback(async (userData: RegisterData) => {
     try {
       const response = await authService.register(userData);
-      setUser(response.user);
+      if (response.token) {
+        setUser(response.user);
+      } else {
+        setUser(null);
+      }
     } catch (error) {
       throw error;
     }

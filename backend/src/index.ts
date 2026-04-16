@@ -19,6 +19,7 @@ import karmaRoutes from './routes/karma';
 import moderationRoutes from './routes/moderation';
 import notificationRoutes from './routes/notifications';
 import ogPreviewRoutes from './routes/ogPreview';
+import sesEventsRoutes from './routes/sesEvents';
 
 // Import middleware
 import { errorHandler } from './middleware/errorHandler';
@@ -93,6 +94,9 @@ const limiter = rateLimit({
 });
 app.use(limiter);
 
+// SNS posts SES notifications as text/plain JSON; parse this route before global json middleware.
+app.use('/api/ses/events', express.text({ type: 'text/plain', limit: '1mb' }));
+
 // Body parsing middleware
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
@@ -151,6 +155,7 @@ app.use('/api/upload', uploadRoutes);
 app.use('/api/karma', karmaRoutes);
 app.use('/api/moderation', moderationRoutes);
 app.use('/api/notifications', notificationRoutes);
+app.use('/api/ses/events', sesEventsRoutes);
 
 // Error handling middleware
 app.use(errorHandler);

@@ -9,7 +9,7 @@ import { body, param, query, validationResult } from 'express-validator';
 import { enrichPostsPollData } from '../utils/postPoll';
 import { userCanCreateCommunity } from '../lib/communityPermissions';
 import { getPointsLevelState } from '../utils/pointsLevel';
-import { isSesEmailConfigured, sendPasswordResetEmail } from '../services/emailService';
+import { isSesEmailConfigured, sendPasswordResetEmail, sendVerifyEmail, sendWelcomeEmail } from '../services/emailService';
 
 const router = Router();
 
@@ -108,13 +108,6 @@ router.post('/register', validateRegister, asyncHandler(async (req: Request, res
     }
   });
 
-  // Generate JWT token
-  const token = jwt.sign(
-    { userId: user.id },
-    process.env.JWT_SECRET || 'changeme',
-    { expiresIn: (process.env.JWT_EXPIRES_IN as any) || '7d' }
-  );
-
   // Log the registration for audit purposes
   try {
     await prisma.auditLog.create({
@@ -136,12 +129,41 @@ router.post('/register', validateRegister, asyncHandler(async (req: Request, res
     logger.error('Failed to create audit log for registration', { error: auditError, userId: user.id });
   }
 
+  setImmediate(() => {
+    void (async () => {
+      const baseUrl = (process.env.PUBLIC_SITE_URL || 'https://orthoandspinetools.com').replace(/\/$/, '');
+      const verifyToken = jwt.sign(
+        { userId: user.id, type: 'email-verify' },
+        process.env.JWT_SECRET || 'fallback-secret',
+        { expiresIn: '24h' }
+      );
+      const verifyUrl = `${baseUrl}/verify-email?token=${encodeURIComponent(verifyToken)}`;
+
+      const sent = await sendWelcomeEmail({ to: user.email, firstName: user.firstName });
+      if (sent.ok) {
+        logger.info('Welcome email dispatched', { messageId: sent.messageId, userId: user.id });
+      } else if ('skipped' in sent && sent.skipped) {
+        logger.warn('Welcome email skipped (SES not configured)', { userId: user.id });
+      } else if (!sent.ok && 'error' in sent) {
+        logger.error('Welcome email failed', { userId: user.id, error: sent.error });
+      }
+
+      const verifySent = await sendVerifyEmail({ to: user.email, firstName: user.firstName, verifyUrl });
+      if (verifySent.ok) {
+        logger.info('Verify email dispatched', { messageId: verifySent.messageId, userId: user.id });
+      } else if ('skipped' in verifySent && verifySent.skipped) {
+        logger.warn('Verify email skipped (SES not configured)', { userId: user.id });
+      } else if (!verifySent.ok && 'error' in verifySent) {
+        logger.error('Verify email failed', { userId: user.id, error: verifySent.error });
+      }
+    })();
+  });
+
   res.status(201).json({
     success: true,
-    message: 'User registered successfully',
+    message: 'User registered successfully. Please verify your email before signing in.',
     data: {
       user,
-      token
     }
   });
 }));
@@ -176,6 +198,7 @@ router.post('/login', validateLogin, asyncHandler(async (req: Request, res: Resp
       website: true,
       isActive: true,
       isEmailVerified: true,
+      emailDigestEnabled: true,
       isAdmin: true,
       isVerifiedPhysician: true,
       isVerifiedFounder: true,
@@ -193,6 +216,10 @@ router.post('/login', validateLogin, asyncHandler(async (req: Request, res: Resp
   if (!isPasswordValid) {
     logger.info('AUTH: Invalid password', { email, passwordLength: password?.length || 0 });
     throw new AppError('Invalid credentials', 401);
+  }
+
+  if (!user.isEmailVerified) {
+    throw new AppError('Email not verified. Please verify your email before signing in.', 403);
   }
 
   // Update last login
@@ -268,6 +295,7 @@ router.get('/me', authenticate, asyncHandler(async (req: AuthRequest, res: Respo
       location: true,
       website: true,
       isEmailVerified: true,
+      emailDigestEnabled: true,
       isAdmin: true,
       isVerifiedPhysician: true,
       isVerifiedFounder: true,
@@ -308,6 +336,7 @@ router.put('/me', authenticate, [
   body('subSpecialty').optional().isString().withMessage('Sub-specialty must be a string'),
   body('institution').optional().isString().withMessage('Institution must be a string'),
   body('yearsExperience').optional().isInt({ min: 0, max: 50 }).withMessage('Years experience must be 0-50'),
+  body('emailDigestEnabled').optional().isBoolean().withMessage('Email digest preference must be true or false'),
   body('location').optional().isString().withMessage('Location must be a string'),
   body('website')
     .optional({ values: 'falsy' })
@@ -334,6 +363,7 @@ router.put('/me', authenticate, [
     subSpecialty,
     institution,
     yearsExperience,
+    emailDigestEnabled,
     location,
     website,
     profileImage
@@ -380,6 +410,7 @@ router.put('/me', authenticate, [
       ...(subSpecialty && { subSpecialty }),
       ...(institution && { institution }),
       ...(yearsExperience !== undefined && { yearsExperience: parseInt(yearsExperience) }),
+      ...(emailDigestEnabled !== undefined && { emailDigestEnabled: Boolean(emailDigestEnabled) }),
       ...(location && { location }),
       ...(website && { website }),
       ...(profileImage !== undefined && { profileImage }),
@@ -400,6 +431,7 @@ router.put('/me', authenticate, [
       location: true,
       website: true,
       isEmailVerified: true,
+      emailDigestEnabled: true,
       createdAt: true,
       updatedAt: true,
     }
@@ -710,6 +742,8 @@ router.get(
         profileImage: user.profileImage,
         location: user.location,
         website: user.website,
+        isEmailVerified: user.isEmailVerified,
+        emailDigestEnabled: user.emailDigestEnabled,
         yearsExperience: user.yearsExperience,
         createdAt: user.createdAt,
         updatedAt: user.updatedAt,
@@ -1035,6 +1069,105 @@ router.post('/reset-password', validatePasswordUpdate, asyncHandler(async (req: 
     }
     throw error;
   }
+}));
+
+router.post('/verify-email', [
+  body('token').notEmpty().withMessage('Verification token is required'),
+], asyncHandler(async (req: Request, res: Response) => {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    throw new AppError(`Validation failed: ${errors.array().map(e => e.msg).join(', ')}`, 400);
+  }
+
+  const { token } = req.body;
+
+  try {
+    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'fallback-secret') as any;
+    if (decoded.type !== 'email-verify') {
+      throw new AppError('Invalid verification token', 400);
+    }
+
+    const user = await prisma.user.findUnique({
+      where: { id: decoded.userId },
+      select: { id: true, isEmailVerified: true },
+    });
+
+    if (!user) {
+      throw new AppError('User not found', 404);
+    }
+
+    if (!user.isEmailVerified) {
+      await prisma.user.update({
+        where: { id: user.id },
+        data: { isEmailVerified: true },
+      });
+
+      await prisma.auditLog.create({
+        data: {
+          userId: user.id,
+          action: 'VERIFY_EMAIL',
+          resource: 'user',
+          resourceId: user.id,
+          details: { method: 'email_token' },
+          ipAddress: req.ip,
+          userAgent: req.get('User-Agent'),
+        },
+      });
+    }
+
+    res.json({
+      success: true,
+      message: 'Email verified successfully',
+    });
+  } catch (error) {
+    if (error instanceof jwt.JsonWebTokenError) {
+      throw new AppError('Invalid or expired verification token', 400);
+    }
+    throw error;
+  }
+}));
+
+router.post('/resend-verification', [
+  body('email').isEmail().normalizeEmail().withMessage('Valid email is required'),
+], asyncHandler(async (req: Request, res: Response) => {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    throw new AppError(`Validation failed: ${errors.array().map(e => e.msg).join(', ')}`, 400);
+  }
+
+  const { email } = req.body;
+  const user = await prisma.user.findFirst({
+    where: { email: { equals: email, mode: 'insensitive' } },
+    select: { id: true, email: true, firstName: true, isEmailVerified: true },
+  });
+
+  if (user && !user.isEmailVerified) {
+    const baseUrl = (process.env.PUBLIC_SITE_URL || 'https://orthoandspinetools.com').replace(/\/$/, '');
+    const verifyToken = jwt.sign(
+      { userId: user.id, type: 'email-verify' },
+      process.env.JWT_SECRET || 'fallback-secret',
+      { expiresIn: '24h' }
+    );
+    const verifyUrl = `${baseUrl}/verify-email?token=${encodeURIComponent(verifyToken)}`;
+
+    setImmediate(() => {
+      void (async () => {
+        const sent = await sendVerifyEmail({ to: user.email, firstName: user.firstName, verifyUrl });
+        if (sent.ok) {
+          logger.info('Verify email re-dispatched', { messageId: sent.messageId, userId: user.id });
+        } else if ('skipped' in sent && sent.skipped) {
+          logger.warn('Verify email re-dispatch skipped (SES not configured)', { userId: user.id });
+        } else if (!sent.ok && 'error' in sent) {
+          logger.error('Verify email re-dispatch failed', { userId: user.id, error: sent.error });
+        }
+      })();
+    });
+  }
+
+  res.json({
+    success: true,
+    message: 'If the email exists and is not verified, a verification link has been sent.',
+  });
 }));
 
 // Verify/Unverify physician (Admin only)

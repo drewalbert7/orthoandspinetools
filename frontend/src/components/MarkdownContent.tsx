@@ -75,18 +75,22 @@ const markdownComponents: Components = {
   h3: ({ children }) => <h3 className="mb-2 text-base font-semibold last:mb-0">{children}</h3>,
 };
 
-const LINE_CLAMP_OVERFLOW: Record<2 | 3 | 4 | 5 | 6, string> = {
+const LINE_CLAMP_OVERFLOW: Record<2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10, string> = {
   2: 'max-h-[2lh] overflow-hidden',
   3: 'max-h-[3lh] overflow-hidden',
   4: 'max-h-[4lh] overflow-hidden',
   5: 'max-h-[5lh] overflow-hidden',
   6: 'max-h-[6lh] overflow-hidden',
+  7: 'max-h-[7lh] overflow-hidden',
+  8: 'max-h-[8lh] overflow-hidden',
+  9: 'max-h-[9lh] overflow-hidden',
+  10: 'max-h-[10lh] overflow-hidden',
 };
 
 export type MarkdownContentProps = {
   children: string;
   className?: string;
-  lineClamp?: 2 | 3 | 4 | 5 | 6;
+  lineClamp?: 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10;
 };
 
 const MarkdownContent: React.FC<MarkdownContentProps> = ({ children, className = '', lineClamp }) => {

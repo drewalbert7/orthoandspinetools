@@ -1,7 +1,8 @@
 import { Router, Response } from 'express';
 import { authenticate, AuthRequest } from '../middleware/auth';
 import { asyncHandler, AppError } from '../middleware/errorHandler';
-import { param, query, validationResult } from 'express-validator';
+import { requireAdmin } from '../middleware/authorization';
+import { body, param, query, validationResult } from 'express-validator';
 import {
   getUserNotifications,
   getUnreadCount,
@@ -9,6 +10,7 @@ import {
   markAllAsRead,
   deleteNotification,
 } from '../services/notificationService';
+import { runNotificationDigest } from '../services/emailDigestService';
 
 const router = Router();
 
@@ -74,5 +76,38 @@ router.delete(
     res.json({ success: true, message: 'Deleted' });
   })
 );
+
+router.post(
+  '/digest/run',
+  authenticate,
+  requireAdmin,
+  [
+    body('maxUsers').optional().isInt({ min: 1, max: 500 }).withMessage('maxUsers must be 1-500'),
+    body('dryRun').optional().isBoolean().withMessage('dryRun must be a boolean'),
+  ],
+  asyncHandler(async (req: AuthRequest, res: Response) => {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      throw new AppError(errors.array().map((e) => e.msg).join(', '), 400);
+    }
+    const maxUsers = req.body.maxUsers != null ? parseInt(String(req.body.maxUsers), 10) : undefined;
+    const dryRun = req.body.dryRun === true;
+    const result = await runNotificationDigest({ maxUsers, dryRun });
+    res.json({ success: true, data: result });
+  })
+);
+
+router.post('/digest/cron', asyncHandler(async (req: AuthRequest, res: Response) => {
+  const configuredSecret = process.env.EMAIL_DIGEST_CRON_SECRET?.trim();
+  if (!configuredSecret) {
+    throw new AppError('Digest cron secret is not configured', 503);
+  }
+  const provided = req.get('x-digest-secret')?.trim();
+  if (!provided || provided !== configuredSecret) {
+    throw new AppError('Invalid digest secret', 403);
+  }
+  const result = await runNotificationDigest();
+  res.json({ success: true, data: result });
+}));
 
 export default router;
