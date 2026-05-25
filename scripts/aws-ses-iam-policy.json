@@ -1,0 +1,23 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "SendFromOrthoDomain",
+      "Effect": "Allow",
+      "Action": ["ses:SendEmail", "ses:SendRawEmail"],
+      "Resource": [
+        "arn:aws:ses:us-east-2:390445023243:identity/orthoandspinetools.com",
+        "arn:aws:ses:us-east-2:390445023243:identity/noreply@orthoandspinetools.com"
+      ]
+    },
+    {
+      "Sid": "UseSesConfigurationSets",
+      "Effect": "Allow",
+      "Action": ["ses:SendEmail", "ses:SendRawEmail"],
+      "Resource": [
+        "arn:aws:ses:us-east-2:390445023243:configuration-set/my-first-configuration-set",
+        "arn:aws:ses:us-east-2:390445023243:configuration-set/orthoandspinetools-prod"
+      ]
+    }
+  ]
+}

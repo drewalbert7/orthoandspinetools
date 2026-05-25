@@ -1,6 +1,8 @@
 import { prisma } from '../lib/prisma';
 import { sendTransactionalEmail } from './emailService';
 import { logger } from '../utils/logger';
+import { escapeHtmlAttribute, escapeHtmlText, wrapDigestHtml } from '../lib/emailHtml';
+import { getPublicSiteUrl } from '../lib/sesConfig';
 
 export type DigestRunResult = {
   scanned: number;
@@ -22,7 +24,7 @@ function parseIntEnv(name: string, fallback: number): number {
 }
 
 function getBaseUrl(): string {
-  return (process.env.PUBLIC_SITE_URL || 'https://orthoandspinetools.com').replace(/\/$/, '');
+  return getPublicSiteUrl();
 }
 
 function buildDigestEmailHtml(params: {
@@ -48,21 +50,30 @@ function buildDigestEmailHtml(params: {
     `Open your notifications: ${baseUrl}/`,
   ].join('\n');
 
+  const safeName = escapeHtmlText(firstName);
+  const preferencesUrl = `${baseUrl}/profile/settings`;
   const postItemsHtml = posts
-    .map(
-      (p) =>
-        `<li><a href="${baseUrl}/post/${p.postId}">${p.title}</a> <span style="color:#666">(${p.communityName})</span></li>`
-    )
+    .map((p) => {
+      const href = escapeHtmlAttribute(`${baseUrl}/post/${p.postId}`);
+      const title = escapeHtmlText(p.title);
+      const community = escapeHtmlText(p.communityName);
+      return `<li><a href="${href}" style="color:#2563eb;">${title}</a> <span style="color:#666">(${community})</span></li>`;
+    })
     .join('');
 
-  const htmlBody = `<!DOCTYPE html><html><body>
-<p>Hi ${firstName},</p>
+  const inner = `<p>Hi ${safeName},</p>
 <p>You have <strong>${unreadCount}</strong> unread notification${unreadCount === 1 ? '' : 's'}.</p>
 ${posts.length > 0 ? `<p>Recent posts from communities you follow:</p><ul>${postItemsHtml}</ul>` : '<p>No new followed-community posts in this period.</p>'}
-<p><a href="${baseUrl}/">Open OrthoAndSpineTools</a></p>
-</body></html>`;
+<p><a href="${escapeHtmlAttribute(`${baseUrl}/`)}" style="color:#2563eb;">Open OrthoAndSpineTools</a></p>`;
 
-  return { subject, textBody, htmlBody };
+  const htmlBody = wrapDigestHtml(inner, preferencesUrl);
+  const textBodyWithPrefs = [
+    ...textBody.split('\n'),
+    '',
+    `Manage email preferences: ${preferencesUrl}`,
+  ].join('\n');
+
+  return { subject, textBody: textBodyWithPrefs, htmlBody };
 }
 
 async function latestDigestSentAt(userId: string): Promise<Date | null> {
@@ -183,6 +194,7 @@ export async function runNotificationDigest(options: DigestRunOptions = {}): Pro
       subject: digestEmail.subject,
       textBody: digestEmail.textBody,
       htmlBody: digestEmail.htmlBody,
+      kind: 'digest',
     });
 
     if (!sendResult.ok) {

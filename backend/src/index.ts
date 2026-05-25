@@ -26,6 +26,7 @@ import { errorHandler } from './middleware/errorHandler';
 import { securityHeaders, sanitizeInput, validateUploadSecurity } from './middleware/security';
 import { logger } from './utils/logger';
 import { prisma } from './lib/prisma';
+import { validateSesConfigurationAtStartup } from './lib/sesConfig';
 
 // Load environment variables
 dotenv.config();
@@ -88,7 +89,8 @@ const limiter = rateLimit({
     return (
       req.path === '/api/health' ||
       req.path === '/health' ||
-      req.path.startsWith('/api/og/')
+      req.path.startsWith('/api/og/') ||
+      req.path.startsWith('/api/ses/events')
     );
   },
 });
@@ -193,7 +195,8 @@ async function startServer() {
     // Test database connection
     await prisma.$queryRaw`SELECT 1`;
     logger.info('✅ Database connection verified');
-    
+    validateSesConfigurationAtStartup();
+
     const PORT = process.env.PORT || 3001;
     server.listen(PORT, () => {
       logger.info(`🚀 OrthoAndSpineTools API server running on port ${PORT}`);

@@ -45,6 +45,12 @@ services:
       AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY:-}
       EMAIL_FROM: ${EMAIL_FROM:-}
       EMAIL_FROM_NAME: ${EMAIL_FROM_NAME:-OrthoAndSpineTools}
+      EMAIL_REPLY_TO: ${EMAIL_REPLY_TO:-}
+      AWS_SES_CONFIGURATION_SET: ${AWS_SES_CONFIGURATION_SET:-}
+      AWS_SES_SNS_TOPIC_ARN: ${AWS_SES_SNS_TOPIC_ARN:-}
+      AWS_SNS_VERIFY_SIGNATURES: ${AWS_SNS_VERIFY_SIGNATURES:-true}
+      AUTH_EMAIL_RATE_LIMIT_MAX: ${AUTH_EMAIL_RATE_LIMIT_MAX:-5}
+      AUTH_EMAIL_RATE_LIMIT_WINDOW_MS: ${AUTH_EMAIL_RATE_LIMIT_WINDOW_MS:-900000}
       EMAIL_DIGEST_ENABLED: ${EMAIL_DIGEST_ENABLED:-true}
       EMAIL_DIGEST_MIN_HOURS: ${EMAIL_DIGEST_MIN_HOURS:-96}
       EMAIL_DIGEST_LOOKBACK_HOURS: ${EMAIL_DIGEST_LOOKBACK_HOURS:-168}
@@ -101,6 +107,7 @@ services:
     volumes:
       - ./nginx/nginx.conf:/etc/nginx/nginx.conf
       - ./nginx/ssl:/etc/nginx/ssl
+      - ./nginx/ssl/certbot:/var/www/certbot
       - ./nginx/logs:/var/log/nginx
     depends_on:
       backend:

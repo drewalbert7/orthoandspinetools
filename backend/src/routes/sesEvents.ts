@@ -1,8 +1,11 @@
 import { Router, Request, Response } from 'express';
+import MessageValidator from 'sns-validator';
 import { prisma } from '../lib/prisma';
 import { logger } from '../utils/logger';
+import { getSesRuntimeConfig } from '../lib/sesConfig';
 
 const router = Router();
+const snsValidator = new MessageValidator();
 
 type SnsEnvelope = {
   Type?: 'SubscriptionConfirmation' | 'Notification' | 'UnsubscribeConfirmation' | string;
@@ -10,6 +13,8 @@ type SnsEnvelope = {
   SubscribeURL?: string;
   TopicArn?: string;
   MessageId?: string;
+  Signature?: string;
+  SigningCertURL?: string;
 };
 
 type SesNotification = {
@@ -34,29 +39,72 @@ function normalizeEmail(email: string | undefined): string | null {
   return v.length > 0 ? v : null;
 }
 
-function parseEnvelope(req: Request): SnsEnvelope {
-  if (typeof req.body === 'string' && req.body.trim().length > 0) {
-    try {
-      return JSON.parse(req.body) as SnsEnvelope;
-    } catch {
-      return {};
-    }
+function getRawBody(req: Request): string {
+  if (typeof req.body === 'string') {
+    return req.body;
   }
   if (req.body && typeof req.body === 'object') {
-    return req.body as SnsEnvelope;
+    return JSON.stringify(req.body);
   }
-  return {};
+  return '';
+}
+
+function parseEnvelope(raw: string): SnsEnvelope {
+  if (!raw.trim()) return {};
+  try {
+    return JSON.parse(raw) as SnsEnvelope;
+  } catch {
+    return {};
+  }
 }
 
 function isAllowedTopic(topicArn?: string): boolean {
-  const allowed = process.env.AWS_SES_SNS_TOPIC_ARN?.trim();
+  const cfg = getSesRuntimeConfig();
+  const allowed = cfg.snsTopicArn;
+  if (cfg.enforceSnsTopicAllowList) {
+    if (!allowed) return false;
+    return topicArn === allowed;
+  }
   if (!allowed) return true;
   return topicArn === allowed;
+}
+
+async function verifySnsMessage(rawBody: string): Promise<boolean> {
+  const cfg = getSesRuntimeConfig();
+  if (!cfg.verifySnsSignatures) {
+    return true;
+  }
+  return new Promise((resolve) => {
+    snsValidator.validate(rawBody, (err) => {
+      if (err) {
+        logger.warn('SES SNS signature verification failed', {
+          error: err.message,
+        });
+        resolve(false);
+        return;
+      }
+      resolve(true);
+    });
+  });
 }
 
 async function confirmSubscriptionIfPresent(envelope: SnsEnvelope): Promise<void> {
   const url = envelope.SubscribeURL;
   if (!url) return;
+
+  try {
+    const parsed = new URL(url);
+    if (parsed.protocol !== 'https:' || !parsed.hostname.endsWith('.amazonaws.com')) {
+      logger.warn('SES SNS subscription URL rejected (not AWS HTTPS)', {
+        host: parsed.hostname,
+      });
+      return;
+    }
+  } catch {
+    logger.warn('SES SNS subscription URL invalid');
+    return;
+  }
+
   try {
     const out = await fetch(url, { method: 'GET' });
     logger.info('SES SNS subscription confirmed', {
@@ -104,12 +152,20 @@ async function suppressRecipients(emails: string[], reason: 'bounce' | 'complain
 }
 
 router.post('/', async (req: Request, res: Response) => {
-  const envelope = parseEnvelope(req);
+  const rawBody = getRawBody(req);
+  const signatureOk = await verifySnsMessage(rawBody);
+  if (!signatureOk) {
+    res.status(403).json({ success: false, error: 'Invalid SNS signature' });
+    return;
+  }
+
+  const envelope = parseEnvelope(rawBody);
   const messageType = req.get('x-amz-sns-message-type') || envelope.Type || 'Unknown';
 
   if (!isAllowedTopic(envelope.TopicArn)) {
-    logger.warn('SES SNS event rejected due to topic mismatch', {
+    logger.warn('SES SNS event rejected due to topic mismatch or missing allow-list', {
       receivedTopicArn: envelope.TopicArn,
+      enforceAllowList: getSesRuntimeConfig().enforceSnsTopicAllowList,
     });
     res.status(403).json({ success: false, error: 'Topic not allowed' });
     return;
@@ -150,23 +206,25 @@ router.post('/', async (req: Request, res: Response) => {
     snsMessageId: envelope.MessageId,
     sesMessageId: event.mail?.messageId,
     notificationType: event.notificationType || 'Unknown',
-    recipients: event.mail?.destination?.length || 0,
+    recipientCount: event.mail?.destination?.length || 0,
   };
 
   if (event.notificationType === 'Bounce') {
-    const bounced = event.bounce?.bouncedRecipients?.map((r) => r.emailAddress).filter(Boolean) as string[] || [];
+    const bounced =
+      event.bounce?.bouncedRecipients?.map((r) => r.emailAddress).filter(Boolean) as string[] || [];
     await suppressRecipients(bounced, 'bounce', event.mail?.timestamp);
     logger.warn('SES bounce event received', {
       ...baseLog,
       bounceType: event.bounce?.bounceType,
-      bouncedRecipients: bounced,
+      bouncedCount: bounced.length,
     });
   } else if (event.notificationType === 'Complaint') {
-    const complained = event.complaint?.complainedRecipients?.map((r) => r.emailAddress).filter(Boolean) as string[] || [];
+    const complained =
+      event.complaint?.complainedRecipients?.map((r) => r.emailAddress).filter(Boolean) as string[] || [];
     await suppressRecipients(complained, 'complaint', event.mail?.timestamp);
     logger.warn('SES complaint event received', {
       ...baseLog,
-      complainedRecipients: complained,
+      complainedCount: complained.length,
     });
   } else {
     logger.info('SES notification event received', baseLog);

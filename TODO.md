@@ -9,7 +9,7 @@
 | **CODING AGENT INSTRUCTIONS** | Onboarding / workflow for contributors and agents. |
 | **COMPLETED WORK** + long `###` history | Archive and audit trail — keep for context. |
 
-## 🔥 **NEXT UP — START HERE** (updated Apr 15, 2026)
+## 🔥 **NEXT UP — START HERE** (updated May 25, 2026)
 
 ### **Goals (current focus — Apr 14–15, 2026)**
 - [x] **Brand copy** — Site tagline **"Ortho and Spine Tools - Hunt for the Best"** in `SEO_DEFAULTS`, `index.html`, registration hero, `llms.txt` (see Apr 10 notes below).
@@ -17,7 +17,9 @@
 - [x] **Cases + Case tag + `tagName` filter** — `/cases`, default **Case** community tag + `npm run backfill-default-tags`, `GET /posts?tagName=Case`, create-post `mode=case` (see repo history Apr 2026).
 - [x] **Share meta (client)** — `DocumentMeta` + `frontend/src/lib/seo.ts` post headlines/descriptions/OG image fallbacks for in-app and JS-aware crawlers (complements server OG HTML above).
 - [x] **Amazon SES — password reset (code shipped Apr 15, 2026)** — `backend/src/services/emailService.ts` (`@aws-sdk/client-ses` **3.967.0**, Node 18–compatible); **`POST /auth/forgot-password`** sends reset mail via SES when **`AWS_ACCESS_KEY_ID`**, **`AWS_SECRET_ACCESS_KEY`**, **`AWS_SES_REGION`**, **`EMAIL_FROM`** are set; **`setImmediate`** so the handler returns fast; **no reset token in production logs** (dev-only `resetUrl` / `resetToken` when SES is not configured). Reset link uses **`PUBLIC_SITE_URL`**. **`POST /auth/reset-password`** accepts **`newPassword`** (frontend) or legacy **`password`**. **`docker-compose.prod.yml`** passes SES env from host `.env`; **`backend/env.example`** documents vars. Frontend: **`/forgot-password`**, **`/reset-password`** routes (`ForgotPassword.tsx`, `ResetPassword.tsx`).
-- [ ] **Amazon SES — ops & follow-ups** — In AWS: complete **verified identity** (e.g. email or domain in **same region** as `AWS_SES_REGION` — user flow in **US East Ohio = `us-east-2`**). Create **IAM** access keys; add secrets only on server `.env` (never commit). **Sandbox:** verify **To** addresses or request **production access**. **Shipped in product:** welcome email + verify-email + resend verification UX + verified-user enforcement + SNS bounce/complaint ingestion + suppression list/admin API + digest sender + profile unsubscribe toggle. **Still TODO:** SES production-access approval, suppression Admin UI tab, optional digest frequency preferences.
+- [x] **Amazon SES — ops (live May 25, 2026)** — **Verified:** `orthoandspinetools.com` in **us-east-2**; IAM user `orthoandspinetools` in `AWSSESSendingGroupDoNotRename` + **`AmazonSesSendingAccess`** updated (domain identity + `configuration-set/my-first-configuration-set`). Server `.env` keys valid; **`Password reset email dispatched`** + direct `SendEmail` OK. **Code shipped May 2026:** SNS signature verification, rate limits, `sesConfig` startup checks, HTML templates, [`docs/SES_AWS_SETUP.md`](../docs/SES_AWS_SETUP.md), [`scripts/aws-ses-iam-policy.json`](../scripts/aws-ses-iam-policy.json).
+- [ ] **Amazon SES — follow-ups (next session)** — Set **`AWS_SES_SNS_TOPIC_ARN`** + HTTPS subscription to `/api/ses/events` (bounce/complaint suppression). Optional: dedicated config set `orthoandspinetools-prod`, request **production access** (leave sandbox), suppression **Admin UI** tab, digest frequency prefs. Confirm inbox delivery for welcome/verify flows after prod access.
+- [ ] **Amazon SES — project isolation (one AWS account, multiple apps)** — Use **dedicated IAM user + keys per project** (policy in `scripts/aws-ses-iam-policy.json`); do not reuse keys. **Long term (optional):** second AWS account under **Organizations**.
 - [ ] **Ongoing** — **Production QA** after each deploy (checklist §2). **Post media** save/display: still verify end-to-end if any regression reports (§3 backlog).
 
 ### **Changes saved in repo (Apr 10, 2026)** *(retained — not deleted)*
@@ -53,6 +55,7 @@
 | Containers | `orthoandspinetools-postgres`, `orthoandspinetools-backend`, `orthoandspinetools-frontend`, `orthoandspinetools-nginx` |
 | Secrets on server | `.env`, `.env.cloudinary` (never commit real values); **SES:** `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, `AWS_SES_REGION`, `EMAIL_FROM` (+ optional `EMAIL_FROM_NAME`) on server only (see **NEXT UP → Amazon SES — ops**) |
 | Nginx | Uses bind-mounted **`nginx/nginx.conf`** from the repo; after editing it, **recreate or reload nginx** (see §0) |
+| SSL auto-renewal | Monthly cron: **`0 3 1 * *`** → `scripts/ssl-renew-cron.sh` → `./update-ssl-certs.sh`. Install: **`./scripts/setup-ssl-renewal-cron.sh setup`**. Log: **`logs/ssl-renew-cron.log`**. Cert webroot: **`nginx/ssl/certbot`** mounted at `/var/www/certbot` in prod nginx. |
 
 #### **Industry-standard check (is this “set up correctly”?)**
 **Yes, for a typical small/medium production web app** — this matches what many teams ship: containers for API + UI + DB, reverse proxy (nginx) in front, TLS, healthchecks, persistent DB volume, secrets via env files.
@@ -121,7 +124,7 @@ docker compose -f docker-compose.prod.yml up -d backend frontend nginx
 - `extractPublicIdFromUrl` skips Cloudinary transformation/version path segments.
 - Avatar API prefers stable `secure_url` / `cloudinaryUrl` for stored `profileImage`.
 
-**Planned next:** **SES ops** (production-access approval, sender reputation monitoring, suppression UI) + optional digest preference granularity (see **NEXT UP → Amazon SES — ops & follow-ups** and extended roadmap).
+**Planned next:** **SES ops** — rotate invalid IAM keys, retest forgot-password; **SES project isolation** (dedicated IAM user + config set + SNS topic); production-access approval; suppression Admin UI (see **NEXT UP → Amazon SES** items).
 
 ---
 
@@ -412,13 +415,13 @@ cd /home/dstrad/orthoandspinetools-main
    ```
 
 #### **SSL Certificate Renewal Process:**
-1. **📅 CHECK EXPIRY** - Current served cert expires **May 10, 2026** (renew Feb 2026 cert on disk; reload nginx after copy). Auto-renewal: run `update-ssl-certs.sh` or certbot as documented.
+1. **📅 CHECK EXPIRY** - Served cert renewed **May 17, 2026**; expires **Aug 15, 2026** (`openssl x509 -in nginx/ssl/certs/fullchain.pem -noout -dates`). **Auto-renewal:** monthly cron via `./scripts/setup-ssl-renewal-cron.sh setup` (runs `update-ssl-certs.sh`; log: `logs/ssl-renew-cron.log`).
 2. **🔄 MANUAL RENEWAL** (if needed):
    ```bash
    ./update-ssl-certs.sh
    ```
-3. **✅ VERIFY RENEWAL** - Test HTTPS connection after renewal
-4. **📝 UPDATE DOCUMENTATION** - Update TODO.md with any changes
+3. **✅ VERIFY RENEWAL** - `curl -sI https://orthoandspinetools.com` (no SSL errors) or check cron log after the 1st
+4. **📝 UPDATE DOCUMENTATION** - Update TODO.md expiry dates if renewed manually outside cron
 
 #### **Emergency SSL Recovery:**
 1. **🚨 IF SSL BREAKS** - Run complete SSL setup:
@@ -549,7 +552,7 @@ For detailed changelog of all completed work, see `CHANGELOG.md`.
 > **Longer backlog** (notifications phases, tests, deployment checklists): **NEXT PRIORITIES (extended roadmap)** — search that heading in this file.
 
 ### **Immediate** *(supplement — confirm on live site; may overlap completed work elsewhere)*
-1. **Amazon SES** — ✅ Password reset + welcome + verify-email + resend verification + digest sender in code (`setImmediate`, **`backend/env.example`**, compose env) and SNS bounce/complaint suppression handling with profile unsubscribe control. **You:** finish AWS production-access approval and set `AWS_SES_SNS_TOPIC_ARN` on server `.env` (region = console region). **Still:** suppression Admin UI tab + optional digest frequency controls.
+1. **Amazon SES** — ✅ Password reset + welcome + verify-email + resend + digest in code. **Next session:** **rotate invalid IAM keys** (May 23 test: `InvalidClientTokenId`); **project isolation** — dedicated IAM user `ses-orthoandspinetools-prod`, SES config set, SNS topic → set `AWS_SES_SNS_TOPIC_ARN`; request **production access** in `us-east-2`. **Still:** suppression Admin UI tab + optional digest frequency controls.
 2. **Post media** — same as **NEXT UP → Production QA item 3** and backlog **Post media save/display regression (WIP)** if issues resurface.
 3. **Profile & avatar QA** — profile load, Cloudinary avatar, Profile Settings save/remove photo; errors should surface via `apiErrorMessage`-style responses.
 4. **Auth smoke test** — registration + login over HTTPS after deploy.
@@ -833,9 +836,9 @@ The platform focuses on:
 
 ---
 
-**Last Updated**: April 16, 2026 — SES stack expanded: welcome + verify-email + resend/enforcement + SNS suppression + digest + profile unsubscribe shipped; AWS production-access approval still tracked in **NEXT UP**.  
+**Last Updated**: May 25, 2026 — **SES live:** forgot-password + SendEmail working in prod (`us-east-2`, `noreply@orthoandspinetools.com`). Hardening committed (SNS verify, rate limits, templates). Next: SNS topic ARN + production access + optional config set rename.  
 **Status**: 🚀 **LIVE AND FUNCTIONAL** - Database connection verified, all features operational  
-**SSL Status**: 🔒 **SECURE** - HTTPS verified with valid certificate (served cert expires **May 10, 2026**). If browsers show expired SSL but `nginx/ssl/certs/fullchain.pem` on disk is newer, run: `docker compose -f docker-compose.prod.yml exec nginx nginx -t && docker compose -f docker-compose.prod.yml exec nginx nginx -s reload`  
+**SSL Status**: 🔒 **SECURE** - HTTPS valid; cert expires **Aug 15, 2026**. Monthly auto-renewal: `./scripts/setup-ssl-renewal-cron.sh` (see production facts table). Manual: `./update-ssl-certs.sh`. If browsers show stale cert after renewal, reload nginx: `docker compose -f docker-compose.prod.yml exec nginx nginx -s reload`  
 **Database Status**: 🔗 **CONNECTED** - PostgreSQL authentication working, startup verification active (7 posts, 4 users, 9 communities). Password: `secure_password_123` (in .env). If postgres container recreated, run: `ALTER USER postgres WITH PASSWORD 'secure_password_123';` then restart backend.  
 **Authentication Status**: ✅ **WORKING** - User sign-in and registration functional  
 **Comment System**: ✅ **WORKING** - Comment submission functional with Reddit-style keyboard shortcuts  

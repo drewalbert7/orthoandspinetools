@@ -1,4 +1,5 @@
 import { Router, Request, Response, NextFunction } from 'express';
+import rateLimit from 'express-rate-limit';
 import { authenticate, AuthRequest } from '../middleware/auth';
 import { asyncHandler, AppError } from '../middleware/errorHandler';
 import { prisma } from '../lib/prisma';
@@ -12,6 +13,19 @@ import { getPointsLevelState } from '../utils/pointsLevel';
 import { isSesEmailConfigured, sendPasswordResetEmail, sendVerifyEmail, sendWelcomeEmail } from '../services/emailService';
 
 const router = Router();
+
+/** Limits password-reset / verification email abuse (per IP + email). */
+const authEmailLimiter = rateLimit({
+  windowMs: parseInt(process.env.AUTH_EMAIL_RATE_LIMIT_WINDOW_MS || '900000', 10),
+  max: parseInt(process.env.AUTH_EMAIL_RATE_LIMIT_MAX || '5', 10),
+  message: { success: false, error: 'Too many email requests. Please try again later.' },
+  standardHeaders: true,
+  legacyHeaders: false,
+  keyGenerator: (req) => {
+    const email = typeof req.body?.email === 'string' ? req.body.email.trim().toLowerCase() : '';
+    return `${req.ip}:${email}`;
+  },
+});
 
 // Validation middleware
 const validateRegister = [
@@ -955,7 +969,7 @@ router.post('/logout', authenticate, asyncHandler(async (req: AuthRequest, res: 
 }));
 
 // Request password reset
-router.post('/forgot-password', validatePasswordReset, asyncHandler(async (req: Request, res: Response) => {
+router.post('/forgot-password', authEmailLimiter, validatePasswordReset, asyncHandler(async (req: Request, res: Response) => {
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
     throw new AppError(`Validation failed: ${errors.array().map(e => e.msg).join(', ')}`, 400);
@@ -1127,7 +1141,7 @@ router.post('/verify-email', [
   }
 }));
 
-router.post('/resend-verification', [
+router.post('/resend-verification', authEmailLimiter, [
   body('email').isEmail().normalizeEmail().withMessage('Valid email is required'),
 ], asyncHandler(async (req: Request, res: Response) => {
   const errors = validationResult(req);
