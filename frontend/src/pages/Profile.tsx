@@ -291,10 +291,9 @@ const Profile: React.FC = () => {
       ? `Max (${MAX_POINTS_LEVEL})`
       : `${pointLevel.level} / ${MAX_POINTS_LEVEL}`;
 
-  const levelAndTotalPointsDisplay = `${levelLabel} · ${formatPoints(stats.totalKarma)}`;
-
   const profileHeaderStats = [
-    { label: 'Level · total points', value: levelAndTotalPointsDisplay },
+    { label: 'Level', value: levelLabel },
+    { label: 'Total points', value: formatPoints(stats.totalKarma) },
     { label: 'Post points', value: formatPoints(stats.postKarma) },
     { label: 'Comment points', value: formatPoints(stats.commentKarma) },
     {
@@ -305,7 +304,8 @@ const Profile: React.FC = () => {
   ];
 
   const profileSidebarStats = [
-    { label: 'Level · total points', value: levelAndTotalPointsDisplay },
+    { label: 'Level', value: levelLabel },
+    { label: 'Total points', value: formatPoints(stats.totalKarma) },
     { label: 'Post points', value: formatPoints(stats.postKarma) },
     { label: 'Comment points', value: formatPoints(stats.commentKarma) },
     { label: 'Award points', value: formatPoints(stats.awardKarma || 0) },
@@ -433,18 +433,21 @@ const Profile: React.FC = () => {
                     );
                   })()}
                 </div>
-                <p className="mt-3 text-sm text-gray-700 tabular-nums flex flex-wrap items-baseline gap-x-2 gap-y-1">
-                  <span className="font-semibold text-gray-900">Level {levelLabel}</span>
-                  <span className="text-gray-400" aria-hidden>
-                    ·
-                  </span>
-                  <span className="text-gray-800">{formatPoints(stats.totalKarma)} total points</span>
-                </p>
+                <div className="mt-3 text-sm text-gray-700 tabular-nums flex flex-col gap-0.5 sm:flex-row sm:items-baseline sm:gap-4">
+                  <p>
+                    <span className="text-gray-500">Level </span>
+                    <span className="font-semibold text-gray-900">{levelLabel}</span>
+                  </p>
+                  <p>
+                    <span className="text-gray-500">Total points </span>
+                    <span className="font-semibold text-gray-900">{formatPoints(stats.totalKarma)}</span>
+                  </p>
+                </div>
               </div>
             </div>
 
             <div
-              className="mt-4 pt-4 border-t border-gray-200 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-x-4 gap-y-5"
+              className="mt-4 pt-4 border-t border-gray-200 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-x-4 gap-y-5"
               role="list"
               aria-label="Profile statistics"
             >
