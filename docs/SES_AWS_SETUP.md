@@ -97,6 +97,7 @@ cd ~/orthoandspinetools-main
 # Edit .env with all variables above
 docker compose -f docker-compose.prod.yml build --no-cache backend
 docker compose -f docker-compose.prod.yml up -d backend
+./scripts/ses-webhook-status.sh   # confirm AWS_SES_SNS_TOPIC_ARN is set
 ```
 
 Check logs:

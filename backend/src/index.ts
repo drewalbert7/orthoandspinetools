@@ -20,6 +20,7 @@ import moderationRoutes from './routes/moderation';
 import notificationRoutes from './routes/notifications';
 import ogPreviewRoutes from './routes/ogPreview';
 import sesEventsRoutes from './routes/sesEvents';
+import sitemapRoutes from './routes/sitemap';
 
 // Import middleware
 import { errorHandler } from './middleware/errorHandler';
@@ -90,7 +91,8 @@ const limiter = rateLimit({
       req.path === '/api/health' ||
       req.path === '/health' ||
       req.path.startsWith('/api/og/') ||
-      req.path.startsWith('/api/ses/events')
+      req.path.startsWith('/api/ses/events') ||
+      req.path === '/sitemap.xml'
     );
   },
 });
@@ -145,6 +147,9 @@ app.use('/uploads', express.static('uploads'));
 
 // Link-preview HTML for social crawlers (used by nginx rewrite for /post/:id)
 app.use('/api/og', ogPreviewRoutes);
+
+// Dynamic sitemap (proxied by nginx at GET /sitemap.xml)
+app.use('/sitemap.xml', sitemapRoutes);
 
 // API routes
 app.use('/api/auth', authRoutes);

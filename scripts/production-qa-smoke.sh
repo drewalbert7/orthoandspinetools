@@ -1,0 +1,69 @@
+#!/usr/bin/env bash
+# Production QA smoke tests (anonymous + public API). Run after deploy.
+# Logged-in flows (create post, notifications, admin delete) still need manual browser QA.
+set -euo pipefail
+
+BASE="${BASE_URL:-https://orthoandspinetools.com}"
+PASS=0
+FAIL=0
+
+check() {
+  local name="$1"
+  shift
+  if "$@"; then
+    echo "  OK  $name"
+    PASS=$((PASS + 1))
+  else
+    echo "  FAIL $name"
+    FAIL=$((FAIL + 1))
+  fi
+}
+
+http_code() { curl -sS -o /dev/null -w "%{http_code}" "$@"; }
+
+echo "Production QA smoke — $BASE"
+echo ""
+
+echo "1. Availability"
+check "health API" test "$(http_code "$BASE/api/health")" = "200"
+check "home page" test "$(http_code "$BASE/")" = "200"
+check "cases page" test "$(http_code "$BASE/cases")" = "200"
+check "startups page" test "$(http_code "$BASE/startups")" = "200"
+check "login page" test "$(http_code "$BASE/login")" = "200"
+
+echo ""
+echo "2. Data APIs"
+check "posts API" bash -c "curl -sS '$BASE/api/posts?limit=3' | grep -q '\"success\":true'"
+check "communities API" bash -c "curl -sS '$BASE/api/communities' | grep -q '\"success\":true'"
+check "case-tagged posts" bash -c "curl -sS '$BASE/api/posts?tagName=Case&limit=5' | grep -q '\"posts\"'"
+
+echo ""
+echo "3. SEO"
+check "robots.txt" test "$(http_code "$BASE/robots.txt")" = "200"
+check "llms.txt" test "$(http_code "$BASE/llms.txt")" = "200"
+check "sitemap.xml" test "$(http_code "$BASE/sitemap.xml")" = "200"
+check "sitemap has posts" bash -c "curl -sS '$BASE/sitemap.xml' | grep -q '/post/'"
+check "sitemap has communities" bash -c "curl -sS '$BASE/sitemap.xml' | grep -q '/community/'"
+
+POST_ID="$(curl -sS "$BASE/api/posts?limit=1" | python3 -c "import sys,json; d=json.load(sys.stdin); print(d['data']['posts'][0]['id'])" 2>/dev/null || true)"
+if [ -n "$POST_ID" ]; then
+  check "OG preview HTML" bash -c "curl -sS -A 'facebookexternalhit/1.1' '$BASE/post/$POST_ID' | grep -q 'og:title'"
+else
+  echo "  SKIP OG preview (no posts)"
+fi
+
+echo ""
+echo "4. Auth endpoints (expected status codes)"
+check "login rejects empty body (400)" test "$(http_code -X POST "$BASE/api/auth/login" -H "Content-Type: application/json" -d "{}")" = "400"
+check "notifications require auth (401)" test "$(http_code "$BASE/api/notifications/unread-count")" = "401"
+check "forgot-password accepts request (200)" test "$(http_code -X POST "$BASE/api/auth/forgot-password" -H "Content-Type: application/json" -d '{"email":"qa-smoke@example.com"}')" = "200"
+
+echo ""
+echo "5. SSL"
+check "HTTPS responds" curl -sS -o /dev/null --fail "$BASE/api/health"
+
+echo ""
+echo "Result: $PASS passed, $FAIL failed"
+if [ "$FAIL" -gt 0 ]; then
+  exit 1
+fi
