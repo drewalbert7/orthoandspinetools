@@ -10,16 +10,17 @@
 
 ## 🔥 **NEXT UP — START HERE** (updated Jun 8, 2026 — end of session)
 
-### **Pick up here (next session — priority order)**
+### **Pick up here (step-by-step — updated Jun 8, 2026)**
 
-1. **🟢 Server & disk space (addressed Jun 8, 2026)** — Root had hit **100%** during `--no-cache` builds. **Fix applied:** `./scripts/docker-disk-check.sh cleanup` removed **~1.9 GB** (orphan Docker volumes, build cache, unused images). Disk now **~51% (~18 GB free)** on 38G VPS. **Ongoing:**
-   - Run `./scripts/docker-disk-check.sh report` before every `--no-cache` build; `cleanup` if ≥85%
-   - Avoid `--no-cache` unless necessary — use plain `build` when only app code changed
-   - Optional: monthly cron `0 4 1 * * cd ~/orthoandspinetools-main && ./scripts/docker-disk-check.sh cleanup`
-   - Long-term: 38G is tight for frequent full rebuilds; consider larger disk if builds fail again
-2. **SES SNS webhook** — `AWS_SES_SNS_TOPIC_ARN` still **missing** on server. `./scripts/ses-webhook-status.sh` → AWS Console steps in `docs/SES_AWS_SETUP.md` §3–5; request production access (leave sandbox).
-3. **Logged-in Production QA** — create-post media, notifications bell, admin delete (§2 manual checklist).
-4. **Uncommitted local files on server** — not pushed: `CLAUDE.md` (deleted), `docs/WHAT_TO_DO.md`, `docs/architecture.md`, `docs/deployment.md`, `update-ssl-certs.sh`, `scripts/setup-ssl-renewal-cron.sh`, `scripts/ssl-renew-cron.sh` — review, commit or discard next session.
+| Step | Task | Status |
+|------|------|--------|
+| **1** | **Disk maintenance** | ✅ **Done** — 51% used, 18 GB free; monthly cron installed (`0 4 1 * *` → `docker-disk-check.sh cleanup`) |
+| **2** | **SES SNS webhook + prod access** | ⏳ **AWS Console required** — `AWS_SES_SNS_TOPIC_ARN` missing; webhook returns 403 without valid SNS sig (expected). See § SES below. |
+| **3** | **Logged-in Production QA** | ⏳ **Needs your login** — create-post media, notifications, admin delete, password reset inbox |
+| **4** | **SSL auto-renewal cron** | ✅ **Done** — `0 3 1 * *` → `ssl-renew-cron.sh` already in crontab; scripts in repo (`4605360`) |
+| **5** | **Repo / deploy hygiene** | ✅ **Done** — `main` at `4605360`; smoke 18/18 |
+
+**Ongoing disk habit:** `./scripts/docker-disk-check.sh report` before `--no-cache` builds; avoid `--no-cache` when plain `build` suffices.
 
 ### **Goals**
 - [x] **Brand copy** — Tagline **"Ortho and Spine Tools - Hunt for the Best"** across SEO, `index.html`, register, `llms.txt`.
@@ -50,7 +51,8 @@
 | Compose | `docker-compose.prod.yml` |
 | Containers | `orthoandspinetools-{postgres,backend,frontend,nginx}` |
 | Secrets | `.env`, `.env.cloudinary` (never commit); SES vars on server only |
-| SSL renew | Monthly cron via `./scripts/setup-ssl-renewal-cron.sh setup` (scripts exist locally, not yet committed) |
+| SSL renew | ✅ Cron active: `0 3 1 * *` → `scripts/ssl-renew-cron.sh` |
+| Disk cleanup | ✅ Cron active: `0 4 1 * *` → `scripts/docker-disk-check.sh cleanup` |
 
 ```bash
 cd ~/orthoandspinetools-main
@@ -89,7 +91,7 @@ Never run `docker compose down -v` (deletes production DB volume).
 - **Post media (WIP)** — Re-test create-post upload if needed; existing posts display images OK
 - **Notifications** — Vote/mention/moderation triggers (v1 comment/reply shipped)
 
-**Live snapshot (Jun 8, 2026):** 3 posts, 4 users, 11 communities · SSL expires **Aug 15, 2026** · latest commit **`24f79da`**
+**Live snapshot (Jun 8, 2026):** 3 posts, 4 users, 11 communities · SSL expires **Aug 15, 2026** · latest commit **`4605360`**
 
 ---
 
@@ -115,10 +117,9 @@ GIT_SSH_COMMAND='ssh -F /dev/null -o StrictHostKeyChecking=accept-new' git pull 
 
 ## 📋 **NEXT PRIORITIES (summary)**
 
-1. **Disk maintenance** — monthly `docker-disk-check.sh cleanup` cron; avoid unnecessary `--no-cache` builds
-2. **SES** — SNS topic ARN + webhook; production access (`docs/SES_AWS_SETUP.md`)
-3. **Logged-in QA** — create-post media, notifications, admin flows
-4. **Repo hygiene** — commit or discard uncommitted SSL/docs files on server
+1. **SES** — SNS topic ARN + webhook; production access (`docs/SES_AWS_SETUP.md` §3–5) — **you are here**
+2. **Logged-in QA** — create-post media, notifications, admin flows
+3. **Backlog** — SEO Lighthouse, admin reporting, more content
 
 ---
 
@@ -162,6 +163,6 @@ docker compose -f docker-compose.prod.yml exec backend npm run backfill-case-pos
 
 ---
 
-**Last Updated:** Jun 8, 2026 (end of session)  
-**Status:** 🚀 Live at `24f79da` — profile deploy OK; **disk management is next session priority**  
-**Next session:** SES SNS webhook → logged-in QA → commit `docker-disk-check.sh` + uncommitted local files
+**Last Updated:** Jun 8, 2026  
+**Status:** 🚀 Live at `4605360` — disk + SSL crons active; smoke 18/18  
+**You are here:** Step 2 — SES in AWS Console, then Step 3 logged-in QA

@@ -22,6 +22,7 @@ import {
 } from '../lib/seo';
 import MarkdownContent from '../components/MarkdownContent';
 import PostAttachments from '../components/PostAttachments';
+import CommunityModeratorList from '../components/CommunityModeratorList';
 
 const Z_POST_MORE_BACKDROP = 11460;
 const Z_POST_MORE_MENU = 11470;
@@ -944,48 +945,23 @@ const PostDetail: React.FC = () => {
           {/* Community Rules */}
           <div className="bg-white border border-gray-200 rounded-md p-4">
             <h3 className="text-sm font-bold text-gray-900 mb-3">o/{(post.community?.name || 'COMMUNITY').toUpperCase()} RULES</h3>
-            <div className="space-y-2">
-              {[
-                'Relevance',
-                'Professional conduct',
-                'No spam or self-promotion',
-                'Respect patient privacy',
-                'Evidence-based discussions',
-                'Be courteous and positive'
-              ].map((rule, index) => (
-                <div key={index} className="flex items-center justify-between text-sm">
-                  <span className="text-gray-600">{index + 1}. {rule}</span>
-                  <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                  </svg>
-                </div>
-              ))}
-            </div>
+            {communityData?.rules?.trim() ? (
+              <div className="text-sm text-gray-700 whitespace-pre-wrap leading-relaxed">
+                {communityData.rules.trim()}
+              </div>
+            ) : (
+              <p className="text-sm text-gray-500">
+                No rules have been published yet. Moderators can add them in community settings.
+              </p>
+            )}
           </div>
 
           {/* Moderators */}
-          <div className="bg-white border border-gray-200 rounded-md p-4">
-            <div className="flex items-center justify-between mb-3">
-              <h3 className="text-sm font-bold text-gray-900">MODERATORS</h3>
-              <button className="text-xs text-blue-600 hover:text-blue-800">Message Mods</button>
+          {communityData && (
+            <div className="bg-white border border-gray-200 rounded-md p-4">
+              <CommunityModeratorList community={communityData} />
             </div>
-            <div className="space-y-2">
-              {[
-                'admin',
-                'moderator1',
-                'moderator2',
-                'AutoModerator'
-              ].map((mod, index) => (
-                <div key={index} className="flex items-center space-x-2 text-sm">
-                  <div className="w-4 h-4 bg-blue-600 rounded-full flex items-center justify-center">
-                    <span className="text-white text-xs font-bold">m</span>
-                  </div>
-                  <span className="text-gray-600">u/{mod}</span>
-                  {index === 0 && <span className="text-xs text-green-600">Verified</span>}
-                </div>
-              ))}
-            </div>
-          </div>
+          )}
         </div>
       </div>
     </div>

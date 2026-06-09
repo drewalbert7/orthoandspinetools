@@ -619,7 +619,10 @@ router.get('/:id', trackCommunityVisitor, asyncHandler(async (req: Request, res:
             username: true,
             firstName: true,
             lastName: true,
-            specialty: true
+            specialty: true,
+            profileImage: true,
+            isVerifiedPhysician: true,
+            isVerifiedFounder: true
           }
         },
         moderators: {
@@ -633,7 +636,9 @@ router.get('/:id', trackCommunityVisitor, asyncHandler(async (req: Request, res:
                 firstName: true,
                 lastName: true,
                 specialty: true,
-                profileImage: true
+                profileImage: true,
+                isVerifiedPhysician: true,
+                isVerifiedFounder: true
               }
             }
           }

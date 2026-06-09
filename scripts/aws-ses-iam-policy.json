@@ -11,6 +11,17 @@
       ]
     },
     {
+      "Sid": "SendToVerifiedRecipientsInSandbox",
+      "Effect": "Allow",
+      "Action": ["ses:SendEmail", "ses:SendRawEmail"],
+      "Resource": "arn:aws:ses:us-east-2:390445023243:identity/*",
+      "Condition": {
+        "StringEquals": {
+          "aws:RequestedRegion": "us-east-2"
+        }
+      }
+    },
+    {
       "Sid": "UseSesConfigurationSets",
       "Effect": "Allow",
       "Action": ["ses:SendEmail", "ses:SendRawEmail"],

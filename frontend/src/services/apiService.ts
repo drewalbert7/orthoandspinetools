@@ -153,6 +153,16 @@ export interface Community {
   profileImage?: string;
   bannerImage?: string;
   ownerId?: string;
+  owner?: {
+    id: string;
+    username: string;
+    firstName?: string;
+    lastName?: string;
+    specialty?: string;
+    profileImage?: string;
+    isVerifiedPhysician?: boolean;
+    isVerifiedFounder?: boolean;
+  };
   moderators?: Array<{ 
     userId: string; 
     role: string;
@@ -163,6 +173,8 @@ export interface Community {
       lastName: string;
       specialty?: string;
       profileImage?: string;
+      isVerifiedPhysician?: boolean;
+      isVerifiedFounder?: boolean;
     }
   }>;
   specialty?: string;

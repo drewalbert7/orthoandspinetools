@@ -13,6 +13,7 @@ import FeedPostCard from '../components/FeedPostCard';
 import { DocumentMeta } from '../components/DocumentMeta';
 import { buildCommunityJsonLd, SEO_DEFAULTS, stripToPlainText } from '../lib/seo';
 import { navigateToPostFromFeedCardBackground } from '../lib/navigatePostFromFeedCard';
+import CommunityModeratorList from '../components/CommunityModeratorList';
 
 const SORT_OPTIONS = [
   { value: 'newest' as const, label: 'New' },
@@ -550,6 +551,13 @@ const CommunityPage: React.FC = () => {
                 No rules have been published yet. Moderators can add them in community settings.
               </p>
             )}
+          </div>
+
+          <div className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
+            <CommunityModeratorList
+              community={community}
+              titleClassName="text-xs font-bold uppercase tracking-wider text-gray-400"
+            />
           </div>
         </aside>
       </div>

@@ -42,6 +42,8 @@ AWS_SECRET_ACCESS_KEY=...
 
 Never commit these to git.
 
+**Sandbox IAM note:** `ses:SendEmail` requires permission on the **From** identity *and* each **To** identity while SES is in sandbox. If password reset fails with `not authorized ... identity/user@gmail.com`, update the IAM policy to include `identity/*` (see `scripts/aws-ses-iam-policy.json`) and ensure the recipient is a **verified identity** in SES, or request production access.
+
 ---
 
 ## 3. Configuration set (metrics + event routing)
