@@ -184,6 +184,37 @@ export interface Community {
   weeklyContributions?: number;
   createdAt?: string;
   updatedAt?: string;
+  isPrivate?: boolean;
+}
+
+export interface PublicUserProfile {
+  user: {
+    id: string;
+    username: string;
+    firstName: string;
+    lastName: string;
+    specialty?: string;
+    subSpecialty?: string;
+    institution?: string;
+    bio?: string;
+    profileImage?: string;
+    location?: string;
+    website?: string;
+    yearsExperience?: number;
+    isVerifiedPhysician?: boolean;
+    isVerifiedFounder?: boolean;
+    createdAt: string;
+  };
+  stats: {
+    postsCount: number;
+    commentsCount: number;
+    postKarma: number;
+    commentKarma: number;
+    awardKarma: number;
+    totalKarma: number;
+    level: number;
+    maxLevel: number;
+  };
 }
 
 export interface User {
@@ -899,6 +930,55 @@ class ApiService {
       return data as UserProfile;
     } catch (error: unknown) {
       throw new Error(apiErrorMessage(error, 'Failed to fetch user profile'));
+    }
+  }
+
+  async getPublicUserProfile(username: string): Promise<PublicUserProfile> {
+    try {
+      const response = await api.get(`/users/${encodeURIComponent(username)}`);
+      return response.data.data;
+    } catch (error: unknown) {
+      throw new Error(apiErrorMessage(error, 'Failed to fetch user profile'));
+    }
+  }
+
+  async getPublicUserPosts(
+    username: string,
+    params: { page?: number; limit?: number } = {}
+  ): Promise<{ posts: Post[]; pagination: { page: number; pages: number; total: number } }> {
+    try {
+      const search = new URLSearchParams();
+      if (params.page) search.set('page', String(params.page));
+      if (params.limit) search.set('limit', String(params.limit));
+      const qs = search.toString();
+      const response = await api.get(
+        `/users/${encodeURIComponent(username)}/posts${qs ? `?${qs}` : ''}`
+      );
+      const payload = response.data?.data;
+      return {
+        ...payload,
+        posts: (payload.posts || []).map((p: Post) => normalizePostAttachments(p)),
+      };
+    } catch (error: unknown) {
+      throw new Error(apiErrorMessage(error, 'Failed to fetch user posts'));
+    }
+  }
+
+  async getPublicUserComments(
+    username: string,
+    params: { page?: number; limit?: number } = {}
+  ): Promise<{ comments: Comment[]; pagination: { page: number; pages: number; total: number } }> {
+    try {
+      const search = new URLSearchParams();
+      if (params.page) search.set('page', String(params.page));
+      if (params.limit) search.set('limit', String(params.limit));
+      const qs = search.toString();
+      const response = await api.get(
+        `/users/${encodeURIComponent(username)}/comments${qs ? `?${qs}` : ''}`
+      );
+      return response.data.data;
+    } catch (error: unknown) {
+      throw new Error(apiErrorMessage(error, 'Failed to fetch user comments'));
     }
   }
 

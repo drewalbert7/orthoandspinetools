@@ -55,7 +55,14 @@ const FeedPostCard: React.FC<{ post: Post }> = ({ post }) => {
           </Link>
           <span>•</span>
           <span className="inline-flex items-center flex-wrap gap-x-0">
-            Posted by u/{post.author?.username ?? 'unknown'}
+            Posted by{' '}
+            {post.author?.username ? (
+              <Link to={`/user/${post.author.username}`} className="hover:underline text-gray-700">
+                u/{post.author.username}
+              </Link>
+            ) : (
+              <span>u/unknown</span>
+            )}
             <AuthorVerificationsInline author={post.author} />
           </span>
           <span>•</span>

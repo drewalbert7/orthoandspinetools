@@ -68,6 +68,28 @@ const PostDetail: React.FC = () => {
     enabled: !!post?.community?.id,
   });
 
+  const { data: followedCommunities } = useQuery({
+    queryKey: ['user-communities'],
+    queryFn: () => apiService.getUserCommunities(),
+    enabled: !!user,
+    retry: false,
+  });
+
+  const isFollowingCommunity = useMemo(
+    () => !!communityData && (followedCommunities?.some((c) => c.id === communityData.id) ?? false),
+    [communityData, followedCommunities]
+  );
+
+  const followCommunityMutation = useMutation({
+    mutationFn: () => apiService.followCommunity(communityData!.id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['user-communities'] });
+    },
+    onError: (error: Error) => {
+      toast.error(error.message || 'Could not update community membership');
+    },
+  });
+
   useLayoutEffect(() => {
     if (!showMoreOptions || !postMoreAnchorRef.current) return;
 
@@ -532,44 +554,43 @@ const PostDetail: React.FC = () => {
                   </div>
                 </div>
 
-                <div ref={postMoreAnchorRef} className="relative inline-flex">
-                  <button
-                    type="button"
-                    onClick={() => setShowMoreOptions(!showMoreOptions)}
-                    className="w-8 h-8 rounded-full hover:bg-gray-100 flex items-center justify-center transition-colors"
-                    aria-expanded={showMoreOptions}
-                    aria-haspopup="menu"
-                  >
-                    <svg className="w-4 h-4 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z" />
-                    </svg>
-                  </button>
-                </div>
+                {canEditPost && id ? (
+                  <div ref={postMoreAnchorRef} className="relative inline-flex">
+                    <button
+                      type="button"
+                      onClick={() => setShowMoreOptions(!showMoreOptions)}
+                      className="w-8 h-8 rounded-full hover:bg-gray-100 flex items-center justify-center transition-colors"
+                      aria-expanded={showMoreOptions}
+                      aria-haspopup="menu"
+                      aria-label="Post options"
+                    >
+                      <svg className="w-4 h-4 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z" />
+                      </svg>
+                    </button>
 
-                {showMoreOptions &&
-                  typeof document !== 'undefined' &&
-                  createPortal(
-                    <>
-                      <div
-                        className="fixed inset-0"
-                        style={{ zIndex: Z_POST_MORE_BACKDROP }}
-                        onClick={() => setShowMoreOptions(false)}
-                        aria-hidden
-                      />
-                      <div
-                        ref={postMoreMenuRef}
-                        className="fixed w-48 bg-white border border-gray-200 rounded-lg shadow-xl py-1 ring-1 ring-black/5"
-                        style={{
-                          top: moreMenuPos.top,
-                          left: moreMenuPos.left,
-                          zIndex: Z_POST_MORE_MENU,
-                        }}
-                        role="menu"
-                        aria-label="Post options"
-                        onClick={(e) => e.stopPropagation()}
-                      >
-                        {canEditPost && id ? (
-                          <>
+                    {showMoreOptions &&
+                      typeof document !== 'undefined' &&
+                      createPortal(
+                        <>
+                          <div
+                            className="fixed inset-0"
+                            style={{ zIndex: Z_POST_MORE_BACKDROP }}
+                            onClick={() => setShowMoreOptions(false)}
+                            aria-hidden
+                          />
+                          <div
+                            ref={postMoreMenuRef}
+                            className="fixed w-48 bg-white border border-gray-200 rounded-lg shadow-xl py-1 ring-1 ring-black/5"
+                            style={{
+                              top: moreMenuPos.top,
+                              left: moreMenuPos.left,
+                              zIndex: Z_POST_MORE_MENU,
+                            }}
+                            role="menu"
+                            aria-label="Post options"
+                            onClick={(e) => e.stopPropagation()}
+                          >
                             <button
                               type="button"
                               className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-600"
@@ -589,42 +610,12 @@ const PostDetail: React.FC = () => {
                               </svg>
                               Edit post
                             </button>
-                            <div className="border-t border-gray-100" />
-                          </>
-                        ) : null}
-                        <button
-                          type="button"
-                          className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-600"
-                          role="menuitem"
-                        >
-                          <svg className="w-4 h-4 mr-3 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-5 5-5-5h5v-5a7.5 7.5 0 00-15 0v5h5l-5 5-5-5h5v-5a7.5 7.5 0 0115 0v5z" />
-                          </svg>
-                          Follow post
-                        </button>
-                        <div className="border-t border-gray-100" />
-                        <button type="button" className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-50" role="menuitem">
-                          <svg className="w-4 h-4 mr-3 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" />
-                          </svg>
-                          Save
-                        </button>
-                        <button type="button" className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-50" role="menuitem">
-                          <svg className="w-4 h-4 mr-3 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.878 9.878L3 3m6.878 6.878L21 21" />
-                          </svg>
-                          Hide
-                        </button>
-                        <button type="button" className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-50" role="menuitem">
-                          <svg className="w-4 h-4 mr-3 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 21v-4m0 0V5a2 2 0 012-2h6.5l1 1H21l-3 6 3 6h-8.5l-1-1H5a2 2 0 00-2 2zm9-13.5V9" />
-                          </svg>
-                          Report
-                        </button>
-                      </div>
-                    </>,
-                    document.body
-                  )}
+                          </div>
+                        </>,
+                        document.body
+                      )}
+                  </div>
+                ) : null}
               </div>
 
               {/* Title */}
@@ -899,27 +890,72 @@ const PostDetail: React.FC = () => {
             ) : (
               <>
                 <div className="flex items-center space-x-2 mb-3">
-              <div className="w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center">
-                <span className="text-white text-sm font-bold">o</span>
+              {communityData?.profileImage ? (
+                <img
+                  src={communityData.profileImage}
+                  alt=""
+                  className="w-8 h-8 rounded-full object-cover"
+                />
+              ) : (
+                <div className="w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center">
+                  <span className="text-white text-sm font-bold">o</span>
+                </div>
+              )}
+              <div className="flex-1 min-w-0">
+                <Link
+                  to={`/community/${communityData?.slug || post.community?.slug || post.community?.id || ''}`}
+                  className="text-lg font-bold text-gray-900 hover:text-blue-600 truncate block"
+                >
+                  o/{post.community?.name || 'Unknown'}
+                </Link>
               </div>
-              <div className="flex-1">
-                <h2 className="text-lg font-bold text-gray-900">o/{post.community?.name || 'Unknown'}</h2>
-              </div>
-              <button className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors">
-                Joined
-              </button>
+              {user ? (
+                <button
+                  type="button"
+                  disabled={!communityData || followCommunityMutation.isPending}
+                  onClick={() => followCommunityMutation.mutate()}
+                  className={`px-4 py-2 rounded-md text-sm font-semibold transition-colors shrink-0 ${
+                    isFollowingCommunity
+                      ? 'bg-gray-100 text-gray-800 hover:bg-gray-200 border border-gray-300'
+                      : 'bg-blue-600 text-white hover:bg-blue-700'
+                  }`}
+                >
+                  {followCommunityMutation.isPending
+                    ? '…'
+                    : isFollowingCommunity
+                      ? 'Joined'
+                      : 'Join'}
+                </button>
+              ) : (
+                <Link
+                  to="/login"
+                  className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors text-sm font-semibold shrink-0"
+                >
+                  Join
+                </Link>
+              )}
             </div>
-            <p className="text-sm text-gray-600 mb-3">
-              {communityData?.description || `A community for ${post.community?.name?.toLowerCase() || 'medical'} professionals to share tools, discuss cases, and network.`}
-            </p>
+            {communityData?.description?.trim() ? (
+              <p className="text-sm text-gray-600 mb-3">{communityData.description.trim()}</p>
+            ) : null}
             <div className="space-y-2 text-sm text-gray-500">
-              <div className="flex justify-between">
-                <span>Created</span>
-                <span>{communityData?.createdAt ? new Date(communityData.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : 'Nov 28, 2024'}</span>
-              </div>
+              {communityData?.createdAt && (
+                <div className="flex justify-between">
+                  <span>Created</span>
+                  <span>
+                    {new Date(communityData.createdAt).toLocaleDateString('en-US', {
+                      month: 'short',
+                      day: 'numeric',
+                      year: 'numeric',
+                    })}
+                  </span>
+                </div>
+              )}
               <div className="flex justify-between">
                 <span>Type</span>
-                <span className="text-green-600">Public</span>
+                <span className={communityData?.isPrivate ? 'text-amber-600' : 'text-green-600'}>
+                  {communityData?.isPrivate ? 'Private' : 'Public'}
+                </span>
               </div>
               <div className="flex justify-between">
                 <span>Members</span>

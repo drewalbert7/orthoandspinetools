@@ -38,7 +38,7 @@ const CommunityModeratorList: React.FC<CommunityModeratorListProps> = ({
                 </div>
               )}
               <Link
-                to={`/u/${mod.username}`}
+                to={`/user/${mod.username}`}
                 className="text-gray-700 hover:text-blue-600 truncate"
               >
                 u/{mod.username}

@@ -18,6 +18,7 @@ import PostDetail from './pages/PostDetail';
 import EditPost from './pages/EditPost';
 import CreatePost from './pages/CreatePost';
 import Profile from './pages/Profile';
+import UserProfile from './pages/UserProfile';
 import ProfileSettings from './pages/ProfileSettings';
 import Community from './pages/Community';
 import CommunitySettings from './pages/CommunitySettings';
@@ -86,6 +87,7 @@ function App() {
                   {/* ⚠️ CRITICAL ROUTE: CreatePost page - DO NOT REMOVE without backup */}
                   <Route path="/create-post" element={<CreatePost />} />
                   <Route path="/create-community" element={<CreateCommunity />} />
+                  <Route path="/user/:username" element={<UserProfile />} />
                   <Route path="/profile" element={<Profile />} />
                   <Route path="/profile/settings" element={<ProfileSettings />} />
                   <Route path="/admin" element={<AdminDashboard />} />
