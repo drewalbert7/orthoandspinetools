@@ -1,436 +1,114 @@
 # Deployment Guide
 
-This guide provides comprehensive instructions for deploying OrthoAndSpineTools in various environments.
+Production deployment for the monorepo at `https://github.com/drewalbert7/orthoandspinetools` (this repository: `backend/`, `frontend/`, `nginx/`).
 
-## 🚀 Quick Start Deployment
+## Prerequisites
 
-### Prerequisites
-- Docker and Docker Compose
-- Domain name (e.g., orthoandspinetools.com)
-- SSL certificate
-- PostgreSQL database
-- Redis cache
+- Docker and Docker Compose v2
+- Domain DNS pointing to the server (`orthoandspinetools.com`, optional `www`)
+- `.env` and `.env.cloudinary` on the server (see `.env.example` — do not commit secrets)
 
-### Basic Docker Deployment
+## Production stack
+
+| Service | Image / build | Notes |
+|---------|----------------|-------|
+| `postgres` | `postgres:15-alpine` | Persistent volume `postgres_data` |
+| `backend` | Build `backend/Dockerfile` | Port 3001 internal |
+| `frontend` | Build `frontend/Dockerfile` | Static app on port 3000 internal |
+| `nginx` | `nginx:alpine` | Ports 80/443, TLS certs under `nginx/ssl/certs/` |
+
+Compose file: **`docker-compose.prod.yml`**
+
+## First-time / routine deploy
+
+On the server:
+
 ```bash
-# Clone repositories
-git clone https://github.com/drewalbert7/lemmy.git orthoandspinetools-backend
-git clone https://github.com/drewalbert7/lemmy-ui.git orthoandspinetools-frontend
-
-# Configure environment
-cd orthoandspinetools-backend
-cp .env.example .env
-# Edit .env with your configuration
-
-# Start services
-docker-compose up -d
+cd ~/orthoandspinetools-main
+git pull origin main
+docker compose -f docker-compose.prod.yml build --no-cache backend frontend
+docker compose -f docker-compose.prod.yml up -d backend frontend nginx
 ```
 
-## 🏗️ Production Deployment
+After Prisma schema changes:
 
-### 1. Server Requirements
-
-**Minimum Requirements:**
-- **CPU**: 2 cores
-- **RAM**: 4GB
-- **Storage**: 50GB SSD
-- **Network**: 100Mbps
-
-**Recommended Requirements:**
-- **CPU**: 4 cores
-- **RAM**: 8GB
-- **Storage**: 100GB SSD
-- **Network**: 1Gbps
-
-### 2. Environment Setup
-
-**Backend Configuration (`.env`):**
 ```bash
-# Database
-DATABASE_URL=postgresql://lemmy:password@postgres:5432/lemmy
-REDIS_URL=redis://redis:6379
-
-# Site Configuration
-LEMMY_HOSTNAME=orthoandspinetools.com
-LEMMY_HTTPS=true
-LEMMY_DOMAIN=orthoandspinetools.com
-
-# Medical Features
-MEDICAL_SPECIALTIES_ENABLED=true
-MEDICAL_PROFESSIONAL_VERIFICATION=true
-HIPAA_COMPLIANCE_MODE=true
-
-# Security
-JWT_SECRET=your-secret-key
-PICTRS_API_KEY=your-pictrs-key
+docker compose -f docker-compose.prod.yml exec backend npm run db:deploy
 ```
 
-**Frontend Configuration:**
+If only `nginx/nginx.conf` changed:
+
 ```bash
-# Backend Connection
-LEMMY_UI_BACKEND_EXTERNAL=https://orthoandspinetools.com
-LEMMY_UI_BACKEND_INTERNAL=http://lemmy:8536
-
-# Medical UI Features
-LEMMY_UI_MEDICAL_COMMUNITIES=true
-LEMMY_UI_PROFESSIONAL_DASHBOARD=true
-LEMMY_UI_MEDICAL_THEMES=true
+docker compose -f docker-compose.prod.yml up -d --force-recreate nginx
+# or: docker compose -f docker-compose.prod.yml exec nginx nginx -s reload
 ```
 
-### 3. Database Setup
+## Environment
 
-**PostgreSQL Configuration:**
-```sql
--- Create database
-CREATE DATABASE lemmy;
+- **`DATABASE_URL`** — Postgres URL with pool params (see `docker-compose.prod.yml`).
+- **`JWT_SECRET`**, **`POSTGRES_PASSWORD`** — Strong values in `.env`.
+- **`PUBLIC_SITE_URL`** — Public origin for OG links and emails (e.g. `https://orthoandspinetools.com`).
+- **`VITE_SITE_URL`** — Set at frontend **build** time for canonical URLs / JSON-LD.
+- **Cloudinary** — `.env.cloudinary` for media uploads.
+- **Amazon SES** (optional) — `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, `AWS_SES_REGION`, `EMAIL_FROM` for transactional mail.
 
--- Create user
-CREATE USER lemmy WITH PASSWORD 'secure_password';
+## SSL (Let's Encrypt)
 
--- Grant permissions
-GRANT ALL PRIVILEGES ON DATABASE lemmy TO lemmy;
+Certs used by nginx: `nginx/ssl/certs/fullchain.pem` and `privkey.pem`.
 
--- Medical-specific extensions
-CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
-CREATE EXTENSION IF NOT EXISTS "pg_trgm";
-```
+Renew and reload:
 
-**Medical Data Schema:**
-```sql
--- Medical specialties table
-CREATE TABLE medical_specialties (
-    id SERIAL PRIMARY KEY,
-    name VARCHAR(100) NOT NULL,
-    slug VARCHAR(50) UNIQUE NOT NULL,
-    icon VARCHAR(50),
-    description TEXT,
-    created_at TIMESTAMP DEFAULT NOW()
-);
-
--- Insert medical specialties
-INSERT INTO medical_specialties (name, slug, icon) VALUES
-('Foot & Ankle', 'foot-ankle', 'shoe-prints'),
-('Spine', 'spine', 'bone'),
-('Ortho Trauma', 'ortho-trauma', 'truck-medical'),
-('Ortho Oncology', 'ortho-oncology', 'ribbon'),
-('Peds Ortho', 'peds-ortho', 'baby'),
-('Shoulder Elbow', 'shoulder-elbow', 'hand-paper'),
-('Hand', 'hand', 'hand'),
-('Sports', 'sports', 'running'),
-('Adult Reconstruction', 'adult-reconstruction', 'tools');
-```
-
-### 4. Docker Compose Configuration
-
-**docker-compose.yml:**
-```yaml
-version: "3.8"
-
-services:
-  postgres:
-    image: postgres:15-alpine
-    environment:
-      POSTGRES_DB: lemmy
-      POSTGRES_USER: lemmy
-      POSTGRES_PASSWORD: password
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-    restart: always
-
-  redis:
-    image: redis:7-alpine
-    volumes:
-      - redis_data:/data
-    restart: always
-
-  lemmy:
-    image: dessalines/lemmy:latest
-    ports:
-      - "8536:8536"
-    environment:
-      - DATABASE_URL=postgresql://lemmy:password@postgres:5432/lemmy
-      - REDIS_URL=redis://redis:6379
-      - LEMMY_HOSTNAME=orthoandspinetools.com
-      - LEMMY_HTTPS=true
-    volumes:
-      - lemmy_data:/app/volumes
-    depends_on:
-      - postgres
-      - redis
-    restart: always
-
-  lemmy-ui:
-    image: dessalines/lemmy-ui:latest
-    ports:
-      - "1234:1234"
-    environment:
-      - LEMMY_UI_BACKEND_INTERNAL=http://lemmy:8536
-      - LEMMY_UI_BACKEND_EXTERNAL=https://orthoandspinetools.com
-      - LEMMY_UI_HTTPS=true
-    depends_on:
-      - lemmy
-    restart: always
-
-  nginx:
-    image: nginx:alpine
-    ports:
-      - "80:80"
-      - "443:443"
-    volumes:
-      - ./nginx.conf:/etc/nginx/nginx.conf
-      - ./ssl:/etc/nginx/ssl
-    depends_on:
-      - lemmy-ui
-    restart: always
-
-volumes:
-  postgres_data:
-  redis_data:
-  lemmy_data:
-```
-
-### 5. Nginx Configuration
-
-**nginx.conf:**
-```nginx
-events {
-    worker_connections 1024;
-}
-
-http {
-    upstream lemmy-ui {
-        server lemmy-ui:1234;
-    }
-
-    upstream lemmy {
-        server lemmy:8536;
-    }
-
-    server {
-        listen 80;
-        server_name orthoandspinetools.com;
-        return 301 https://$server_name$request_uri;
-    }
-
-    server {
-        listen 443 ssl http2;
-        server_name orthoandspinetools.com;
-
-        ssl_certificate /etc/nginx/ssl/cert.pem;
-        ssl_certificate_key /etc/nginx/ssl/key.pem;
-
-        # Medical platform security headers
-        add_header X-Frame-Options "SAMEORIGIN" always;
-        add_header X-Content-Type-Options "nosniff" always;
-        add_header X-XSS-Protection "1; mode=block" always;
-        add_header Referrer-Policy "strict-origin-when-cross-origin" always;
-        add_header Content-Security-Policy "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self';" always;
-
-        location / {
-            proxy_pass http://lemmy-ui;
-            proxy_set_header Host $host;
-            proxy_set_header X-Real-IP $remote_addr;
-            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-            proxy_set_header X-Forwarded-Proto $scheme;
-        }
-
-        location /api/ {
-            proxy_pass http://lemmy;
-            proxy_set_header Host $host;
-            proxy_set_header X-Real-IP $remote_addr;
-            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-            proxy_set_header X-Forwarded-Proto $scheme;
-        }
-    }
-}
-```
-
-## 🔒 Security Configuration
-
-### 1. SSL/TLS Setup
 ```bash
-# Generate SSL certificate (Let's Encrypt)
-certbot certonly --standalone -d orthoandspinetools.com
-
-# Copy certificates
-cp /etc/letsencrypt/live/orthoandspinetools.com/fullchain.pem ./ssl/cert.pem
-cp /etc/letsencrypt/live/orthoandspinetools.com/privkey.pem ./ssl/key.pem
+./update-ssl-certs.sh
 ```
 
-### 2. Firewall Configuration
+**Automated renewal** (monthly, 03:00 on the 1st):
+
 ```bash
-# UFW firewall rules
-ufw allow 22/tcp    # SSH
-ufw allow 80/tcp    # HTTP
-ufw allow 443/tcp   # HTTPS
-ufw enable
+./scripts/setup-ssl-renewal-cron.sh setup   # install
+./scripts/setup-ssl-renewal-cron.sh show    # verify
+# logs/ssl-renew-cron.log
 ```
 
-### 3. Medical Data Security
+Or manually:
+
 ```bash
-# Database encryption
-ALTER DATABASE lemmy SET encryption_key = 'your-encryption-key';
+mkdir -p nginx/ssl/certbot nginx/ssl/certs
+docker run --rm \
+  -v "$(pwd)/nginx/ssl/letsencrypt:/etc/letsencrypt" \
+  -v "$(pwd)/nginx/ssl/certbot:/var/www/certbot" \
+  certbot/certbot certonly --webroot --webroot-path=/var/www/certbot \
+  --email admin@orthoandspinetools.com --agree-tos --no-eff-email \
+  -d orthoandspinetools.com -d www.orthoandspinetools.com
 
-# Audit logging
-CREATE TABLE medical_audit_log (
-    id SERIAL PRIMARY KEY,
-    user_id INTEGER,
-    action VARCHAR(100),
-    medical_data_type VARCHAR(50),
-    timestamp TIMESTAMP DEFAULT NOW()
-);
+docker run --rm \
+  -v "$(pwd)/nginx/ssl/letsencrypt:/etc/letsencrypt" \
+  -v "$(pwd)/nginx/ssl/certs:/certs" \
+  alpine sh -c "cp /etc/letsencrypt/live/orthoandspinetools.com/fullchain.pem /certs/ && cp /etc/letsencrypt/live/orthoandspinetools.com/privkey.pem /certs/"
+
+docker compose -f docker-compose.prod.yml exec nginx nginx -t
+docker compose -f docker-compose.prod.yml exec nginx nginx -s reload
 ```
 
-## 📊 Monitoring Setup
+Nginx must serve `/.well-known/acme-challenge/` from `/var/www/certbot` (see `docker-compose.prod.yml` volume).
 
-### 1. Health Checks
-```bash
-# Backend health check
-curl -f http://localhost:8536/api/v3/site || exit 1
+## Post-deploy checks
 
-# Frontend health check
-curl -f http://localhost:1234 || exit 1
+1. `curl -s https://orthoandspinetools.com/api/health`
+2. Home feed, create post, login
+3. `docker compose -f docker-compose.prod.yml ps` — all healthy
 
-# Database health check
-pg_isready -h localhost -p 5432 || exit 1
-```
+Full QA checklist: **`TODO.md`** → **Production QA**.
 
-### 2. Log Monitoring
-```bash
-# Docker logs
-docker-compose logs -f lemmy
-docker-compose logs -f lemmy-ui
+## Safe vs dangerous commands
 
-# Medical-specific logs
-tail -f /var/log/medical-audit.log
-```
+| Safe | Dangerous |
+|------|-----------|
+| `docker compose -f docker-compose.prod.yml restart <service>` | `docker compose down -v` (deletes DB volume) |
+| `up -d` | `docker volume rm` on postgres data |
 
-### 3. Performance Monitoring
-```bash
-# Resource monitoring
-docker stats
+## More docs
 
-# Database performance
-pg_stat_activity
-```
-
-## 🔄 Backup Strategy
-
-### 1. Database Backup
-```bash
-# Daily backup script
-#!/bin/bash
-DATE=$(date +%Y%m%d_%H%M%S)
-pg_dump -h localhost -U lemmy lemmy > backup_$DATE.sql
-aws s3 cp backup_$DATE.sql s3://orthoandspinetools-backups/
-```
-
-### 2. Configuration Backup
-```bash
-# Backup configuration files
-tar -czf config_backup_$(date +%Y%m%d).tar.gz \
-    docker-compose.yml \
-    nginx.conf \
-    .env \
-    ssl/
-```
-
-### 3. Medical Data Backup
-```bash
-# Medical-specific data backup
-pg_dump -h localhost -U lemmy \
-    -t medical_specialties \
-    -t medical_professionals \
-    -t medical_communities \
-    lemmy > medical_data_backup_$(date +%Y%m%d).sql
-```
-
-## 🚀 Scaling Configuration
-
-### 1. Horizontal Scaling
-```yaml
-# docker-compose.scale.yml
-services:
-  lemmy:
-    deploy:
-      replicas: 3
-    environment:
-      - LEMMY_DATABASE_POOL_SIZE=10
-
-  lemmy-ui:
-    deploy:
-      replicas: 2
-```
-
-### 2. Load Balancing
-```nginx
-# Load balancer configuration
-upstream lemmy_backend {
-    server lemmy1:8536;
-    server lemmy2:8536;
-    server lemmy3:8536;
-}
-
-upstream lemmy_frontend {
-    server lemmy-ui1:1234;
-    server lemmy-ui2:1234;
-}
-```
-
-### 3. Database Scaling
-```bash
-# Read replicas
-CREATE SUBSCRIPTION lemmy_read_replica
-FOR ALL TABLES
-WITH (copy_data = true);
-```
-
-## 🔧 Maintenance
-
-### 1. Regular Updates
-```bash
-# Update Docker images
-docker-compose pull
-docker-compose up -d
-
-# Database migrations
-docker-compose exec lemmy diesel migration run
-```
-
-### 2. Medical Content Moderation
-```bash
-# Medical content audit
-psql -h localhost -U lemmy -d lemmy -c "
-SELECT COUNT(*) FROM posts 
-WHERE community_id IN (
-    SELECT id FROM communities 
-    WHERE name LIKE '%medical%'
-);
-"
-```
-
-### 3. Performance Optimization
-```bash
-# Database optimization
-psql -h localhost -U lemmy -d lemmy -c "VACUUM ANALYZE;"
-
-# Cache optimization
-redis-cli FLUSHDB
-```
-
-## 📞 Support
-
-### Deployment Issues
-- **GitHub Issues**: Technical deployment problems
-- **Documentation**: This deployment guide
-- **Community Support**: Medical professional community
-
-### Emergency Procedures
-- **Service Restart**: `docker-compose restart`
-- **Database Recovery**: Restore from latest backup
-- **Security Incident**: Follow medical data breach protocols
-
----
-
-This deployment guide ensures a secure, scalable, and HIPAA-compliant deployment of OrthoAndSpineTools for medical professionals.
-
+- [WHAT_TO_DO.md](WHAT_TO_DO.md) — day-to-day ops
+- [PRODUCTION_SCALING.md](PRODUCTION_SCALING.md) — pooling and scaling
+- [TODO.md](../TODO.md) — current priorities and deploy facts

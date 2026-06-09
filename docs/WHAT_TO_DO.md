@@ -8,7 +8,16 @@ The **scaling** docs (`PRODUCTION_SCALING.md`) are **optional improvements** for
    - Avoid: `docker compose down -v` (the `-v` removes data).
    - Normal restarts are fine: `docker compose -f docker-compose.prod.yml restart`.
 
-2. **After you change SSL certificate files** on disk, reload nginx:
+2. **SSL renewal** (certificates expire every ~90 days):
+   ```bash
+   ./update-ssl-certs.sh
+   ```
+   **Automated (recommended on production):** monthly cron — one-time setup:
+   ```bash
+   ./scripts/setup-ssl-renewal-cron.sh setup
+   ```
+   Logs: `logs/ssl-renew-cron.log`. Check: `./scripts/setup-ssl-renewal-cron.sh show`
+   Or after manual cert file changes, reload nginx:
    ```bash
    docker compose -f docker-compose.prod.yml exec nginx nginx -t
    docker compose -f docker-compose.prod.yml exec nginx nginx -s reload
