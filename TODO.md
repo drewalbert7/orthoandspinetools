@@ -20,7 +20,7 @@
 | **4** | **SSL auto-renewal cron** | ✅ `0 3 1 * *` → `ssl-renew-cron.sh` |
 | **5** | **SEO / LLM / OG** | ✅ Hub meta + JSON-LD, `llms-full.txt`, sitemap users, `seo-audit.sh` |
 | **6** | **Link preview cards (X, iMessage, SMS)** | ✅ Server-side OG for posts, communities, profiles, home + hubs; 1200×630 images; iMessage-style detection |
-| **7** | **Google Search Console** | ⏳ TXT record added in Namecheap (`@`); waiting on DNS propagation, then Verify + submit sitemap |
+| **7** | **Google Search Console** | ✅ Domain verified (Namecheap TXT `@`); sitemap submitted at `https://orthoandspinetools.com/sitemap.xml` |
 
 **Ongoing disk habit:** `./scripts/docker-disk-check.sh report` before `--no-cache` builds.
 
@@ -34,8 +34,8 @@
 - [x] **Real data** — Community moderators/rules, public user profiles, post sidebar join state.
 - [x] **Production QA smoke** — `./scripts/production-qa-smoke.sh` (**28/28** after link-preview deploy).
 - [ ] **Amazon SES — follow-ups** — SNS topic ARN + `/api/ses/events`; optional suppression Admin UI.
-- [ ] **Google Search Console** — Verify property (DNS TXT propagating), submit sitemap, Rich Results Test.
-- [ ] **Optional** — Dedicated 1200×630 `og-share.png` for richer homepage/hub cards (square logo works today).
+- [x] **Google Search Console** — Domain verified; sitemap submitted (`/sitemap.xml`).
+- [ ] **Optional** — Rich Results Test on home + `/post/:id`; dedicated 1200×630 `og-share.png` for richer homepage/hub cards.
 
 ### **0. Deploy status — verify live**
 - [x] **https://orthoandspinetools.com** — home, hubs, sitemap, llms-full, OG previews
@@ -120,9 +120,9 @@ GIT_SSH_COMMAND='ssh -F /dev/null -o StrictHostKeyChecking=accept-new' git pull 
 
 ## 📋 **NEXT PRIORITIES (summary)**
 
-1. **Google Search Console** — Verify property, submit sitemap, Rich Results Test
-2. **SES** — Optional SNS topic ARN + webhook (`docs/SES_AWS_SETUP.md`)
-3. **Backlog** — Admin reporting, more specialty content, Lighthouse in CI if Chrome available
+1. **SES** — Optional SNS topic ARN + webhook (`docs/SES_AWS_SETUP.md`)
+2. **Content** — More real specialty posts (helps indexing now that GSC is live)
+3. **Backlog** — Rich Results Test, optional `og-share.png`, admin reporting, Lighthouse in CI
 
 ---
 
@@ -161,6 +161,7 @@ docker compose -f docker-compose.prod.yml exec backend npm run backfill-case-pos
 | Link previews | Server-side OG for posts, communities, users, home + hubs; Sec-Fetch + bot detection (iMessage, X, SMS) |
 | OG polish | 1200×630 Cloudinary crops, shorter card descriptions, `index.html` default meta |
 | GSC DNS | Google verification TXT on Namecheap `@` — awaiting propagation |
+| GSC live | Domain verified; sitemap `https://orthoandspinetools.com/sitemap.xml` submitted |
 | QA | Smoke tests **28/28** |
 
 ### **Session log (Jun 8, 2026)**
@@ -177,5 +178,5 @@ docker compose -f docker-compose.prod.yml exec backend npm run backfill-case-pos
 ---
 
 **Last Updated:** Jun 14, 2026  
-**Status:** 🚀 Live — link previews deployed; smoke 28/28  
-**You are here:** Step 7 — Google Search Console verify (DNS propagating), then submit sitemap
+**Status:** 🚀 Live — GSC verified + sitemap submitted; smoke 28/28  
+**You are here:** Optional SES webhook, content growth, Rich Results Test
