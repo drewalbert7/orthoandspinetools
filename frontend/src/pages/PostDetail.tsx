@@ -479,7 +479,7 @@ const PostDetail: React.FC = () => {
         canonicalPath={`/post/${post.id}`}
         ogType="article"
         ogImage={shareOgImage}
-        {...(primaryOgImage && /c_fill,w_1200,h_630/i.test(shareOgImage)
+        {...(primaryOgImage
           ? { ogImageWidth: 1200, ogImageHeight: 630 }
           : {})}
         ogImageAlt={ogImageAltText || post.title}

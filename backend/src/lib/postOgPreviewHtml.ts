@@ -44,26 +44,42 @@ export function stripToPlainText(raw: string, maxLen: number): string {
 
 const IMAGE_EXT_IN_URL = /\.(jpe?g|png|gif|webp|avif|bmp|heic)(\?|#|$)/i;
 
+/** Cloudinary public_id path (folder/name) without version, transforms, or extension. */
+function extractCloudinaryPublicIdPath(url: string): string | null {
+  const parts = url.trim().split(/\/image\/upload\//i);
+  if (parts.length < 2) return null;
+  const afterUpload = parts[1].split('?')[0].split('#')[0];
+  const segments = afterUpload.split('/').filter(Boolean);
+  let i = 0;
+  while (i < segments.length) {
+    const seg = segments[i];
+    if (seg.includes(',') || /^[a-z]_/i.test(seg)) {
+      i++;
+      continue;
+    }
+    if (/^v\d+$/i.test(seg)) {
+      i++;
+      continue;
+    }
+    break;
+  }
+  const rest = segments.slice(i);
+  if (rest.length === 0) return null;
+  const last = rest.length - 1;
+  rest[last] = rest[last].replace(/\.[^/.]+$/, '');
+  return rest.join('/');
+}
+
 /** Prefer standard link-preview dimensions for Cloudinary delivery URLs. */
 export function preferredCloudinaryOgDeliveryUrl(url: string): string {
   const u = url.trim();
   if (!/\/image\/upload\//i.test(u)) return u;
-  if (/\/image\/upload\/[^/]*\b(c_fill,w_1200,h_630|w_1200,h_630)\b/i.test(u)) return u;
-  if (/\/image\/upload\/s--/i.test(u)) return u;
 
-  const ogTransform = 'c_fill,w_1200,h_630,q_auto,f_auto';
-  const parts = u.split(/\/image\/upload\//i);
-  if (parts.length < 2) return u;
-  const prefix = `${parts[0]}/image/upload/`;
-  const afterUpload = parts[1];
-  const slash = afterUpload.indexOf('/');
-  const firstSegment = slash === -1 ? afterUpload : afterUpload.slice(0, slash);
-  const rest = slash === -1 ? '' : afterUpload.slice(slash + 1);
-  const isTransform =
-    /[,_]/.test(firstSegment) || /^(c_|w_|h_|q_|f_|g_|b_|dpr_|ar_)/i.test(firstSegment);
+  const publicId = extractCloudinaryPublicIdPath(u);
+  if (!publicId) return u;
 
-  if (isTransform && rest) return `${prefix}${ogTransform}/${rest}`;
-  return `${prefix}${ogTransform}/${afterUpload}`;
+  const cloudBase = u.split(/\/image\/upload\//i)[0];
+  return `${cloudBase}/image/upload/c_fill,w_1200,h_630,q_auto,f_auto/${publicId}`;
 }
 
 function urlLooksLikeRasterImage(url: string): boolean {
@@ -93,10 +109,12 @@ function firstResolvedAttachmentUrl(
   origin: string,
   a: OgPostPayload['attachments'][number]
 ): string | undefined {
-  return absolutizeMediaUrl(
-    origin,
-    a.optimizedUrl || a.cloudinaryUrl || a.thumbnailUrl || a.path
-  );
+  const candidates = [a.cloudinaryUrl, a.path, a.thumbnailUrl, a.optimizedUrl];
+  for (const raw of candidates) {
+    const url = absolutizeMediaUrl(origin, raw);
+    if (url) return url;
+  }
+  return undefined;
 }
 
 /** First suitable raster image (or video poster) URL for Open Graph, absolute HTTPS. */
@@ -170,7 +188,7 @@ type ShareImageMeta = {
 function shareImageMeta(origin: string, imageUrl: string | undefined, alt: string): ShareImageMeta {
   const url = imageUrl || defaultOgImage(origin);
   const isDefault = url.includes('/brand-logo');
-  const isOgSized = /c_fill,w_1200,h_630/i.test(url);
+  const isOgSized = /c_fill,w_1200,h_630/i.test(url) || (!isDefault && /\/image\/upload\//i.test(url));
   return {
     url,
     width: isOgSized ? 1200 : isDefault ? DEFAULT_OG_IMAGE_WIDTH : undefined,

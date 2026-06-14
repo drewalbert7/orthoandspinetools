@@ -15,7 +15,7 @@
 | Step | Task | Status |
 |------|------|--------|
 | **1** | **Disk maintenance** | ✅ Cron + `docker-disk-check.sh`; ~68% used, ~12 GB free |
-| **2** | **Daily DB backups** | ✅ Cron `0 2 * * *` → `database-backup-cron.sh` (7-day retention) |
+| **2** | **Daily DB backups** | ✅ Cron `0 2 * * *` → volume `/mnt/HC_Volume_106016238/orthoandspinetools-backups` (7-day retention) |
 | **3** | **SES SNS webhook** | ⏳ Optional — `AWS_SES_SNS_TOPIC_ARN` missing; SES production access confirmed; transactional email works |
 | **4** | **Physician NPI verification** | ✅ U.S. NPI via CMS registry; intl. manual review; admin pending filter |
 | **5** | **Legal pages (NPI wording)** | ✅ Privacy + Terms updated for NPI collection and verification |
@@ -40,7 +40,7 @@
 - [x] **Physician NPI verification** — U.S. CMS registry at signup; international `physicianVerificationPending`; admin verify clears pending.
 - [x] **Legal NPI wording** — Privacy Policy + Terms of Service describe NPI collection, CMS lookup, and manual intl. review.
 - [x] **Admin pending physician filter** — Admin → Users → **Pending intl. review** (`physicianVerificationPending=true`).
-- [x] **Daily DB backups** — `0 2 * * *` → `scripts/database-backup-cron.sh` (7-day retention in `backups/`).
+- [x] **Daily DB backups** — `0 2 * * *` → Hetzner volume `106016238` at `/mnt/HC_Volume_106016238/orthoandspinetools-backups` (falls back to `backups/` if unmounted).
 - [x] **Feed query indexes** — `posts`, `comments`, `post_votes`, `post_tags` indexes for home/community/profile feeds.
 - [ ] **Amazon SES — follow-ups** — SNS topic ARN + `/api/ses/events`; optional suppression Admin UI.
 - [x] **Google Search Console** — Domain verified; sitemap submitted (`/sitemap.xml`).
@@ -57,7 +57,7 @@
 | Item | Value |
 |------|--------|
 | Server | `dstrad@orthoandspinetools` (SSH) |
-| Disk | `/dev/sda1` **38G** — **~60%**, ~15 GB free |
+| Disk | `/dev/sda1` **38G** root · **Hetzner volume 106016238** 20G at `/mnt/HC_Volume_106016238` for DB backups |
 | Repo | `~/orthoandspinetools-main` |
 | Compose | `docker-compose.prod.yml` |
 | Containers | `orthoandspinetools-{postgres,backend,frontend,nginx}` |
@@ -98,7 +98,7 @@ Never run `docker compose down -v` (deletes production DB volume).
 ### **3. Backlog**
 - **Scaling** — VPS RAM/disk upgrade before ~5k users; Redis for multi-replica rate limits; managed Postgres later
 - **Link previews** — Optional branded `og-share.png` (1200×630)
-- **Disk / ops** — Off-server backup copy (S3/rsync); review 38G VPS sizing
+- **Disk / ops** — Off-server backup copy (S3/rsync); root disk stays lean via volume backups + Docker log limits
 - **SEO** — Lighthouse / Rich Results; confirm `VITE_SITE_URL` / `PUBLIC_SITE_URL` in prod builds
 - **Admin** — SES suppression UI; email alert on intl. physician signup (optional)
 - **Content** — More real specialty posts
@@ -148,8 +148,9 @@ GIT_SSH_COMMAND='ssh -F /dev/null -o StrictHostKeyChecking=accept-new' git pull 
 ./scripts/seo-audit.sh                 # SEO + OG curl checks; optional Lighthouse
 ./scripts/ses-webhook-status.sh          # SES/SNS env check
 ./scripts/quick-restart.sh               # safe restart (never docker compose down)
-./scripts/database-backup-production.sh    # manual DB backup
+./scripts/database-backup-production.sh    # manual DB backup (uses volume when mounted)
 ./scripts/database-backup-cron.sh          # cron entrypoint (daily 02:00)
+./scripts/setup-backup-volume.sh           # one-time Hetzner volume backup dir setup
 docker compose -f docker-compose.prod.yml exec backend npm run backfill-case-post-tags
 ```
 

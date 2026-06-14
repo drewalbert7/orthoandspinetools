@@ -3,6 +3,11 @@ services:
   postgres:
     image: postgres:15-alpine
     container_name: orthoandspinetools-postgres
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
     environment:
       POSTGRES_DB: orthoandspinetools
       POSTGRES_USER: postgres
@@ -26,6 +31,11 @@ services:
       context: ./backend
       dockerfile: Dockerfile
     container_name: orthoandspinetools-backend
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
     env_file:
       - .env.cloudinary
     environment:
@@ -84,6 +94,11 @@ services:
         VITE_SITE_URL: ${VITE_SITE_URL:-https://orthoandspinetools.com}
         VITE_GA_MEASUREMENT_ID: ${VITE_GA_MEASUREMENT_ID:-G-2HVXSX6V78}
     container_name: orthoandspinetools-frontend
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
     depends_on:
       backend:
         condition: service_healthy
@@ -101,6 +116,11 @@ services:
   nginx:
     image: nginx:alpine
     container_name: orthoandspinetools-nginx
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
     ports:
       - "80:80"
       - "443:443"

@@ -56,6 +56,10 @@ USERNAME="$(curl -sS "$BASE/api/posts?limit=1" | python3 -c "import sys,json; d=
 
 if [ -n "$POST_ID" ]; then
   check "OG preview post" bash -c "curl -sS -A 'facebookexternalhit/1.1' '$BASE/post/$POST_ID' | grep -q 'og:title'"
+  check "OG post image loads" bash -c "
+    img=\$(curl -sS -A 'facebookexternalhit/1.1' '$BASE/post/$POST_ID' | sed -n 's/.*property=\"og:image\" content=\"\\([^\"]*\\)\".*/\\1/p' | head -1)
+    test -n \"\$img\" && curl -sS -o /dev/null -w '%{http_code}' -I \"\$img\" | grep -q '^200$'
+  "
 else
   echo "  SKIP OG preview post (no posts)"
 fi

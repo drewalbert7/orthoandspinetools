@@ -6,9 +6,32 @@
 set -e
 
 # Configuration
-BACKUP_DIR="/home/dstrad/orthoandspinetools-main/backups"
+ROOT="/home/dstrad/orthoandspinetools-main"
+VOLUME_BACKUP_DIR="/mnt/HC_Volume_106016238/orthoandspinetools-backups"
+REPO_BACKUP_DIR="$ROOT/backups"
+
+resolve_backup_dir() {
+  if [[ -n "${BACKUP_DIR:-}" ]]; then
+    echo "$BACKUP_DIR"
+    return
+  fi
+  if [[ -d "$VOLUME_BACKUP_DIR" && -w "$VOLUME_BACKUP_DIR" ]]; then
+    echo "$VOLUME_BACKUP_DIR"
+    return
+  fi
+  if [[ -d "/mnt/HC_Volume_106016238" ]]; then
+    mkdir -p "$VOLUME_BACKUP_DIR" 2>/dev/null || true
+    if [[ -d "$VOLUME_BACKUP_DIR" && -w "$VOLUME_BACKUP_DIR" ]]; then
+      echo "$VOLUME_BACKUP_DIR"
+      return
+    fi
+  fi
+  echo "$REPO_BACKUP_DIR"
+}
+
+BACKUP_DIR="$(resolve_backup_dir)"
 RETENTION_DAYS=7
-LOG_FILE="/home/dstrad/orthoandspinetools-main/logs/database-backup.log"
+LOG_FILE="$ROOT/logs/database-backup.log"
 CONTAINER_NAME="orthoandspinetools-postgres"
 DB_NAME="orthoandspinetools"
 DB_USER="postgres"
@@ -97,6 +120,7 @@ clean_old_backups() {
 main() {
     echo "=========================================="
     log "Starting Database Backup System..."
+    log "Backup directory: $BACKUP_DIR"
     echo "=========================================="
     
     # Check if container is running

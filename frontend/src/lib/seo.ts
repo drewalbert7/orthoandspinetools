@@ -56,26 +56,41 @@ export function formatPostShareHeadline(post: Post): string {
 
 const IMAGE_EXT_IN_URL = /\.(jpe?g|png|gif|webp|avif|bmp|heic)(\?|#|$)/i;
 
+function extractCloudinaryPublicIdPath(url: string): string | null {
+  const parts = url.trim().split(/\/image\/upload\//i);
+  if (parts.length < 2) return null;
+  const afterUpload = parts[1].split('?')[0].split('#')[0];
+  const segments = afterUpload.split('/').filter(Boolean);
+  let i = 0;
+  while (i < segments.length) {
+    const seg = segments[i];
+    if (seg.includes(',') || /^[a-z]_/i.test(seg)) {
+      i++;
+      continue;
+    }
+    if (/^v\d+$/i.test(seg)) {
+      i++;
+      continue;
+    }
+    break;
+  }
+  const rest = segments.slice(i);
+  if (rest.length === 0) return null;
+  const last = rest.length - 1;
+  rest[last] = rest[last].replace(/\.[^/.]+$/, '');
+  return rest.join('/');
+}
+
 /** Prefer 1200×630 delivery for Cloudinary image URLs (link-preview friendly). */
 export function preferredCloudinaryOgDeliveryUrl(url: string): string {
   const u = url.trim();
   if (!/\/image\/upload\//i.test(u)) return u;
-  if (/\/image\/upload\/[^/]*\b(c_fill,w_1200,h_630|w_1200,h_630)\b/i.test(u)) return u;
-  if (/\/image\/upload\/s--/i.test(u)) return u;
 
-  const ogTransform = 'c_fill,w_1200,h_630,q_auto,f_auto';
-  const parts = u.split(/\/image\/upload\//i);
-  if (parts.length < 2) return u;
-  const prefix = `${parts[0]}/image/upload/`;
-  const afterUpload = parts[1];
-  const slash = afterUpload.indexOf('/');
-  const firstSegment = slash === -1 ? afterUpload : afterUpload.slice(0, slash);
-  const rest = slash === -1 ? '' : afterUpload.slice(slash + 1);
-  const isTransform =
-    /[,_]/.test(firstSegment) || /^(c_|w_|h_|q_|f_|g_|b_|dpr_|ar_)/i.test(firstSegment);
+  const publicId = extractCloudinaryPublicIdPath(u);
+  if (!publicId) return u;
 
-  if (isTransform && rest) return `${prefix}${ogTransform}/${rest}`;
-  return `${prefix}${ogTransform}/${afterUpload}`;
+  const cloudBase = u.split(/\/image\/upload\//i)[0];
+  return `${cloudBase}/image/upload/c_fill,w_1200,h_630,q_auto,f_auto/${publicId}`;
 }
 
 function urlLooksLikeRasterImage(url: string): boolean {
@@ -104,7 +119,7 @@ export function postOgImage(post: Post): string | undefined {
   const atts = post.attachments ?? [];
   for (const a of atts) {
     const mime = (a.mimeType || '').toLowerCase();
-    const raw = a.optimizedUrl || a.cloudinaryUrl || a.thumbnailUrl || a.path;
+    const raw = a.cloudinaryUrl || a.path || a.thumbnailUrl || a.optimizedUrl;
     const url = resolveAttachmentMediaUrl(raw);
     if (!url) continue;
     if (mime.startsWith('image/') || (!mime.startsWith('video/') && urlLooksLikeRasterImage(url))) {
