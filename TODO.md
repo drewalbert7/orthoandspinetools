@@ -8,45 +8,45 @@
 | **OPS QUICK REFERENCE** | Database, SSL, Docker disk, scripts |
 | **Archive** | Full history → `CHANGELOG.md` |
 
-## 🔥 **NEXT UP — START HERE** (updated Jun 8, 2026 — end of session)
+## 🔥 **NEXT UP — START HERE** (updated Jun 1, 2026)
 
-### **Pick up here (step-by-step — updated Jun 8, 2026)**
+### **Pick up here (step-by-step)**
 
 | Step | Task | Status |
 |------|------|--------|
-| **1** | **Disk maintenance** | ✅ **Done** — 51% used, 18 GB free; monthly cron installed (`0 4 1 * *` → `docker-disk-check.sh cleanup`) |
-| **2** | **SES SNS webhook + prod access** | ⏳ **AWS Console required** — `AWS_SES_SNS_TOPIC_ARN` missing; webhook returns 403 without valid SNS sig (expected). See § SES below. |
-| **3** | **Logged-in Production QA** | ⏳ **Needs your login** — create-post media, notifications, admin delete, password reset inbox |
-| **4** | **SSL auto-renewal cron** | ✅ **Done** — `0 3 1 * *` → `ssl-renew-cron.sh` already in crontab; scripts in repo (`4605360`) |
-| **5** | **Repo / deploy hygiene** | ✅ **Done** — `main` at `4605360`; smoke 18/18 |
+| **1** | **Disk maintenance** | ✅ Cron + `docker-disk-check.sh`; ~60% used, ~15 GB free |
+| **2** | **SES SNS webhook + prod access** | ⏳ Optional — `AWS_SES_SNS_TOPIC_ARN` missing; password reset email works |
+| **3** | **Logged-in Production QA** | ✅ Mostly done — create post, notifications, admin delete, password reset; self-notification on own post is acceptable |
+| **4** | **SSL auto-renewal cron** | ✅ `0 3 1 * *` → `ssl-renew-cron.sh` |
+| **5** | **SEO / LLM / OG** | ✅ Hub meta + JSON-LD, `llms-full.txt`, sitemap users, community/user OG previews, `seo-audit.sh` |
+| **6** | **Google Search Console** | ⏳ Manual — verify property + submit `https://orthoandspinetools.com/sitemap.xml` |
 
-**Ongoing disk habit:** `./scripts/docker-disk-check.sh report` before `--no-cache` builds; avoid `--no-cache` when plain `build` suffices.
+**Ongoing disk habit:** `./scripts/docker-disk-check.sh report` before `--no-cache` builds.
 
 ### **Goals**
 - [x] **Brand copy** — Tagline **"Ortho and Spine Tools - Hunt for the Best"** across SEO, `index.html`, register, `llms.txt`.
-- [x] **Link previews** — `GET /api/og/post/:id` + nginx bot `map` on `/post/:id`.
-- [x] **Cases** — `/cases`, `tagName=Case`, backfill script. Prod backfill done Jun 8, 2026 (3 posts).
-- [x] **Dynamic sitemap** — `GET /sitemap.xml` from backend; nginx proxy. Deployed Jun 8, 2026.
-- [x] **Production QA smoke script** — `./scripts/production-qa-smoke.sh` (18/18 passing after last deploy).
-- [x] **Profile UX** — Level and Total points shown as **separate** stats (`Profile.tsx`, commit `24f79da`). Frontend redeployed Jun 8, 2026.
-- [ ] **Amazon SES — follow-ups** — SNS topic ARN + `/api/ses/events` subscription; production access; optional suppression Admin UI.
-- [ ] **Amazon SES — project isolation** — Dedicated IAM user per project (`scripts/aws-ses-iam-policy.json`).
-- [ ] **Ongoing** — Logged-in QA §2; post media create flow if regressions reported.
+- [x] **Link previews** — `GET /api/og/post/:id`, `/community/:slug`, `/user/:username` + nginx bot `map`.
+- [x] **Cases** — `/cases`, `tagName=Case`, backfill script.
+- [x] **Dynamic sitemap** — posts, communities, public user profiles.
+- [x] **LLM citing** — `llms.txt`, dynamic `llms-full.txt`, expanded `robots.txt`.
+- [x] **Hub SEO** — DocumentMeta + JSON-LD on Cases, Popular, Startups, Search; Person schema on profiles.
+- [x] **Real data** — Community moderators/rules, public user profiles, post sidebar join state.
+- [x] **Production QA smoke** — `./scripts/production-qa-smoke.sh` (25 checks after OG deploy).
+- [ ] **Amazon SES — follow-ups** — SNS topic ARN + `/api/ses/events`; optional suppression Admin UI.
+- [ ] **Google Search Console** — Verify site, submit sitemap, Rich Results Test on home + `/post/:id`.
 
 ### **0. Deploy status — verify live**
-- [x] `git push` + server pull — `main` at `24f79da` (Jun 8, 2026)
-- [x] Backend + nginx — sitemap, Cases backfill, QA scripts (`8543bd4`)
-- [x] Frontend — profile Level/Total points split (`24f79da`)
-- [ ] After **every** `--no-cache` build: check `df -h /` and run safe Docker cleanup if >85%
+- [x] **https://orthoandspinetools.com** — home, hubs, sitemap, llms-full, OG previews
+- [ ] After **every** frontend/nginx recreate: `--force-recreate nginx` if needed (stale upstream → 502)
 - [ ] Run **`./scripts/production-qa-smoke.sh`** after deploys
-- [x] **https://orthoandspinetools.com** — home, `/cases` (3 posts), `/profile` 200, dynamic sitemap
+- [ ] Run **`./scripts/seo-audit.sh`** after SEO changes (optional Lighthouse)
 
 ### **1. Deploy (production server)**
 
 | Item | Value |
 |------|--------|
 | Server | `dstrad@orthoandspinetools` (SSH) |
-| Disk | `/dev/sda1` **38G** — **~51%** after cleanup (`./scripts/docker-disk-check.sh`); was **100%** during build |
+| Disk | `/dev/sda1` **38G** — **~60%**, ~15 GB free |
 | Repo | `~/orthoandspinetools-main` |
 | Compose | `docker-compose.prod.yml` |
 | Containers | `orthoandspinetools-{postgres,backend,frontend,nginx}` |
@@ -91,7 +91,7 @@ Never run `docker compose down -v` (deletes production DB volume).
 - **Post media (WIP)** — Re-test create-post upload if needed; existing posts display images OK
 - **Notifications** — Vote/mention/moderation triggers (v1 comment/reply shipped)
 
-**Live snapshot (Jun 8, 2026):** 3 posts, 4 users, 11 communities · SSL expires **Aug 15, 2026** · latest commit **`4605360`**
+**Live snapshot (Jun 1, 2026):** 3 posts, 4 users, 11 communities · smoke **25/25** · SEO/LLM/OG deployed
 
 ---
 
@@ -117,9 +117,9 @@ GIT_SSH_COMMAND='ssh -F /dev/null -o StrictHostKeyChecking=accept-new' git pull 
 
 ## 📋 **NEXT PRIORITIES (summary)**
 
-1. **SES** — SNS topic ARN + webhook; production access (`docs/SES_AWS_SETUP.md` §3–5) — **you are here**
-2. **Logged-in QA** — create-post media, notifications, admin flows
-3. **Backlog** — SEO Lighthouse, admin reporting, more content
+1. **Google Search Console** — Verify property, submit sitemap, Rich Results Test
+2. **SES** — Optional SNS topic ARN + webhook (`docs/SES_AWS_SETUP.md`)
+3. **Backlog** — Admin reporting, more specialty content, Lighthouse in CI if Chrome available
 
 ---
 
@@ -129,6 +129,7 @@ GIT_SSH_COMMAND='ssh -F /dev/null -o StrictHostKeyChecking=accept-new' git pull 
 ./scripts/docker-disk-check.sh report    # disk + Docker usage
 ./scripts/docker-disk-check.sh cleanup   # safe post-build cleanup
 ./scripts/production-qa-smoke.sh         # post-deploy smoke tests
+./scripts/seo-audit.sh                 # SEO + OG curl checks; optional Lighthouse
 ./scripts/ses-webhook-status.sh          # SES/SNS env check
 ./scripts/quick-restart.sh               # safe restart (never docker compose down)
 ./scripts/database-backup-production.sh
@@ -163,6 +164,6 @@ docker compose -f docker-compose.prod.yml exec backend npm run backfill-case-pos
 
 ---
 
-**Last Updated:** Jun 8, 2026  
-**Status:** 🚀 Live at `4605360` — disk + SSL crons active; smoke 18/18  
-**You are here:** Step 2 — SES in AWS Console, then Step 3 logged-in QA
+**Last Updated:** Jun 1, 2026  
+**Status:** 🚀 Live — SEO/LLM/OG deployed; smoke 25/25  
+**You are here:** Step 6 — Google Search Console (manual, your Google account)

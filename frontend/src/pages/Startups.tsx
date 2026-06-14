@@ -1,9 +1,11 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { apiService } from '../services/apiService';
 import FeedPostCard from '../components/FeedPostCard';
 import { useAuth } from '../contexts/AuthContext';
+import { DocumentMeta } from '../components/DocumentMeta';
+import { buildHubCollectionJsonLd } from '../lib/seo';
 
 const STARTUP_TAG_MATCH = 'startup';
 
@@ -51,8 +53,25 @@ const Startups: React.FC = () => {
     { value: 'rising', label: 'Rising' },
   ];
 
+  const hubJsonLd = useMemo(
+    () =>
+      buildHubCollectionJsonLd({
+        path: '/startups',
+        name: 'Startups',
+        description:
+          'Orthopedic and spine startup launches, products, and innovation posts on OrthoAndSpineTools.',
+      }),
+    []
+  );
+
   return (
     <div className="mx-auto min-w-0 max-w-4xl px-3 sm:px-4">
+      <DocumentMeta
+        title="Startups"
+        description="Orthopedic and spine startup launches and product discussions across OrthoAndSpineTools communities."
+        canonicalPath="/startups"
+        jsonLd={hubJsonLd}
+      />
       <div className="bg-white border border-gray-200 p-3 sm:p-4 mb-4">
         <div className="flex flex-col gap-3 sm:gap-4">
           <div>

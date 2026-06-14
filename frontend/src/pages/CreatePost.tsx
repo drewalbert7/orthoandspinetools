@@ -30,6 +30,7 @@ import MarkdownEditor, { MarkdownEditorHandle } from '../components/MarkdownEdit
 import PostEditorToolbar from '../components/PostEditorToolbar';
 import { CASE_TOPIC_DISPLAY_NAME } from '../lib/topicTags';
 import { tryApplyUrlPasteToTextarea } from '../lib/pasteUrlAsMarkdown';
+import { DocumentMeta } from '../components/DocumentMeta';
 
 
 type PostType = 'text' | 'images';
@@ -527,6 +528,7 @@ const CreatePost: React.FC = () => {
 
   return (
     <div className="max-w-4xl mx-auto bg-white min-h-screen px-3 sm:px-4 md:px-6">
+      <DocumentMeta title="Create post" noIndex />
       <div className="p-3 sm:p-4 md:p-6">
         {/* Header */}
         <div className="flex items-center justify-between mb-4 sm:mb-6 md:mb-8">

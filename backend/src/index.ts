@@ -21,6 +21,7 @@ import notificationRoutes from './routes/notifications';
 import ogPreviewRoutes from './routes/ogPreview';
 import sesEventsRoutes from './routes/sesEvents';
 import sitemapRoutes from './routes/sitemap';
+import llmsFullRoutes from './routes/llmsFull';
 
 // Import middleware
 import { errorHandler } from './middleware/errorHandler';
@@ -92,7 +93,8 @@ const limiter = rateLimit({
       req.path === '/health' ||
       req.path.startsWith('/api/og/') ||
       req.path.startsWith('/api/ses/events') ||
-      req.path === '/sitemap.xml'
+      req.path === '/sitemap.xml' ||
+      req.path === '/llms-full.txt'
     );
   },
 });
@@ -150,6 +152,7 @@ app.use('/api/og', ogPreviewRoutes);
 
 // Dynamic sitemap (proxied by nginx at GET /sitemap.xml)
 app.use('/sitemap.xml', sitemapRoutes);
+app.use('/llms-full.txt', llmsFullRoutes);
 
 // API routes
 app.use('/api/auth', authRoutes);

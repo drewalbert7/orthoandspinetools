@@ -4,4 +4,8 @@ Allow: /
 # Login/register are allowed to crawl but low value; adjust if you prefer otherwise.
 Disallow: /api/
 
+# AI discovery files (see https://llmstxt.org)
+# Short index: /llms.txt
+# Dynamic full index (communities, posts, profiles): /llms-full.txt
+
 Sitemap: https://orthoandspinetools.com/sitemap.xml

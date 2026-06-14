@@ -8,7 +8,7 @@ const router = Router();
 router.get(
   '/',
   asyncHandler(async (_req: Request, res: Response) => {
-    const [communities, posts] = await Promise.all([
+    const [communities, posts, users] = await Promise.all([
       prisma.community.findMany({
         select: { slug: true, updatedAt: true },
         orderBy: { name: 'asc' },
@@ -19,6 +19,14 @@ router.get(
         orderBy: { updatedAt: 'desc' },
         take: 50000,
       }),
+      prisma.user.findMany({
+        where: {
+          isActive: true,
+          posts: { some: { isDeleted: false } },
+        },
+        select: { username: true, updatedAt: true },
+        orderBy: { username: 'asc' },
+      }),
     ]);
 
     const entries = [
@@ -28,6 +36,12 @@ router.get(
         lastmod: c.updatedAt,
         changefreq: 'daily',
         priority: '0.7',
+      })),
+      ...users.map((u) => ({
+        path: `/user/${u.username}`,
+        lastmod: u.updatedAt,
+        changefreq: 'weekly',
+        priority: '0.5',
       })),
       ...posts.map((p) => ({
         path: `/post/${p.id}`,

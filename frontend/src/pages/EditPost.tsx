@@ -7,6 +7,7 @@ import toast from 'react-hot-toast';
 import MarkdownEditor, { MarkdownEditorHandle } from '../components/MarkdownEditor';
 import PostEditorToolbar from '../components/PostEditorToolbar';
 import { tryApplyUrlPasteToTextarea } from '../lib/pasteUrlAsMarkdown';
+import { DocumentMeta } from '../components/DocumentMeta';
 
 const EditPost: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -132,6 +133,7 @@ const EditPost: React.FC = () => {
 
   return (
     <div className="max-w-3xl mx-auto">
+      <DocumentMeta title="Edit post" noIndex />
       <div className="mb-6">
         <Link to={`/post/${id}`} className="text-sm text-blue-600 hover:text-blue-800 hover:underline">
           ← Back to post

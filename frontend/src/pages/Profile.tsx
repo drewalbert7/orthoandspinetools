@@ -12,6 +12,7 @@ import MarkdownContent from '../components/MarkdownContent';
 import { navigateToPostFromFeedCardBackground } from '../lib/navigatePostFromFeedCard';
 import { formatDistanceToNow } from 'date-fns';
 import { getPointsLevelState, MAX_POINTS_LEVEL } from '../lib/pointsLevel';
+import { DocumentMeta } from '../components/DocumentMeta';
 
 type TabType = 'posts' | 'comments';
 type SortOption = 'hot' | 'new' | 'top' | 'controversial';
@@ -330,6 +331,7 @@ const Profile: React.FC = () => {
 
   return (
     <div className="max-w-6xl mx-auto px-2 sm:px-4 md:px-6">
+      <DocumentMeta title="My profile" noIndex />
       <div className="flex flex-col lg:flex-row gap-3 sm:gap-4 lg:gap-6">
         {/* Main Content */}
         <div className="flex-1 min-w-0">

@@ -41,15 +41,35 @@ echo ""
 echo "3. SEO"
 check "robots.txt" test "$(http_code "$BASE/robots.txt")" = "200"
 check "llms.txt" test "$(http_code "$BASE/llms.txt")" = "200"
+check "llms-full.txt" test "$(http_code "$BASE/llms-full.txt")" = "200"
+check "llms-full has communities" bash -c "curl -sS '$BASE/llms-full.txt' | grep -q '/community/'"
 check "sitemap.xml" test "$(http_code "$BASE/sitemap.xml")" = "200"
 check "sitemap has posts" bash -c "curl -sS '$BASE/sitemap.xml' | grep -q '/post/'"
 check "sitemap has communities" bash -c "curl -sS '$BASE/sitemap.xml' | grep -q '/community/'"
+check "sitemap has user profiles" bash -c "curl -sS '$BASE/sitemap.xml' | grep -q '/user/'"
 
 POST_ID="$(curl -sS "$BASE/api/posts?limit=1" | python3 -c "import sys,json; d=json.load(sys.stdin); print(d['data']['posts'][0]['id'])" 2>/dev/null || true)"
+COMMUNITY_SLUG="$(curl -sS "$BASE/api/communities" | python3 -c "import sys,json; d=json.load(sys.stdin); c=d['data']; print(c[0]['slug'] if c else '')" 2>/dev/null || true)"
+USERNAME="$(curl -sS "$BASE/api/posts?limit=1" | python3 -c "import sys,json; d=json.load(sys.stdin); print(d['data']['posts'][0]['author']['username'])" 2>/dev/null || true)"
+
 if [ -n "$POST_ID" ]; then
-  check "OG preview HTML" bash -c "curl -sS -A 'facebookexternalhit/1.1' '$BASE/post/$POST_ID' | grep -q 'og:title'"
+  check "OG preview post" bash -c "curl -sS -A 'facebookexternalhit/1.1' '$BASE/post/$POST_ID' | grep -q 'og:title'"
 else
-  echo "  SKIP OG preview (no posts)"
+  echo "  SKIP OG preview post (no posts)"
+fi
+
+if [ -n "$COMMUNITY_SLUG" ]; then
+  check "OG preview community" bash -c "curl -sS -A 'facebookexternalhit/1.1' '$BASE/community/$COMMUNITY_SLUG' | grep -q 'og:title'"
+  check "OG API community" bash -c "curl -sS '$BASE/api/og/community/$COMMUNITY_SLUG' | grep -q 'og:title'"
+else
+  echo "  SKIP OG preview community (no communities)"
+fi
+
+if [ -n "$USERNAME" ]; then
+  check "OG preview user" bash -c "curl -sS -A 'facebookexternalhit/1.1' '$BASE/user/$USERNAME' | grep -q 'og:title'"
+  check "OG API user" bash -c "curl -sS '$BASE/api/og/user/$USERNAME' | grep -q 'og:title'"
+else
+  echo "  SKIP OG preview user (no users)"
 fi
 
 echo ""

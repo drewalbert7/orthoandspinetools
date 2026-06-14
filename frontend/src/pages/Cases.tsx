@@ -1,10 +1,12 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { apiService } from '../services/apiService';
 import FeedPostCard from '../components/FeedPostCard';
 import { useAuth } from '../contexts/AuthContext';
 import { CASE_TOPIC_DISPLAY_NAME } from '../lib/topicTags';
+import { DocumentMeta } from '../components/DocumentMeta';
+import { buildHubCollectionJsonLd } from '../lib/seo';
 
 type SortOption = 'best' | 'hot' | 'newest' | 'top' | 'rising';
 
@@ -50,8 +52,24 @@ const Cases: React.FC = () => {
     { value: 'rising', label: 'Rising' },
   ];
 
+  const hubJsonLd = useMemo(
+    () =>
+      buildHubCollectionJsonLd({
+        path: '/cases',
+        name: 'Case studies',
+        description: `Orthopedic and spine case discussions tagged ${CASE_TOPIC_DISPLAY_NAME} across all communities.`,
+      }),
+    []
+  );
+
   return (
     <div className="mx-auto min-w-0 max-w-4xl px-3 sm:px-4">
+      <DocumentMeta
+        title="Cases"
+        description={`Case studies and surgical cases tagged ${CASE_TOPIC_DISPLAY_NAME} — orthopedic and spine discussions on OrthoAndSpineTools.`}
+        canonicalPath="/cases"
+        jsonLd={hubJsonLd}
+      />
       <div className="bg-white border border-gray-200 p-3 sm:p-4 mb-4">
         <div className="flex flex-col gap-3 sm:gap-4">
           <div>

@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import BrandLogo from '../components/BrandLogo';
+import { DocumentMeta } from '../components/DocumentMeta';
 import authService from '../services/authService';
 
 const VerifyEmail: React.FC = () => {
@@ -38,6 +39,7 @@ const VerifyEmail: React.FC = () => {
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
+      <DocumentMeta title="Verify email" noIndex />
       <div className="max-w-md w-full space-y-8">
         <div className="flex justify-center">
           <BrandLogo heightClass="h-14" maxWidthClass="max-w-[min(100%,16rem)]" />

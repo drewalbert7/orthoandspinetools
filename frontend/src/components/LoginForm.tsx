@@ -3,6 +3,7 @@ import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { LoginCredentials, authService } from '../services/authService';
 import BrandLogo from './BrandLogo';
+import { DocumentMeta } from './DocumentMeta';
 
 const LoginForm: React.FC = () => {
   const { login, user } = useAuth();
@@ -85,6 +86,7 @@ const LoginForm: React.FC = () => {
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
+      <DocumentMeta title="Sign in" noIndex />
       <div className="max-w-md w-full space-y-8">
         <div>
           <div className="flex justify-center">

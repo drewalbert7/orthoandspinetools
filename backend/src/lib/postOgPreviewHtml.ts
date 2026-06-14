@@ -1,7 +1,8 @@
 import type { Request } from 'express';
 
 export const OG_SITE_NAME = 'OrthoAndSpineTools';
-export const OG_DEFAULT_DESCRIPTION = 'Ortho and Spine Tools - Hunt for the Best';
+export const OG_DEFAULT_DESCRIPTION =
+  'Ortho and Spine Tools — Hunt for the Best. A professional community for orthopedic and spine surgeons to discuss cases, tools, biologics, and startups.';
 
 export type OgPostPayload = {
   id: string;
@@ -241,4 +242,167 @@ export function buildNotFoundShareHtml(origin: string, id: string): string {
 <p><a href="${e(canonical)}">Go to home</a></p>
 </body>
 </html>`;
+}
+
+export type OgCommunityPayload = {
+  name: string;
+  slug: string;
+  description: string | null;
+  profileImage: string | null;
+  bannerImage: string | null;
+  memberCount: number;
+  postCount: number;
+};
+
+export type OgUserPayload = {
+  username: string;
+  firstName: string;
+  lastName: string;
+  specialty: string | null;
+  bio: string | null;
+  profileImage: string | null;
+  postsCount: number;
+  commentsCount: number;
+};
+
+function pickCommunityOgImage(origin: string, community: OgCommunityPayload): string {
+  const banner = community.bannerImage ? absolutizeMediaUrl(origin, community.bannerImage) : undefined;
+  const profile = community.profileImage ? absolutizeMediaUrl(origin, community.profileImage) : undefined;
+  const img = banner || profile;
+  return img ? preferredCloudinaryOgDeliveryUrl(img) : defaultOgImage(origin);
+}
+
+export function buildCommunityShareHtml(community: OgCommunityPayload, origin: string): string {
+  const canonical = `${origin}/community/${community.slug}`;
+  const headline = `o/${community.name} | ${OG_SITE_NAME}`;
+  const descRaw = community.description?.trim()
+    ? stripToPlainText(community.description, 280)
+    : `Orthopedic and spine discussions in o/${community.name} on ${OG_SITE_NAME}.`;
+  const stats = `${community.memberCount.toLocaleString()} members · ${community.postCount.toLocaleString()} posts`;
+  const description =
+    descRaw.length > 240 ? `${descRaw.slice(0, 237).trimEnd()}…` : `${descRaw} · ${stats}`;
+  const ogImage = pickCommunityOgImage(origin, community);
+  const twitterCard = ogImage.includes('/brand-logo') ? 'summary' : 'summary_large_image';
+  const e = escapeHtml;
+  const body = community.description?.trim()
+    ? stripToPlainText(community.description, 420)
+    : `Community hub for o/${community.name}.`;
+
+  return `<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>${e(headline)}</title>
+<link rel="canonical" href="${e(canonical)}">
+<meta name="description" content="${e(description)}">
+<meta property="og:title" content="${e(headline)}">
+<meta property="og:description" content="${e(description)}">
+<meta property="og:type" content="website">
+<meta property="og:url" content="${e(canonical)}">
+<meta property="og:site_name" content="${e(OG_SITE_NAME)}">
+<meta property="og:locale" content="en_US">
+<meta property="og:image" content="${e(ogImage)}">
+<meta property="og:image:alt" content="${e(`o/${community.name} community on ${OG_SITE_NAME}`)}">
+<meta name="twitter:card" content="${twitterCard}">
+<meta name="twitter:title" content="${e(headline)}">
+<meta name="twitter:description" content="${e(description)}">
+<meta name="twitter:image" content="${e(ogImage)}">
+<meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1">
+</head>
+<body style="margin:0;background:#f9fafb">
+<div style="max-width:42rem;margin:0 auto;padding:2rem 1.25rem 2.5rem;font-family:system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;color:#111827">
+<p style="margin:0 0 1rem;font-size:0.75rem;font-weight:600;letter-spacing:0.06em;text-transform:uppercase;color:#6b7280">${e(OG_SITE_NAME)}</p>
+<h1 style="margin:0 0 0.75rem;font-size:1.375rem;font-weight:700">o/${e(community.name)}</h1>
+<p style="margin:0 0 1rem;font-size:0.9375rem;line-height:1.65;color:#374151">${e(body)}</p>
+<p style="margin:0 0 1.5rem;font-size:0.8125rem;color:#6b7280">${e(stats)}</p>
+<p style="margin:0"><a href="${e(canonical)}" style="display:inline-block;background:#1d4ed8;color:#fff;text-decoration:none;font-weight:600;font-size:0.9375rem;padding:0.65rem 1.35rem;border-radius:9999px">View community</a></p>
+</div>
+</body>
+</html>`;
+}
+
+export function buildCommunityNotFoundShareHtml(origin: string, slug: string): string {
+  const canonical = `${origin}/community/${encodeURIComponent(slug)}`;
+  const headline = `Community not found | ${OG_SITE_NAME}`;
+  const description = 'This community does not exist or is unavailable on OrthoAndSpineTools.';
+  const e = escapeHtml;
+  return `<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8"><title>${e(headline)}</title>
+<meta name="robots" content="noindex, nofollow">
+<meta property="og:title" content="${e(headline)}">
+<meta property="og:description" content="${e(description)}">
+<meta property="og:type" content="website">
+<meta property="og:url" content="${e(canonical)}">
+</head><body><p>${e(description)}</p></body></html>`;
+}
+
+export function buildUserShareHtml(user: OgUserPayload, origin: string): string {
+  const canonical = `${origin}/user/${user.username}`;
+  const displayName = [user.firstName, user.lastName].filter(Boolean).join(' ').trim() || user.username;
+  const headline = `u/${user.username} | ${OG_SITE_NAME}`;
+  const bio = user.bio?.trim() ? stripToPlainText(user.bio, 200) : '';
+  const specialty = user.specialty?.trim() || '';
+  const stats = `${user.postsCount} posts · ${user.commentsCount} comments`;
+  const descriptionParts = [bio || `${displayName} on ${OG_SITE_NAME}`];
+  if (specialty) descriptionParts.push(specialty);
+  descriptionParts.push(stats);
+  let description = descriptionParts.join(' · ');
+  if (description.length > 300) description = `${description.slice(0, 297).trimEnd()}…`;
+  const ogImage = user.profileImage
+    ? preferredCloudinaryOgDeliveryUrl(absolutizeMediaUrl(origin, user.profileImage) || defaultOgImage(origin))
+    : defaultOgImage(origin);
+  const twitterCard = user.profileImage ? 'summary' : 'summary';
+  const e = escapeHtml;
+
+  return `<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>${e(headline)}</title>
+<link rel="canonical" href="${e(canonical)}">
+<meta name="description" content="${e(description)}">
+<meta property="og:title" content="${e(headline)}">
+<meta property="og:description" content="${e(description)}">
+<meta property="og:type" content="profile">
+<meta property="og:url" content="${e(canonical)}">
+<meta property="og:site_name" content="${e(OG_SITE_NAME)}">
+<meta property="og:locale" content="en_US">
+<meta property="og:image" content="${e(ogImage)}">
+<meta property="og:image:alt" content="${e(`${displayName} (@${user.username})`)}">
+<meta property="profile:username" content="${e(user.username)}">
+<meta name="twitter:card" content="${twitterCard}">
+<meta name="twitter:title" content="${e(headline)}">
+<meta name="twitter:description" content="${e(description)}">
+<meta name="twitter:image" content="${e(ogImage)}">
+<meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1">
+</head>
+<body style="margin:0;background:#f9fafb">
+<div style="max-width:42rem;margin:0 auto;padding:2rem 1.25rem 2.5rem;font-family:system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;color:#111827">
+<p style="margin:0 0 1rem;font-size:0.75rem;font-weight:600;letter-spacing:0.06em;text-transform:uppercase;color:#6b7280">${e(OG_SITE_NAME)}</p>
+<h1 style="margin:0 0 0.25rem;font-size:1.375rem;font-weight:700">u/${e(user.username)}</h1>
+<p style="margin:0 0 0.75rem;font-size:1rem;color:#374151">${e(displayName)}</p>
+${specialty ? `<p style="margin:0 0 1rem;font-size:0.875rem;color:#6b7280">${e(specialty)}</p>` : ''}
+${bio ? `<p style="margin:0 0 1rem;font-size:0.9375rem;line-height:1.65;color:#374151">${e(bio)}</p>` : ''}
+<p style="margin:0 0 1.5rem;font-size:0.8125rem;color:#6b7280">${e(stats)}</p>
+<p style="margin:0"><a href="${e(canonical)}" style="display:inline-block;background:#1d4ed8;color:#fff;text-decoration:none;font-weight:600;font-size:0.9375rem;padding:0.65rem 1.35rem;border-radius:9999px">View profile</a></p>
+</div>
+</body>
+</html>`;
+}
+
+export function buildUserNotFoundShareHtml(origin: string, username: string): string {
+  const canonical = `${origin}/user/${encodeURIComponent(username)}`;
+  const headline = `User not found | ${OG_SITE_NAME}`;
+  const description = 'This user profile does not exist or is unavailable on OrthoAndSpineTools.';
+  const e = escapeHtml;
+  return `<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8"><title>${e(headline)}</title>
+<meta name="robots" content="noindex, nofollow">
+<meta property="og:title" content="${e(headline)}">
+<meta property="og:description" content="${e(description)}">
+<meta property="og:type" content="website">
+<meta property="og:url" content="${e(canonical)}">
+</head><body><p>${e(description)}</p></body></html>`;
 }

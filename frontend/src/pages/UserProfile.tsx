@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { apiService } from '../services/apiService';
@@ -7,6 +7,7 @@ import MarkdownContent from '../components/MarkdownContent';
 import AuthorVerificationsInline from '../components/AuthorVerificationsInline';
 import { DocumentMeta } from '../components/DocumentMeta';
 import { navigateToPostFromFeedCardBackground } from '../lib/navigatePostFromFeedCard';
+import { buildUserProfileJsonLd } from '../lib/seo';
 
 const UserProfile: React.FC = () => {
   const navigate = useNavigate();
@@ -57,6 +58,8 @@ const UserProfile: React.FC = () => {
   const comments = commentsData?.comments ?? [];
   const displayName = [user.firstName, user.lastName].filter(Boolean).join(' ').trim();
 
+  const profileJsonLd = useMemo(() => buildUserProfileJsonLd(user, stats), [user, stats]);
+
   return (
     <div className="mx-auto min-w-0 max-w-4xl px-2 sm:px-4">
       <DocumentMeta
@@ -66,6 +69,7 @@ const UserProfile: React.FC = () => {
           `${displayName || user.username} on OrthoAndSpineTools — ${stats.postsCount} posts, ${stats.commentsCount} comments.`
         }
         canonicalPath={`/user/${user.username}`}
+        jsonLd={profileJsonLd}
       />
 
       <div className="bg-white border border-gray-200 rounded-md p-3 sm:p-4 md:p-6 mb-3 sm:mb-4">

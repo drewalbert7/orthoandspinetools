@@ -4,6 +4,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiService } from '../services/apiService';
 import { useAuth } from '../contexts/AuthContext';
 import toast from 'react-hot-toast';
+import { DocumentMeta } from '../components/DocumentMeta';
 
 const CreateCommunity: React.FC = () => {
   const navigate = useNavigate();
@@ -76,6 +77,7 @@ const CreateCommunity: React.FC = () => {
 
   return (
     <div className="max-w-xl mx-auto px-3 sm:px-4 py-6">
+      <DocumentMeta title="Create community" noIndex />
       <div className="mb-6">
         <h1 className="text-2xl font-bold text-gray-900 tracking-tight">Create a community</h1>
         <p className="text-sm text-gray-600 mt-1">

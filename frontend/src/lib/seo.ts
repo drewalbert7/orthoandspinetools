@@ -3,7 +3,9 @@ import type { Community, Post } from '../services/apiService';
 export const SEO_DEFAULTS = {
   siteName: 'OrthoAndSpineTools',
   title: 'OrthoAndSpineTools — Hunt for the Best',
-  description: 'Ortho and Spine Tools - Hunt for the Best',
+  description:
+    'Ortho and Spine Tools — Hunt for the Best. A professional community for orthopedic and spine surgeons to discuss cases, tools, biologics, and startups. User-generated posts with author attribution.',
+  tagline: 'Ortho and Spine Tools - Hunt for the Best',
 } as const;
 
 export function getSiteOrigin(): string {
@@ -278,6 +280,129 @@ export function buildHomeJsonLd(): Record<string, unknown> {
         description: SEO_DEFAULTS.description,
         isPartOf: { '@id': `${origin}/#website` },
         url: origin,
+      },
+    ],
+  };
+}
+
+export function buildHubCollectionJsonLd(params: {
+  path: string;
+  name: string;
+  description: string;
+}): Record<string, unknown> {
+  const origin = getSiteOrigin();
+  const url = absoluteUrl(params.path);
+  return {
+    '@context': 'https://schema.org',
+    '@graph': [
+      {
+        '@type': 'WebSite',
+        '@id': `${origin}/#website`,
+        name: SEO_DEFAULTS.siteName,
+        url: origin,
+      },
+      {
+        '@type': 'BreadcrumbList',
+        '@id': `${url}#breadcrumb`,
+        itemListElement: [
+          { '@type': 'ListItem', position: 1, name: 'Home', item: origin },
+          { '@type': 'ListItem', position: 2, name: params.name, item: url },
+        ],
+      },
+      {
+        '@type': 'CollectionPage',
+        '@id': `${url}#collection`,
+        name: params.name,
+        description: params.description,
+        url,
+        isPartOf: { '@id': `${origin}/#website` },
+      },
+    ],
+  };
+}
+
+type UserProfileJsonLdInput = {
+  username: string;
+  firstName?: string;
+  lastName?: string;
+  specialty?: string;
+  subSpecialty?: string;
+  institution?: string;
+  bio?: string;
+  profileImage?: string;
+  website?: string;
+  location?: string;
+  createdAt: string;
+  isVerifiedPhysician?: boolean;
+  isVerifiedFounder?: boolean;
+};
+
+export function buildUserProfileJsonLd(
+  user: UserProfileJsonLdInput,
+  stats: { postsCount: number; commentsCount: number; totalKarma: number }
+): Record<string, unknown> {
+  const origin = getSiteOrigin();
+  const path = `/user/${user.username}`;
+  const url = absoluteUrl(path);
+  const displayName =
+    [user.firstName, user.lastName].filter(Boolean).join(' ').trim() || user.username;
+  const jobTitle = [user.specialty, user.subSpecialty].filter(Boolean).join(' — ') || undefined;
+
+  return {
+    '@context': 'https://schema.org',
+    '@graph': [
+      {
+        '@type': 'WebSite',
+        '@id': `${origin}/#website`,
+        name: SEO_DEFAULTS.siteName,
+        url: origin,
+      },
+      {
+        '@type': 'BreadcrumbList',
+        '@id': `${url}#breadcrumb`,
+        itemListElement: [
+          { '@type': 'ListItem', position: 1, name: 'Home', item: origin },
+          { '@type': 'ListItem', position: 2, name: `u/${user.username}`, item: url },
+        ],
+      },
+      {
+        '@type': 'ProfilePage',
+        '@id': `${url}#profilepage`,
+        url,
+        name: `u/${user.username}`,
+        description: user.bio?.trim() || `${displayName} on ${SEO_DEFAULTS.siteName}`,
+        mainEntity: { '@id': `${url}#person` },
+        isPartOf: { '@id': `${origin}/#website` },
+        dateCreated: user.createdAt,
+      },
+      {
+        '@type': 'Person',
+        '@id': `${url}#person`,
+        name: displayName,
+        alternateName: user.username,
+        url,
+        ...(user.profileImage ? { image: user.profileImage } : {}),
+        ...(jobTitle ? { jobTitle } : {}),
+        ...(user.institution
+          ? { affiliation: { '@type': 'Organization', name: user.institution } }
+          : {}),
+        ...(user.location ? { homeLocation: user.location } : {}),
+        ...(user.website ? { sameAs: [user.website] } : {}),
+        ...(user.bio?.trim() ? { description: stripToPlainText(user.bio, 500) } : {}),
+        interactionStatistic: [
+          {
+            '@type': 'InteractionCounter',
+            interactionType: 'https://schema.org/WriteAction',
+            userInteractionCount: stats.postsCount,
+            name: 'Posts',
+          },
+          {
+            '@type': 'InteractionCounter',
+            interactionType: 'https://schema.org/CommentAction',
+            userInteractionCount: stats.commentsCount,
+            name: 'Comments',
+          },
+        ],
       },
     ],
   };

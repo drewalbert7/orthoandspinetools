@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { RegisterFormData } from '../services/authService';
 import BrandLogo from './BrandLogo';
+import { DocumentMeta } from './DocumentMeta';
 
 const RegisterForm: React.FC = () => {
   const { register } = useAuth();
@@ -81,6 +82,7 @@ const RegisterForm: React.FC = () => {
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-reddit-dark py-12 px-4 sm:px-6 lg:px-8">
+      <DocumentMeta title="Create account" noIndex />
       <div className="max-w-md w-full space-y-8">
         <div>
           <div className="flex justify-center">

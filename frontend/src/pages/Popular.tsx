@@ -1,7 +1,9 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { apiService } from '../services/apiService';
 import FeedPostCard from '../components/FeedPostCard';
+import { DocumentMeta } from '../components/DocumentMeta';
+import { buildHubCollectionJsonLd } from '../lib/seo';
 
 type SortOption = 'best' | 'hot' | 'newest' | 'top' | 'rising';
 
@@ -46,8 +48,25 @@ const Popular: React.FC = () => {
     { value: 'rising', label: 'Rising' },
   ];
 
+  const hubJsonLd = useMemo(
+    () =>
+      buildHubCollectionJsonLd({
+        path: '/popular',
+        name: 'Popular posts',
+        description:
+          'Most engaged orthopedic and spine surgery discussions across OrthoAndSpineTools communities.',
+      }),
+    []
+  );
+
   return (
     <div className="mx-auto min-w-0 max-w-4xl px-3 sm:px-4">
+      <DocumentMeta
+        title="Popular"
+        description="Popular orthopedic and spine surgery posts across all communities on OrthoAndSpineTools."
+        canonicalPath="/popular"
+        jsonLd={hubJsonLd}
+      />
       <div className="bg-white border border-gray-200 p-3 sm:p-4 mb-4">
         <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 sm:gap-0">
           <h1 className="text-lg sm:text-xl font-semibold text-gray-900">Popular</h1>

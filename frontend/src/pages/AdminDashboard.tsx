@@ -5,6 +5,7 @@ import { apiService } from '../services/apiService';
 import { Link } from 'react-router-dom';
 import MarkdownContent from '../components/MarkdownContent';
 import toast from 'react-hot-toast';
+import { DocumentMeta } from '../components/DocumentMeta';
 
 type TabType = 'users' | 'moderation' | 'communities' | 'analytics';
 
@@ -203,6 +204,7 @@ const AdminDashboard: React.FC = () => {
 
   return (
     <div className="max-w-6xl mx-auto">
+      <DocumentMeta title="Admin" noIndex />
       <div className="bg-white border border-gray-200 rounded-md p-6 mb-4">
         <h1 className="text-2xl font-bold text-gray-900 mb-2">Admin Dashboard</h1>
         <p className="text-gray-600">Manage users, content, and platform settings</p>

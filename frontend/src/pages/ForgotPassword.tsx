@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import BrandLogo from '../components/BrandLogo';
+import { DocumentMeta } from '../components/DocumentMeta';
 import authService from '../services/authService';
 
 const ForgotPassword: React.FC = () => {
@@ -24,6 +25,7 @@ const ForgotPassword: React.FC = () => {
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
+      <DocumentMeta title="Forgot password" noIndex />
       <div className="max-w-md w-full space-y-8">
         <div>
           <div className="flex justify-center">

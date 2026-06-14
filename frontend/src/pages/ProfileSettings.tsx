@@ -6,6 +6,7 @@ import { apiService } from '../services/apiService';
 import { authService, type User } from '../services/authService';
 import { toast } from 'react-hot-toast';
 import { resizeAvatar } from '../utils/imageResize';
+import { DocumentMeta } from '../components/DocumentMeta';
 
 const ProfileSettings: React.FC = () => {
   const { user, refreshUser, updateProfile } = useAuth();
@@ -233,6 +234,7 @@ const ProfileSettings: React.FC = () => {
 
   return (
     <div className="max-w-4xl mx-auto">
+      <DocumentMeta title="Profile settings" noIndex />
       {/* Header */}
       <div className="bg-white border border-gray-200 rounded-md p-6 mb-4">
         <div className="flex items-center justify-between mb-4">

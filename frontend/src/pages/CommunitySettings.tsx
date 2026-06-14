@@ -6,6 +6,7 @@ import { resizeImage } from '../utils/imageResize';
 import { useAuth } from '../contexts/AuthContext';
 import ModeratorManagement from '../components/ModeratorManagement';
 import toast from 'react-hot-toast';
+import { DocumentMeta } from '../components/DocumentMeta';
 
 const CommunitySettings: React.FC = () => {
   const { slug } = useParams<{ slug: string }>();
@@ -248,6 +249,7 @@ const CommunitySettings: React.FC = () => {
 
   return (
     <div className="max-w-4xl mx-auto">
+      <DocumentMeta title="Community settings" noIndex />
       <div className="bg-white border border-gray-200 rounded-md p-6">
         <div className="flex items-center justify-between mb-6">
           <div>

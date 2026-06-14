@@ -8,6 +8,8 @@ import PostPollBlock from '../components/PostPollBlock';
 import AuthorVerificationsInline from '../components/AuthorVerificationsInline';
 import MarkdownContent from '../components/MarkdownContent';
 import { navigateToPostFromFeedCardBackground } from '../lib/navigatePostFromFeedCard';
+import { DocumentMeta } from '../components/DocumentMeta';
+import { buildHubCollectionJsonLd } from '../lib/seo';
 
 function PostRow({ post }: { post: Post }) {
   const navigate = useNavigate();
@@ -105,9 +107,25 @@ const Search: React.FC = () => {
     );
   }, [communities, q]);
 
+  const searchHubJsonLd = useMemo(
+    () =>
+      buildHubCollectionJsonLd({
+        path: '/search',
+        name: 'Search',
+        description: 'Search orthopedic and spine surgery posts and communities on OrthoAndSpineTools.',
+      }),
+    []
+  );
+
   if (!q) {
     return (
       <div className="mx-auto min-w-0 max-w-3xl px-2">
+        <DocumentMeta
+          title="Search"
+          description="Search orthopedic and spine surgery posts and specialty communities on OrthoAndSpineTools."
+          canonicalPath="/search"
+          jsonLd={searchHubJsonLd}
+        />
         <h1 className="text-xl font-bold text-gray-900 mb-2">Search</h1>
         <p className="text-gray-600 mb-4">Find posts by title or text, and communities by name.</p>
         <form
@@ -141,6 +159,12 @@ const Search: React.FC = () => {
 
   return (
     <div className="mx-auto min-w-0 max-w-3xl px-2">
+      <DocumentMeta
+        title={`Search: ${q}`}
+        description={`Search results for "${q}" on OrthoAndSpineTools.`}
+        canonicalPath={`/search?q=${encodeURIComponent(q)}`}
+        noIndex
+      />
       <h1 className="text-xl font-bold text-gray-900 mb-1">Search results</h1>
       <p className="text-sm text-gray-600 mb-6">
         For &quot;<span className="font-medium">{q}</span>&quot;
