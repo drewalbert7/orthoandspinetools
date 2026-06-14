@@ -320,15 +320,28 @@ const AdminDashboard: React.FC = () => {
                               </span>
                             </td>
                             <td className="px-6 py-4 whitespace-nowrap">
-                              <span
-                                className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
-                                  user.isVerifiedPhysician
-                                    ? 'bg-blue-100 text-blue-800'
-                                    : 'bg-gray-100 text-gray-600'
-                                }`}
-                              >
-                                {user.isVerifiedPhysician ? 'Verified' : 'Not verified'}
-                              </span>
+                              <div className="space-y-1">
+                                <span
+                                  className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
+                                    user.isVerifiedPhysician
+                                      ? 'bg-blue-100 text-blue-800'
+                                      : 'bg-gray-100 text-gray-600'
+                                  }`}
+                                >
+                                  {user.isVerifiedPhysician ? 'Verified' : 'Not verified'}
+                                </span>
+                                {user.physicianVerificationPending && !user.isVerifiedPhysician && (
+                                  <span className="block px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-amber-100 text-amber-900">
+                                    Pending intl. review
+                                  </span>
+                                )}
+                                {user.practiceCountry && (
+                                  <span className="block text-xs text-gray-400">
+                                    {user.practiceCountry === 'US' ? 'U.S.' : 'International'}
+                                    {user.npiNumber ? ` · NPI …${String(user.npiNumber).slice(-4)}` : ''}
+                                  </span>
+                                )}
+                              </div>
                             </td>
                             <td className="px-6 py-4 whitespace-nowrap">
                               <span

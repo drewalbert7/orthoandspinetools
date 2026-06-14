@@ -41,4 +41,6 @@ export const STATIC_SITEMAP_PAGES: SitemapEntry[] = [
   { path: '/startups', changefreq: 'daily', priority: '0.8' },
   { path: '/cases', changefreq: 'daily', priority: '0.8' },
   { path: '/search', changefreq: 'weekly', priority: '0.6' },
+  { path: '/privacy', changefreq: 'monthly', priority: '0.4' },
+  { path: '/terms', changefreq: 'monthly', priority: '0.4' },
 ];

@@ -28,8 +28,11 @@ import Search from './pages/Search';
 import ForgotPassword from './pages/ForgotPassword';
 import ResetPassword from './pages/ResetPassword';
 import VerifyEmail from './pages/VerifyEmail';
+import PrivacyPolicy from './pages/PrivacyPolicy';
+import TermsOfService from './pages/TermsOfService';
 import GoogleAnalytics from './components/GoogleAnalytics';
 import SitePolicyBanner from './components/SitePolicyBanner';
+import SiteFooter from './components/SiteFooter';
 
 // Context
 import { AuthProvider } from './contexts/AuthContext';
@@ -82,6 +85,8 @@ function App() {
                   <Route path="/reset-password" element={<ResetPassword />} />
                   <Route path="/verify-email" element={<VerifyEmail />} />
                   <Route path="/register" element={<RegisterForm />} />
+                  <Route path="/privacy" element={<PrivacyPolicy />} />
+                  <Route path="/terms" element={<TermsOfService />} />
                   <Route path="/post/:id/edit" element={<EditPost />} />
                   <Route path="/post/:id" element={<PostDetail />} />
                   {/* ⚠️ CRITICAL ROUTE: CreatePost page - DO NOT REMOVE without backup */}
@@ -96,6 +101,7 @@ function App() {
                 </Routes>
               </main>
             </div>
+            <SiteFooter />
           </div>
         </Router>
       </AuthProvider>

@@ -96,6 +96,8 @@ export interface RegisterData {
   medicalLicense?: string;
   institution?: string;
   yearsExperience?: number;
+  practiceCountry?: 'US' | 'INTL';
+  npiNumber?: string;
 }
 
 export interface RegisterFormData extends RegisterData {
@@ -127,12 +129,13 @@ class AuthService {
   }
 
   // Register new user
-  async register(userData: RegisterData): Promise<AuthResponse> {
+  async register(userData: RegisterData): Promise<AuthResponse & { message?: string }> {
     try {
       console.log('authService.register called with:', userData);
       const response = await api.post('/auth/register', userData);
       console.log('API response:', response.data);
       const { token, user } = response.data.data;
+      const message = response.data.message as string | undefined;
       
       // Registration now requires email verification before sign-in.
       if (token) {
@@ -143,12 +146,24 @@ class AuthService {
         localStorage.removeItem('user');
       }
       
-      return { token, user };
+      return { token, user, message };
     } catch (error: any) {
       console.error('authService.register error:', error);
       console.error('error.response:', error.response);
       throw new Error(error.response?.data?.error || error.response?.data?.message || 'Registration failed');
     }
+  }
+
+  async checkNpi(npiNumber: string, firstName: string, lastName: string) {
+    const response = await api.post('/auth/npi-check', { npiNumber, firstName, lastName });
+    return response.data.data as {
+      verified: boolean;
+      found: boolean;
+      active: boolean;
+      nameMatch: boolean;
+      provider?: { firstName: string; lastName: string; credential?: string; primaryTaxonomy?: string };
+      error?: string;
+    };
   }
 
   // Logout user

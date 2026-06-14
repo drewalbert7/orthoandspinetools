@@ -5,7 +5,7 @@ interface AuthContextType {
   user: User | null;
   loading: boolean;
   login: (credentials: LoginCredentials) => Promise<void>;
-  register: (userData: RegisterData) => Promise<void>;
+  register: (userData: RegisterData) => Promise<{ message?: string }>;
   logout: () => void;
   updateProfile: (userData: Partial<User>) => Promise<void>;
   refreshUser: () => Promise<void>;
@@ -81,16 +81,13 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   }, []);
 
   const register = useCallback(async (userData: RegisterData) => {
-    try {
-      const response = await authService.register(userData);
-      if (response.token) {
-        setUser(response.user);
-      } else {
-        setUser(null);
-      }
-    } catch (error) {
-      throw error;
+    const response = await authService.register(userData);
+    if (response.token) {
+      setUser(response.user);
+    } else {
+      setUser(null);
     }
+    return { message: response.message };
   }, []);
 
   const logout = useCallback(() => {

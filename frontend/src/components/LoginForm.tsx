@@ -30,7 +30,12 @@ const LoginForm: React.FC = () => {
       setFormData((prev) => ({ ...prev, email: prefillEmail }));
     }
     if (searchParams.get('verifyEmailSent') === '1') {
-      setError('Registration successful. Please verify your email before signing in.');
+      const registerMsg = searchParams.get('registerMsg');
+      setError(
+        registerMsg
+          ? decodeURIComponent(registerMsg)
+          : 'Registration successful. Please verify your email before signing in.'
+      );
     }
   }, [searchParams]);
 
@@ -210,6 +215,15 @@ const LoginForm: React.FC = () => {
                 className="font-medium text-blue-600 hover:text-blue-500"
               >
                 Sign up here
+              </Link>
+            </p>
+            <p className="mt-3 text-xs text-gray-500">
+              <Link to="/terms" className="text-blue-600 hover:text-blue-500">
+                Terms
+              </Link>
+              <span className="mx-1.5">·</span>
+              <Link to="/privacy" className="text-blue-600 hover:text-blue-500">
+                Privacy
               </Link>
             </p>
           </div>

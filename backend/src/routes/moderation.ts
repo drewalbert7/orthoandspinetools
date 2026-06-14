@@ -175,6 +175,10 @@ router.get('/users', authenticate, requireAdmin, [
       isVerifiedPhysician: true,
       isVerifiedFounder: true,
       specialty: true,
+      practiceCountry: true,
+      physicianVerificationPending: true,
+      physicianVerificationMethod: true,
+      npiNumber: true,
       createdAt: true,
       lastLoginAt: true,
       _count: {

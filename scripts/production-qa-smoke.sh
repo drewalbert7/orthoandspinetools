@@ -30,6 +30,8 @@ check "home page" test "$(http_code "$BASE/")" = "200"
 check "cases page" test "$(http_code "$BASE/cases")" = "200"
 check "startups page" test "$(http_code "$BASE/startups")" = "200"
 check "login page" test "$(http_code "$BASE/login")" = "200"
+check "privacy page" test "$(http_code "$BASE/privacy")" = "200"
+check "terms page" test "$(http_code "$BASE/terms")" = "200"
 
 echo ""
 echo "2. Data APIs"

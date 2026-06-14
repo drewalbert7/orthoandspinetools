@@ -11,8 +11,18 @@ import { enrichPostsPollData } from '../utils/postPoll';
 import { userCanCreateCommunity } from '../lib/communityPermissions';
 import { getPointsLevelState } from '../utils/pointsLevel';
 import { isSesEmailConfigured, sendPasswordResetEmail, sendVerifyEmail, sendWelcomeEmail } from '../services/emailService';
+import { normalizePracticeCountry, requiresPhysicianVerification } from '../lib/physicianSpecialties';
+import { isValidNpiFormat, verifyNpiForUser } from '../lib/npiRegistry';
 
 const router = Router();
+
+const npiCheckLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 30,
+  message: { success: false, error: 'Too many NPI lookup requests. Please try again later.' },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
 
 /** Limits password-reset / verification email abuse (per IP + email). */
 const authEmailLimiter = rateLimit({
@@ -36,6 +46,8 @@ const validateRegister = [
   body('password').isLength({ min: 8 }).withMessage('Password must be at least 8 characters'),
   body('specialty').optional().isString().withMessage('Specialty must be a string'),
   body('medicalLicense').optional().isString().withMessage('Medical license must be a string'),
+  body('practiceCountry').optional().isString().withMessage('Practice country must be a string'),
+  body('npiNumber').optional().isString().withMessage('NPI must be a string'),
 ];
 
 const validateLogin = [
@@ -58,6 +70,35 @@ const validatePasswordUpdate = [
   }),
 ];
 
+// Pre-check NPI against CMS registry (registration UX; final verification on /register)
+router.post(
+  '/npi-check',
+  npiCheckLimiter,
+  [
+    body('npiNumber').isString().withMessage('NPI is required'),
+    body('firstName').trim().isLength({ min: 1, max: 50 }).withMessage('First name is required'),
+    body('lastName').trim().isLength({ min: 1, max: 50 }).withMessage('Last name is required'),
+  ],
+  asyncHandler(async (req: Request, res: Response) => {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      throw new AppError(`Validation failed: ${errors.array().map((e) => e.msg).join(', ')}`, 400);
+    }
+
+    const npi = String(req.body.npiNumber).replace(/\D/g, '');
+    const { firstName, lastName } = req.body;
+    const result = await verifyNpiForUser(npi, firstName, lastName);
+
+    res.json({
+      success: true,
+      data: {
+        ...result,
+        verified: result.found && result.active && result.nameMatch,
+      },
+    });
+  })
+);
+
 // Register new user
 router.post('/register', validateRegister, asyncHandler(async (req: Request, res: Response) => {
   const errors = validationResult(req);
@@ -74,8 +115,58 @@ router.post('/register', validateRegister, asyncHandler(async (req: Request, res
     specialty,
     medicalLicense,
     institution,
-    yearsExperience
+    yearsExperience,
+    practiceCountry: practiceCountryRaw,
+    npiNumber: npiNumberRaw,
   } = req.body;
+
+  const needsPhysicianVerification = requiresPhysicianVerification(specialty);
+  const practiceCountry = normalizePracticeCountry(practiceCountryRaw);
+  const npiDigits =
+    typeof npiNumberRaw === 'string' ? npiNumberRaw.replace(/\D/g, '').trim() : '';
+
+  let isVerifiedPhysician = false;
+  let physicianVerificationPending = false;
+  let physicianVerificationMethod: string | null = null;
+  let npiNumber: string | null = null;
+
+  if (needsPhysicianVerification) {
+    if (!practiceCountry) {
+      throw new AppError('Practice country is required for physician registration', 400);
+    }
+
+    if (practiceCountry === 'US') {
+      if (!npiDigits) {
+        throw new AppError('A valid 10-digit NPI is required for U.S. physicians', 400);
+      }
+      if (!isValidNpiFormat(npiDigits)) {
+        throw new AppError('Invalid NPI number', 400);
+      }
+
+      const npiTaken = await prisma.user.findFirst({
+        where: { npiNumber: npiDigits },
+        select: { id: true },
+      });
+      if (npiTaken) {
+        throw new AppError('This NPI is already associated with an account', 400);
+      }
+
+      const npiResult = await verifyNpiForUser(npiDigits, firstName, lastName);
+      if (!npiResult.found || !npiResult.active || !npiResult.nameMatch) {
+        throw new AppError(
+          npiResult.error || 'NPI could not be verified against the National Provider Identifier Registry',
+          400
+        );
+      }
+
+      isVerifiedPhysician = true;
+      physicianVerificationMethod = 'npi';
+      npiNumber = npiDigits;
+    } else {
+      physicianVerificationPending = true;
+      physicianVerificationMethod = 'manual_pending';
+    }
+  }
 
   // Check if user already exists
   const existingUser = await prisma.user.findFirst({
@@ -107,6 +198,11 @@ router.post('/register', validateRegister, asyncHandler(async (req: Request, res
       medicalLicense,
       institution,
       yearsExperience: yearsExperience ? parseInt(yearsExperience) : null,
+      practiceCountry: needsPhysicianVerification ? practiceCountry : null,
+      npiNumber,
+      isVerifiedPhysician,
+      physicianVerificationPending,
+      physicianVerificationMethod,
     },
     select: {
       id: true,
@@ -118,8 +214,11 @@ router.post('/register', validateRegister, asyncHandler(async (req: Request, res
       medicalLicense: true,
       institution: true,
       yearsExperience: true,
+      practiceCountry: true,
+      isVerifiedPhysician: true,
+      physicianVerificationPending: true,
       createdAt: true,
-    }
+    },
   });
 
   // Log the registration for audit purposes
@@ -175,7 +274,11 @@ router.post('/register', validateRegister, asyncHandler(async (req: Request, res
 
   res.status(201).json({
     success: true,
-    message: 'User registered successfully. Please verify your email before signing in.',
+    message: user.physicianVerificationPending
+      ? 'Account created. Verify your email to sign in. Physician credentials will be reviewed manually for international accounts.'
+      : user.isVerifiedPhysician
+        ? 'Account created and physician NPI verified. Please verify your email before signing in.'
+        : 'User registered successfully. Please verify your email before signing in.',
     data: {
       user,
     }
@@ -1212,6 +1315,7 @@ router.put('/verify/:userId', authenticate, [
       lastName: true,
       isVerifiedPhysician: true,
       isVerifiedFounder: true,
+      physicianVerificationMethod: true,
     }
   });
 
@@ -1222,7 +1326,18 @@ router.put('/verify/:userId', authenticate, [
   // Update verification status
   const updatedUser = await prisma.user.update({
     where: { id: userId },
-    data: { isVerifiedPhysician: isVerified },
+    data: {
+      isVerifiedPhysician: isVerified,
+      ...(isVerified
+        ? {
+            physicianVerificationPending: false,
+            physicianVerificationMethod:
+              userToVerify.physicianVerificationMethod === 'npi' ? 'npi' : 'manual',
+          }
+        : {
+            physicianVerificationPending: false,
+          }),
+    },
     select: {
       id: true,
       username: true,

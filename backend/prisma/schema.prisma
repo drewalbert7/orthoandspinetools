@@ -26,6 +26,10 @@ model User {
   
   // Medical credentials
   medicalLicense    String?
+  npiNumber         String?   @unique @map("npi_number")
+  practiceCountry   String?   @map("practice_country")
+  physicianVerificationPending Boolean @default(false) @map("physician_verification_pending")
+  physicianVerificationMethod String? @map("physician_verification_method")
   specialty         String?
   subSpecialty      String?
   institution       String?
