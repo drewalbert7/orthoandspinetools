@@ -8,23 +8,20 @@
 | **OPS QUICK REFERENCE** | Database, SSL, Docker disk, scripts |
 | **Archive** | Full history → `CHANGELOG.md` |
 
-## 🔥 **NEXT UP — START HERE** (updated Jun 14, 2026)
+## 🔥 **NEXT UP — START HERE** (updated Jun 14, 2026 — end of night)
 
 ### **Pick up here (step-by-step)**
 
 | Step | Task | Status |
 |------|------|--------|
-| **1** | **Disk maintenance** | ✅ Cron + `docker-disk-check.sh`; ~68% used, ~12 GB free |
-| **2** | **Daily DB backups** | ✅ Cron `0 2 * * *` → volume `/mnt/HC_Volume_106016238/orthoandspinetools-backups` (7-day retention) |
-| **3** | **SES SNS webhook** | ⏳ Optional — `AWS_SES_SNS_TOPIC_ARN` missing; SES production access confirmed; transactional email works |
+| **1** | **Disk / backups** | ✅ Hetzner volume `106016238` (20G) · cron → `/mnt/HC_Volume_106016238/orthoandspinetools-backups` · Docker log limits |
+| **2** | **Link preview images** | ✅ Post OG images fixed (Cloudinary URL); Discord/iMessage/X show post images |
+| **3** | **Edit post tags** | ✅ `/post/:id/edit` — add/remove community topic tags (e.g. remove mistaken **Case** tag) |
 | **4** | **Physician NPI verification** | ✅ U.S. NPI via CMS registry; intl. manual review; admin pending filter |
-| **5** | **Legal pages (NPI wording)** | ✅ Privacy + Terms updated for NPI collection and verification |
-| **6** | **Logged-in Production QA** | ⏳ Manual — US NPI signup, intl. pending queue, email verify flows |
-| **7** | **SSL auto-renewal cron** | ✅ `0 3 1 * *` → `ssl-renew-cron.sh` |
-| **8** | **SEO / LLM / OG** | ✅ Hub meta + JSON-LD, `llms-full.txt`, sitemap users, `seo-audit.sh` |
-| **9** | **Link preview cards** | ✅ Server-side OG for posts, communities, profiles, home + hubs |
-| **10** | **Google Search Console** | ✅ Domain verified; sitemap submitted |
-| **11** | **Scaling prep** | ✅ Feed query DB indexes deployed; backups automated |
+| **5** | **Legal pages** | ✅ Privacy + Terms with NPI wording |
+| **6** | **SES SNS webhook** | ⏳ Optional — `AWS_SES_SNS_TOPIC_ARN` missing; SES production access confirmed |
+| **7** | **Manual QA** | ⏳ Physician NPI signup, intl. pending queue, email verify |
+| **8** | **Content** | ⏳ More real specialty posts; fix tags on backfilled posts as needed |
 
 **Ongoing disk habit:** `./scripts/docker-disk-check.sh report` before `--no-cache` builds.
 
@@ -36,7 +33,10 @@
 - [x] **LLM citing** — `llms.txt`, dynamic `llms-full.txt`, expanded `robots.txt`.
 - [x] **Hub SEO** — DocumentMeta + JSON-LD on Cases, Popular, Startups, Search; Person schema on profiles.
 - [x] **Real data** — Community moderators/rules, public user profiles, post sidebar join state.
-- [x] **Production QA smoke** — `./scripts/production-qa-smoke.sh` (**30/30** incl. `/privacy`, `/terms`).
+- [x] **Production QA smoke** — `./scripts/production-qa-smoke.sh` (**31/31** incl. OG post image HTTP 200).
+- [x] **Post link preview images** — Fixed Cloudinary OG URLs; Discord/X/iMessage show post images in embeds.
+- [x] **Edit post topic tags** — Authors can add/remove community tags on `/post/:id/edit`.
+- [x] **Hetzner backup volume** — 20G volume `106016238`; Docker log rotation on all prod services.
 - [x] **Physician NPI verification** — U.S. CMS registry at signup; international `physicianVerificationPending`; admin verify clears pending.
 - [x] **Legal NPI wording** — Privacy Policy + Terms of Service describe NPI collection, CMS lookup, and manual intl. review.
 - [x] **Admin pending physician filter** — Admin → Users → **Pending intl. review** (`physicianVerificationPending=true`).
@@ -47,10 +47,9 @@
 - [ ] **Optional** — Rich Results Test on home + `/post/:id`; dedicated 1200×630 `og-share.png` for richer homepage/hub cards.
 
 ### **0. Deploy status — verify live**
-- [x] **https://orthoandspinetools.com** — home, hubs, sitemap, llms-full, OG previews
+- [x] **https://orthoandspinetools.com** — home, hubs, sitemap, OG previews with post images, edit-post tags
+- [x] **Latest deploy (Jun 14 night)** — backend + frontend rebuilt; smoke **31/31**
 - [ ] After **every** frontend/nginx recreate: `--force-recreate nginx` if needed (stale upstream → 502)
-- [ ] Run **`./scripts/production-qa-smoke.sh`** after deploys
-- [ ] Run **`./scripts/seo-audit.sh`** after SEO changes (optional Lighthouse)
 
 ### **1. Deploy (production server)**
 
@@ -101,11 +100,21 @@ Never run `docker compose down -v` (deletes production DB volume).
 - **Disk / ops** — Off-server backup copy (S3/rsync); root disk stays lean via volume backups + Docker log limits
 - **SEO** — Lighthouse / Rich Results; confirm `VITE_SITE_URL` / `PUBLIC_SITE_URL` in prod builds
 - **Admin** — SES suppression UI; email alert on intl. physician signup (optional)
-- **Content** — More real specialty posts
+- **Content** — More real specialty posts; remove **Case** tag from non-case posts via edit
 - **Post media (WIP)** — Re-test create-post upload if needed; existing posts display images OK
 - **Notifications** — Vote/mention/moderation triggers (v1 comment/reply shipped)
 
-**Live snapshot (Jun 14, 2026):** 3 posts, 4 users, 11 communities · smoke **30/30** · NPI verification deployed · legal pages live
+**Live snapshot (Jun 14, 2026 night):** 3 posts, 4 users, 11 communities · smoke **31/31** · volume backups · post OG images · edit tags live
+
+---
+
+## 📋 **NEXT PRIORITIES (summary)**
+
+1. **Content** — More real specialty posts; clean up **Case** tags on product/tool posts
+2. **Manual QA** — Physician NPI signup, intl. pending queue, email verification
+3. **SES SNS** — Optional webhook for bounces/complaints (`docs/SES_AWS_SETUP.md`)
+4. **Scaling** — Off-server backup copy, monitoring/uptime alerts; CPX21 resize when ready
+5. **Optional** — `og-share.png` (1200×630) for homepage/hub link previews
 
 ---
 
@@ -126,16 +135,6 @@ Never run `docker compose down -v` (deletes production DB volume).
 ```bash
 GIT_SSH_COMMAND='ssh -F /dev/null -o StrictHostKeyChecking=accept-new' git pull origin main
 ```
-
----
-
-## 📋 **NEXT PRIORITIES (summary)**
-
-1. **Content** — More real specialty posts (GSC is live; indexing follows content)
-2. **Manual QA** — Physician NPI signup, intl. pending queue, email verification
-3. **SES SNS** — Optional webhook for bounces/complaints (`docs/SES_AWS_SETUP.md`)
-4. **Scaling** — Off-server backup copy, monitoring/uptime alerts, VPS upgrade when traffic grows
-5. **Optional** — `og-share.png` (1200×630) for richer homepage/hub link previews
 
 ---
 
@@ -168,6 +167,15 @@ docker compose -f docker-compose.prod.yml exec backend npm run backfill-case-pos
 - **SES setup:** `docs/SES_AWS_SETUP.md`
 - **Database recovery:** `docs/DATABASE_MAINTENANCE.md`, `docs/DATABASE_RECOVERY.md`
 - **Production scaling:** `docs/PRODUCTION_SCALING.md`
+
+### **Session log (Jun 14, 2026 — night)**
+
+| Done | Detail |
+|------|--------|
+| Edit post tags | `/post/:id/edit` — add/remove community topic tags; `PUT /posts/:id` accepts `tagIds` |
+| OG post images | Fixed Cloudinary `.auto` 404s; Discord/X/iMessage embeds show post images |
+| Hetzner volume | 20G volume `106016238` wired for daily backups; Docker log limits |
+| Deploy | Backend + frontend live; smoke **31/31** |
 
 ### **Session log (Jun 14, 2026 — evening)**
 
@@ -202,6 +210,6 @@ docker compose -f docker-compose.prod.yml exec backend npm run backfill-case-pos
 
 ---
 
-**Last Updated:** Jun 14, 2026  
-**Status:** 🚀 Live — NPI verification, legal pages, admin pending filter; smoke 30/30  
-**You are here:** Manual physician signup QA; content growth; optional SES SNS + og-share.png
+**Last Updated:** Jun 14, 2026 (night)  
+**Status:** 🚀 Live — volume backups, post OG images, edit tags; smoke 31/31  
+**You are here:** Content + tag cleanup; manual physician QA; optional SES SNS

@@ -509,7 +509,7 @@ class ApiService {
 
   async updatePost(
     id: string,
-    postData: { title?: string; content?: string }
+    postData: { title?: string; content?: string; tagIds?: string[] }
   ): Promise<Post> {
     try {
       const response = await api.put(`/posts/${id}`, postData);

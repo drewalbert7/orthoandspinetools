@@ -14,6 +14,30 @@ import {
 
 const router = Router();
 
+async function resolveTagIdsForCommunity(
+  communityId: string,
+  rawTagIds: unknown
+): Promise<string[] | undefined> {
+  if (rawTagIds === undefined) return undefined;
+  if (!Array.isArray(rawTagIds)) {
+    throw new AppError('tagIds must be an array', 400);
+  }
+  if (rawTagIds.length === 0) return [];
+  const validTagIds = rawTagIds.filter(
+    (id) => id && typeof id === 'string' && id.trim().length > 0
+  ) as string[];
+  if (validTagIds.length !== rawTagIds.length) {
+    throw new AppError('Invalid tag IDs provided', 400);
+  }
+  const tags = await prisma.communityTag.findMany({
+    where: { id: { in: validTagIds }, communityId },
+  });
+  if (tags.length !== validTagIds.length) {
+    throw new AppError('One or more tags do not belong to this community', 400);
+  }
+  return validTagIds;
+}
+
 function normalizeCreatePostBody(req: Request, _res: Response, next: NextFunction) {
   const b = req.body as Record<string, unknown>;
   const t = b.type;
@@ -1102,6 +1126,8 @@ router.put('/:id', authenticate, [
   param('id').isString().isLength({ min: 1 }).withMessage('Invalid post ID'),
   body('title').optional().trim().isLength({ min: 1, max: 200 }).withMessage('Title must be 1-200 characters'),
   body('content').optional().trim().isLength({ max: 10000 }).withMessage('Content must be at most 10000 characters'),
+  body('tagIds').optional().isArray().withMessage('tagIds must be an array'),
+  body('tagIds.*').optional().isString().withMessage('Each tag ID must be a string'),
 ], asyncHandler(async (req: AuthRequest, res: Response) => {
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
@@ -1109,7 +1135,11 @@ router.put('/:id', authenticate, [
   }
 
   const { id } = req.params;
-  const { title, content } = req.body as { title?: string; content?: string };
+  const { title, content, tagIds: rawTagIds } = req.body as {
+    title?: string;
+    content?: string;
+    tagIds?: unknown;
+  };
 
   const post = await prisma.post.findFirst({
     where: { id, isDeleted: false },
@@ -1130,46 +1160,61 @@ router.put('/:id', authenticate, [
   if (typeof content === 'string') {
     data.content = content.trim();
   }
-  if (Object.keys(data).length === 0) {
-    throw new AppError('Provide title and/or content to update', 400);
+
+  const tagIds = await resolveTagIdsForCommunity(post.communityId, rawTagIds);
+
+  if (Object.keys(data).length === 0 && tagIds === undefined) {
+    throw new AppError('Provide title, content, and/or tagIds to update', 400);
   }
 
-  const updatedPost = await prisma.post.update({
-    where: { id },
-    data,
-    include: {
-      author: {
-        select: {
-          id: true,
-          username: true,
-          firstName: true,
-          lastName: true,
-          specialty: true,
-          profileImage: true,
-          isVerifiedPhysician: true,
-          isVerifiedFounder: true,
-        }
-      },
-      community: {
-        select: {
-          id: true,
-          name: true,
-          slug: true,
-        }
-      },
-      attachments: true,
-      tags: {
-        include: {
-          tag: true
-        }
-      },
-      _count: {
-        select: {
-          comments: true,
-          votes: true,
-        }
+  const updatedPost = await prisma.$transaction(async (tx) => {
+    if (Object.keys(data).length > 0) {
+      await tx.post.update({ where: { id }, data });
+    }
+    if (tagIds !== undefined) {
+      await tx.postTag.deleteMany({ where: { postId: id } });
+      if (tagIds.length > 0) {
+        await tx.postTag.createMany({
+          data: tagIds.map((tagId) => ({ postId: id, tagId })),
+        });
       }
     }
+    return tx.post.findUniqueOrThrow({
+      where: { id },
+      include: {
+        author: {
+          select: {
+            id: true,
+            username: true,
+            firstName: true,
+            lastName: true,
+            specialty: true,
+            profileImage: true,
+            isVerifiedPhysician: true,
+            isVerifiedFounder: true,
+          },
+        },
+        community: {
+          select: {
+            id: true,
+            name: true,
+            slug: true,
+          },
+        },
+        attachments: true,
+        tags: {
+          include: {
+            tag: true,
+          },
+        },
+        _count: {
+          select: {
+            comments: true,
+            votes: true,
+          },
+        },
+      },
+    });
   });
 
   // Log the post update
@@ -1180,7 +1225,7 @@ router.put('/:id', authenticate, [
       resource: 'post',
       resourceId: id,
       details: {
-        changes: { title, content },
+        changes: { title, content, tagIds },
       },
       ipAddress: req.ip,
       userAgent: req.get('User-Agent'),

@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { apiService } from '../services/apiService';
+import { apiService, CommunityTag } from '../services/apiService';
 import { useAuth } from '../contexts/AuthContext';
 import toast from 'react-hot-toast';
 import MarkdownEditor, { MarkdownEditorHandle } from '../components/MarkdownEditor';
@@ -17,6 +17,7 @@ const EditPost: React.FC = () => {
 
   const [title, setTitle] = useState('');
   const [body, setBody] = useState('');
+  const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [isMarkdownMode, setIsMarkdownMode] = useState(false);
   const editorRef = useRef<MarkdownEditorHandle | null>(null);
   const bodyTextareaRef = useRef<HTMLTextAreaElement>(null);
@@ -36,7 +37,21 @@ const EditPost: React.FC = () => {
     if (!post) return;
     setTitle(post.title ?? '');
     setBody(post.content ?? '');
+    setSelectedTags(
+      (post.tags ?? [])
+        .map((t) => t.tag?.id)
+        .filter((tagId): tagId is string => Boolean(tagId))
+    );
   }, [post]);
+
+  const communityId = post?.communityId || post?.community?.id;
+
+  const { data: communityTags } = useQuery<CommunityTag[]>({
+    queryKey: ['communityTags', communityId],
+    queryFn: () => apiService.getCommunityTags(communityId!),
+    enabled: Boolean(communityId),
+    staleTime: 5 * 60 * 1000,
+  });
 
   useEffect(() => {
     if (authLoading || !post || !user) return;
@@ -47,10 +62,12 @@ const EditPost: React.FC = () => {
   }, [authLoading, post, user, id, navigate]);
 
   const updateMutation = useMutation({
-    mutationFn: (payload: { title: string; content: string }) => apiService.updatePost(id!, payload),
+    mutationFn: (payload: { title: string; content: string; tagIds: string[] }) =>
+      apiService.updatePost(id!, payload),
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ['post', id] });
       await queryClient.invalidateQueries({ queryKey: ['posts'] });
+      await queryClient.invalidateQueries({ queryKey: ['cases-posts'] });
       toast.success('Post updated');
       navigate(`/post/${id}`);
     },
@@ -67,7 +84,7 @@ const EditPost: React.FC = () => {
       toast.error('Title is required');
       return;
     }
-    updateMutation.mutate({ title: t, content: body });
+    updateMutation.mutate({ title: t, content: body, tagIds: selectedTags });
   };
 
   if (!id) {
@@ -140,7 +157,7 @@ const EditPost: React.FC = () => {
         </Link>
         <h1 className="mt-2 text-2xl font-bold text-gray-900">Edit post</h1>
         <p className="mt-1 text-sm text-gray-500">
-          Changes apply to the title and body. Poll options, link URL, and attachments are unchanged.
+          Update the title, body, and topic tags. Poll options, link URL, and attachments are unchanged.
         </p>
       </div>
 
@@ -214,6 +231,59 @@ const EditPost: React.FC = () => {
             )}
           </div>
         </div>
+
+        {communityId && (
+          <div className="mb-4 sm:mb-6">
+            <label className="block text-sm font-medium text-gray-700 mb-1">Topic tags (optional)</label>
+            <p className="text-xs text-gray-500 mb-2">
+              Choose subjects that match your post. Tags control where posts appear (for example, the Cases page).
+            </p>
+            {communityTags && communityTags.length > 0 ? (
+              <>
+                <div className="flex flex-wrap gap-1.5 sm:gap-2">
+                  {communityTags
+                    .filter((tag) => tag?.id && tag?.name)
+                    .map((tag) => (
+                      <button
+                        key={tag.id}
+                        type="button"
+                        onClick={() => {
+                          if (!tag.id) return;
+                          if (selectedTags.includes(tag.id)) {
+                            setSelectedTags(selectedTags.filter((tid) => tid !== tag.id));
+                          } else {
+                            setSelectedTags([...selectedTags, tag.id]);
+                          }
+                        }}
+                        title={tag.description || undefined}
+                        className={`px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-full text-xs sm:text-sm font-medium transition-colors ${
+                          selectedTags.includes(tag.id)
+                            ? 'bg-blue-600 text-white'
+                            : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                        }`}
+                        style={
+                          selectedTags.includes(tag.id) && tag.color && /^#[0-9A-Fa-f]{6}$/.test(tag.color)
+                            ? { backgroundColor: tag.color, color: 'white' }
+                            : {}
+                        }
+                      >
+                        {tag.name}
+                      </button>
+                    ))}
+                </div>
+                {selectedTags.length > 0 && (
+                  <p className="mt-2 text-xs text-gray-500">
+                    {selectedTags.length} topic{selectedTags.length !== 1 ? 's' : ''} selected
+                  </p>
+                )}
+              </>
+            ) : (
+              <p className="text-sm text-gray-500 rounded-md border border-dashed border-gray-200 bg-gray-50/80 px-3 py-3">
+                This community does not have topic tags yet.
+              </p>
+            )}
+          </div>
+        )}
 
         <div className="flex flex-col sm:flex-row justify-end gap-2 sm:gap-3">
           <Link
