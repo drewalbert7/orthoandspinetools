@@ -48,10 +48,22 @@ const IMAGE_EXT_IN_URL = /\.(jpe?g|png|gif|webp|avif|bmp|heic)(\?|#|$)/i;
 export function preferredCloudinaryOgDeliveryUrl(url: string): string {
   const u = url.trim();
   if (!/\/image\/upload\//i.test(u)) return u;
-  if (/\/image\/upload\/[^/]*\b(c_fill|w_1200|h_630)\b/i.test(u)) return u;
+  if (/\/image\/upload\/[^/]*\b(c_fill,w_1200,h_630|w_1200,h_630)\b/i.test(u)) return u;
   if (/\/image\/upload\/s--/i.test(u)) return u;
-  if (!/\/image\/upload\/v\d+\//i.test(u) && !/\/image\/upload\/[\w.-]+\/v\d+\//i.test(u)) return u;
-  return u.replace(/\/image\/upload\//i, '/image/upload/c_fill,w_1200,h_630,q_auto,f_auto/');
+
+  const ogTransform = 'c_fill,w_1200,h_630,q_auto,f_auto';
+  const parts = u.split(/\/image\/upload\//i);
+  if (parts.length < 2) return u;
+  const prefix = `${parts[0]}/image/upload/`;
+  const afterUpload = parts[1];
+  const slash = afterUpload.indexOf('/');
+  const firstSegment = slash === -1 ? afterUpload : afterUpload.slice(0, slash);
+  const rest = slash === -1 ? '' : afterUpload.slice(slash + 1);
+  const isTransform =
+    /[,_]/.test(firstSegment) || /^(c_|w_|h_|q_|f_|g_|b_|dpr_|ar_)/i.test(firstSegment);
+
+  if (isTransform && rest) return `${prefix}${ogTransform}/${rest}`;
+  return `${prefix}${ogTransform}/${afterUpload}`;
 }
 
 function urlLooksLikeRasterImage(url: string): boolean {
@@ -110,26 +122,115 @@ export function defaultOgImage(origin: string): string {
   return `${origin}/brand-logo.png`;
 }
 
+export const DEFAULT_OG_IMAGE_WIDTH = 400;
+export const DEFAULT_OG_IMAGE_HEIGHT = 400;
+
+export type OgPageKey = 'home' | 'cases' | 'startups' | 'popular';
+
+export const SHARE_PAGES: Record<
+  OgPageKey,
+  { path: string; title: string; description: string; ogType: 'website' }
+> = {
+  home: {
+    path: '/',
+    title: 'OrthoAndSpineTools — Hunt for the Best',
+    description: OG_DEFAULT_DESCRIPTION,
+    ogType: 'website',
+  },
+  cases: {
+    path: '/cases',
+    title: 'Cases | OrthoAndSpineTools',
+    description:
+      'Case studies and surgical cases — orthopedic and spine discussions on OrthoAndSpineTools.',
+    ogType: 'website',
+  },
+  startups: {
+    path: '/startups',
+    title: 'Startups | OrthoAndSpineTools',
+    description:
+      'Orthopedic and spine startup launches and product discussions across OrthoAndSpineTools communities.',
+    ogType: 'website',
+  },
+  popular: {
+    path: '/popular',
+    title: 'Popular | OrthoAndSpineTools',
+    description: 'Popular orthopedic and spine surgery posts across all communities on OrthoAndSpineTools.',
+    ogType: 'website',
+  },
+};
+
+type ShareImageMeta = {
+  url: string;
+  width?: number;
+  height?: number;
+  alt: string;
+  twitterCard: 'summary' | 'summary_large_image';
+};
+
+function shareImageMeta(origin: string, imageUrl: string | undefined, alt: string): ShareImageMeta {
+  const url = imageUrl || defaultOgImage(origin);
+  const isDefault = url.includes('/brand-logo');
+  const isOgSized = /c_fill,w_1200,h_630/i.test(url);
+  return {
+    url,
+    width: isOgSized ? 1200 : isDefault ? DEFAULT_OG_IMAGE_WIDTH : undefined,
+    height: isOgSized ? 630 : isDefault ? DEFAULT_OG_IMAGE_HEIGHT : undefined,
+    alt,
+    twitterCard: isDefault ? 'summary' : 'summary_large_image',
+  };
+}
+
+function shareMetaTags(opts: {
+  headline: string;
+  description: string;
+  canonical: string;
+  ogType: string;
+  image: ShareImageMeta;
+  robots?: string;
+  extraHead?: string;
+}): string {
+  const e = escapeHtml;
+  const dims =
+    opts.image.width && opts.image.height
+      ? `<meta property="og:image:width" content="${opts.image.width}">
+<meta property="og:image:height" content="${opts.image.height}">`
+      : '';
+  const robots = opts.robots ?? 'index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1';
+  return `<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>${e(opts.headline)}</title>
+<link rel="canonical" href="${e(opts.canonical)}">
+<meta name="description" content="${e(opts.description)}">
+<meta property="og:title" content="${e(opts.headline)}">
+<meta property="og:description" content="${e(opts.description)}">
+<meta property="og:type" content="${e(opts.ogType)}">
+<meta property="og:url" content="${e(opts.canonical)}">
+<meta property="og:site_name" content="${e(OG_SITE_NAME)}">
+<meta property="og:locale" content="en_US">
+<meta property="og:image" content="${e(opts.image.url)}">
+<meta property="og:image:secure_url" content="${e(opts.image.url)}">
+<meta property="og:image:alt" content="${e(opts.image.alt)}">
+${dims}
+<meta name="twitter:card" content="${opts.image.twitterCard}">
+<meta name="twitter:title" content="${e(opts.headline)}">
+<meta name="twitter:description" content="${e(opts.description)}">
+<meta name="twitter:image" content="${e(opts.image.url)}">
+<meta name="robots" content="${e(robots)}">
+${opts.extraHead ?? ''}`;
+}
+
 function formatHeadline(title: string, communityName: string | null | undefined): string {
   const short = title.length > 52 ? `${title.slice(0, 51).trim()}…` : title;
   const withComm = communityName ? `${short} · o/${communityName}` : short;
   return `${withComm} | ${OG_SITE_NAME}`;
 }
 
-/** og:description — excerpt first, then community, author, site (≤300 chars for major platforms). */
+/** Card-friendly description for X, iMessage, Slack (≤155 chars). */
 export function buildOgMetaDescription(post: OgPostPayload): string {
-  const excerpt = post.content ? stripToPlainText(post.content, 280) : '';
+  const excerpt = post.content ? stripToPlainText(post.content, 155) : '';
   const lead = excerpt || post.title;
-  const body = lead.length > 200 ? `${lead.slice(0, 197).trimEnd()}…` : lead;
-  const comm = post.community?.name ? `o/${post.community.name}` : '';
-  const author = post.author?.username ? `u/${post.author.username}` : '';
-  const parts = [body];
-  if (comm) parts.push(comm);
-  if (author) parts.push(author);
-  parts.push(OG_SITE_NAME);
-  let out = parts.join(' · ');
-  if (out.length > 300) out = `${out.slice(0, 297).trimEnd()}…`;
-  return out;
+  if (lead.length <= 155) return lead;
+  return `${lead.slice(0, 152).trimEnd()}…`;
 }
 
 function authorDisplayName(author: OgPostPayload['author']): string {
@@ -143,10 +244,9 @@ export function buildPostShareHtml(post: OgPostPayload, origin: string): string 
   const description = buildOgMetaDescription(post);
   const primaryImage = pickOgImage(origin, post.attachments);
   const fallbackLogo = defaultOgImage(origin);
-  const usingPostImage = Boolean(primaryImage);
-  const ogImage = primaryImage ?? fallbackLogo;
-  const twitterCard = usingPostImage ? 'summary_large_image' : 'summary';
   const ogImageAlt = `Preview image for discussion: ${post.title}${post.community?.name ? ` · o/${post.community.name}` : ''}`.slice(0, 200);
+  const ogImage = primaryImage ?? fallbackLogo;
+  const imageMeta = shareImageMeta(origin, ogImage, ogImageAlt);
   const authorName = authorDisplayName(post.author);
   const published = post.createdAt.toISOString();
   const modified = post.updatedAt.toISOString();
@@ -160,11 +260,10 @@ export function buildPostShareHtml(post: OgPostPayload, origin: string): string 
   const byline = bylineParts.join(' · ');
 
   const e = escapeHtml;
-  const ogDims =
-    primaryImage && /c_fill,w_1200,h_630/i.test(primaryImage)
-      ? `<meta property="og:image:width" content="1200">
-<meta property="og:image:height" content="630">`
-      : '';
+  const articleExtra = `${section ? `<meta property="article:section" content="${e(section)}">` : ''}
+<meta property="article:published_time" content="${e(published)}">
+<meta property="article:modified_time" content="${e(modified)}">
+<meta property="article:author" content="${e(authorName)}">`;
 
   const hero = primaryImage
     ? `<figure style="margin:0 0 1.25rem;border-radius:12px;overflow:hidden;border:1px solid #e5e7eb;background:#f3f4f6">
@@ -175,29 +274,14 @@ export function buildPostShareHtml(post: OgPostPayload, origin: string): string 
   return `<!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>${e(headline)}</title>
-<link rel="canonical" href="${e(canonical)}">
-<meta name="description" content="${e(description)}">
-<meta property="og:title" content="${e(headline)}">
-<meta property="og:description" content="${e(description)}">
-<meta property="og:type" content="article">
-<meta property="og:url" content="${e(canonical)}">
-<meta property="og:site_name" content="${e(OG_SITE_NAME)}">
-<meta property="og:locale" content="en_US">
-<meta property="og:image" content="${e(ogImage)}">
-<meta property="og:image:alt" content="${e(ogImageAlt)}">
-${ogDims}
-<meta property="article:published_time" content="${e(published)}">
-<meta property="article:modified_time" content="${e(modified)}">
-${section ? `<meta property="article:section" content="${e(section)}">` : ''}
-<meta property="article:author" content="${e(authorName)}">
-<meta name="twitter:card" content="${twitterCard}">
-<meta name="twitter:title" content="${e(headline)}">
-<meta name="twitter:description" content="${e(description)}">
-<meta name="twitter:image" content="${e(ogImage)}">
-<meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1">
+${shareMetaTags({
+  headline,
+  description,
+  canonical,
+  ogType: 'article',
+  image: imageMeta,
+  extraHead: articleExtra,
+})}
 </head>
 <body style="margin:0;background:#f9fafb">
 <div style="max-width:42rem;margin:0 auto;padding:2rem 1.25rem 2.5rem;font-family:system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif;color:#111827">
@@ -282,7 +366,11 @@ export function buildCommunityShareHtml(community: OgCommunityPayload, origin: s
   const description =
     descRaw.length > 240 ? `${descRaw.slice(0, 237).trimEnd()}…` : `${descRaw} · ${stats}`;
   const ogImage = pickCommunityOgImage(origin, community);
-  const twitterCard = ogImage.includes('/brand-logo') ? 'summary' : 'summary_large_image';
+  const imageMeta = shareImageMeta(
+    origin,
+    ogImage,
+    `o/${community.name} community on ${OG_SITE_NAME}`
+  );
   const e = escapeHtml;
   const body = community.description?.trim()
     ? stripToPlainText(community.description, 420)
@@ -291,24 +379,13 @@ export function buildCommunityShareHtml(community: OgCommunityPayload, origin: s
   return `<!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>${e(headline)}</title>
-<link rel="canonical" href="${e(canonical)}">
-<meta name="description" content="${e(description)}">
-<meta property="og:title" content="${e(headline)}">
-<meta property="og:description" content="${e(description)}">
-<meta property="og:type" content="website">
-<meta property="og:url" content="${e(canonical)}">
-<meta property="og:site_name" content="${e(OG_SITE_NAME)}">
-<meta property="og:locale" content="en_US">
-<meta property="og:image" content="${e(ogImage)}">
-<meta property="og:image:alt" content="${e(`o/${community.name} community on ${OG_SITE_NAME}`)}">
-<meta name="twitter:card" content="${twitterCard}">
-<meta name="twitter:title" content="${e(headline)}">
-<meta name="twitter:description" content="${e(description)}">
-<meta name="twitter:image" content="${e(ogImage)}">
-<meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1">
+${shareMetaTags({
+  headline,
+  description,
+  canonical,
+  ogType: 'website',
+  image: imageMeta,
+})}
 </head>
 <body style="margin:0;background:#f9fafb">
 <div style="max-width:42rem;margin:0 auto;padding:2rem 1.25rem 2.5rem;font-family:system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;color:#111827">
@@ -317,6 +394,38 @@ export function buildCommunityShareHtml(community: OgCommunityPayload, origin: s
 <p style="margin:0 0 1rem;font-size:0.9375rem;line-height:1.65;color:#374151">${e(body)}</p>
 <p style="margin:0 0 1.5rem;font-size:0.8125rem;color:#6b7280">${e(stats)}</p>
 <p style="margin:0"><a href="${e(canonical)}" style="display:inline-block;background:#1d4ed8;color:#fff;text-decoration:none;font-weight:600;font-size:0.9375rem;padding:0.65rem 1.35rem;border-radius:9999px">View community</a></p>
+</div>
+</body>
+</html>`;
+}
+
+export function buildPageShareHtml(pageKey: OgPageKey, origin: string): string {
+  const page = SHARE_PAGES[pageKey];
+  const canonical = page.path === '/' ? `${origin}/` : `${origin}${page.path}`;
+  const imageMeta = shareImageMeta(origin, defaultOgImage(origin), `${OG_SITE_NAME} — Hunt for the Best`);
+  const e = escapeHtml;
+  const body =
+    pageKey === 'home'
+      ? 'Professional community for orthopedic and spine surgeons — cases, tools, biologics, and startups.'
+      : page.description;
+
+  return `<!DOCTYPE html>
+<html lang="en">
+<head>
+${shareMetaTags({
+  headline: page.title,
+  description: page.description,
+  canonical,
+  ogType: page.ogType,
+  image: imageMeta,
+})}
+</head>
+<body style="margin:0;background:#f9fafb">
+<div style="max-width:42rem;margin:0 auto;padding:2rem 1.25rem 2.5rem;font-family:system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;color:#111827">
+<p style="margin:0 0 1rem;font-size:0.75rem;font-weight:600;letter-spacing:0.06em;text-transform:uppercase;color:#6b7280">${e(OG_SITE_NAME)}</p>
+<h1 style="margin:0 0 0.75rem;font-size:1.375rem;font-weight:700">${e(page.title.replace(` | ${OG_SITE_NAME}`, ''))}</h1>
+<p style="margin:0 0 1.5rem;font-size:0.9375rem;line-height:1.65;color:#374151">${e(body)}</p>
+<p style="margin:0"><a href="${e(canonical)}" style="display:inline-block;background:#1d4ed8;color:#fff;text-decoration:none;font-weight:600;font-size:0.9375rem;padding:0.65rem 1.35rem;border-radius:9999px">Open on ${e(OG_SITE_NAME)}</a></p>
 </div>
 </body>
 </html>`;
@@ -352,31 +461,24 @@ export function buildUserShareHtml(user: OgUserPayload, origin: string): string 
   const ogImage = user.profileImage
     ? preferredCloudinaryOgDeliveryUrl(absolutizeMediaUrl(origin, user.profileImage) || defaultOgImage(origin))
     : defaultOgImage(origin);
-  const twitterCard = user.profileImage ? 'summary' : 'summary';
+  const imageMeta = shareImageMeta(
+    origin,
+    ogImage,
+    `${displayName} (@${user.username}) on ${OG_SITE_NAME}`
+  );
   const e = escapeHtml;
 
   return `<!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>${e(headline)}</title>
-<link rel="canonical" href="${e(canonical)}">
-<meta name="description" content="${e(description)}">
-<meta property="og:title" content="${e(headline)}">
-<meta property="og:description" content="${e(description)}">
-<meta property="og:type" content="profile">
-<meta property="og:url" content="${e(canonical)}">
-<meta property="og:site_name" content="${e(OG_SITE_NAME)}">
-<meta property="og:locale" content="en_US">
-<meta property="og:image" content="${e(ogImage)}">
-<meta property="og:image:alt" content="${e(`${displayName} (@${user.username})`)}">
-<meta property="profile:username" content="${e(user.username)}">
-<meta name="twitter:card" content="${twitterCard}">
-<meta name="twitter:title" content="${e(headline)}">
-<meta name="twitter:description" content="${e(description)}">
-<meta name="twitter:image" content="${e(ogImage)}">
-<meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1">
+${shareMetaTags({
+  headline,
+  description,
+  canonical,
+  ogType: 'profile',
+  image: imageMeta,
+  extraHead: `<meta property="profile:username" content="${e(user.username)}">`,
+})}
 </head>
 <body style="margin:0;background:#f9fafb">
 <div style="max-width:42rem;margin:0 auto;padding:2rem 1.25rem 2.5rem;font-family:system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;color:#111827">

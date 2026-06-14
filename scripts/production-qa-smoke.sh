@@ -72,6 +72,12 @@ else
   echo "  SKIP OG preview user (no users)"
 fi
 
+check "OG preview home" bash -c "curl -sS -A 'Twitterbot/1.0' '$BASE/' | grep -q 'og:title'"
+check "OG preview cases" bash -c "curl -sS -A 'Twitterbot/1.0' '$BASE/cases' | grep -q 'og:title'"
+if [ -n "$POST_ID" ]; then
+  check "OG iMessage-style post" bash -c "curl -sS -A 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15' '$BASE/post/$POST_ID' | grep -q 'og:title'"
+fi
+
 echo ""
 echo "4. Auth endpoints (expected status codes)"
 check "login rejects empty body (400)" test "$(http_code -X POST "$BASE/api/auth/login" -H "Content-Type: application/json" -d "{}")" = "400"

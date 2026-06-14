@@ -8,7 +8,7 @@
 | **OPS QUICK REFERENCE** | Database, SSL, Docker disk, scripts |
 | **Archive** | Full history → `CHANGELOG.md` |
 
-## 🔥 **NEXT UP — START HERE** (updated Jun 1, 2026)
+## 🔥 **NEXT UP — START HERE** (updated Jun 14, 2026)
 
 ### **Pick up here (step-by-step)**
 
@@ -18,22 +18,24 @@
 | **2** | **SES SNS webhook + prod access** | ⏳ Optional — `AWS_SES_SNS_TOPIC_ARN` missing; password reset email works |
 | **3** | **Logged-in Production QA** | ✅ Mostly done — create post, notifications, admin delete, password reset; self-notification on own post is acceptable |
 | **4** | **SSL auto-renewal cron** | ✅ `0 3 1 * *` → `ssl-renew-cron.sh` |
-| **5** | **SEO / LLM / OG** | ✅ Hub meta + JSON-LD, `llms-full.txt`, sitemap users, community/user OG previews, `seo-audit.sh` |
-| **6** | **Google Search Console** | ⏳ Manual — verify property + submit `https://orthoandspinetools.com/sitemap.xml` |
+| **5** | **SEO / LLM / OG** | ✅ Hub meta + JSON-LD, `llms-full.txt`, sitemap users, `seo-audit.sh` |
+| **6** | **Link preview cards (X, iMessage, SMS)** | ✅ Server-side OG for posts, communities, profiles, home + hubs; 1200×630 images; iMessage-style detection |
+| **7** | **Google Search Console** | ⏳ TXT record added in Namecheap (`@`); waiting on DNS propagation, then Verify + submit sitemap |
 
 **Ongoing disk habit:** `./scripts/docker-disk-check.sh report` before `--no-cache` builds.
 
 ### **Goals**
 - [x] **Brand copy** — Tagline **"Ortho and Spine Tools - Hunt for the Best"** across SEO, `index.html`, register, `llms.txt`.
-- [x] **Link previews** — `GET /api/og/post/:id`, `/community/:slug`, `/user/:username` + nginx bot `map`.
+- [x] **Link previews** — Server-side OG for `/post/:id`, `/community/:slug`, `/user/:username`, `/`, `/cases`, `/startups`, `/popular`; nginx `serve_og_preview` map (bots + iMessage); `index.html` default OG/Twitter meta.
 - [x] **Cases** — `/cases`, `tagName=Case`, backfill script.
 - [x] **Dynamic sitemap** — posts, communities, public user profiles.
 - [x] **LLM citing** — `llms.txt`, dynamic `llms-full.txt`, expanded `robots.txt`.
 - [x] **Hub SEO** — DocumentMeta + JSON-LD on Cases, Popular, Startups, Search; Person schema on profiles.
 - [x] **Real data** — Community moderators/rules, public user profiles, post sidebar join state.
-- [x] **Production QA smoke** — `./scripts/production-qa-smoke.sh` (25 checks after OG deploy).
+- [x] **Production QA smoke** — `./scripts/production-qa-smoke.sh` (**28/28** after link-preview deploy).
 - [ ] **Amazon SES — follow-ups** — SNS topic ARN + `/api/ses/events`; optional suppression Admin UI.
-- [ ] **Google Search Console** — Verify site, submit sitemap, Rich Results Test on home + `/post/:id`.
+- [ ] **Google Search Console** — Verify property (DNS TXT propagating), submit sitemap, Rich Results Test.
+- [ ] **Optional** — Dedicated 1200×630 `og-share.png` for richer homepage/hub cards (square logo works today).
 
 ### **0. Deploy status — verify live**
 - [x] **https://orthoandspinetools.com** — home, hubs, sitemap, llms-full, OG previews
@@ -84,14 +86,15 @@ Never run `docker compose down -v` (deletes production DB volume).
 6. **Password reset** — `/forgot-password` → inbox (sandbox: verified addresses only)
 
 ### **3. Backlog**
-- **Disk / ops** — Document cleanup policy; optional `scripts/docker-disk-check.sh`; review 38G VPS sizing
+- **Link previews** — Optional branded `og-share.png` (1200×630); test cards in X Card Validator after sharing new URLs
+- **Disk / ops** — Document cleanup policy; review 38G VPS sizing
 - **SEO** — Lighthouse / Rich Results; confirm `VITE_SITE_URL` / `PUBLIC_SITE_URL` in prod builds
 - **Admin** — Reporting/triage; SES suppression UI
 - **Content** — More real specialty posts
 - **Post media (WIP)** — Re-test create-post upload if needed; existing posts display images OK
 - **Notifications** — Vote/mention/moderation triggers (v1 comment/reply shipped)
 
-**Live snapshot (Jun 1, 2026):** 3 posts, 4 users, 11 communities · smoke **25/25** · SEO/LLM/OG deployed
+**Live snapshot (Jun 14, 2026):** 3 posts, 4 users, 11 communities · smoke **28/28** · link previews deployed
 
 ---
 
@@ -151,6 +154,15 @@ docker compose -f docker-compose.prod.yml exec backend npm run backfill-case-pos
 - **Database recovery:** `docs/DATABASE_MAINTENANCE.md`, `docs/DATABASE_RECOVERY.md`
 - **Production scaling:** `docs/PRODUCTION_SCALING.md`
 
+### **Session log (Jun 14, 2026)**
+
+| Done | Detail |
+|------|--------|
+| Link previews | Server-side OG for posts, communities, users, home + hubs; Sec-Fetch + bot detection (iMessage, X, SMS) |
+| OG polish | 1200×630 Cloudinary crops, shorter card descriptions, `index.html` default meta |
+| GSC DNS | Google verification TXT on Namecheap `@` — awaiting propagation |
+| QA | Smoke tests **28/28** |
+
 ### **Session log (Jun 8, 2026)**
 
 | Done | Detail |
@@ -164,6 +176,6 @@ docker compose -f docker-compose.prod.yml exec backend npm run backfill-case-pos
 
 ---
 
-**Last Updated:** Jun 1, 2026  
-**Status:** 🚀 Live — SEO/LLM/OG deployed; smoke 25/25  
-**You are here:** Step 6 — Google Search Console (manual, your Google account)
+**Last Updated:** Jun 14, 2026  
+**Status:** 🚀 Live — link previews deployed; smoke 28/28  
+**You are here:** Step 7 — Google Search Console verify (DNS propagating), then submit sitemap

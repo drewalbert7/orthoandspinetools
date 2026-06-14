@@ -6,11 +6,14 @@ import {
   buildCommunityNotFoundShareHtml,
   buildCommunityShareHtml,
   buildNotFoundShareHtml,
+  buildPageShareHtml,
   buildPostShareHtml,
   buildUserNotFoundShareHtml,
   buildUserShareHtml,
   siteOriginFromRequest,
+  type OgPageKey,
   type OgPostPayload,
+  SHARE_PAGES,
 } from '../lib/postOgPreviewHtml';
 
 const router = Router();
@@ -193,6 +196,25 @@ router.get(
       },
       origin
     );
+    res.status(200).type('html').set('Cache-Control', shareCache).send(html);
+  })
+);
+
+const PAGE_SLUGS = Object.keys(SHARE_PAGES) as OgPageKey[];
+
+router.get(
+  '/page/:slug',
+  [param('slug').trim().isIn(PAGE_SLUGS).withMessage('Invalid page')],
+  asyncHandler(async (req: Request, res: Response) => {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      res.status(400).type('text/plain').send('Bad request');
+      return;
+    }
+
+    const slug = req.params.slug as OgPageKey;
+    const origin = siteOriginFromRequest(req);
+    const html = buildPageShareHtml(slug, origin);
     res.status(200).type('html').set('Cache-Control', shareCache).send(html);
   })
 );

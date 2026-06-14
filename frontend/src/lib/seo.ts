@@ -60,10 +60,22 @@ const IMAGE_EXT_IN_URL = /\.(jpe?g|png|gif|webp|avif|bmp|heic)(\?|#|$)/i;
 export function preferredCloudinaryOgDeliveryUrl(url: string): string {
   const u = url.trim();
   if (!/\/image\/upload\//i.test(u)) return u;
-  if (/\/image\/upload\/[^/]*\b(c_fill|w_1200|h_630)\b/i.test(u)) return u;
+  if (/\/image\/upload\/[^/]*\b(c_fill,w_1200,h_630|w_1200,h_630)\b/i.test(u)) return u;
   if (/\/image\/upload\/s--/i.test(u)) return u;
-  if (!/\/image\/upload\/v\d+\//i.test(u) && !/\/image\/upload\/[\w.-]+\/v\d+\//i.test(u)) return u;
-  return u.replace(/\/image\/upload\//i, '/image/upload/c_fill,w_1200,h_630,q_auto,f_auto/');
+
+  const ogTransform = 'c_fill,w_1200,h_630,q_auto,f_auto';
+  const parts = u.split(/\/image\/upload\//i);
+  if (parts.length < 2) return u;
+  const prefix = `${parts[0]}/image/upload/`;
+  const afterUpload = parts[1];
+  const slash = afterUpload.indexOf('/');
+  const firstSegment = slash === -1 ? afterUpload : afterUpload.slice(0, slash);
+  const rest = slash === -1 ? '' : afterUpload.slice(slash + 1);
+  const isTransform =
+    /[,_]/.test(firstSegment) || /^(c_|w_|h_|q_|f_|g_|b_|dpr_|ar_)/i.test(firstSegment);
+
+  if (isTransform && rest) return `${prefix}${ogTransform}/${rest}`;
+  return `${prefix}${ogTransform}/${afterUpload}`;
 }
 
 function urlLooksLikeRasterImage(url: string): boolean {
@@ -80,20 +92,12 @@ function resolveAttachmentMediaUrl(url: string | undefined | null): string | und
   return undefined;
 }
 
-/** Open Graph / meta description: excerpt, community, author, site (≤300 chars). */
+/** Open Graph / meta description tuned for link preview cards (≤155 chars). */
 export function postDescription(post: Post): string {
-  const excerpt = post.content ? stripToPlainText(post.content, 280) : '';
+  const excerpt = post.content ? stripToPlainText(post.content, 155) : '';
   const lead = excerpt || post.title;
-  const body = lead.length > 200 ? `${lead.slice(0, 197).trimEnd()}…` : lead;
-  const comm = post.community?.name ? `o/${post.community.name}` : '';
-  const author = post.author?.username ? `u/${post.author.username}` : '';
-  const parts = [body];
-  if (comm) parts.push(comm);
-  if (author) parts.push(author);
-  parts.push(SEO_DEFAULTS.siteName);
-  let out = parts.join(' · ');
-  if (out.length > 300) out = `${out.slice(0, 297).trimEnd()}…`;
-  return out;
+  if (lead.length <= 155) return lead;
+  return `${lead.slice(0, 152).trimEnd()}…`;
 }
 
 export function postOgImage(post: Post): string | undefined {
