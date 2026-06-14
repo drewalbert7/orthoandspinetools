@@ -14,15 +14,17 @@
 
 | Step | Task | Status |
 |------|------|--------|
-| **1** | **Disk maintenance** | ✅ Cron + `docker-disk-check.sh`; ~63% used, ~14 GB free |
+| **1** | **Disk maintenance** | ✅ Cron + `docker-disk-check.sh`; ~68% used, ~12 GB free |
 | **2** | **Daily DB backups** | ✅ Cron `0 2 * * *` → `database-backup-cron.sh` (7-day retention) |
-| **3** | **SES SNS webhook + prod access** | ⏳ Optional — `AWS_SES_SNS_TOPIC_ARN` missing; password reset email works |
-| **4** | **Logged-in Production QA** | ✅ Mostly done — create post, notifications, admin delete, password reset |
-| **5** | **SSL auto-renewal cron** | ✅ `0 3 1 * *` → `ssl-renew-cron.sh` |
-| **6** | **SEO / LLM / OG** | ✅ Hub meta + JSON-LD, `llms-full.txt`, sitemap users, `seo-audit.sh` |
-| **7** | **Link preview cards (X, iMessage, SMS)** | ✅ Server-side OG for posts, communities, profiles, home + hubs |
-| **8** | **Google Search Console** | ✅ Domain verified; sitemap submitted |
-| **9** | **Scaling prep** | ✅ Feed query DB indexes deployed; backups automated |
+| **3** | **SES SNS webhook** | ⏳ Optional — `AWS_SES_SNS_TOPIC_ARN` missing; SES production access confirmed; transactional email works |
+| **4** | **Physician NPI verification** | ✅ U.S. NPI via CMS registry; intl. manual review; admin pending filter |
+| **5** | **Legal pages (NPI wording)** | ✅ Privacy + Terms updated for NPI collection and verification |
+| **6** | **Logged-in Production QA** | ⏳ Manual — US NPI signup, intl. pending queue, email verify flows |
+| **7** | **SSL auto-renewal cron** | ✅ `0 3 1 * *` → `ssl-renew-cron.sh` |
+| **8** | **SEO / LLM / OG** | ✅ Hub meta + JSON-LD, `llms-full.txt`, sitemap users, `seo-audit.sh` |
+| **9** | **Link preview cards** | ✅ Server-side OG for posts, communities, profiles, home + hubs |
+| **10** | **Google Search Console** | ✅ Domain verified; sitemap submitted |
+| **11** | **Scaling prep** | ✅ Feed query DB indexes deployed; backups automated |
 
 **Ongoing disk habit:** `./scripts/docker-disk-check.sh report` before `--no-cache` builds.
 
@@ -34,7 +36,10 @@
 - [x] **LLM citing** — `llms.txt`, dynamic `llms-full.txt`, expanded `robots.txt`.
 - [x] **Hub SEO** — DocumentMeta + JSON-LD on Cases, Popular, Startups, Search; Person schema on profiles.
 - [x] **Real data** — Community moderators/rules, public user profiles, post sidebar join state.
-- [x] **Production QA smoke** — `./scripts/production-qa-smoke.sh` (**28/28**).
+- [x] **Production QA smoke** — `./scripts/production-qa-smoke.sh` (**30/30** incl. `/privacy`, `/terms`).
+- [x] **Physician NPI verification** — U.S. CMS registry at signup; international `physicianVerificationPending`; admin verify clears pending.
+- [x] **Legal NPI wording** — Privacy Policy + Terms of Service describe NPI collection, CMS lookup, and manual intl. review.
+- [x] **Admin pending physician filter** — Admin → Users → **Pending intl. review** (`physicianVerificationPending=true`).
 - [x] **Daily DB backups** — `0 2 * * *` → `scripts/database-backup-cron.sh` (7-day retention in `backups/`).
 - [x] **Feed query indexes** — `posts`, `comments`, `post_votes`, `post_tags` indexes for home/community/profile feeds.
 - [ ] **Amazon SES — follow-ups** — SNS topic ARN + `/api/ses/events`; optional suppression Admin UI.
@@ -87,19 +92,20 @@ Never run `docker compose down -v` (deletes production DB volume).
 3. **Notifications** — comment/reply → bell; mark read / dismiss
 4. **Admin delete** — post menu `...` from Home and PostDetail
 5. **Profile** — Level and Total points show as separate rows (header grid + sidebar)
-6. **Password reset** — `/forgot-password` → inbox (sandbox: verified addresses only)
+6. **Physician signup QA** — U.S. NPI path, international pending path, admin manual verify
+7. **Password reset** — `/forgot-password` → inbox (SES production access confirmed)
 
 ### **3. Backlog**
 - **Scaling** — VPS RAM/disk upgrade before ~5k users; Redis for multi-replica rate limits; managed Postgres later
 - **Link previews** — Optional branded `og-share.png` (1200×630)
 - **Disk / ops** — Off-server backup copy (S3/rsync); review 38G VPS sizing
 - **SEO** — Lighthouse / Rich Results; confirm `VITE_SITE_URL` / `PUBLIC_SITE_URL` in prod builds
-- **Admin** — Reporting/triage; SES suppression UI
+- **Admin** — SES suppression UI; email alert on intl. physician signup (optional)
 - **Content** — More real specialty posts
 - **Post media (WIP)** — Re-test create-post upload if needed; existing posts display images OK
 - **Notifications** — Vote/mention/moderation triggers (v1 comment/reply shipped)
 
-**Live snapshot (Jun 14, 2026):** 3 posts, 4 users, 11 communities · smoke **28/28** · link previews deployed
+**Live snapshot (Jun 14, 2026):** 3 posts, 4 users, 11 communities · smoke **30/30** · NPI verification deployed · legal pages live
 
 ---
 
@@ -126,8 +132,10 @@ GIT_SSH_COMMAND='ssh -F /dev/null -o StrictHostKeyChecking=accept-new' git pull 
 ## 📋 **NEXT PRIORITIES (summary)**
 
 1. **Content** — More real specialty posts (GSC is live; indexing follows content)
-2. **SES** — Optional SNS topic ARN + webhook (`docs/SES_AWS_SETUP.md`)
-3. **Scaling** — Off-server backup copy, monitoring/uptime alerts, VPS upgrade when traffic grows
+2. **Manual QA** — Physician NPI signup, intl. pending queue, email verification
+3. **SES SNS** — Optional webhook for bounces/complaints (`docs/SES_AWS_SETUP.md`)
+4. **Scaling** — Off-server backup copy, monitoring/uptime alerts, VPS upgrade when traffic grows
+5. **Optional** — `og-share.png` (1200×630) for richer homepage/hub link previews
 
 ---
 
@@ -160,6 +168,15 @@ docker compose -f docker-compose.prod.yml exec backend npm run backfill-case-pos
 - **Database recovery:** `docs/DATABASE_MAINTENANCE.md`, `docs/DATABASE_RECOVERY.md`
 - **Production scaling:** `docs/PRODUCTION_SCALING.md`
 
+### **Session log (Jun 14, 2026 — evening)**
+
+| Done | Detail |
+|------|--------|
+| NPI legal copy | Privacy + Terms: NPI collection, CMS lookup, intl. manual review, badge meaning |
+| Admin filter | Users tab: **Pending intl. review** filter via `physicianVerificationPending` API param |
+| NPI verification | Deployed (`46482b5`): migration, register flow, admin badges, `/api/auth/npi-check` |
+| Legal pages | `/privacy`, `/terms`, register consent checkbox, sitemap + smoke tests |
+
 ### **Session log (Jun 14, 2026)**
 
 | Done | Detail |
@@ -185,5 +202,5 @@ docker compose -f docker-compose.prod.yml exec backend npm run backfill-case-pos
 ---
 
 **Last Updated:** Jun 14, 2026  
-**Status:** 🚀 Live — GSC verified, backups automated, feed indexes deployed; smoke 28/28  
-**You are here:** Content growth; optional off-server backups + monitoring
+**Status:** 🚀 Live — NPI verification, legal pages, admin pending filter; smoke 30/30  
+**You are here:** Manual physician signup QA; content growth; optional SES SNS + og-share.png

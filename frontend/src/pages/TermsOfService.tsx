@@ -69,9 +69,21 @@ const TermsOfService: React.FC = () => (
       </p>
       <p>
         Email verification is required before you can sign in. Optional profile fields (such as medical license
-        number) are self-reported. A &quot;verified physician&quot; or similar badge, if displayed, indicates a
-        platform recognition granted by administrators; it is not a substitute for independent credential
-        verification and does not represent licensure approval by {LEGAL_OPERATOR_NAME}.
+        number) are self-reported unless otherwise noted below.
+      </p>
+      <p>
+        <strong className="text-gray-900">Physician verification.</strong> Certain specialties require credential
+        verification at registration. If you practice in the United States, you must provide a valid 10-digit NPI.
+        We verify that NPI against the public CMS National Provider Identifier Registry and check that the name on
+        the registry record matches the name you provide. If you practice outside the United States, your account
+        may be marked for manual review by our administrators; you may use the Service while review is pending.
+      </p>
+      <p>
+        A &quot;verified physician&quot; or similar badge, if displayed, indicates that we have completed our
+        platform verification process (NPI match for U.S. users, or administrator approval for international users).
+        It is not a substitute for independent credential verification, hospital privileging, or licensure approval
+        by {LEGAL_OPERATOR_NAME} or any government authority. We may revoke a verification badge if we believe
+        credentials were misrepresented or accounts were abused.
       </p>
     </Section>
 
@@ -94,7 +106,7 @@ const TermsOfService: React.FC = () => (
         <li>Post PHI, identifiable patient images, or other sensitive personal data without proper authorization</li>
         <li>Post content that is unlawful, defamatory, harassing, hateful, threatening, or discriminatory</li>
         <li>Engage in undisclosed paid promotion, astroturfing, spam, or deceptive commercial activity</li>
-        <li>Impersonate any person or misrepresent your affiliation or credentials</li>
+        <li>Impersonate any person or misrepresent your affiliation or credentials, including by submitting another person&apos;s NPI or false license information</li>
         <li>Upload malware or attempt to disrupt, scrape, or reverse engineer the Service</li>
         <li>Circumvent access controls, rate limits, or security measures</li>
         <li>Use the Service in any manner that could harm users, patients, or the reputation of the platform</li>

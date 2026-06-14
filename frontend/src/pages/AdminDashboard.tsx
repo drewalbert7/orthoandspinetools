@@ -8,12 +8,14 @@ import toast from 'react-hot-toast';
 import { DocumentMeta } from '../components/DocumentMeta';
 
 type TabType = 'users' | 'moderation' | 'communities' | 'analytics';
+type UserFilter = 'all' | 'pending_physician';
 
 const AdminDashboard: React.FC = () => {
   const { user: currentUser } = useAuth();
   const queryClient = useQueryClient();
   const [activeTab, setActiveTab] = useState<TabType>('users');
   const [searchTerm, setSearchTerm] = useState('');
+  const [userFilter, setUserFilter] = useState<UserFilter>('all');
   const [page, setPage] = useState(1);
 
   const { data: permissions, isFetched, isError } = useQuery({
@@ -26,8 +28,14 @@ const AdminDashboard: React.FC = () => {
   const isAdminUser = !!(currentUser?.isAdmin || permissions?.isAdmin);
 
   const { data: usersData, isLoading: usersLoading } = useQuery({
-    queryKey: ['admin-users', page, searchTerm],
-    queryFn: () => apiService.getModerationUsers(page, 20, searchTerm || undefined),
+    queryKey: ['admin-users', page, searchTerm, userFilter],
+    queryFn: () =>
+      apiService.getModerationUsers(
+        page,
+        20,
+        searchTerm || undefined,
+        userFilter === 'pending_physician'
+      ),
     enabled: activeTab === 'users' && isAdminUser,
   });
 
@@ -238,7 +246,7 @@ const AdminDashboard: React.FC = () => {
         <div className="p-6">
           {activeTab === 'users' && (
             <div>
-              <div className="mb-4">
+              <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <input
                   type="text"
                   placeholder="Search users by username, email, or name..."
@@ -247,8 +255,38 @@ const AdminDashboard: React.FC = () => {
                     setSearchTerm(e.target.value);
                     setPage(1);
                   }}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full sm:flex-1 px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
+                <div className="flex gap-2 shrink-0">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setUserFilter('all');
+                      setPage(1);
+                    }}
+                    className={`px-4 py-2 rounded-md text-sm font-medium ${
+                      userFilter === 'all'
+                        ? 'bg-blue-600 text-white'
+                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                    }`}
+                  >
+                    All users
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setUserFilter('pending_physician');
+                      setPage(1);
+                    }}
+                    className={`px-4 py-2 rounded-md text-sm font-medium ${
+                      userFilter === 'pending_physician'
+                        ? 'bg-amber-600 text-white'
+                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                    }`}
+                  >
+                    Pending intl. review
+                  </button>
+                </div>
               </div>
 
               {usersLoading ? (
@@ -492,7 +530,11 @@ const AdminDashboard: React.FC = () => {
                 </>
               ) : (
                 <div className="text-center py-8 text-gray-500">
-                  <p>No users found</p>
+                  <p>
+                    {userFilter === 'pending_physician'
+                      ? 'No international physicians awaiting manual review'
+                      : 'No users found'}
+                  </p>
                 </div>
               )}
             </div>

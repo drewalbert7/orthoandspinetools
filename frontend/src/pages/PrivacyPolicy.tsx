@@ -37,6 +37,14 @@ const PrivacyPolicy: React.FC = () => (
         profile image).
       </p>
       <p>
+        <strong className="text-gray-900">Physician verification information.</strong> If you register as a physician
+        or resident in a specialty that requires verification, we may collect your country of practice and, for
+        United States users, your 10-digit National Provider Identifier (NPI). We use your NPI and name to query the
+        public CMS National Provider Identifier Registry during registration. For users practicing outside the United
+        States, we may collect a local medical license or registration number you provide and flag your account for
+        manual credential review by our administrators.
+      </p>
+      <p>
         <strong className="text-gray-900">User-generated content.</strong> We collect content you submit, including
         posts, comments, votes, community memberships, messages in notification content, and media you upload
         (images, videos, and related metadata).
@@ -63,6 +71,7 @@ const PrivacyPolicy: React.FC = () => (
       <ul className="list-disc pl-5 space-y-2">
         <li>Provide, operate, maintain, and improve the Service</li>
         <li>Create and manage your account and authenticate you</li>
+        <li>Verify physician credentials, including NPI lookup for U.S. users and manual review for international users</li>
         <li>Send transactional emails (for example, email verification, password reset, and notification digests you opt into)</li>
         <li>Display user-generated content and community features</li>
         <li>Enforce our Terms of Service, community rules, and platform policies</li>
@@ -90,6 +99,8 @@ const PrivacyPolicy: React.FC = () => (
         <li>Hosting and infrastructure providers (for example, Hetzner)</li>
         <li>Cloudinary for media storage and delivery</li>
         <li>Amazon Web Services (SES) for transactional email</li>
+        <li>The U.S. Centers for Medicare &amp; Medicaid Services (CMS) National Provider Identifier Registry, when
+          verifying U.S. physician NPIs at registration</li>
         <li>Google Analytics for usage analytics</li>
       </ul>
       <p>

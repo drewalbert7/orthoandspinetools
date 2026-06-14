@@ -1055,13 +1055,19 @@ class ApiService {
     }
   }
 
-  async getModerationUsers(page = 1, limit = 20, search?: string): Promise<any> {
+  async getModerationUsers(
+    page = 1,
+    limit = 20,
+    search?: string,
+    physicianVerificationPending?: boolean
+  ): Promise<any> {
     try {
       const params = new URLSearchParams({
         page: page.toString(),
         limit: limit.toString(),
       });
       if (search) params.append('search', search);
+      if (physicianVerificationPending) params.append('physicianVerificationPending', 'true');
       
       const response = await api.get(`/moderation/users?${params}`);
       return response.data.data;
