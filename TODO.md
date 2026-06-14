@@ -14,13 +14,15 @@
 
 | Step | Task | Status |
 |------|------|--------|
-| **1** | **Disk maintenance** | ✅ Cron + `docker-disk-check.sh`; ~60% used, ~15 GB free |
-| **2** | **SES SNS webhook + prod access** | ⏳ Optional — `AWS_SES_SNS_TOPIC_ARN` missing; password reset email works |
-| **3** | **Logged-in Production QA** | ✅ Mostly done — create post, notifications, admin delete, password reset; self-notification on own post is acceptable |
-| **4** | **SSL auto-renewal cron** | ✅ `0 3 1 * *` → `ssl-renew-cron.sh` |
-| **5** | **SEO / LLM / OG** | ✅ Hub meta + JSON-LD, `llms-full.txt`, sitemap users, `seo-audit.sh` |
-| **6** | **Link preview cards (X, iMessage, SMS)** | ✅ Server-side OG for posts, communities, profiles, home + hubs; 1200×630 images; iMessage-style detection |
-| **7** | **Google Search Console** | ✅ Domain verified (Namecheap TXT `@`); sitemap submitted at `https://orthoandspinetools.com/sitemap.xml` |
+| **1** | **Disk maintenance** | ✅ Cron + `docker-disk-check.sh`; ~63% used, ~14 GB free |
+| **2** | **Daily DB backups** | ✅ Cron `0 2 * * *` → `database-backup-cron.sh` (7-day retention) |
+| **3** | **SES SNS webhook + prod access** | ⏳ Optional — `AWS_SES_SNS_TOPIC_ARN` missing; password reset email works |
+| **4** | **Logged-in Production QA** | ✅ Mostly done — create post, notifications, admin delete, password reset |
+| **5** | **SSL auto-renewal cron** | ✅ `0 3 1 * *` → `ssl-renew-cron.sh` |
+| **6** | **SEO / LLM / OG** | ✅ Hub meta + JSON-LD, `llms-full.txt`, sitemap users, `seo-audit.sh` |
+| **7** | **Link preview cards (X, iMessage, SMS)** | ✅ Server-side OG for posts, communities, profiles, home + hubs |
+| **8** | **Google Search Console** | ✅ Domain verified; sitemap submitted |
+| **9** | **Scaling prep** | ✅ Feed query DB indexes deployed; backups automated |
 
 **Ongoing disk habit:** `./scripts/docker-disk-check.sh report` before `--no-cache` builds.
 
@@ -32,7 +34,9 @@
 - [x] **LLM citing** — `llms.txt`, dynamic `llms-full.txt`, expanded `robots.txt`.
 - [x] **Hub SEO** — DocumentMeta + JSON-LD on Cases, Popular, Startups, Search; Person schema on profiles.
 - [x] **Real data** — Community moderators/rules, public user profiles, post sidebar join state.
-- [x] **Production QA smoke** — `./scripts/production-qa-smoke.sh` (**28/28** after link-preview deploy).
+- [x] **Production QA smoke** — `./scripts/production-qa-smoke.sh` (**28/28**).
+- [x] **Daily DB backups** — `0 2 * * *` → `scripts/database-backup-cron.sh` (7-day retention in `backups/`).
+- [x] **Feed query indexes** — `posts`, `comments`, `post_votes`, `post_tags` indexes for home/community/profile feeds.
 - [ ] **Amazon SES — follow-ups** — SNS topic ARN + `/api/ses/events`; optional suppression Admin UI.
 - [x] **Google Search Console** — Domain verified; sitemap submitted (`/sitemap.xml`).
 - [ ] **Optional** — Rich Results Test on home + `/post/:id`; dedicated 1200×630 `og-share.png` for richer homepage/hub cards.
@@ -86,8 +90,9 @@ Never run `docker compose down -v` (deletes production DB volume).
 6. **Password reset** — `/forgot-password` → inbox (sandbox: verified addresses only)
 
 ### **3. Backlog**
-- **Link previews** — Optional branded `og-share.png` (1200×630); test cards in X Card Validator after sharing new URLs
-- **Disk / ops** — Document cleanup policy; review 38G VPS sizing
+- **Scaling** — VPS RAM/disk upgrade before ~5k users; Redis for multi-replica rate limits; managed Postgres later
+- **Link previews** — Optional branded `og-share.png` (1200×630)
+- **Disk / ops** — Off-server backup copy (S3/rsync); review 38G VPS sizing
 - **SEO** — Lighthouse / Rich Results; confirm `VITE_SITE_URL` / `PUBLIC_SITE_URL` in prod builds
 - **Admin** — Reporting/triage; SES suppression UI
 - **Content** — More real specialty posts
@@ -120,9 +125,9 @@ GIT_SSH_COMMAND='ssh -F /dev/null -o StrictHostKeyChecking=accept-new' git pull 
 
 ## 📋 **NEXT PRIORITIES (summary)**
 
-1. **SES** — Optional SNS topic ARN + webhook (`docs/SES_AWS_SETUP.md`)
-2. **Content** — More real specialty posts (helps indexing now that GSC is live)
-3. **Backlog** — Rich Results Test, optional `og-share.png`, admin reporting, Lighthouse in CI
+1. **Content** — More real specialty posts (GSC is live; indexing follows content)
+2. **SES** — Optional SNS topic ARN + webhook (`docs/SES_AWS_SETUP.md`)
+3. **Scaling** — Off-server backup copy, monitoring/uptime alerts, VPS upgrade when traffic grows
 
 ---
 
@@ -135,7 +140,8 @@ GIT_SSH_COMMAND='ssh -F /dev/null -o StrictHostKeyChecking=accept-new' git pull 
 ./scripts/seo-audit.sh                 # SEO + OG curl checks; optional Lighthouse
 ./scripts/ses-webhook-status.sh          # SES/SNS env check
 ./scripts/quick-restart.sh               # safe restart (never docker compose down)
-./scripts/database-backup-production.sh
+./scripts/database-backup-production.sh    # manual DB backup
+./scripts/database-backup-cron.sh          # cron entrypoint (daily 02:00)
 docker compose -f docker-compose.prod.yml exec backend npm run backfill-case-post-tags
 ```
 
@@ -161,7 +167,8 @@ docker compose -f docker-compose.prod.yml exec backend npm run backfill-case-pos
 | Link previews | Server-side OG for posts, communities, users, home + hubs; Sec-Fetch + bot detection (iMessage, X, SMS) |
 | OG polish | 1200×630 Cloudinary crops, shorter card descriptions, `index.html` default meta |
 | GSC DNS | Google verification TXT on Namecheap `@` — awaiting propagation |
-| GSC live | Domain verified; sitemap `https://orthoandspinetools.com/sitemap.xml` submitted |
+| GSC live | Domain verified; sitemap submitted |
+| Scaling prep | Daily DB backup cron; feed query indexes migration |
 | QA | Smoke tests **28/28** |
 
 ### **Session log (Jun 8, 2026)**
@@ -178,5 +185,5 @@ docker compose -f docker-compose.prod.yml exec backend npm run backfill-case-pos
 ---
 
 **Last Updated:** Jun 14, 2026  
-**Status:** 🚀 Live — GSC verified + sitemap submitted; smoke 28/28  
-**You are here:** Optional SES webhook, content growth, Rich Results Test
+**Status:** 🚀 Live — GSC verified, backups automated, feed indexes deployed; smoke 28/28  
+**You are here:** Content growth; optional off-server backups + monitoring

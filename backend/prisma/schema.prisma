@@ -198,6 +198,11 @@ model Post {
   tags              PostTag[]
   pollVotes         PostPollVote[]
   
+  @@index([isDeleted, createdAt(sort: Desc)])
+  @@index([communityId, isDeleted, createdAt(sort: Desc)])
+  @@index([authorId, isDeleted, createdAt(sort: Desc)])
+  @@index([isDeleted, type, createdAt(sort: Desc)])
+  @@index([isDeleted, updatedAt(sort: Desc)])
   @@map("posts")
 }
 
@@ -249,6 +254,8 @@ model Comment {
   replies           Comment[] @relation("CommentReplies")
   votes             CommentVote[]
   
+  @@index([postId, isDeleted, createdAt(sort: Asc)])
+  @@index([authorId, isDeleted, createdAt(sort: Desc)])
   @@map("comments")
 }
 
@@ -323,6 +330,7 @@ model PostVote {
   post              Post      @relation(fields: [postId], references: [id], onDelete: Cascade)
   user              User      @relation(fields: [userId], references: [id], onDelete: Cascade)
   
+  @@index([postId])
   @@unique([postId, userId])
   @@map("post_votes")
 }
@@ -504,6 +512,7 @@ model PostTag {
   post              Post      @relation(fields: [postId], references: [id], onDelete: Cascade)
   tag               CommunityTag @relation(fields: [tagId], references: [id], onDelete: Cascade)
   
+  @@index([tagId])
   @@unique([postId, tagId]) // Ensure a post can't have the same tag twice
   @@map("post_tags")
 }
