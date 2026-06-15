@@ -19,7 +19,7 @@
 | **3** | **Edit post tags** | ✅ `/post/:id/edit` — add/remove community topic tags (e.g. remove mistaken **Case** tag) |
 | **4** | **Physician NPI verification** | ✅ U.S. NPI via CMS registry; intl. manual review; admin pending filter |
 | **5** | **Legal pages** | ✅ Privacy + Terms with NPI wording |
-| **6** | **SES SNS webhook** | ⏳ Optional — `AWS_SES_SNS_TOPIC_ARN` missing; SES production access confirmed |
+| **6** | **SES SNS webhook** | ⏸️ **Deferred** — not a launch blocker; revisit when digest volume / user scale grows (`docs/SES_AWS_SETUP.md`) |
 | **7** | **Manual QA** | ⏳ Physician NPI signup, intl. pending queue, email verify |
 | **8** | **Content** | ⏳ More real specialty posts; fix tags on backfilled posts as needed |
 
@@ -42,7 +42,7 @@
 - [x] **Admin pending physician filter** — Admin → Users → **Pending intl. review** (`physicianVerificationPending=true`).
 - [x] **Daily DB backups** — `0 2 * * *` → Hetzner volume `106016238` at `/mnt/HC_Volume_106016238/orthoandspinetools-backups` (falls back to `backups/` if unmounted).
 - [x] **Feed query indexes** — `posts`, `comments`, `post_votes`, `post_tags` indexes for home/community/profile feeds.
-- [ ] **Amazon SES — follow-ups** — SNS topic ARN + `/api/ses/events`; optional suppression Admin UI.
+- [ ] **Amazon SES — follow-ups (deferred)** — SNS webhook + auto bounce/complaint suppression when mailing at scale; optional suppression Admin UI. **Sending works without this.**
 - [x] **Google Search Console** — Domain verified; sitemap submitted (`/sitemap.xml`).
 - [ ] **Optional** — Rich Results Test on home + `/post/:id`; dedicated 1200×630 `og-share.png` for richer homepage/hub cards.
 
@@ -99,7 +99,7 @@ Never run `docker compose down -v` (deletes production DB volume).
 - **Link previews** — Optional branded `og-share.png` (1200×630)
 - **Disk / ops** — Off-server backup copy (S3/rsync); root disk stays lean via volume backups + Docker log limits
 - **SEO** — Lighthouse / Rich Results; confirm `VITE_SITE_URL` / `PUBLIC_SITE_URL` in prod builds
-- **Admin** — SES suppression UI; email alert on intl. physician signup (optional)
+- **Admin** — SES suppression UI (with SNS webhook); email alert on intl. physician signup (optional)
 - **Content** — More real specialty posts; remove **Case** tag from non-case posts via edit
 - **Post media (WIP)** — Re-test create-post upload if needed; existing posts display images OK
 - **Notifications** — Vote/mention/moderation triggers (v1 comment/reply shipped)
@@ -112,9 +112,12 @@ Never run `docker compose down -v` (deletes production DB volume).
 
 1. **Content** — More real specialty posts; clean up **Case** tags on product/tool posts
 2. **Manual QA** — Physician NPI signup, intl. pending queue, email verification
-3. **SES SNS** — Optional webhook for bounces/complaints (`docs/SES_AWS_SETUP.md`)
-4. **Scaling** — Off-server backup copy, monitoring/uptime alerts; CPX21 resize when ready
-5. **Optional** — `og-share.png` (1200×630) for homepage/hub link previews
+3. **Scaling** — Off-server backup copy; CPX21 resize when ready
+4. **Optional** — `og-share.png` (1200×630) for homepage/hub link previews
+
+**Deferred (not launch blockers):** SES SNS webhook for auto bounce/complaint suppression — see `docs/SES_AWS_SETUP.md` when digest/user volume grows.
+
+**Uptime monitoring:** ✅ `scripts/uptime-monitor.sh` (every 5 min via `install-uptime-monitor-cron.sh`) — emails on down/recovery via SES to `UPTIME_ALERT_TO`.
 
 ---
 
@@ -210,6 +213,6 @@ docker compose -f docker-compose.prod.yml exec backend npm run backfill-case-pos
 
 ---
 
-**Last Updated:** Jun 14, 2026 (night)  
-**Status:** 🚀 Live — volume backups, post OG images, edit tags; smoke 31/31  
-**You are here:** Content + tag cleanup; manual physician QA; optional SES SNS
+**Last Updated:** Jun 15, 2026  
+**Status:** 🚀 Live — volume backups, post OG images, edit tags, uptime monitoring; smoke 31/31  
+**You are here:** Content + tag cleanup; manual physician QA

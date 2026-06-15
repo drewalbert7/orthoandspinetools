@@ -204,3 +204,23 @@ export async function sendVerifyEmail(params: {
     kind: 'transactional',
   });
 }
+
+export async function sendUptimeAlertEmail(params: {
+  to: string;
+  subject: string;
+  body: string;
+}): Promise<SendEmailResult> {
+  const subject = params.subject.trim();
+  const textBody = params.body.trim();
+  const htmlBody = wrapTransactionalHtml(
+    `<pre style="font-family:ui-monospace,Menlo,monospace;font-size:13px;white-space:pre-wrap;margin:0;">${escapeHtmlText(textBody)}</pre>`
+  );
+
+  return sendTransactionalEmail({
+    to: params.to,
+    subject,
+    textBody,
+    htmlBody,
+    kind: 'transactional',
+  });
+}
