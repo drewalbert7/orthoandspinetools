@@ -42,7 +42,10 @@
 - [x] **Admin pending physician filter** — Admin → Users → **Pending intl. review** (`physicianVerificationPending=true`).
 - [x] **Daily DB backups** — `0 2 * * *` → Hetzner volume `106016238` at `/mnt/HC_Volume_106016238/orthoandspinetools-backups` (falls back to `backups/` if unmounted).
 - [x] **Feed query indexes** — `posts`, `comments`, `post_votes`, `post_tags` indexes for home/community/profile feeds.
+- [x] **Secret rotation** — Rotated production `JWT_SECRET` + `POSTGRES_PASSWORD` off compose defaults; scrubbed plaintext DB password from tracked docs/scripts.
+- [x] **Digest cron hardening** — Moved `EMAIL_DIGEST_CRON_SECRET` out of crontab into `scripts/digest-cron.sh` (loads `.env`); rotated the secret.
 - [ ] **Amazon SES — follow-ups (deferred)** — SNS webhook + auto bounce/complaint suppression when mailing at scale; optional suppression Admin UI. **Sending works without this.**
+- [ ] **Security follow-ups** — Off-site backup copy (S3/rsync); fail startup on default secrets; enable upload virus scanning (ClamAV).
 - [x] **Google Search Console** — Domain verified; sitemap submitted (`/sitemap.xml`).
 - [ ] **Optional** — Rich Results Test on home + `/post/:id`; dedicated 1200×630 `og-share.png` for richer homepage/hub cards.
 
@@ -171,6 +174,16 @@ docker compose -f docker-compose.prod.yml exec backend npm run backfill-case-pos
 - **Database recovery:** `docs/DATABASE_MAINTENANCE.md`, `docs/DATABASE_RECOVERY.md`
 - **Production scaling:** `docs/PRODUCTION_SCALING.md`
 
+### **Session log (Jul 2026 — security + review)**
+
+| Done | Detail |
+|------|--------|
+| Secret rotation | Rotated prod `JWT_SECRET` + `POSTGRES_PASSWORD` off compose defaults; DB password updated; backend/postgres recreated |
+| Docs scrubbed | Removed plaintext `secure_password_123` from `DATABASE_RECOVERY.md`, `DATABASE_MAINTENANCE.md`, `IMPORTANT_RESTART_INFO.md`, `database-ensure-connection.sh` |
+| Digest cron | Secret moved out of crontab → `scripts/digest-cron.sh` (loads `.env`); secret rotated |
+| Augmedics post | X2 headset post created under `drewalbertmd` (Spine · Tech + Medical Device) via `backend/scripts/createAugmedicsPost.js` |
+| Prod review (Jul 23–24) | All containers healthy; smoke **31/31**; backups current; SSL valid to Aug 15; secrets non-default |
+
 ### **Session log (Jun 14, 2026 — night)**
 
 | Done | Detail |
@@ -213,6 +226,6 @@ docker compose -f docker-compose.prod.yml exec backend npm run backfill-case-pos
 
 ---
 
-**Last Updated:** Jun 15, 2026  
-**Status:** 🚀 Live — volume backups, post OG images, edit tags, uptime monitoring; smoke 31/31  
-**You are here:** Content + tag cleanup; manual physician QA
+**Last Updated:** Jul 24, 2026  
+**Status:** 🚀 Live — secrets rotated, volume backups, uptime monitoring, OG images; smoke 31/31  
+**You are here:** Content + tag cleanup; manual physician QA; off-site backups

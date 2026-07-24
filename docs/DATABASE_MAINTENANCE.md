@@ -142,7 +142,7 @@ If authentication fails:
 
 Or manually:
 ```bash
-docker exec orthoandspinetools-postgres psql -U postgres -c "ALTER USER postgres WITH PASSWORD 'secure_password_123';"
+docker exec orthoandspinetools-postgres psql -U postgres -c "ALTER USER postgres WITH PASSWORD 'YOUR_PASSWORD_FROM_ENV';"
 docker restart orthoandspinetools-backend
 ```
 

@@ -22,8 +22,8 @@ docker-compose up -d
 
 ## Why?
 When containers are recreated, there can be password mismatches between:
-- PostgreSQL password: `secure_password_123`
-- Backend DATABASE_URL environment variable
+- PostgreSQL `POSTGRES_PASSWORD` in server `.env`
+- Backend `DATABASE_URL` (must use the same password)
 
 See `docs/DATABASE_RECOVERY.md` for full recovery steps if something breaks.
 
@@ -31,7 +31,7 @@ See `docs/DATABASE_RECOVERY.md` for full recovery steps if something breaks.
 
 **Database**: `orthoandspinetools`  
 **User**: `postgres`  
-**Password**: `secure_password_123`  
+**Password**: from server `.env` (`POSTGRES_PASSWORD`)  
 **Volume**: `orthoandspinetools-main_postgres_data` (persistent)
 
 ## Quick Health Check

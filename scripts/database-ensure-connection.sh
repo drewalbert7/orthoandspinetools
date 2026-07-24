@@ -9,7 +9,14 @@ set -e
 CONTAINER_NAME="orthoandspinetools-postgres"
 DB_NAME="orthoandspinetools"
 DB_USER="postgres"
-DB_PASSWORD="secure_password_123"
+ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+if [[ -f "$ROOT/.env" ]]; then
+  set -a
+  # shellcheck disable=SC1091
+  source "$ROOT/.env"
+  set +a
+fi
+DB_PASSWORD="${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set in .env}"
 
 # Colors
 RED='\033[0;31m'

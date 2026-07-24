@@ -6,14 +6,14 @@
 - **Database Container**: `orthoandspinetools-postgres`
 - **Database Name**: `orthoandspinetools`
 - **Database User**: `postgres`
-- **Database Password**: `secure_password_123`
+- **Database Password**: set in server `.env` as `POSTGRES_PASSWORD` (never commit)
 - **Volume**: `orthoandspinetools-main_postgres_data`
 
 ### How We Fixed the Login Issue
 
 When containers are recreated, the database volume is preserved BUT the password authentication needs to match:
-1. PostgreSQL environment variable: `POSTGRES_PASSWORD=secure_password_123`
-2. Backend DATABASE_URL: `postgresql://postgres:secure_password_123@postgres:5432/orthoandspinetools`
+1. PostgreSQL environment variable: `POSTGRES_PASSWORD` in `.env`
+2. Backend `DATABASE_URL`: `postgresql://postgres:${POSTGRES_PASSWORD}@postgres:5432/orthoandspinetools`
 
 ## Prevention Steps
 
@@ -40,8 +40,8 @@ If you must recreate containers, ensure:
 
 ### 4. Password Consistency
 Always ensure these match:
-- `docker-compose.prod.yml`: `POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-secure_password_123}`
-- Backend `DATABASE_URL` environment: `postgresql://postgres:secure_password_123@postgres:5432/orthoandspinetools`
+- `docker-compose.prod.yml`: `POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-change_me}`
+- Backend `DATABASE_URL` environment: uses `${POSTGRES_PASSWORD}` from `.env`
 
 ## Recovery Steps
 
@@ -64,7 +64,7 @@ docker exec orthoandspinetools-backend env | grep DATABASE_URL
 3. **Fix Password Mismatch**:
 If passwords don't match, update PostgreSQL:
 ```bash
-docker exec orthoandspinetools-postgres psql -U postgres -c "ALTER USER postgres WITH PASSWORD 'secure_password_123';"
+docker exec orthoandspinetools-postgres psql -U postgres -c "ALTER USER postgres WITH PASSWORD 'YOUR_NEW_PASSWORD_FROM_ENV';"
 ```
 
 4. **Restart Backend**:
@@ -81,7 +81,7 @@ curl -k -X POST https://orthoandspinetools.com/api/auth/login \
 
 ## Current Working State
 
-- ✅ **PostgreSQL**: Running with password `secure_password_123`
+- ✅ **PostgreSQL**: Running with password from `.env` (`POSTGRES_PASSWORD`)
 - ✅ **Backend**: Connected to database successfully
 - ✅ **Frontend**: Latest build (`index-BvALbCmE.js`) with PostAttachments fixes
 - ✅ **Nginx**: Routing correctly
