@@ -108,7 +108,7 @@ Never run `docker compose down -v` (deletes production DB volume).
 - **Post media (WIP)** — Re-test create-post upload if needed; existing posts display images OK
 - **Notifications** — Vote/mention/moderation triggers (v1 comment/reply shipped)
 
-**Live snapshot (Jun 14, 2026 night):** 3 posts, 4 users, 11 communities · smoke **31/31** · volume backups · post OG images · edit tags live
+**Live snapshot (Jul 25, 2026):** 5 posts, 6 users, 11 communities · smoke **31/31** · secrets rotated · volume backups · uptime monitoring · post OG images
 
 ---
 
@@ -184,7 +184,8 @@ docker compose -f docker-compose.prod.yml exec backend npm run backfill-case-pos
 | Docs scrubbed | Removed plaintext `secure_password_123` from `DATABASE_RECOVERY.md`, `DATABASE_MAINTENANCE.md`, `IMPORTANT_RESTART_INFO.md`, `database-ensure-connection.sh` |
 | Digest cron | Secret moved out of crontab → `scripts/digest-cron.sh` (loads `.env`); secret rotated |
 | Augmedics post | X2 headset post created under `drewalbertmd` (Spine · Tech + Medical Device) via `backend/scripts/createAugmedicsPost.js` |
-| Prod review (Jul 23–24) | All containers healthy; smoke **31/31**; backups current; SSL valid to Aug 15; secrets non-default |
+| Ortho & Spine Jobs post | Platform post under `drewalbertmd` (o/Tech · Tech tag) with mobile hero + compensation map images; links to the anonymous survey — `backend/scripts/createOrthoJobsPost.js` |
+| Prod review (Jul 23–25) | All containers healthy; smoke **31/31**; backups current; SSL valid to Aug 15; secrets non-default |
 
 ### **Session log (Jun 14, 2026 — night)**
 
@@ -228,6 +229,6 @@ docker compose -f docker-compose.prod.yml exec backend npm run backfill-case-pos
 
 ---
 
-**Last Updated:** Jul 24, 2026  
+**Last Updated:** Jul 25, 2026  
 **Status:** 🚀 Live — secrets rotated, volume backups, uptime monitoring, OG images; smoke 31/31  
 **You are here:** Content + tag cleanup; manual physician QA; Cloudflare R2 off-site backups
