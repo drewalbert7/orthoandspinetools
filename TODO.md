@@ -45,7 +45,8 @@
 - [x] **Secret rotation** — Rotated production `JWT_SECRET` + `POSTGRES_PASSWORD` off compose defaults; scrubbed plaintext DB password from tracked docs/scripts.
 - [x] **Digest cron hardening** — Moved `EMAIL_DIGEST_CRON_SECRET` out of crontab into `scripts/digest-cron.sh` (loads `.env`); rotated the secret.
 - [ ] **Amazon SES — follow-ups (deferred)** — SNS webhook + auto bounce/complaint suppression when mailing at scale; optional suppression Admin UI. **Sending works without this.**
-- [ ] **Security follow-ups** — Off-site backup copy (S3/rsync); fail startup on default secrets; enable upload virus scanning (ClamAV).
+- [ ] **Cloudflare off-site backups** — Copy daily DB dumps to Cloudflare R2 (or equivalent) so backups survive server loss; keep Hetzner volume as primary.
+- [ ] **Security follow-ups** — Fail startup on default secrets; enable upload virus scanning (ClamAV).
 - [x] **Google Search Console** — Domain verified; sitemap submitted (`/sitemap.xml`).
 - [ ] **Optional** — Rich Results Test on home + `/post/:id`; dedicated 1200×630 `og-share.png` for richer homepage/hub cards.
 
@@ -100,7 +101,7 @@ Never run `docker compose down -v` (deletes production DB volume).
 ### **3. Backlog**
 - **Scaling** — VPS RAM/disk upgrade before ~5k users; Redis for multi-replica rate limits; managed Postgres later
 - **Link previews** — Optional branded `og-share.png` (1200×630)
-- **Disk / ops** — Off-server backup copy (S3/rsync); root disk stays lean via volume backups + Docker log limits
+- **Disk / ops** — Cloudflare R2 off-site backup copy; root disk stays lean via volume backups + Docker log limits
 - **SEO** — Lighthouse / Rich Results; confirm `VITE_SITE_URL` / `PUBLIC_SITE_URL` in prod builds
 - **Admin** — SES suppression UI (with SNS webhook); email alert on intl. physician signup (optional)
 - **Content** — More real specialty posts; remove **Case** tag from non-case posts via edit
@@ -115,8 +116,9 @@ Never run `docker compose down -v` (deletes production DB volume).
 
 1. **Content** — More real specialty posts; clean up **Case** tags on product/tool posts
 2. **Manual QA** — Physician NPI signup, intl. pending queue, email verification
-3. **Scaling** — Off-server backup copy; CPX21 resize when ready
-4. **Optional** — `og-share.png` (1200×630) for homepage/hub link previews
+3. **Cloudflare backups** — Off-site DB dump copy to Cloudflare R2 (after daily Hetzner volume backup)
+4. **Scaling** — CPX21 resize when ready
+5. **Optional** — `og-share.png` (1200×630) for homepage/hub link previews
 
 **Deferred (not launch blockers):** SES SNS webhook for auto bounce/complaint suppression — see `docs/SES_AWS_SETUP.md` when digest/user volume grows.
 
@@ -228,4 +230,4 @@ docker compose -f docker-compose.prod.yml exec backend npm run backfill-case-pos
 
 **Last Updated:** Jul 24, 2026  
 **Status:** 🚀 Live — secrets rotated, volume backups, uptime monitoring, OG images; smoke 31/31  
-**You are here:** Content + tag cleanup; manual physician QA; off-site backups
+**You are here:** Content + tag cleanup; manual physician QA; Cloudflare R2 off-site backups
