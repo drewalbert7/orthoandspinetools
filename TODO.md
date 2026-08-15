@@ -108,7 +108,7 @@ Never run `docker compose down -v` (deletes production DB volume).
 - **Post media (WIP)** — Re-test create-post upload if needed; existing posts display images OK
 - **Notifications** — Vote/mention/moderation triggers (v1 comment/reply shipped)
 
-**Live snapshot (Jul 25, 2026):** 5 posts, 6 users, 11 communities · smoke **31/31** · secrets rotated · volume backups · uptime monitoring · post OG images
+**Live snapshot (Aug 15, 2026):** 6 posts, 6 users, 11 communities · smoke **31/31** · secrets rotated · volume backups · uptime monitoring · post OG images
 
 ---
 
@@ -185,6 +185,7 @@ docker compose -f docker-compose.prod.yml exec backend npm run backfill-case-pos
 | Digest cron | Secret moved out of crontab → `scripts/digest-cron.sh` (loads `.env`); secret rotated |
 | Augmedics post | X2 headset post created under `drewalbertmd` (Spine · Tech + Medical Device) via `backend/scripts/createAugmedicsPost.js` |
 | Ortho & Spine Jobs post | Platform post under `drewalbertmd` (o/Tech · Tech tag) with mobile hero + compensation map images; links to the anonymous survey — `backend/scripts/createOrthoJobsPost.js` |
+| Direct Care List post | Platform post under `drewalbertmd` (o/Tech · Tech tag) with site OG image — `backend/scripts/createDirectCareListPost.js` |
 | Prod review (Jul 23–25) | All containers healthy; smoke **31/31**; backups current; SSL valid to Aug 15; secrets non-default |
 
 ### **Session log (Jun 14, 2026 — night)**
@@ -229,6 +230,6 @@ docker compose -f docker-compose.prod.yml exec backend npm run backfill-case-pos
 
 ---
 
-**Last Updated:** Jul 25, 2026  
+**Last Updated:** Aug 15, 2026  
 **Status:** 🚀 Live — secrets rotated, volume backups, uptime monitoring, OG images; smoke 31/31  
 **You are here:** Content + tag cleanup; manual physician QA; Cloudflare R2 off-site backups
