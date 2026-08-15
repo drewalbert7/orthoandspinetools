@@ -1,6 +1,11 @@
 import React from 'react';
 import ReactMarkdown from 'react-markdown';
 import type { Components } from 'react-markdown';
+import remarkGfm from 'remark-gfm';
+import remarkBreaks from 'remark-breaks';
+
+// gfm autolinks bare URLs; breaks keeps single newlines from collapsing in typed posts.
+const remarkPlugins = [remarkGfm, remarkBreaks];
 
 export function safeMarkdownHref(href: string | undefined): string | undefined {
   if (!href) return undefined;
@@ -70,6 +75,16 @@ const markdownComponents: Components = {
   blockquote: ({ children }) => (
     <blockquote className="mb-2 border-l-4 border-gray-200 pl-3 text-gray-600 italic last:mb-0">{children}</blockquote>
   ),
+  del: ({ children }) => <del className="text-gray-500 line-through">{children}</del>,
+  table: ({ children }) => (
+    <div className="mb-2 overflow-x-auto last:mb-0">
+      <table className="w-full border-collapse text-left text-sm">{children}</table>
+    </div>
+  ),
+  th: ({ children }) => (
+    <th className="border border-gray-200 bg-gray-50 px-2 py-1 font-semibold text-gray-900">{children}</th>
+  ),
+  td: ({ children }) => <td className="border border-gray-200 px-2 py-1 align-top">{children}</td>,
   h1: ({ children }) => <h1 className="mb-2 text-xl font-bold last:mb-0">{children}</h1>,
   h2: ({ children }) => <h2 className="mb-2 text-lg font-bold last:mb-0">{children}</h2>,
   h3: ({ children }) => <h3 className="mb-2 text-base font-semibold last:mb-0">{children}</h3>,
@@ -100,7 +115,9 @@ const MarkdownContent: React.FC<MarkdownContentProps> = ({ children, className =
     <div
       className={`markdown-content w-full min-w-0 leading-relaxed ${clampClass} ${className}`.trim()}
     >
-      <ReactMarkdown components={markdownComponents}>{children}</ReactMarkdown>
+      <ReactMarkdown remarkPlugins={remarkPlugins} components={markdownComponents}>
+        {children}
+      </ReactMarkdown>
     </div>
   );
 };
