@@ -248,5 +248,5 @@ docker compose -f docker-compose.prod.yml exec backend npm run backfill-case-pos
 ---
 
 **Last Updated:** Aug 28, 2026  
-**Status:** 🚀 Live — MAUDE trends hub, secrets rotated, volume backups, uptime monitoring; smoke 31/31  
+**Status:** 🚀 Live — MAUDE brand synopsis + trends, secrets rotated, volume backups, uptime monitoring; smoke 31/31  
 **You are here:** Content + tag cleanup; manual physician QA; Cloudflare R2 off-site backups
