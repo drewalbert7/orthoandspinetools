@@ -52,7 +52,7 @@
 - [x] **Dark / light mode** — `ThemeProvider` (`ost-theme`); Light → Dark → System cycle in header; FOUC-safe boot; site-wide CSS surfaces; Profile Appearance.
 - [x] **MAUDE brand request** — `POST /api/maude/brand-request` + `MaudeBrandRequest` table; search UI “Don’t see it? Request we add it”.
 - [x] **Cloudflare R2 media** — Live: `MEDIA_PROVIDER=r2`, bucket `orthoandspinetools` on `4298f947…`, public `https://pub-c36d475ac3284cb2bfde3c1ae5d28ccf.r2.dev`. New uploads → R2 (off-server; scales without filling VPS disk); existing Cloudinary URLs still work. **No Cloudflare Images/Stream subscription required** for this path.
-- [~] **Cloudflare Images + Stream** — **Not needed** while on R2. Only revisit if we want CF-managed image transforms or video transcoding/player later.
+- [x] **Cloudflare Images + Stream** — **Skipped / not required** on the R2 path. Revisit only if we want CF-managed image transforms or video transcoding/player later.
 - [ ] **Cloudflare off-site backups** — Copy daily DB dumps to R2 (`backups/` prefix); keep Hetzner volume as primary.
 - [ ] **R2 production URL** — Optional custom domain (e.g. `media.orthoandspinetools.com`) instead of rate-limited `r2.dev`.
 - [ ] **Security follow-ups** — Fail startup on default secrets; enable upload virus scanning (ClamAV). Rotate Cloudflare API token that was pasted in chat.
