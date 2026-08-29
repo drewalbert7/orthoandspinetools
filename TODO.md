@@ -8,7 +8,7 @@
 | **OPS QUICK REFERENCE** | Database, SSL, Docker disk, scripts |
 | **Archive** | Full history → `CHANGELOG.md` |
 
-## 🔥 **NEXT UP — START HERE** (updated Jun 14, 2026 — end of night)
+## 🔥 **NEXT UP — START HERE** (updated Aug 28, 2026)
 
 ### **Pick up here (step-by-step)**
 
@@ -22,6 +22,7 @@
 | **6** | **SES SNS webhook** | ⏸️ **Deferred** — not a launch blocker; revisit when digest volume / user scale grows (`docs/SES_AWS_SETUP.md`) |
 | **7** | **Manual QA** | ⏳ Physician NPI signup, intl. pending queue, email verify |
 | **8** | **Content** | ⏳ More real specialty posts; fix tags on backfilled posts as needed |
+| **9** | **MAUDE brand synopsis** | ✅ Click brand → problem codes + recent FDA narrative excerpts (`/api/maude/synopsis`) |
 
 **Ongoing disk habit:** `./scripts/docker-disk-check.sh report` before `--no-cache` builds.
 
@@ -43,7 +44,7 @@
 - [x] **Daily DB backups** — `0 2 * * *` → Hetzner volume `106016238` at `/mnt/HC_Volume_106016238/orthoandspinetools-backups` (falls back to `backups/` if unmounted).
 - [x] **Feed query indexes** — `posts`, `comments`, `post_votes`, `post_tags` indexes for home/community/profile feeds.
 - [x] **Clickable links in posts** — `remark-gfm` autolinks bare URLs in post/comment bodies; `remark-breaks` preserves single newlines (applies everywhere `MarkdownContent` renders).
-- [x] **MAUDE implant trends** — Public `/maude` page: daily openFDA adverse-event chart; specialty toggles match communities; top-implant icon grid (click to filter chart).
+- [x] **MAUDE implant trends** — Public `/maude`: brand-ranked openFDA chart (multi-year); top-20 brand series; brand search autocomplete; trending by recent growth; click brand for problem synopsis + narrative excerpts; daily cache warm cron + optional `OPENFDA_API_KEY`.
 - [x] **Secret rotation** — Rotated production `JWT_SECRET` + `POSTGRES_PASSWORD` off compose defaults; scrubbed plaintext DB password from tracked docs/scripts.
 - [x] **Digest cron hardening** — Moved `EMAIL_DIGEST_CRON_SECRET` out of crontab into `scripts/digest-cron.sh` (loads `.env`); rotated the secret.
 - [ ] **Amazon SES — follow-ups (deferred)** — SNS webhook + auto bounce/complaint suppression when mailing at scale; optional suppression Admin UI. **Sending works without this.**
@@ -53,8 +54,8 @@
 - [ ] **Optional** — Rich Results Test on home + `/post/:id`; dedicated 1200×630 `og-share.png` for richer homepage/hub cards.
 
 ### **0. Deploy status — verify live**
-- [x] **https://orthoandspinetools.com** — home, hubs, sitemap, OG previews with post images, edit-post tags
-- [x] **Latest deploy (Jun 14 night)** — backend + frontend rebuilt; smoke **31/31**
+- [x] **https://orthoandspinetools.com** — home, hubs, sitemap, OG previews with post images, edit-post tags, `/maude`
+- [x] **Latest deploy (Aug 28)** — backend + frontend rebuilt; MAUDE brand synopsis live
 - [ ] After **every** frontend/nginx recreate: `--force-recreate nginx` if needed (stale upstream → 502)
 
 ### **1. Deploy (production server)**
@@ -110,7 +111,7 @@ Never run `docker compose down -v` (deletes production DB volume).
 - **Post media (WIP)** — Re-test create-post upload if needed; existing posts display images OK
 - **Notifications** — Vote/mention/moderation triggers (v1 comment/reply shipped)
 
-**Live snapshot (Aug 15, 2026):** 6 posts, 6 users, 11 communities · smoke **31/31** · secrets rotated · volume backups · uptime monitoring · post OG images
+**Live snapshot (Aug 28, 2026):** MAUDE brand synopsis + trending/search live · smoke **31/31** · secrets rotated · volume backups · uptime monitoring · post OG images
 
 ---
 
@@ -182,10 +183,13 @@ docker compose -f docker-compose.prod.yml exec backend npm run backfill-case-pos
 
 | Done | Detail |
 |------|--------|
-| MAUDE page | `/maude` hub with daily openFDA adverse-event chart + rising/falling badge |
+| MAUDE page | `/maude` hub with multi-year openFDA chart (daily/cumulative), zoom/pan, hover highlight |
 | Specialty filters | Toggles match communities (Spine, Hip & Knee, Sports, Trauma, etc.) |
-| Top implants | Icon grid of highest-report device names; click filters the chart |
-| Wiring | `GET /api/maude/trends`, sidebar link, sitemap + OG page, nginx route |
+| Top brands | Rank by `brand_name` (top 20); multi-line brand series; instruments/UNK filtered |
+| Search + trending | Live openFDA brand autocomplete; trending by recent vs prior growth |
+| Brand synopsis | Click brand → event mix, device/patient problems, recent narrative excerpts (`GET /api/maude/synopsis`) |
+| openFDA ops | `OPENFDA_API_KEY` wired; daily warm cron (`scripts/maude-warm-cron.sh`); `GET /api/maude/status` |
+| Wiring | `/api/maude/trends`, `/search`, `/synopsis`, `/warm`; sidebar + sitemap + OG |
 
 ### **Session log (Jul 2026 — security + review)**
 

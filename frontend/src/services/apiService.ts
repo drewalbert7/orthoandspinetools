@@ -318,6 +318,7 @@ export interface MedicalTool {
 
 export interface MaudeTrendData {
   series: Array<{ date: string; count: number }>;
+  cumulativeSeries?: Array<{ date: string; count: number }>;
   total: number;
   startDate: string;
   endDate: string;
@@ -328,12 +329,49 @@ export interface MaudeTrendData {
   lastUpdated: string | null;
   disclaimer: string;
   topDevices: MaudeTopDevice[];
+  selectedBrand?: string | null;
+  grain?: 'day' | 'month';
+  brandSeries?: MaudeBrandSeries[];
+  trendingBrands?: MaudeTrendingBrand[];
+  hasApiKey?: boolean;
+  fetchedAt?: string;
   trend: {
     recentAvg: number;
     priorAvg: number;
     changePct: number | null;
     direction: 'up' | 'down' | 'flat' | 'insufficient';
+    windowLabel?: string;
   };
+}
+
+export interface MaudeBrandSearchHit {
+  name: string;
+  shortLabel: string;
+  count: number;
+  icon: MaudeDeviceIcon;
+  match: 'exact' | 'prefix' | 'contains';
+}
+
+export interface MaudeBrandSeries {
+  name: string;
+  shortLabel: string;
+  count: number;
+  icon: MaudeDeviceIcon;
+  series: Array<{ date: string; count: number }>;
+  cumulativeSeries: Array<{ date: string; count: number }>;
+}
+
+export interface MaudeTrendingBrand {
+  name: string;
+  shortLabel: string;
+  count: number;
+  icon: MaudeDeviceIcon;
+  recentTotal: number;
+  priorTotal: number;
+  changePct: number;
+  direction: 'up' | 'down' | 'flat';
+  windowLabel: string;
+  isNew: boolean;
 }
 
 export type MaudeDeviceIcon =
@@ -354,6 +392,33 @@ export interface MaudeTopDevice {
   count: number;
   icon: MaudeDeviceIcon;
   shortLabel: string;
+  kind?: 'brand';
+}
+
+export interface MaudeCountTerm {
+  term: string;
+  count: number;
+}
+
+export interface MaudeBrandSynopsis {
+  brand: string;
+  label: string;
+  specialty: string;
+  startDate: string;
+  endDate: string;
+  totalReports: number;
+  summary: string;
+  eventTypes: MaudeCountTerm[];
+  deviceProblems: MaudeCountTerm[];
+  patientProblems: MaudeCountTerm[];
+  samples: Array<{
+    date: string;
+    eventType: string;
+    problems: string[];
+    excerpt: string;
+    reportNumber: string | null;
+  }>;
+  disclaimer: string;
 }
 
 export interface ToolReview {
@@ -1065,6 +1130,48 @@ class ApiService {
       return response.data;
     } catch (error: any) {
       throw new Error(error.response?.data?.message || 'Failed to fetch medical tool');
+    }
+  }
+
+  async searchMaudeBrands(params: {
+    q: string;
+    specialty?: string;
+    limit?: number;
+  }): Promise<MaudeBrandSearchHit[]> {
+    try {
+      const search = new URLSearchParams();
+      search.set('q', params.q);
+      if (params.specialty) search.set('specialty', params.specialty);
+      if (params.limit != null) search.set('limit', String(params.limit));
+      const response = await api.get(`/maude/search?${search.toString()}`);
+      const raw = response.data;
+      const data = raw?.data ?? raw;
+      const results = Array.isArray(data?.results) ? data.results : Array.isArray(data) ? data : [];
+      return results as MaudeBrandSearchHit[];
+    } catch (error: unknown) {
+      throw new Error(apiErrorMessage(error, 'Failed to search MAUDE brands'));
+    }
+  }
+
+  async getMaudeBrandSynopsis(params: {
+    brand: string;
+    specialty?: string;
+    days?: number;
+  }): Promise<MaudeBrandSynopsis> {
+    try {
+      const search = new URLSearchParams();
+      search.set('brand', params.brand);
+      if (params.specialty) search.set('specialty', params.specialty);
+      if (params.days != null) search.set('days', String(params.days));
+      const response = await api.get(`/maude/synopsis?${search.toString()}`);
+      const raw = response.data;
+      const data = raw?.data ?? raw;
+      if (!data?.summary || typeof data.brand !== 'string') {
+        throw new Error('Invalid MAUDE synopsis response');
+      }
+      return data as MaudeBrandSynopsis;
+    } catch (error: unknown) {
+      throw new Error(apiErrorMessage(error, 'Failed to fetch MAUDE brand synopsis'));
     }
   }
 

@@ -67,6 +67,9 @@ services:
       EMAIL_DIGEST_MAX_USERS_PER_RUN: ${EMAIL_DIGEST_MAX_USERS_PER_RUN:-200}
       EMAIL_DIGEST_MAX_POSTS_PER_EMAIL: ${EMAIL_DIGEST_MAX_POSTS_PER_EMAIL:-5}
       EMAIL_DIGEST_CRON_SECRET: ${EMAIL_DIGEST_CRON_SECRET:-}
+      # openFDA MAUDE trends (optional key raises rate limits; warm cron uses MAUDE_CRON_SECRET)
+      OPENFDA_API_KEY: ${OPENFDA_API_KEY:-}
+      MAUDE_CRON_SECRET: ${MAUDE_CRON_SECRET:-}
     depends_on:
       postgres:
         condition: service_healthy
