@@ -8,7 +8,7 @@
 | **OPS QUICK REFERENCE** | Database, SSL, Docker disk, scripts |
 | **Archive** | Full history → `CHANGELOG.md` |
 
-## 🔥 **NEXT UP — START HERE** (updated Aug 28, 2026)
+## 🔥 **NEXT UP — START HERE** (updated Aug 29, 2026)
 
 ### **Pick up here (step-by-step)**
 
@@ -23,6 +23,7 @@
 | **7** | **Manual QA** | ⏳ Physician NPI signup, intl. pending queue, email verify |
 | **8** | **Content** | ⏳ More real specialty posts; fix tags on backfilled posts as needed |
 | **9** | **MAUDE brand synopsis** | ✅ Click brand → problem codes + recent FDA narrative excerpts (`/api/maude/synopsis`) |
+| **10** | **MAUDE coverage gaps** | ✅ Device—Company titles; Unknown-specialty implants (discs, Superion, INFUSE, mobile-bearing knees) |
 
 **Ongoing disk habit:** `./scripts/docker-disk-check.sh report` before `--no-cache` builds.
 
@@ -44,7 +45,7 @@
 - [x] **Daily DB backups** — `0 2 * * *` → Hetzner volume `106016238` at `/mnt/HC_Volume_106016238/orthoandspinetools-backups` (falls back to `backups/` if unmounted).
 - [x] **Feed query indexes** — `posts`, `comments`, `post_votes`, `post_tags` indexes for home/community/profile feeds.
 - [x] **Clickable links in posts** — `remark-gfm` autolinks bare URLs in post/comment bodies; `remark-breaks` preserves single newlines (applies everywhere `MarkdownContent` renders).
-- [x] **MAUDE implant trends** — Public `/maude`: brand-ranked openFDA chart (multi-year); top-20 brand series; brand search autocomplete; trending by recent growth; click brand for problem synopsis + narrative excerpts; daily cache warm cron + optional `OPENFDA_API_KEY`.
+- [x] **MAUDE implant trends** — Public `/maude`: brand-ranked openFDA chart; Device—Company titles; brand search/trending/synopsis; Unknown-specialty coverage (cervical discs, Superion, INFUSE, mobile-bearing/UKA knees); SKU rollups; daily warm cron + `OPENFDA_API_KEY`.
 - [x] **Secret rotation** — Rotated production `JWT_SECRET` + `POSTGRES_PASSWORD` off compose defaults; scrubbed plaintext DB password from tracked docs/scripts.
 - [x] **Digest cron hardening** — Moved `EMAIL_DIGEST_CRON_SECRET` out of crontab into `scripts/digest-cron.sh` (loads `.env`); rotated the secret.
 - [ ] **Amazon SES — follow-ups (deferred)** — SNS webhook + auto bounce/complaint suppression when mailing at scale; optional suppression Admin UI. **Sending works without this.**
@@ -55,7 +56,7 @@
 
 ### **0. Deploy status — verify live**
 - [x] **https://orthoandspinetools.com** — home, hubs, sitemap, OG previews with post images, edit-post tags, `/maude`
-- [x] **Latest deploy (Aug 28)** — backend + frontend rebuilt; MAUDE brand synopsis live
+- [x] **Latest deploy (Aug 29)** — MAUDE brand titles + disc/Superion/INFUSE/ATTUNE coverage live
 - [ ] After **every** frontend/nginx recreate: `--force-recreate nginx` if needed (stale upstream → 502)
 
 ### **1. Deploy (production server)**
@@ -111,7 +112,7 @@ Never run `docker compose down -v` (deletes production DB volume).
 - **Post media (WIP)** — Re-test create-post upload if needed; existing posts display images OK
 - **Notifications** — Vote/mention/moderation triggers (v1 comment/reply shipped)
 
-**Live snapshot (Aug 28, 2026):** MAUDE brand synopsis + trending/search live · smoke **31/31** · secrets rotated · volume backups · uptime monitoring · post OG images
+**Live snapshot (Aug 29, 2026):** MAUDE Device—Company titles + disc/Superion/INFUSE/ATTUNE coverage · smoke **31/31** · secrets rotated · volume backups · uptime monitoring · post OG images
 
 ---
 
@@ -179,15 +180,17 @@ docker compose -f docker-compose.prod.yml exec backend npm run backfill-case-pos
 - **Database recovery:** `docs/DATABASE_MAINTENANCE.md`, `docs/DATABASE_RECOVERY.md`
 - **Production scaling:** `docs/PRODUCTION_SCALING.md`
 
-### **Session log (Aug 28, 2026 — MAUDE trends)**
+### **Session log (Aug 28–29, 2026 — MAUDE trends)**
 
 | Done | Detail |
 |------|--------|
 | MAUDE page | `/maude` hub with multi-year openFDA chart (daily/cumulative), zoom/pan, hover highlight |
 | Specialty filters | Toggles match communities (Spine, Hip & Knee, Sports, Trauma, etc.) |
-| Top brands | Rank by `brand_name` (top 20); multi-line brand series; instruments/UNK filtered |
+| Top brands | Rank by `brand_name` (top 20); Device—Company titles; instruments/UNK/company-as-brand filtered |
 | Search + trending | Live openFDA brand autocomplete; trending by recent vs prior growth |
 | Brand synopsis | Click brand → event mix, device/patient problems, recent narrative excerpts (`GET /api/maude/synopsis`) |
+| Coverage gaps | OR Unknown-specialty classes: disc arthroplasty, spinous spacers (Superion), INFUSE/rhBMP, mobile-bearing + UKA knees; spine keywords for SI/kypho |
+| SKU rollups | Mobi-C, prodisc C/L, M6-C, Simplify, Superion, INFUSE, ATTUNE, iFuse → one commercial product |
 | openFDA ops | `OPENFDA_API_KEY` wired; daily warm cron (`scripts/maude-warm-cron.sh`); `GET /api/maude/status` |
 | Wiring | `/api/maude/trends`, `/search`, `/synopsis`, `/warm`; sidebar + sitemap + OG |
 

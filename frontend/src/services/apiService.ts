@@ -347,6 +347,7 @@ export interface MaudeTrendData {
 export interface MaudeBrandSearchHit {
   name: string;
   shortLabel: string;
+  company?: string | null;
   count: number;
   icon: MaudeDeviceIcon;
   match: 'exact' | 'prefix' | 'contains';
@@ -355,6 +356,7 @@ export interface MaudeBrandSearchHit {
 export interface MaudeBrandSeries {
   name: string;
   shortLabel: string;
+  company?: string | null;
   count: number;
   icon: MaudeDeviceIcon;
   series: Array<{ date: string; count: number }>;
@@ -364,6 +366,7 @@ export interface MaudeBrandSeries {
 export interface MaudeTrendingBrand {
   name: string;
   shortLabel: string;
+  company?: string | null;
   count: number;
   icon: MaudeDeviceIcon;
   recentTotal: number;
@@ -392,6 +395,7 @@ export interface MaudeTopDevice {
   count: number;
   icon: MaudeDeviceIcon;
   shortLabel: string;
+  company?: string | null;
   kind?: 'brand';
 }
 
@@ -402,6 +406,9 @@ export interface MaudeCountTerm {
 
 export interface MaudeBrandSynopsis {
   brand: string;
+  shortLabel?: string;
+  company?: string | null;
+  displayTitle?: string;
   label: string;
   specialty: string;
   startDate: string;

@@ -10,7 +10,10 @@ export type MaudeTopDevice = {
   name: string;
   count: number;
   icon: MaudeDeviceIcon;
+  /** Cleaned product / system name for display. */
   shortLabel: string;
+  /** Parent company when known (curated or manufacturer roll-up). */
+  company: string | null;
   /** Always brand for the top-implants strip. */
   kind: 'brand';
 };
@@ -70,6 +73,7 @@ export type MaudeTrendResult = {
 export type MaudeBrandSeries = {
   name: string;
   shortLabel: string;
+  company: string | null;
   count: number;
   icon: MaudeDeviceIcon;
   series: MaudeDailyPoint[];
@@ -80,6 +84,7 @@ export type MaudeBrandSeries = {
 export type MaudeTrendingBrand = {
   name: string;
   shortLabel: string;
+  company: string | null;
   count: number;
   icon: MaudeDeviceIcon;
   recentTotal: number;
@@ -133,6 +138,22 @@ const TOP_BRAND_LIMIT = 20;
 const ORTHO = 'device.openfda.medical_specialty_description:"Orthopedic"';
 
 /**
+ * Several high-volume ortho/spine implant classes are tagged specialty "Unknown"
+ * in openFDA (not Orthopedic). OR them in explicitly or they vanish from rankings.
+ */
+const DISC_ARTHROPLASTY = 'device.openfda.device_name:"Prosthesis, Intervertebral Disc"';
+const SPINOUS_SPACER = 'device.openfda.device_name:"Prosthesis, Spinous Process Spacer/Plate"';
+const MOBILE_BEARING_KNEE =
+  'device.openfda.device_name:"Prosthesis, Knee, Patellofemorotibial, Semi-Constrained, Metal/Polymer, Mobile Bearing"';
+const UKA_MOBILE_BEARING =
+  'device.openfda.device_name:"Prosthesis, Knee, Femorotibial, Unicompartmental, Semi-Constrained, Metal/Polymer, Mobile Bearing"';
+const RHBMP_FILLER =
+  'device.openfda.device_name:"Filler, Recombinant Human Bone Morphogenetic Protein, Collagen Scaffold With Metal Prosthesis, Osteoinduction" OR device.openfda.device_name:"Filler, Recombinant Human Bone Morphogenetic Protein, Collagen Scaffold, Osteoinduction"';
+
+/** Unknown-specialty implant classes that still belong in All Orthopedic. */
+const ORTHO_UNKNOWN_IMPLANTS = `(${DISC_ARTHROPLASTY} OR ${SPINOUS_SPACER} OR ${MOBILE_BEARING_KNEE} OR ${UKA_MOBILE_BEARING} OR ${RHBMP_FILLER})`;
+
+/**
  * Subspecialty filters aligned with OrthoAndSpineTools community slugs.
  * openFDA only tags "Orthopedic" as specialty, so each filter is keyword-scoped.
  */
@@ -143,17 +164,17 @@ export const MAUDE_SPECIALTIES: Record<
   all: {
     label: 'All Orthopedic',
     communitySlug: null,
-    searchClause: ORTHO,
+    searchClause: `(${ORTHO} OR ${ORTHO_UNKNOWN_IMPLANTS})`,
   },
   spine: {
     label: 'Spine',
     communitySlug: 'spine',
-    searchClause: `${ORTHO} AND (device.openfda.device_name:spinal OR device.openfda.device_name:intervertebral OR device.openfda.device_name:pedicle OR device.openfda.device_name:vertebral OR device.brand_name:HORIZON)`,
+    searchClause: `((${ORTHO} AND (device.openfda.device_name:spinal OR device.openfda.device_name:intervertebral OR device.openfda.device_name:pedicle OR device.openfda.device_name:vertebral OR device.openfda.device_name:cervical OR device.openfda.device_name:sacro OR device.openfda.device_name:spinous OR device.openfda.device_name:kypho OR device.openfda.device_name:vertebro OR device.brand_name:HORIZON OR device.brand_name:INFUSE OR device.brand_name:IFUSE OR device.brand_name:iFuse)) OR ${DISC_ARTHROPLASTY} OR ${SPINOUS_SPACER} OR ${RHBMP_FILLER})`,
   },
   'hip-knee-arthroplasty': {
     label: 'Hip & Knee Arthroplasty',
     communitySlug: 'hip-knee-arthroplasty',
-    searchClause: `${ORTHO} AND (device.openfda.device_name:hip OR device.openfda.device_name:knee OR device.openfda.device_name:patellofemorotibial OR device.openfda.device_name:acetabular OR device.openfda.device_name:femoral)`,
+    searchClause: `((${ORTHO} AND (device.openfda.device_name:hip OR device.openfda.device_name:knee OR device.openfda.device_name:patellofemorotibial OR device.openfda.device_name:acetabular OR device.openfda.device_name:femoral OR device.openfda.device_name:unicompartmental)) OR ${MOBILE_BEARING_KNEE} OR ${UKA_MOBILE_BEARING})`,
   },
   'shoulder-elbow': {
     label: 'Shoulder Elbow',
@@ -193,7 +214,7 @@ export const MAUDE_SPECIALTIES: Record<
   biologics: {
     label: 'Biologics',
     communitySlug: 'biologics',
-    searchClause: `${ORTHO} AND (device.openfda.device_name:graft OR device.openfda.device_name:"bone void" OR device.openfda.device_name:demineralized OR device.openfda.device_name:filler OR device.openfda.device_name:bmp OR device.openfda.device_name:allograft)`,
+    searchClause: `((${ORTHO} AND (device.openfda.device_name:graft OR device.openfda.device_name:"bone void" OR device.openfda.device_name:demineralized OR device.openfda.device_name:filler OR device.openfda.device_name:bmp OR device.openfda.device_name:allograft OR device.brand_name:INFUSE)) OR ${RHBMP_FILLER})`,
   },
 };
 
@@ -201,7 +222,348 @@ export const MAUDE_SPECIALTIES: Record<
 export const MAUDE_PRESETS = MAUDE_SPECIALTIES;
 
 const INSTRUMENT_NOISE =
-  /\b(instrument|template|impactor|impaction|introducer|extractor|screwdriver|driver|reamer|drill|osteotome|forceps|retractor|saw|mallet|holder|handle|guidewire|trocar|trial|provisional|shim|pad|jig|gde)\b/i;
+  /\b(instrument|template|impactor|impaction|introducer|inserter|extractor|screwdriver|driver|reamer|drill|osteotome|forceps|retractor|saw|mallet|holder|handle|guidewire|trocar|trial|provisional|shim|pad|jig|gde|spatula|mixing bowl|disposable)\b/i;
+
+/** Manufacturer / company names wrongly filed as brand_name. */
+const COMPANY_AS_BRAND =
+  /^(djo(\s+surgical)?|enovis|stryker(\s+(corporation|orthopaedics?))?|zimmer(\s+biomet)?|biomet|depuy(\s+synthes)?|synthes|johnson\s*&\s*johnson|j&j|medtronic|smith\s*(&|and)\s*nephew|arthrex|globus(\s+medical)?|nuvasive|exactech|wright(\s+medical)?|microport|lima(\s*corporate)?|conmed|orthofix|aesculap|b\.?\s*braun)$/i;
+
+/**
+ * Well-known implant families → parent company (FDA manufacturer rows are often subsidiaries).
+ * Order matters: more specific patterns first.
+ */
+const BRAND_FAMILY_COMPANY: Array<{ test: RegExp; company: string }> = [
+  { test: /^cd\s*horizon/i, company: 'Medtronic' },
+  { test: /\bmetrx\b/i, company: 'Medtronic' },
+  { test: /^prestige(\s+cervical|\s+disc)/i, company: 'Medtronic' },
+  { test: /^superion\b|^vertiflex\b/i, company: 'Boston Scientific' },
+  { test: /^coflex\b/i, company: 'Presidio Surgical' },
+  { test: /^infuse\b/i, company: 'Medtronic' },
+  { test: /^ifuse\b|^i-?fuse\b/i, company: 'SI-BONE' },
+  { test: /^attune/i, company: 'DePuy Synthes' },
+  { test: /^expedium/i, company: 'DePuy Synthes' },
+  { test: /^viper/i, company: 'DePuy Synthes' },
+  { test: /^pinnacle/i, company: 'DePuy Synthes' },
+  { test: /^corail/i, company: 'DePuy Synthes' },
+  { test: /^inhance/i, company: 'DePuy Synthes' },
+  { test: /^orthocord|^truespan/i, company: 'DePuy Synthes' },
+  { test: /\bmitek\b/i, company: 'DePuy Synthes' },
+  { test: /^triathlon/i, company: 'Stryker' },
+  { test: /^tritanium/i, company: 'Stryker' },
+  { test: /^t2\b|^t2\s/i, company: 'Stryker' },
+  { test: /^xia\b/i, company: 'Stryker' },
+  { test: /^acre?e?a?d?\b|^acreo/i, company: 'Stryker' },
+  { test: /^persona\b|^nexgen|^taperloc|^g7\b|^emphasys|^comprehensive\b/i, company: 'Zimmer Biomet' },
+  { test: /^mobi-?c\b/i, company: 'Zimmer Biomet' },
+  { test: /^creo\b/i, company: 'Globus Medical' },
+  { test: /^secure-?c\b/i, company: 'Globus Medical' },
+  { test: /^reline|^catalyft|^nuvasive|^simplify\b/i, company: 'NuVasive' },
+  { test: /^prodisc/i, company: 'Centinel Spine' },
+  { test: /^m6-?c\b|^m6\s+cervical/i, company: 'Orthofix' },
+  { test: /^fiber(wire|tak)|^tightrope|^swivelock|^healix|^bipush|^pushlock/i, company: 'Arthrex' },
+  { test: /^quickset/i, company: 'Graftys' },
+  { test: /^gmk\b|sphere total knee/i, company: 'Medacta' },
+  { test: /^biolox/i, company: 'CeramTec' },
+  { test: /^eleos/i, company: 'Onkos Surgical' },
+  { test: /^sign\b/i, company: 'SIGN Fracture Care' },
+  { test: /^aequalis|^tornier/i, company: 'Stryker' },
+  { test: /^equinoxe/i, company: 'Exactech' },
+  { test: /^alti[yv]|reverse shoulder/i, company: 'Zimmer Biomet' },
+];
+
+/**
+ * Collapse FDA size/SKU brand_name variants into one commercial product for ranking.
+ * `filterName` is what we send back to openFDA brand search.
+ */
+const BRAND_ROLLUPS: Array<{ test: RegExp; filterName: string; displayName: string; company: string }> = [
+  {
+    test: /^mobi-?c\b/i,
+    filterName: 'MOBI-C',
+    displayName: 'Mobi-C Cervical Disc',
+    company: 'Zimmer Biomet',
+  },
+  {
+    test: /^prodisc\s*c\b/i,
+    filterName: 'PRODISC C',
+    displayName: 'prodisc C',
+    company: 'Centinel Spine',
+  },
+  {
+    test: /^prodisc\s*l\b/i,
+    filterName: 'PRODISC L',
+    displayName: 'prodisc L',
+    company: 'Centinel Spine',
+  },
+  {
+    test: /^simplify\b/i,
+    filterName: 'SIMPLIFY',
+    displayName: 'Simplify Cervical Artificial Disc',
+    company: 'NuVasive',
+  },
+  {
+    test: /^m6-?c\b|^m6\s+cervical/i,
+    filterName: 'M6-C',
+    displayName: 'M6-C Artificial Cervical Disc',
+    company: 'Orthofix',
+  },
+  {
+    test: /^secure-?c\b/i,
+    filterName: 'SECURE-C',
+    displayName: 'SECURE-C Cervical Artificial Disc',
+    company: 'Globus Medical',
+  },
+  {
+    test: /^prestige(\s+cervical|\s+disc|\s*®?\s*cervical)/i,
+    filterName: 'PRESTIGE CERVICAL',
+    displayName: 'PRESTIGE Cervical Disc',
+    company: 'Medtronic',
+  },
+  {
+    test: /^superion\b|^vertiflex\b/i,
+    filterName: 'SUPERION',
+    displayName: 'Superion Indirect Decompression System',
+    company: 'Boston Scientific',
+  },
+  {
+    test: /^coflex\b/i,
+    filterName: 'COFLEX',
+    displayName: 'coflex Interlaminar Technology',
+    company: 'Presidio Surgical',
+  },
+  {
+    test: /^infuse\b/i,
+    filterName: 'INFUSE',
+    displayName: 'INFUSE Bone Graft',
+    company: 'Medtronic',
+  },
+  {
+    test: /^ifuse\b|^i-?fuse\b|^si[\s-]?bone\b/i,
+    filterName: 'IFUSE',
+    displayName: 'iFuse Implant System',
+    company: 'SI-BONE',
+  },
+  {
+    test: /^attune\b/i,
+    filterName: 'ATTUNE',
+    displayName: 'ATTUNE Knee System',
+    company: 'DePuy Synthes',
+  },
+];
+
+function resolveBrandRollup(name: string): {
+  filterName: string;
+  displayName: string;
+  company: string;
+} | null {
+  const cleaned = sanitizeBrandForSearch(name);
+  for (const row of BRAND_ROLLUPS) {
+    if (row.test.test(cleaned)) {
+      return { filterName: row.filterName, displayName: row.displayName, company: row.company };
+    }
+  }
+  return null;
+}
+
+const TITLE_ACRONYMS = new Set([
+  'CD',
+  'II',
+  'III',
+  'IV',
+  'TLIF',
+  'PLIF',
+  'ALIF',
+  'XLIF',
+  'OLIF',
+  'ACDF',
+  'RT',
+  'LT',
+  'PL',
+  'T2',
+  'G7',
+  'GMK',
+  'DJO',
+  'CMS',
+  'IM',
+  'UKA',
+  'TKA',
+  'THA',
+  'RSA',
+  'DBM',
+  'BMP',
+  'PEEK',
+  'UHMWPE',
+  'SET',
+  'SIGN',
+  'KL',
+]);
+
+function smartTitleCase(input: string): string {
+  return input
+    .split(' ')
+    .map((word) => {
+      if (!word) return word;
+      const bare = word.replace(/[^A-Za-z0-9]/g, '');
+      const upper = bare.toUpperCase();
+      if (TITLE_ACRONYMS.has(upper)) {
+        return word.replace(bare, upper);
+      }
+      // Keep catalog / size tokens (5.5/6.0, KL, C-MNT)
+      if (/[0-9]/.test(word)) return word;
+      if (word === word.toUpperCase() && bare.length > 1) {
+        return word.charAt(0) + word.slice(1).toLowerCase();
+      }
+      if (word === word.toLowerCase() && bare.length > 1) {
+        return word.charAt(0).toUpperCase() + word.slice(1);
+      }
+      return word;
+    })
+    .join(' ')
+    .replace(/\bCd\b/g, 'CD')
+    .replace(/\bIi\b/g, 'II')
+    .replace(/\bIii\b/g, 'III')
+    .replace(/\bNuvasive\b/g, 'NuVasive')
+    .replace(/\bDepuy\b/g, 'DePuy')
+    .replace(/\bModulex\b/g, 'ModuleX')
+    .replace(/\bMetrx\b/g, 'METRx')
+    .replace(/\bFibertak\b/g, 'FiberTak')
+    .replace(/\bTightrope\b/g, 'TightRope')
+    .replace(/\bOrthocord\b/g, 'OrthoCord')
+    .replace(/\bTruespan\b/g, 'TrueSpan')
+    .replace(/\bBiolox\b/g, 'BIOLOX');
+}
+
+export function shortDeviceLabel(name: string): string {
+  let cleaned = name
+    .replace(/[®™©¿�]+/g, '')
+    .replace(/[_]+/g, ' ')
+    .replace(/\s+/g, ' ')
+    .replace(/^\s*[-–—:]+\s*/, '')
+    .trim();
+
+  cleaned = cleaned
+    .replace(/, Semi-Constrained.*$/i, '')
+    .replace(/, Cemented.*$/i, '')
+    .replace(/, Uncemented.*$/i, '')
+    .replace(/, Porous.*$/i, '')
+    .replace(/ And Accessories$/i, '')
+    .replace(/\s+System System$/i, ' System')
+    .trim();
+
+  cleaned = smartTitleCase(cleaned);
+
+  // Prefer readable product names over catalog dumps
+  if (cleaned.length <= 56) return cleaned;
+  return `${cleaned.slice(0, 55).trim()}…`;
+}
+
+/** Display title: "Device — Company" when company is known. */
+export function formatBrandTitle(name: string, company?: string | null): string {
+  const product = shortDeviceLabel(name);
+  if (!company) return product;
+  const companyLower = company.toLowerCase();
+  if (product.toLowerCase().includes(companyLower.split(/[\/+]/)[0].trim())) {
+    return product;
+  }
+  return `${product} — ${company}`;
+}
+
+export function resolveCompanyFromBrandName(brand: string): string | null {
+  const cleaned = sanitizeBrandForSearch(brand);
+  for (const row of BRAND_FAMILY_COMPANY) {
+    if (row.test.test(cleaned)) return row.company;
+  }
+  return null;
+}
+
+export function normalizeManufacturerName(raw: string): string | null {
+  const t = raw.replace(/\s+/g, ' ').trim();
+  if (!t || /^(unk|unknown|n\/?a|none|not (available|reported|provided))/i.test(t)) return null;
+
+  const n = t.toUpperCase();
+  if (/MEDOS|DEPUY|SYNTHES|JOHNSON\s*&\s*JOHNSON|\bJ&J\b|ETHICON|\bMITEK\b/.test(n)) {
+    return 'DePuy Synthes';
+  }
+  if (/MEDTRONIC|WARSAW ORTHOPEDIC|SOFAMOR|DANETEK|KYPHON|\bMSD\b|DEGGENDORF/.test(n)) {
+    return 'Medtronic';
+  }
+  if (/STRYKER|HOWMEDICA|MAKO|TORNIER/.test(n)) return 'Stryker';
+  if (/ZIMMER|BIOMET/.test(n)) return 'Zimmer Biomet';
+  if (/SMITH\s*&?\s*NEPHEW|SMITH AND NEPHEW/.test(n)) return 'Smith+Nephew';
+  if (/ARTHREX/.test(n)) return 'Arthrex';
+  if (/NUVASIVE/.test(n)) return 'NuVasive';
+  if (/GLOBUS/.test(n)) return 'Globus Medical';
+  if (/EXACTECH/.test(n)) return 'Exactech';
+  if (/WRIGHT|MICROPORT/.test(n)) return 'Wright / MicroPort';
+  if (/CONMED|LINVATEC/.test(n)) return 'CONMED';
+  if (/ORTHOFIX|SEA\s*SPINE|SEASPINE/.test(n)) return 'Orthofix';
+  if (/AESCULAP|B\.?\s*BRAUN/.test(n)) return 'Aesculap';
+  if (/MEDACTA/.test(n)) return 'Medacta';
+  if (/DJO|ENCORE|ENOVIS/.test(n)) return 'DJO / Enovis';
+  if (/ONKOS/.test(n)) return 'Onkos Surgical';
+  if (/CERAMTEC|BIOLOX/.test(n)) return 'CeramTec';
+  if (/SIGN\b/.test(n)) return 'SIGN Fracture Care';
+  if (/CORIN/.test(n)) return 'Corin';
+  if (/LIMA/.test(n)) return 'LimaCorporate';
+
+  // Strip legal suffixes for a readable company line
+  const stripped = t
+    .replace(/,?\s*(INC\.?|LLC\.?|LTD\.?|LTD|CORP\.?|CORPORATION|CO\.|GMBH|S\.?A\.?R\.?L\.?|AG|PLC)\s*$/i, '')
+    .trim();
+  if (stripped.length < 2 || stripped.length > 48) return null;
+  return smartTitleCase(stripped);
+}
+
+const manufacturerByBrandCache = new Map<string, { expiresAt: number; value: string | null }>();
+
+async function lookupManufacturerCompany(brand: string, baseSearch: string): Promise<string | null> {
+  const curated = resolveCompanyFromBrandName(brand);
+  if (curated) return curated;
+
+  const cacheKey = sanitizeBrandForSearch(brand).toLowerCase();
+  const cached = manufacturerByBrandCache.get(cacheKey);
+  if (cached && cached.expiresAt > Date.now()) return cached.value;
+
+  const safe = sanitizeBrandForSearch(brand);
+  if (!safe) {
+    manufacturerByBrandCache.set(cacheKey, { expiresAt: Date.now() + CACHE_TTL_MS, value: null });
+    return null;
+  }
+
+  const search = `${baseSearch} AND device.brand_name:"${safe}"`;
+  const { status, json } = await openFdaGet(search, {
+    count: 'device.manufacturer_d_name.exact',
+    limit: '5',
+  });
+
+  let company: string | null = null;
+  if (status < 400 && !json.error) {
+    for (const row of json.results || []) {
+      const term = typeof row.term === 'string' ? row.term : '';
+      company = normalizeManufacturerName(term);
+      if (company) break;
+    }
+  }
+
+  manufacturerByBrandCache.set(cacheKey, { expiresAt: Date.now() + CACHE_TTL_MS, value: company });
+  return company;
+}
+
+async function enrichBrandDevices(
+  devices: MaudeTopDevice[],
+  baseSearch: string
+): Promise<MaudeTopDevice[]> {
+  return mapPool(devices, 4, async (device) => {
+    const company =
+      device.company || (await lookupManufacturerCompany(device.name, baseSearch));
+    return {
+      ...device,
+      company,
+      // Keep curated rollup display names (e.g. "Mobi-C Cervical Disc").
+      shortLabel: device.shortLabel || shortDeviceLabel(device.name),
+      icon: device.icon || classifyDeviceIcon(device.name),
+    };
+  });
+}
 
 function formatYmdCompact(d: Date): string {
   const y = d.getUTCFullYear();
@@ -309,6 +671,7 @@ function computeTrendingBrands(
     scored.push({
       name: brand.name,
       shortLabel: brand.shortLabel,
+      company: brand.company,
       count: brand.count,
       icon: brand.icon,
       recentTotal,
@@ -337,7 +700,9 @@ export function classifyDeviceIcon(name: string): MaudeDeviceIcon {
   if (/\battune\b|\bpersona\b|\btriathlon\b|\boxinium\b|\bvanguard\b|\bstabilized\b/.test(n)) return 'knee';
   if (/\bpinnacle\b|\bcorail\b|\bactis\b|\bemphasys\b|\bs-rom\b|\bg7\b|\bactis\b|\bpolarcup\b/.test(n)) return 'hip';
   if (/\binhance\b|\balti\b|\bequate\b|\breverse\b/.test(n) && !/\bhip\b|\bknee\b/.test(n)) return 'shoulder';
-  if (/\bhorizon\b|\bviper\b|\bexpedium\b|\bxia\b|\bsolera\b|\bmesal\b|\btlif\b|\bspinal\b/.test(n)) return 'spine';
+  if (/\bhorizon\b|\bviper\b|\bexpedium\b|\bxia\b|\bsolera\b|\bmesal\b|\btlif\b|\bspinal\b|\bcervical\b|\bdisc\b|\bmobi-?c\b|\bprodisc\b|\bsimplify\b|\bm6-?c\b|\bsecure-?c\b|\bsuperion\b|\bcoflex\b|\bifuse\b|\binfuse\b/.test(n)) {
+    return 'spine';
+  }
   if (/\btruespan\b|\borthocord\b|\btightrope\b|\bfiberwire\b|\bhealix\b|\bsuture\b/.test(n)) return 'anchor';
   if (/\bquickset\b|\bbonesource\b|\bdbx\b|\baugment\b|\bgraft\b/.test(n)) return 'graft';
 
@@ -354,27 +719,11 @@ export function classifyDeviceIcon(name: string): MaudeDeviceIcon {
   return 'generic';
 }
 
-export function shortDeviceLabel(name: string): string {
-  const cleaned = name
-    .replace(/\s+/g, ' ')
-    .replace(/®/g, '')
-    .replace(/™/g, '')
-    .replace(/¿/g, '')
-    .replace(/©/g, '')
-    .replace(/, Semi-Constrained.*$/i, '')
-    .replace(/, Cemented.*$/i, '')
-    .replace(/, Porous.*$/i, '')
-    .replace(/ And Accessories$/i, '')
-    .trim();
-  if (cleaned.length <= 48) return cleaned;
-  return `${cleaned.slice(0, 47).trim()}…`;
-}
-
 /** openFDA rejects queries containing ® / ¿ / similar symbols in brand_name. */
 function sanitizeBrandForSearch(brand: string): string {
   return brand
     .replace(/["\\]/g, '')
-    .replace(/[®™©¿]+/g, '')
+    .replace(/[®™©¿�]+/g, '')
     .replace(/\s+/g, ' ')
     .trim();
 }
@@ -390,10 +739,17 @@ function isUsableBrand(name: string): boolean {
   if (t.length < 2 || t.length > 120) return false;
   if (JUNK_BRAND.test(t)) return false;
   // Reporter placeholders like "UNK - SCREWS: CMF"
-  if (/^unk(\b|[-\s])/i.test(t)) return false;
-  if (/^unknown(\b|[-\s])/i.test(t)) return false;
+  if (/^unk(\b|[-\s_])/i.test(t)) return false;
+  if (/^unknown(\b|[-\s_])/i.test(t)) return false;
   if (/^n\/?a(\b|[-\s])/i.test(t)) return false;
   if (JUNK_BRAND_PHRASE.test(t)) return false;
+  if (COMPANY_AS_BRAND.test(sanitizeBrandForSearch(t))) return false;
+  // Catalog / collector noise, components without a commercial system name
+  if (/^collect\./i.test(t)) return false;
+  if (/^(closure top|single-inner setscrew|setscrew)$/i.test(t)) return false;
+  if (/^(suture|anchor|screw|plate|rod|nail|wire|pin)$/i.test(t)) return false;
+  // SKU-like rows: "4K C-MNT SCP,4.0,30,167,MITEK"
+  if (/^\d/.test(t) && (t.match(/,/g) || []).length >= 2) return false;
   // Instruments / tools are not implant brands
   if (INSTRUMENT_NOISE.test(t)) return false;
   if (/^[\d\W_]+$/.test(t)) return false;
@@ -519,7 +875,7 @@ function buildSearch(params: {
     if (safe.length >= 2) {
       // Phrase match after stripping ®/¿ — exact fails when FDA stored the symbol.
       clauses.push(`device.brand_name:"${safe}"`);
-      labelParts.push(shortDeviceLabel(brand));
+      labelParts.push(formatBrandTitle(brand, resolveCompanyFromBrandName(brand)));
     }
   }
 
@@ -631,7 +987,8 @@ async function fetchOpenFdaDailyCounts(search: string): Promise<{
 async function fetchTopBrands(search: string, limit = TOP_BRAND_LIMIT): Promise<MaudeTopDevice[]> {
   const { status, json } = await openFdaGet(search, {
     count: 'device.brand_name.exact',
-    limit: String(Math.min(100, Math.max(limit * 8, 40))),
+    // High limit so size-SKU disc brands (Mobi-C, prodisc C, …) can be rolled up.
+    limit: String(1000),
   });
 
   if (status === 404 || json.error?.code === 'NOT_FOUND') return [];
@@ -640,25 +997,38 @@ async function fetchTopBrands(search: string, limit = TOP_BRAND_LIMIT): Promise<
     return [];
   }
 
-  const devices: MaudeTopDevice[] = [];
-  const seenKeys = new Set<string>();
+  const rolled = new Map<string, MaudeTopDevice>();
   for (const row of json.results || []) {
-    const name = typeof row.term === 'string' ? row.term.trim() : '';
+    const rawName = typeof row.term === 'string' ? row.term.trim() : '';
     const count = typeof row.count === 'number' ? row.count : 0;
-    if (!isUsableBrand(name) || count <= 0) continue;
+    if (!rawName || count <= 0) continue;
+
+    const rollup = resolveBrandRollup(rawName);
+    if (!rollup && !isUsableBrand(rawName)) continue;
+
+    const name = rollup?.filterName || rawName;
     const key = sanitizeBrandForSearch(name).toLowerCase();
-    if (!key || seenKeys.has(key)) continue;
-    seenKeys.add(key);
-    devices.push({
+    if (!key) continue;
+
+    const existing = rolled.get(key);
+    if (existing) {
+      existing.count += count;
+      continue;
+    }
+
+    rolled.set(key, {
       name,
       count,
-      icon: classifyDeviceIcon(name),
-      shortLabel: shortDeviceLabel(name),
+      icon: classifyDeviceIcon(rollup?.displayName || name),
+      shortLabel: rollup?.displayName || shortDeviceLabel(name),
+      company: rollup?.company || resolveCompanyFromBrandName(name),
       kind: 'brand',
     });
-    if (devices.length >= limit) break;
   }
-  return devices;
+
+  const devices = [...rolled.values()].sort((a, b) => b.count - a.count);
+  const enriched = await enrichBrandDevices(devices.slice(0, limit), search);
+  return enriched;
 }
 
 export function listMaudeSpecialties(): Array<{
@@ -676,6 +1046,7 @@ export function listMaudeSpecialties(): Array<{
 export type MaudeBrandSearchHit = {
   name: string;
   shortLabel: string;
+  company: string | null;
   count: number;
   icon: MaudeDeviceIcon;
   /** How the match ranked: exact | prefix | contains */
@@ -748,6 +1119,7 @@ export async function searchMaudeBrands(options: {
     hits.push({
       name,
       shortLabel: shortDeviceLabel(name),
+      company: resolveCompanyFromBrandName(name),
       count,
       icon: classifyDeviceIcon(name),
       match,
@@ -855,6 +1227,7 @@ export async function getMaudeDailyTrends(options: {
         return {
           name: device.name,
           shortLabel: device.shortLabel,
+          company: device.company,
           count: brandTotal > 0 ? brandTotal : device.count,
           icon: device.icon,
           series: brandPts,
@@ -905,6 +1278,11 @@ export type MaudeCountTerm = { term: string; count: number };
 
 export type MaudeBrandSynopsis = {
   brand: string;
+  /** Cleaned product name. */
+  shortLabel: string;
+  company: string | null;
+  /** "Device — Company" when company known. */
+  displayTitle: string;
   label: string;
   specialty: string;
   startDate: string;
@@ -956,7 +1334,7 @@ function preferSignalTerms(terms: MaudeCountTerm[], limit: number): MaudeCountTe
 }
 
 function buildSynopsisSummary(
-  brand: string,
+  title: string,
   total: number,
   eventTypes: MaudeCountTerm[],
   deviceProblems: MaudeCountTerm[],
@@ -964,7 +1342,7 @@ function buildSynopsisSummary(
 ): string {
   const parts: string[] = [];
   parts.push(
-    `${shortDeviceLabel(brand)} has ${total.toLocaleString()} MAUDE report${total === 1 ? '' : 's'} in this window.`
+    `${title} has ${total.toLocaleString()} MAUDE report${total === 1 ? '' : 's'} in this window.`
   );
 
   if (eventTypes.length) {
@@ -1064,14 +1442,33 @@ export async function getMaudeBrandSynopsis(options: {
     }
   }
 
+  const baseSearch = buildSearch({
+    specialty: options.specialty,
+    startCompact: window.startCompact,
+    endCompact: window.endCompact,
+  }).search;
+  const company =
+    resolveCompanyFromBrandName(brand) || (await lookupManufacturerCompany(brand, baseSearch));
+  const shortLabel = shortDeviceLabel(brand);
+  const displayTitle = formatBrandTitle(brand, company);
+
   const value: MaudeBrandSynopsis = {
     brand,
+    shortLabel,
+    company,
+    displayTitle,
     label,
     specialty,
     startDate: window.startIso,
     endDate: window.endIso,
     totalReports,
-    summary: buildSynopsisSummary(brand, totalReports, eventTypes, deviceProblems, patientProblems),
+    summary: buildSynopsisSummary(
+      displayTitle,
+      totalReports,
+      eventTypes,
+      deviceProblems,
+      patientProblems
+    ),
     eventTypes,
     deviceProblems,
     patientProblems,

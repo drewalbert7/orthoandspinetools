@@ -177,7 +177,9 @@ function BrandSynopsisPanel({
     <div className="mb-4 border border-amber-200 bg-amber-50/40 p-3 sm:p-4">
       <div className="mb-2 flex flex-wrap items-start justify-between gap-2">
         <div>
-          <h2 className="text-sm font-semibold text-gray-900">What’s going wrong — {brand}</h2>
+          <h2 className="text-sm font-semibold text-gray-900">
+            What’s going wrong — {data?.displayTitle || brand}
+          </h2>
           <p className="mt-0.5 text-xs text-gray-500">
             FDA problem codes and recent report excerpts for this brand in the selected window
           </p>
@@ -372,7 +374,8 @@ function TopImplantsGrid({
                 </span>
               </span>
               <span className="mt-0.5 block text-xs text-gray-500">
-                {d.count.toLocaleString()} reports · brand
+                {d.company ? `${d.company} · ` : ''}
+                {d.count.toLocaleString()} reports
                 {selected ? ' · focused chart' : ''}
               </span>
             </span>
@@ -564,6 +567,7 @@ function TrendingBrandsPanel({
               <span className="min-w-0 flex-1">
                 <span className="block truncate text-sm font-medium text-gray-900">{b.shortLabel}</span>
                 <span className="mt-0.5 block text-xs text-gray-500">
+                  {b.company ? `${b.company} · ` : ''}
                   {b.recentTotal.toLocaleString()} recent · {b.priorTotal.toLocaleString()} prior
                   {b.isNew ? ' · new activity' : ''}
                 </span>
@@ -588,8 +592,11 @@ function BrandSearchBar({
   onPick,
 }: {
   specialty: string;
-  localSuggestions: Array<{ name: string; shortLabel: string; count: number }>;
-  onPick: (name: string, meta?: { shortLabel?: string; count?: number; icon?: MaudeDeviceIcon }) => void;
+  localSuggestions: Array<{ name: string; shortLabel: string; company?: string | null; count: number }>;
+  onPick: (
+    name: string,
+    meta?: { shortLabel?: string; company?: string | null; count?: number; icon?: MaudeDeviceIcon }
+  ) => void;
 }) {
   const [query, setQuery] = useState('');
   const [open, setOpen] = useState(false);
@@ -655,6 +662,7 @@ function BrandSearchBar({
       {
         name: string;
         shortLabel: string;
+        company?: string | null;
         count: number;
         match?: 'exact' | 'prefix' | 'contains' | 'local';
         icon?: MaudeDeviceIcon;
@@ -666,6 +674,7 @@ function BrandSearchBar({
       byName.set(hit.name.toLowerCase(), {
         name: hit.name,
         shortLabel: hit.shortLabel,
+        company: hit.company,
         count: hit.count,
         match: hit.match,
         icon: hit.icon,
@@ -678,6 +687,7 @@ function BrandSearchBar({
       byName.set(key, {
         name: s.name,
         shortLabel: s.shortLabel,
+        company: s.company,
         count: s.count,
         match: q && s.name.toLowerCase() === q ? 'exact' : 'local',
         source: 'local',
@@ -693,7 +703,10 @@ function BrandSearchBar({
     });
   }, [remote, localFiltered, query]);
 
-  const pick = (name: string, meta?: { shortLabel?: string; count?: number; icon?: MaudeDeviceIcon }) => {
+  const pick = (
+    name: string,
+    meta?: { shortLabel?: string; company?: string | null; count?: number; icon?: MaudeDeviceIcon }
+  ) => {
     onPick(name, meta);
     setQuery(meta?.shortLabel || name);
     setOpen(false);
@@ -766,11 +779,19 @@ function BrandSearchBar({
                 type="button"
                 className="flex w-full items-center justify-between gap-2 px-3 py-2 text-left text-sm hover:bg-blue-50"
                 onMouseDown={(e) => e.preventDefault()}
-                onClick={() => pick(s.name, { shortLabel: s.shortLabel, count: s.count, icon: s.icon })}
+                onClick={() =>
+                  pick(s.name, {
+                    shortLabel: s.shortLabel,
+                    company: s.company,
+                    count: s.count,
+                    icon: s.icon,
+                  })
+                }
               >
                 <span className="min-w-0">
                   <span className="block truncate font-medium text-gray-900">{s.shortLabel}</span>
                   <span className="block text-[11px] text-gray-400">
+                    {s.company ? `${s.company} · ` : ''}
                     {s.source === 'fda' ? 'FDA brand' : 'On this chart'}
                     {s.match && s.match !== 'local' ? ` · ${s.match} match` : ''}
                   </span>
@@ -1203,8 +1224,13 @@ function MultiBrandChart({
                     className="inline-block h-2.5 w-2.5 shrink-0 rounded-full"
                     style={{ backgroundColor: color }}
                   />
-                  <span className="min-w-0 flex-1 truncate text-sm font-medium text-gray-900">
-                    {brand.shortLabel}
+                  <span className="min-w-0 flex-1">
+                    <span className="block truncate text-sm font-medium text-gray-900">
+                      {brand.shortLabel}
+                    </span>
+                    {brand.company ? (
+                      <span className="block truncate text-[11px] text-gray-500">{brand.company}</span>
+                    ) : null}
                   </span>
                   {trendMeta && (
                     <span className="shrink-0 text-xs font-semibold text-red-600">
@@ -1272,7 +1298,7 @@ const MaudeTrends: React.FC = () => {
       if (selectedBrand) setSelectedBrand(null);
       return;
     }
-    if (selectedBrand?.name === brandFromUrl) return;
+    if (selectedBrand?.name === brandFromUrl && selectedBrand.company != null) return;
     const match =
       data?.topDevices.find((d) => d.name === brandFromUrl) ||
       data?.brandSeries?.find((b) => b.name === brandFromUrl);
@@ -1282,6 +1308,7 @@ const MaudeTrends: React.FC = () => {
         count: match.count,
         icon: match.icon,
         shortLabel: match.shortLabel,
+        company: match.company ?? null,
         kind: 'brand',
       });
     }
@@ -1331,20 +1358,26 @@ const MaudeTrends: React.FC = () => {
     const fromSeries = brandSeries.map((b) => ({
       name: b.name,
       shortLabel: b.shortLabel,
+      company: b.company ?? null,
       count: b.count,
     }));
     const seen = new Set(fromSeries.map((b) => b.name.toLowerCase()));
     for (const d of data?.topDevices || []) {
       if (seen.has(d.name.toLowerCase())) continue;
       seen.add(d.name.toLowerCase());
-      fromSeries.push({ name: d.name, shortLabel: d.shortLabel, count: d.count });
+      fromSeries.push({
+        name: d.name,
+        shortLabel: d.shortLabel,
+        company: d.company ?? null,
+        count: d.count,
+      });
     }
     return fromSeries.sort((a, b) => b.count - a.count);
   }, [brandSeries, data?.topDevices]);
 
   const selectBrandByName = (
     name: string,
-    meta?: { shortLabel?: string; count?: number; icon?: MaudeDeviceIcon }
+    meta?: { shortLabel?: string; company?: string | null; count?: number; icon?: MaudeDeviceIcon }
   ) => {
     const fromTop = data?.topDevices.find((d) => d.name === name);
     const fromSeries = brandSeries.find((b) => b.name === name);
@@ -1355,6 +1388,7 @@ const MaudeTrends: React.FC = () => {
         count: match.count,
         icon: match.icon,
         shortLabel: match.shortLabel,
+        company: match.company ?? null,
         kind: 'brand',
       });
       updateParams({ brand: match.name, mode: 'cumulative' });
@@ -1366,6 +1400,7 @@ const MaudeTrends: React.FC = () => {
       count: meta?.count ?? 0,
       icon: meta?.icon || 'generic',
       shortLabel: meta?.shortLabel || name,
+      company: meta?.company ?? null,
       kind: 'brand',
     });
     updateParams({ brand: name, mode: 'cumulative' });
