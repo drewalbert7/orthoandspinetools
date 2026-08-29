@@ -143,7 +143,7 @@ export function defaultOgImage(origin: string): string {
 export const DEFAULT_OG_IMAGE_WIDTH = 400;
 export const DEFAULT_OG_IMAGE_HEIGHT = 400;
 
-export type OgPageKey = 'home' | 'cases' | 'startups' | 'popular';
+export type OgPageKey = 'home' | 'cases' | 'startups' | 'popular' | 'maude';
 
 export const SHARE_PAGES: Record<
   OgPageKey,
@@ -173,6 +173,13 @@ export const SHARE_PAGES: Record<
     path: '/popular',
     title: 'Popular | OrthoAndSpineTools',
     description: 'Popular orthopedic and spine surgery posts across all communities on OrthoAndSpineTools.',
+    ogType: 'website',
+  },
+  maude: {
+    path: '/maude',
+    title: 'MAUDE implant trends | OrthoAndSpineTools',
+    description:
+      'Daily FDA device adverse event report trends from openFDA / MAUDE — early signal charts for orthopedic and spine implants.',
     ogType: 'website',
   },
 };

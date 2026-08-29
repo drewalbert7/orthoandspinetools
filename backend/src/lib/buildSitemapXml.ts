@@ -40,6 +40,7 @@ export const STATIC_SITEMAP_PAGES: SitemapEntry[] = [
   { path: '/popular', changefreq: 'hourly', priority: '0.9' },
   { path: '/startups', changefreq: 'daily', priority: '0.8' },
   { path: '/cases', changefreq: 'daily', priority: '0.8' },
+  { path: '/maude', changefreq: 'daily', priority: '0.7' },
   { path: '/search', changefreq: 'weekly', priority: '0.6' },
   { path: '/privacy', changefreq: 'monthly', priority: '0.4' },
   { path: '/terms', changefreq: 'monthly', priority: '0.4' },

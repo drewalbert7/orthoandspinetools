@@ -316,6 +316,46 @@ export interface MedicalTool {
   updatedAt: string;
 }
 
+export interface MaudeTrendData {
+  series: Array<{ date: string; count: number }>;
+  total: number;
+  startDate: string;
+  endDate: string;
+  search: string;
+  label: string;
+  specialty?: string;
+  source: 'openfda';
+  lastUpdated: string | null;
+  disclaimer: string;
+  topDevices: MaudeTopDevice[];
+  trend: {
+    recentAvg: number;
+    priorAvg: number;
+    changePct: number | null;
+    direction: 'up' | 'down' | 'flat' | 'insufficient';
+  };
+}
+
+export type MaudeDeviceIcon =
+  | 'knee'
+  | 'hip'
+  | 'shoulder'
+  | 'spine'
+  | 'screw'
+  | 'plate'
+  | 'rod'
+  | 'anchor'
+  | 'graft'
+  | 'instrument'
+  | 'generic';
+
+export interface MaudeTopDevice {
+  name: string;
+  count: number;
+  icon: MaudeDeviceIcon;
+  shortLabel: string;
+}
+
 export interface ToolReview {
   id: string;
   toolId: string;
@@ -1025,6 +1065,40 @@ class ApiService {
       return response.data;
     } catch (error: any) {
       throw new Error(error.response?.data?.message || 'Failed to fetch medical tool');
+    }
+  }
+
+  async getMaudeTrends(params: {
+    days?: number;
+    specialty?: string;
+    preset?: string;
+    brand?: string;
+    productCode?: string;
+    deviceName?: string;
+    q?: string;
+  } = {}): Promise<MaudeTrendData> {
+    try {
+      const search = new URLSearchParams();
+      if (params.days != null) search.set('days', String(params.days));
+      if (params.specialty) search.set('specialty', params.specialty);
+      if (params.preset) search.set('preset', params.preset);
+      if (params.brand) search.set('brand', params.brand);
+      if (params.productCode) search.set('productCode', params.productCode);
+      if (params.deviceName) search.set('deviceName', params.deviceName);
+      if (params.q) search.set('q', params.q);
+      const qs = search.toString();
+      const response = await api.get(`/maude/trends${qs ? `?${qs}` : ''}`);
+      const raw = response.data;
+      const data = raw?.data ?? raw;
+      if (!data?.series || !Array.isArray(data.series)) {
+        throw new Error('Invalid MAUDE trends response');
+      }
+      if (!Array.isArray(data.topDevices)) {
+        data.topDevices = [];
+      }
+      return data as MaudeTrendData;
+    } catch (error: unknown) {
+      throw new Error(apiErrorMessage(error, 'Failed to fetch MAUDE trends'));
     }
   }
 

@@ -14,6 +14,7 @@ import Home from './pages/Home';
 import Popular from './pages/Popular';
 import Startups from './pages/Startups';
 import Cases from './pages/Cases';
+import MaudeTrends from './pages/MaudeTrends';
 import PostDetail from './pages/PostDetail';
 import EditPost from './pages/EditPost';
 import CreatePost from './pages/CreatePost';
@@ -79,6 +80,7 @@ function App() {
                   <Route path="/popular" element={<Popular />} />
                   <Route path="/startups" element={<Startups />} />
                   <Route path="/cases" element={<Cases />} />
+                  <Route path="/maude" element={<MaudeTrends />} />
                   <Route path="/search" element={<Search />} />
                   <Route path="/login" element={<LoginForm />} />
                   <Route path="/forgot-password" element={<ForgotPassword />} />

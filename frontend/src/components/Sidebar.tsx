@@ -180,6 +180,24 @@ const Sidebar: React.FC<SidebarProps> = ({ isMobileOpen, onMobileClose }) => {
             <span className="font-medium">Cases</span>
           </Link>
 
+          <Link
+            to="/maude"
+            className={`flex items-center space-x-3 px-3 py-2 rounded-lg transition-colors ${
+              isActive('/maude') ? 'bg-blue-100 text-blue-700' : 'text-gray-700 hover:bg-gray-100'
+            }`}
+            onClick={onMobileClose}
+          >
+            <svg className="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden>
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M7 12h10M7 8h10M7 16h6M5 4h14a2 2 0 012 2v12a2 2 0 01-2 2H5a2 2 0 01-2-2V6a2 2 0 012-2z"
+              />
+            </svg>
+            <span className="font-medium">MAUDE trends</span>
+          </Link>
+
           <div>
             <Link
               to="/startups"
