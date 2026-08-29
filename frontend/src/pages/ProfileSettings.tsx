@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
+import { useTheme } from '../contexts/ThemeContext';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiService } from '../services/apiService';
 import { authService, type User } from '../services/authService';
@@ -10,6 +11,7 @@ import { DocumentMeta } from '../components/DocumentMeta';
 
 const ProfileSettings: React.FC = () => {
   const { user, refreshUser, updateProfile } = useAuth();
+  const { theme, setTheme } = useTheme();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [activeTab, setActiveTab] = useState<'profile' | 'password' | 'admin'>('profile');
@@ -519,6 +521,36 @@ const ProfileSettings: React.FC = () => {
                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                   />
                 </div>
+              </div>
+            </div>
+
+            {/* Appearance */}
+            <div>
+              <h2 className="mb-4 text-lg font-semibold text-gray-900">Appearance</h2>
+              <p className="mb-3 text-sm text-gray-600">
+                Choose light, dark, or match your device. The header button cycles Light → Dark → System.
+              </p>
+              <div className="flex flex-wrap gap-2">
+                {(
+                  [
+                    { id: 'light' as const, label: 'Light' },
+                    { id: 'dark' as const, label: 'Dark' },
+                    { id: 'system' as const, label: 'System' },
+                  ] as const
+                ).map((opt) => (
+                  <button
+                    key={opt.id}
+                    type="button"
+                    onClick={() => setTheme(opt.id)}
+                    className={`rounded-md border px-3 py-1.5 text-sm font-medium transition-colors ${
+                      theme === opt.id
+                        ? 'border-blue-500 bg-blue-50 text-blue-800 dark:bg-blue-950 dark:text-blue-200'
+                        : 'border-gray-300 text-gray-700 hover:bg-gray-50 dark:border-slate-600 dark:text-slate-200 dark:hover:bg-slate-800'
+                    }`}
+                  >
+                    {opt.label}
+                  </button>
+                ))}
               </div>
             </div>
 

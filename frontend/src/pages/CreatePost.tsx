@@ -572,8 +572,9 @@ const CreatePost: React.FC = () => {
 
         {uploadStatus && uploadStatus.cloudinaryConfigured === false && (
           <div className="mb-4 sm:mb-6 bg-amber-50 border border-amber-200 text-amber-900 px-3 sm:px-4 py-2 sm:py-3 rounded-md text-sm">
-            Post image and video uploads require Cloudinary to be configured on the server. Text posts still work. Ask an admin to set{' '}
-            <code className="text-xs bg-amber-100 px-1 rounded">CLOUDINARY_*</code> env vars and redeploy the backend.
+            Post image and video uploads need media storage on the server (Cloudflare Images/Stream or Cloudinary). Text posts still work. Ask an admin to set{' '}
+            <code className="text-xs bg-amber-100 px-1 rounded">CLOUDFLARE_*</code> or{' '}
+            <code className="text-xs bg-amber-100 px-1 rounded">CLOUDINARY_*</code> and redeploy the backend.
           </div>
         )}
 
@@ -727,7 +728,8 @@ const CreatePost: React.FC = () => {
             </p>
             {uploadStatus && uploadStatus.cloudinaryConfigured === false && (
               <p className="text-xs text-amber-800 bg-amber-50 border border-amber-200 rounded-md px-3 py-2 mb-2">
-                Media uploads require Cloudinary on the server. Ask an admin to configure{' '}
+                Media uploads need Cloudflare Images/Stream or Cloudinary on the server. Ask an admin to configure{' '}
+                <code className="text-[11px] bg-amber-100 px-1 rounded">CLOUDFLARE_*</code> or{' '}
                 <code className="text-[11px] bg-amber-100 px-1 rounded">CLOUDINARY_*</code> before you can publish a
                 launch with images or video.
               </p>

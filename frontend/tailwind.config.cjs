@@ -1,5 +1,6 @@
 /** Tailwind configuration to enable utility generation in dev and prod builds */
 module.exports = {
+  darkMode: 'class',
   content: [
     './index.html',
     './src/**/*.{js,ts,jsx,tsx}',

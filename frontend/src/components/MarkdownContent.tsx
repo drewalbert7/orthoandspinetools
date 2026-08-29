@@ -29,7 +29,7 @@ const markdownComponents: Components = {
     return (
       <a
         href={safe}
-        className="text-blue-600 hover:text-blue-800 underline decoration-blue-600/30 hover:decoration-blue-800 underline-offset-2 [overflow-wrap:anywhere] break-words"
+        className="text-blue-600 underline decoration-blue-600/30 underline-offset-2 [overflow-wrap:anywhere] break-words hover:text-blue-800 hover:decoration-blue-800 dark:text-sky-400 dark:decoration-sky-400/40 dark:hover:text-sky-300 dark:hover:decoration-sky-300"
         target={external ? '_blank' : undefined}
         rel={external ? 'noopener noreferrer' : undefined}
         {...props}

@@ -19,11 +19,12 @@ export const securityHeaders = (req: Request, res: Response, next: NextFunction)
   // Content Security Policy for uploads
   res.setHeader('Content-Security-Policy', 
     "default-src 'self'; " +
-    "img-src 'self' data: https://res.cloudinary.com https://*.cloudinary.com; " +
-    "media-src 'self' https://res.cloudinary.com https://*.cloudinary.com; " +
+    "img-src 'self' data: blob: https://res.cloudinary.com https://*.cloudinary.com https://imagedelivery.net https://videodelivery.net https://*.cloudflarestream.com https://*.r2.dev https://*.r2.cloudflarestorage.com; " +
+    "media-src 'self' blob: https://res.cloudinary.com https://*.cloudinary.com https://imagedelivery.net https://videodelivery.net https://*.cloudflarestream.com https://*.r2.dev https://*.r2.cloudflarestorage.com; " +
     "script-src 'self' 'unsafe-inline'; " +
     "style-src 'self' 'unsafe-inline'; " +
-    "connect-src 'self' https://api.cloudinary.com; " +
+    "connect-src 'self' https://api.cloudinary.com https://api.cloudflare.com https://upload.imagedelivery.net https://videodelivery.net https://*.cloudflarestream.com https://*.r2.cloudflarestorage.com https://*.r2.dev; " +
+    "frame-src 'self' https://iframe.videodelivery.net https://*.cloudflarestream.com; " +
     "frame-ancestors 'none';"
   );
 

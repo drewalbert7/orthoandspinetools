@@ -976,6 +976,10 @@ class ApiService {
   /** Public readiness for post media (no secrets). */
   async getUploadStatus(): Promise<{
     cloudinaryConfigured: boolean;
+    mediaConfigured?: boolean;
+    r2Configured?: boolean;
+    cloudflareConfigured?: boolean;
+    activeProvider?: 'r2' | 'cloudflare' | 'cloudinary' | null;
     limits: { imageMb: number; videoMb: number };
   }> {
     const response = await api.get('/upload/status');
@@ -1157,6 +1161,33 @@ class ApiService {
       return results as MaudeBrandSearchHit[];
     } catch (error: unknown) {
       throw new Error(apiErrorMessage(error, 'Failed to search MAUDE brands'));
+    }
+  }
+
+  async requestMaudeBrand(params: {
+    brand: string;
+    company?: string;
+    specialty?: string;
+    note?: string;
+    contactEmail?: string;
+  }): Promise<{ id: string; duplicate: boolean; message: string }> {
+    try {
+      const response = await api.post('/maude/brand-request', {
+        brand: params.brand,
+        company: params.company || undefined,
+        specialty: params.specialty || undefined,
+        note: params.note || undefined,
+        contactEmail: params.contactEmail || undefined,
+      });
+      const raw = response.data;
+      const data = raw?.data ?? raw;
+      return {
+        id: String(data?.id || ''),
+        duplicate: Boolean(data?.duplicate),
+        message: String(data?.message || 'Request received'),
+      };
+    } catch (error: unknown) {
+      throw new Error(apiErrorMessage(error, 'Failed to submit brand request'));
     }
   }
 

@@ -1,12 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import { Menu, X } from 'lucide-react';
+import { Menu, X, Sun, Moon, Monitor } from 'lucide-react';
 import toast from 'react-hot-toast';
 import UserAvatar from './UserAvatar';
 import BrandLogo from './BrandLogo';
 import NotificationItem from './NotificationItem';
 import { useNotifications } from '../hooks/useNotifications';
+import { useTheme } from '../contexts/ThemeContext';
 import type { AppNotification } from '../services/apiService';
 
 interface HeaderProps {
@@ -16,6 +17,7 @@ interface HeaderProps {
 
 const Header: React.FC<HeaderProps> = ({ isMobileSidebarOpen, onMobileSidebarToggle }) => {
   const { user, logout, refreshUser } = useAuth();
+  const { theme, resolved, cycleTheme } = useTheme();
   const navigate = useNavigate();
   const location = useLocation();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -91,7 +93,7 @@ const Header: React.FC<HeaderProps> = ({ isMobileSidebarOpen, onMobileSidebarTog
   };
 
   return (
-    <header className="bg-white shadow-sm border-b border-gray-200 sticky top-0 z-40">
+    <header className="sticky top-0 z-40 border-b border-gray-200 bg-white/95 shadow-sm backdrop-blur-md dark:border-slate-700 dark:bg-slate-900/95">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center h-16">
           {/* Mobile Hamburger Menu and Logo */}
@@ -99,7 +101,7 @@ const Header: React.FC<HeaderProps> = ({ isMobileSidebarOpen, onMobileSidebarTog
             {/* Mobile Hamburger Menu Button */}
             <button
               onClick={onMobileSidebarToggle}
-              className="lg:hidden p-2 text-gray-600 hover:text-gray-900 transition-colors mr-2"
+              className="lg:hidden p-2 text-gray-600 hover:text-gray-900 transition-colors mr-2 dark:text-slate-300 dark:hover:text-white"
               aria-label="Toggle mobile menu"
             >
               {isMobileSidebarOpen ? (
@@ -144,13 +146,40 @@ const Header: React.FC<HeaderProps> = ({ isMobileSidebarOpen, onMobileSidebarTog
           </form>
 
           {/* Right Side Navigation */}
-          <div className="flex items-center space-x-3">
+          <div className="flex items-center space-x-2 sm:space-x-3">
+            <button
+              type="button"
+              onClick={cycleTheme}
+              className="rounded-md p-2 text-gray-600 transition-colors hover:bg-gray-100 hover:text-gray-900 dark:text-slate-300 dark:hover:bg-slate-800 dark:hover:text-white"
+              aria-label={
+                theme === 'light'
+                  ? 'Theme: Light. Click for Dark'
+                  : theme === 'dark'
+                    ? 'Theme: Dark. Click for System'
+                    : `Theme: System (${resolved}). Click for Light`
+              }
+              title={
+                theme === 'light'
+                  ? 'Light · click for Dark'
+                  : theme === 'dark'
+                    ? 'Dark · click for System'
+                    : `System (${resolved}) · click for Light`
+              }
+            >
+              {theme === 'system' ? (
+                <Monitor className="h-5 w-5" />
+              ) : resolved === 'dark' ? (
+                <Moon className="h-5 w-5" />
+              ) : (
+                <Sun className="h-5 w-5" />
+              )}
+            </button>
             {user ? (
               <>
                 {/* Create Post Button - White background with black text */}
                 <Link
                   to="/create-post"
-                  className="flex items-center space-x-1 bg-white text-black px-3 py-1.5 rounded-md hover:bg-gray-100 transition-colors text-sm font-medium border border-gray-200"
+                  className="flex items-center space-x-1 rounded-md border border-gray-200 bg-white px-3 py-1.5 text-sm font-medium text-black transition-colors hover:bg-gray-100 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100 dark:hover:bg-slate-700"
                 >
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
                     <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
@@ -163,7 +192,7 @@ const Header: React.FC<HeaderProps> = ({ isMobileSidebarOpen, onMobileSidebarTog
                   <button
                     type="button"
                     onClick={() => setIsNotificationOpen(!isNotificationOpen)}
-                    className="relative p-2 text-black hover:text-gray-600 transition-colors flex items-center justify-center"
+                    className="relative flex items-center justify-center p-2 text-gray-800 transition-colors hover:text-gray-600 dark:text-slate-200 dark:hover:text-white"
                     aria-expanded={isNotificationOpen}
                     aria-haspopup="true"
                     aria-label={`Notifications${unreadCount > 0 ? `, ${unreadCount} unread` : ''}`}

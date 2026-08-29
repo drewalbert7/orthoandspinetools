@@ -6,17 +6,31 @@ import { uploadRateLimit, checkStorageLimits, validateFileSecurity, logUploadAtt
 import { validateAvatarUpload, validateVideoDuration } from '../middleware/avatarValidation';
 import { prisma } from '../lib/prisma';
 import { logger } from '../utils/logger';
-import { uploadToCloudinary, deleteFromCloudinary, getOptimizedImageUrl, getThumbnailUrl, isCloudinaryMediaReady } from '../services/cloudinaryService';
+import {
+  deleteMedia,
+  getMediaStatus,
+  getMediaThumbnailUrl,
+  getOptimizedMediaImageUrl,
+  isMediaStorageReady,
+  uploadImageMedia,
+  uploadVideoMedia,
+} from '../services/mediaService';
 import { virusScanService } from '../services/virusScanService';
 
 const router = Router();
 
-// Post media readiness (no auth; no secrets — ops + honest UI when Cloudinary is missing)
+// Post media readiness (no auth; no secrets — ops + honest UI when storage is missing)
 router.get('/status', asyncHandler(async (_req: Request, res: Response) => {
+  const media = getMediaStatus();
   res.json({
     success: true,
     data: {
-      cloudinaryConfigured: isCloudinaryMediaReady(),
+      // Prefer Cloudflare R2 when configured; Images/Stream + Cloudinary remain fallbacks
+      mediaConfigured: media.mediaConfigured,
+      activeProvider: media.activeProvider,
+      r2Configured: media.r2Configured,
+      cloudflareConfigured: media.cloudflareConfigured,
+      cloudinaryConfigured: media.mediaConfigured, // UI gate: any ready provider
       limits: {
         imageMb: 20,
         videoMb: 1024,
@@ -24,7 +38,6 @@ router.get('/status', asyncHandler(async (_req: Request, res: Response) => {
     },
   });
 }));
-
 // Upload single tool image
 router.post('/tool-image', authenticate, uploadSingle('toolImage'), asyncHandler(async (req: AuthRequest, res: Response) => {
   if (!req.file) {
@@ -300,33 +313,31 @@ router.post('/community-image-cloudinary',
         throw new AppError(`Image security scan failed: ${scanResult.threat}`, 400);
       }
 
-      // Upload to Cloudinary with community profile image settings (256x256)
-      const cloudinaryResult = await uploadToCloudinary(
-        file.buffer, 
-        file.originalname, 
-        'orthoandspinetools/communities',
-        { isAvatar: true, autoConvert: true }
-      );
+      const media = await uploadImageMedia(file.buffer, file.originalname, {
+        isAvatar: true,
+        folder: 'orthoandspinetools/communities',
+      });
 
       logger.info(`Community profile image uploaded by user ${req.user!.id}: ${file.originalname}`, {
         userId: req.user!.id,
         fileName: file.originalname,
         fileSize: file.size,
-        cloudinaryId: cloudinaryResult.public_id
+        mediaId: media.public_id,
+        provider: media.provider,
       });
 
-      // Log the upload for audit purposes
       await prisma.auditLog.create({
         data: {
           userId: req.user!.id,
           action: 'UPLOAD_COMMUNITY_IMAGE',
           resource: 'community_image',
-          resourceId: cloudinaryResult.public_id,
+          resourceId: media.public_id,
           details: {
             filename: file.originalname,
             size: file.size,
             mimetype: file.mimetype,
-            cloudinaryId: cloudinaryResult.public_id,
+            mediaId: media.public_id,
+            provider: media.provider,
           },
           ipAddress: req.ip,
           userAgent: req.get('User-Agent'),
@@ -336,16 +347,17 @@ router.post('/community-image-cloudinary',
       res.json({
         success: true,
         data: {
-          imageUrl: cloudinaryResult.secure_url,
-          optimizedUrl: getOptimizedImageUrl(cloudinaryResult.public_id, { width: 256, height: 256 }),
-          cloudinaryUrl: cloudinaryResult.secure_url,
-          cloudinaryPublicId: cloudinaryResult.public_id,
-          filename: cloudinaryResult.public_id,
+          imageUrl: media.secure_url,
+          optimizedUrl: media.optimized_url || getOptimizedMediaImageUrl(media.public_id, { width: 256, height: 256, avatar: true, provider: media.provider }),
+          cloudinaryUrl: media.secure_url,
+          cloudinaryPublicId: media.public_id,
+          provider: media.provider,
+          filename: media.public_id,
           originalName: file.originalname,
-          size: cloudinaryResult.bytes,
+          size: media.bytes,
           mimetype: file.mimetype,
-          width: cloudinaryResult.width,
-          height: cloudinaryResult.height,
+          width: media.width,
+          height: media.height,
         },
       });
     } catch (error: any) {
@@ -386,33 +398,30 @@ router.post('/community-banner-cloudinary',
         throw new AppError(`Image security scan failed: ${scanResult.threat}`, 400);
       }
 
-      // Upload to Cloudinary with banner settings (max 1920x1080, limit crop)
-      const cloudinaryResult = await uploadToCloudinary(
-        file.buffer, 
-        file.originalname, 
-        'orthoandspinetools/communities/banners',
-        { isAvatar: false, autoConvert: true }
-      );
+      const media = await uploadImageMedia(file.buffer, file.originalname, {
+        folder: 'orthoandspinetools/communities/banners',
+      });
 
       logger.info(`Community banner uploaded by user ${req.user!.id}: ${file.originalname}`, {
         userId: req.user!.id,
         fileName: file.originalname,
         fileSize: file.size,
-        cloudinaryId: cloudinaryResult.public_id
+        mediaId: media.public_id,
+        provider: media.provider,
       });
 
-      // Log the upload for audit purposes
       await prisma.auditLog.create({
         data: {
           userId: req.user!.id,
           action: 'UPLOAD_COMMUNITY_BANNER',
           resource: 'community_banner',
-          resourceId: cloudinaryResult.public_id,
+          resourceId: media.public_id,
           details: {
             filename: file.originalname,
             size: file.size,
             mimetype: file.mimetype,
-            cloudinaryId: cloudinaryResult.public_id,
+            mediaId: media.public_id,
+            provider: media.provider,
           },
           ipAddress: req.ip,
           userAgent: req.get('User-Agent'),
@@ -422,16 +431,17 @@ router.post('/community-banner-cloudinary',
       res.json({
         success: true,
         data: {
-          imageUrl: cloudinaryResult.secure_url,
-          optimizedUrl: getOptimizedImageUrl(cloudinaryResult.public_id, { width: 1920, height: 1080 }),
-          cloudinaryUrl: cloudinaryResult.secure_url,
-          cloudinaryPublicId: cloudinaryResult.public_id,
-          filename: cloudinaryResult.public_id,
+          imageUrl: media.secure_url,
+          optimizedUrl: media.optimized_url || getOptimizedMediaImageUrl(media.public_id, { width: 1920, height: 1080, provider: media.provider }),
+          cloudinaryUrl: media.secure_url,
+          cloudinaryPublicId: media.public_id,
+          provider: media.provider,
+          filename: media.public_id,
           originalName: file.originalname,
-          size: cloudinaryResult.bytes,
+          size: media.bytes,
           mimetype: file.mimetype,
-          width: cloudinaryResult.width,
-          height: cloudinaryResult.height,
+          width: media.width,
+          height: media.height,
         },
       });
     } catch (error: any) {
@@ -562,22 +572,23 @@ router.post('/post-images-cloudinary',
         throw new AppError(`File security scan failed: ${scanResult.threat}`, 400);
       }
 
-      // Upload to Cloudinary
-      const cloudinaryResult = await uploadToCloudinary(file.buffer, file.originalname, 'orthoandspinetools/posts');
-      
-      // Log the upload for audit purposes
+      const media = await uploadImageMedia(file.buffer, file.originalname, {
+        folder: 'orthoandspinetools/posts',
+      });
+
       await prisma.auditLog.create({
         data: {
           userId: req.user!.id,
-          action: 'UPLOAD_POST_IMAGE_CLOUDINARY',
+          action: 'UPLOAD_POST_IMAGE_MEDIA',
           resource: 'post_image',
-          resourceId: cloudinaryResult.public_id,
+          resourceId: media.public_id,
           details: {
             filename: file.originalname,
             size: file.size,
             mimetype: file.mimetype,
-            cloudinary_url: cloudinaryResult.secure_url,
-            public_id: cloudinaryResult.public_id,
+            url: media.secure_url,
+            public_id: media.public_id,
+            provider: media.provider,
           },
           ipAddress: req.ip,
           userAgent: req.get('User-Agent'),
@@ -589,24 +600,26 @@ router.post('/post-images-cloudinary',
         .replace(/\u00A0/g, ' ');
 
       uploadedFiles.push({
-        filename: cloudinaryResult.public_id,
+        filename: media.public_id,
         originalName,
-        url: cloudinaryResult.secure_url,
-        size: cloudinaryResult.bytes,
+        url: media.secure_url,
+        size: media.bytes,
         mimetype: file.mimetype,
-        cloudinaryPublicId: cloudinaryResult.public_id,
-        optimizedUrl: getOptimizedImageUrl(cloudinaryResult.public_id),
-        thumbnailUrl: getThumbnailUrl(cloudinaryResult.public_id),
-        width: cloudinaryResult.width,
-        height: cloudinaryResult.height,
+        cloudinaryPublicId: media.public_id,
+        cloudinaryUrl: media.secure_url,
+        provider: media.provider,
+        optimizedUrl: media.optimized_url || getOptimizedMediaImageUrl(media.public_id, { provider: media.provider }),
+        thumbnailUrl: media.thumbnail_url || getMediaThumbnailUrl(media.public_id, 300, media.provider),
+        width: media.width,
+        height: media.height,
       });
     } catch (error) {
-      logger.error(`Failed to upload ${file.originalname} to Cloudinary:`, error);
+      logger.error(`Failed to upload ${file.originalname} to media storage:`, error);
       throw new AppError(`Failed to upload ${file.originalname}`, 500);
     }
   }
 
-  logger.info(`Post images uploaded to Cloudinary by user ${req.user!.id}: ${uploadedFiles.length} files`);
+  logger.info(`Post images uploaded by user ${req.user!.id}: ${uploadedFiles.length} files`);
 
   res.json({
     success: true,
@@ -644,23 +657,24 @@ router.post('/post-videos-cloudinary',
         throw new AppError(`File security scan failed: ${scanResult.threat}`, 400);
       }
 
-      // Upload to Cloudinary
-      const cloudinaryResult = await uploadToCloudinary(file.buffer, file.originalname, 'orthoandspinetools/posts');
-      
-      // Log the upload for audit purposes
+      const media = await uploadVideoMedia(file.buffer, file.originalname, {
+        folder: 'orthoandspinetools/posts',
+      });
+
       await prisma.auditLog.create({
         data: {
           userId: req.user!.id,
-          action: 'UPLOAD_POST_VIDEO_CLOUDINARY',
+          action: 'UPLOAD_POST_VIDEO_MEDIA',
           resource: 'post_video',
-          resourceId: cloudinaryResult.public_id,
+          resourceId: media.public_id,
           details: {
             filename: file.originalname,
             size: file.size,
             mimetype: file.mimetype,
-            cloudinary_url: cloudinaryResult.secure_url,
-            public_id: cloudinaryResult.public_id,
-            duration: cloudinaryResult.duration,
+            url: media.secure_url,
+            public_id: media.public_id,
+            duration: media.duration,
+            provider: media.provider,
           },
           ipAddress: req.ip,
           userAgent: req.get('User-Agent'),
@@ -668,23 +682,26 @@ router.post('/post-videos-cloudinary',
       });
 
       uploadedFiles.push({
-        filename: cloudinaryResult.public_id,
+        filename: media.public_id,
         originalName: file.originalname,
-        url: cloudinaryResult.secure_url,
-        size: cloudinaryResult.bytes,
+        url: media.secure_url,
+        size: media.bytes,
         mimetype: file.mimetype,
-        cloudinaryPublicId: cloudinaryResult.public_id,
-        duration: cloudinaryResult.duration,
-        width: cloudinaryResult.width,
-        height: cloudinaryResult.height,
+        cloudinaryPublicId: media.public_id,
+        cloudinaryUrl: media.secure_url,
+        provider: media.provider,
+        duration: media.duration,
+        width: media.width,
+        height: media.height,
+        thumbnailUrl: media.thumbnail_url,
       });
     } catch (error) {
-      logger.error(`Failed to upload ${file.originalname} to Cloudinary:`, error);
+      logger.error(`Failed to upload ${file.originalname} to media storage:`, error);
       throw new AppError(`Failed to upload ${file.originalname}`, 500);
     }
   }
 
-  logger.info(`Post videos uploaded to Cloudinary by user ${req.user!.id}: ${uploadedFiles.length} files`);
+  logger.info(`Post videos uploaded by user ${req.user!.id}: ${uploadedFiles.length} files`);
 
   res.json({
     success: true,
@@ -692,38 +709,42 @@ router.post('/post-videos-cloudinary',
   });
 }));
 
-// Delete file from Cloudinary
+// Delete file from active media provider (Cloudflare or Cloudinary)
 router.delete('/cloudinary/:publicId', authenticate, asyncHandler(async (req: AuthRequest, res: Response) => {
   const { publicId } = req.params;
+  const kind = String(req.query.kind || 'image') === 'video' ? 'video' : 'image';
 
   if (!publicId) {
     throw new AppError('Public ID is required', 400);
   }
+  if (!isMediaStorageReady()) {
+    throw new AppError('No media storage configured', 500);
+  }
 
   try {
-    await deleteFromCloudinary(publicId);
-    
-    // Log the deletion for audit purposes
-      await prisma.auditLog.create({
-        data: {
-          userId: req.user!.id,
-          action: 'DELETE_CLOUDINARY_FILE',
-          resource: 'cloudinary_file',
-          resourceId: publicId,
-          details: {
-            public_id: publicId,
-          },
-          ipAddress: req.ip,
-          userAgent: req.get('User-Agent'),
-        },
-      });
+    await deleteMedia(publicId, { kind });
 
-      res.json({
-        success: true,
-        message: 'File deleted successfully',
-      });
+    await prisma.auditLog.create({
+      data: {
+        userId: req.user!.id,
+        action: 'DELETE_MEDIA_FILE',
+        resource: 'media_file',
+        resourceId: publicId,
+        details: {
+          public_id: publicId,
+          kind,
+        },
+        ipAddress: req.ip,
+        userAgent: req.get('User-Agent'),
+      },
+    });
+
+    res.json({
+      success: true,
+      message: 'File deleted successfully',
+    });
   } catch (error) {
-    logger.error(`Failed to delete Cloudinary file ${publicId}:`, error);
+    logger.error(`Failed to delete media file ${publicId}:`, error);
     throw new AppError('Failed to delete file', 500);
   }
 }));
@@ -759,36 +780,42 @@ router.post('/avatar-cloudinary',
         throw new AppError(`Avatar security scan failed: ${scanResult.threat}`, 400);
       }
 
-      // Upload to Cloudinary with avatar-specific settings
-      const cloudinaryResult = await uploadToCloudinary(
-        file.buffer, 
-        file.originalname, 
-        'orthoandspinetools/avatars',
-        { isAvatar: true, autoConvert: true }
-      );
+      const media = await uploadImageMedia(file.buffer, file.originalname, {
+        isAvatar: true,
+        folder: 'orthoandspinetools/avatars',
+      });
 
       logger.info(`Avatar uploaded by user ${req.user!.id}: ${file.originalname}`, {
         userId: req.user!.id,
         fileName: file.originalname,
         fileSize: file.size,
-        cloudinaryId: cloudinaryResult.public_id
+        mediaId: media.public_id,
+        provider: media.provider,
       });
 
       res.json({
         success: true,
         data: {
-          filename: cloudinaryResult.public_id,
+          filename: media.public_id,
           originalName: file.originalname,
-          url: cloudinaryResult.secure_url,
-          size: cloudinaryResult.bytes,
+          url: media.secure_url,
+          size: media.bytes,
           mimetype: file.mimetype,
-          cloudinaryPublicId: cloudinaryResult.public_id,
-          cloudinaryUrl: cloudinaryResult.secure_url,
-          optimizedUrl: getOptimizedImageUrl(cloudinaryResult.public_id, { width: 256, height: 256, crop: 'fill', gravity: 'face' }),
-          thumbnailUrl: getThumbnailUrl(cloudinaryResult.public_id, 64),
-          width: cloudinaryResult.width,
-          height: cloudinaryResult.height
-        }
+          cloudinaryPublicId: media.public_id,
+          cloudinaryUrl: media.secure_url,
+          provider: media.provider,
+          optimizedUrl:
+            media.optimized_url ||
+            getOptimizedMediaImageUrl(media.public_id, {
+              width: 256,
+              height: 256,
+              avatar: true,
+              provider: media.provider,
+            }),
+          thumbnailUrl: media.thumbnail_url || getMediaThumbnailUrl(media.public_id, 64, media.provider),
+          width: media.width,
+          height: media.height,
+        },
       });
     } catch (error: unknown) {
       logger.error(`Failed to upload avatar ${file.originalname}:`, error);

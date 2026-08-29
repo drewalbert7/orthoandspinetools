@@ -603,6 +603,12 @@ function BrandSearchBar({
   const [remote, setRemote] = useState<MaudeBrandSearchHit[]>([]);
   const [searching, setSearching] = useState(false);
   const [searchError, setSearchError] = useState<string | null>(null);
+  const [requestOpen, setRequestOpen] = useState(false);
+  const [requestCompany, setRequestCompany] = useState('');
+  const [requestNote, setRequestNote] = useState('');
+  const [requestEmail, setRequestEmail] = useState('');
+  const [requestStatus, setRequestStatus] = useState<'idle' | 'sending' | 'done' | 'error'>('idle');
+  const [requestMessage, setRequestMessage] = useState<string | null>(null);
   const rootRef = useRef<HTMLDivElement>(null);
   const reqId = useRef(0);
 
@@ -724,6 +730,29 @@ function BrandSearchBar({
     pick(q, { shortLabel: q });
   };
 
+  const submitBrandRequest = async () => {
+    const brand = query.trim();
+    if (brand.length < 2) return;
+    setRequestStatus('sending');
+    setRequestMessage(null);
+    try {
+      const res = await apiService.requestMaudeBrand({
+        brand,
+        company: requestCompany.trim() || undefined,
+        specialty,
+        note: requestNote.trim() || undefined,
+        contactEmail: requestEmail.trim() || undefined,
+      });
+      setRequestStatus('done');
+      setRequestMessage(res.message);
+    } catch (err: unknown) {
+      setRequestStatus('error');
+      setRequestMessage(err instanceof Error ? err.message : 'Request failed');
+    }
+  };
+
+  const showRequestFooter = query.trim().length >= 2 && !searching;
+
   return (
     <div ref={rootRef} className="relative mt-4">
       <label className="mb-2 block text-xs font-semibold uppercase tracking-wider text-gray-500">
@@ -737,6 +766,9 @@ function BrandSearchBar({
           onChange={(e) => {
             setQuery(e.target.value);
             setOpen(true);
+            setRequestOpen(false);
+            setRequestStatus('idle');
+            setRequestMessage(null);
           }}
           onFocus={() => setOpen(true)}
           onKeyDown={(e) => {
@@ -756,7 +788,7 @@ function BrandSearchBar({
         </span>
       </div>
       {open && (
-        <ul className="absolute z-20 mt-1 max-h-72 w-full overflow-auto rounded-lg border border-gray-200 bg-white py-1 shadow-lg">
+        <ul className="absolute z-20 mt-1 max-h-96 w-full overflow-auto rounded-lg border border-gray-200 bg-white py-1 shadow-lg">
           {query.trim().length < 2 && (
             <li className="px-3 py-2 text-xs text-gray-500">
               Type at least 2 characters — results come from FDA brand names in this specialty.
@@ -767,7 +799,7 @@ function BrandSearchBar({
           )}
           {query.trim().length >= 2 && !searching && merged.length === 0 && !searchError && (
             <li className="px-3 py-2 text-sm text-gray-500">
-              No brand matches for “{query.trim()}”. Try another spelling, or press Enter to run a phrase search.
+              No brand matches for “{query.trim()}”. Try another spelling, or request we add it below.
             </li>
           )}
           {searchError && (
@@ -802,6 +834,81 @@ function BrandSearchBar({
               </button>
             </li>
           ))}
+          {showRequestFooter && (
+            <li className="border-t border-gray-100 px-3 py-2">
+              {!requestOpen ? (
+                <button
+                  type="button"
+                  className="text-left text-xs font-medium text-blue-600 hover:text-blue-800"
+                  onMouseDown={(e) => e.preventDefault()}
+                  onClick={() => {
+                    setRequestOpen(true);
+                    setRequestStatus('idle');
+                    setRequestMessage(null);
+                  }}
+                >
+                  Don’t see “{query.trim()}”? Request we add it →
+                </button>
+              ) : (
+                <div className="space-y-2" onMouseDown={(e) => e.stopPropagation()}>
+                  <p className="text-xs text-gray-600">
+                    Tell us the brand or company and we’ll review adding it to MAUDE coverage.
+                  </p>
+                  <input
+                    type="text"
+                    value={requestCompany}
+                    onChange={(e) => setRequestCompany(e.target.value)}
+                    placeholder="Company (optional)"
+                    className="w-full rounded border border-gray-300 bg-white px-2 py-1.5 text-sm"
+                  />
+                  <textarea
+                    value={requestNote}
+                    onChange={(e) => setRequestNote(e.target.value)}
+                    placeholder="Anything helpful — product line, specialty (optional)"
+                    rows={2}
+                    className="w-full rounded border border-gray-300 bg-white px-2 py-1.5 text-sm"
+                  />
+                  <input
+                    type="email"
+                    value={requestEmail}
+                    onChange={(e) => setRequestEmail(e.target.value)}
+                    placeholder="Your email if you want a follow-up (optional)"
+                    className="w-full rounded border border-gray-300 bg-white px-2 py-1.5 text-sm"
+                  />
+                  <div className="flex flex-wrap items-center gap-2">
+                    <button
+                      type="button"
+                      disabled={requestStatus === 'sending' || requestStatus === 'done'}
+                      onClick={submitBrandRequest}
+                      className="rounded bg-blue-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-blue-700 disabled:opacity-50"
+                    >
+                      {requestStatus === 'sending'
+                        ? 'Sending…'
+                        : requestStatus === 'done'
+                          ? 'Sent'
+                          : 'Submit request'}
+                    </button>
+                    <button
+                      type="button"
+                      className="text-xs text-gray-500 hover:text-gray-800"
+                      onClick={() => setRequestOpen(false)}
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                  {requestMessage && (
+                    <p
+                      className={`text-xs ${
+                        requestStatus === 'error' ? 'text-red-600' : 'text-emerald-700'
+                      }`}
+                    >
+                      {requestMessage}
+                    </p>
+                  )}
+                </div>
+              )}
+            </li>
+          )}
         </ul>
       )}
     </div>

@@ -65,6 +65,7 @@ model User {
   karma             UserKarma?
   notifications     Notification[]
   postPollVotes     PostPollVote[]
+  maudeBrandRequests MaudeBrandRequest[]
   
   @@map("users")
 }
@@ -519,5 +520,26 @@ model PostTag {
   @@index([tagId])
   @@unique([postId, tagId]) // Ensure a post can't have the same tag twice
   @@map("post_tags")
+}
+
+// User requests to add / prioritize a MAUDE brand or company not found in search.
+model MaudeBrandRequest {
+  id           String   @id @default(cuid())
+  brand        String
+  company      String?
+  specialty    String?
+  note         String?
+  contactEmail String?  @map("contact_email")
+  userId       String?  @map("user_id")
+  status       String   @default("pending") // pending | reviewed | added | declined
+  ipHash       String?  @map("ip_hash")
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([status, createdAt])
+  @@index([brand])
+  @@map("maude_brand_requests")
 }
 

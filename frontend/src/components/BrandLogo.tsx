@@ -18,7 +18,7 @@ const BrandLogo: React.FC<BrandLogoProps> = ({
   <img
     src={LOGO_SRC}
     alt=""
-    className={`${heightClass} w-auto ${maxWidthClass} object-contain object-left ${className}`}
+    className={`${heightClass} w-auto ${maxWidthClass} object-contain object-left dark:brightness-110 dark:contrast-105 ${className}`}
     decoding="async"
   />
 );

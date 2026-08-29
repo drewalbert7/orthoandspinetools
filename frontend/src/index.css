@@ -3,7 +3,7 @@
 @tailwind utilities;
 
 :root {
-  /* Light theme color scheme */
+  /* Light theme */
   --reddit-bg: #ffffff;
   --reddit-card: #ffffff;
   --reddit-border: #e5e5e5;
@@ -11,6 +11,46 @@
   --reddit-text-muted: #878a8c;
   --reddit-orange: #ff4500;
   --reddit-blue: #0079d3;
+  --ost-page: #f3f4f6;
+  --ost-surface: #ffffff;
+  --ost-surface-muted: #f9fafb;
+  --ost-elevated: #ffffff;
+  --ost-border: #e5e7eb;
+  --ost-text: #111827;
+  --ost-text-muted: #6b7280;
+  --ost-accent: #2563eb;
+  color-scheme: light;
+}
+
+html.dark {
+  --reddit-bg: #0b1220;
+  --reddit-card: #151c2c;
+  --reddit-border: #2a3548;
+  --reddit-text: #e8eef7;
+  --reddit-text-muted: #8b9bb0;
+  --reddit-orange: #ff7a45;
+  --reddit-blue: #5ba3ff;
+  --ost-page: #0b1220;
+  --ost-surface: #151c2c;
+  --ost-surface-muted: #101826;
+  --ost-elevated: #1c2538;
+  --ost-border: #2a3548;
+  --ost-text: #e8eef7;
+  --ost-text-muted: #8b9bb0;
+  --ost-accent: #60a5fa;
+  color-scheme: dark;
+}
+
+/* Smooth theme flips without fighting normal UI motion forever */
+html.theme-animating,
+html.theme-animating *:not(svg):not(path):not(circle):not(line):not(polyline):not(rect) {
+  transition:
+    background-color 0.2s ease,
+    border-color 0.2s ease,
+    color 0.15s ease,
+    box-shadow 0.2s ease,
+    fill 0.15s ease,
+    stroke 0.15s ease !important;
 }
 
 @layer base {
@@ -20,12 +60,38 @@
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
   }
-  
+
   body {
-    @apply bg-white text-gray-900;
-    overflow-x: hidden; /* Prevent horizontal scroll on mobile */
+    @apply antialiased;
+    overflow-x: hidden;
+    background-color: var(--ost-page);
+    color: var(--ost-text);
   }
-  
+
+  ::selection {
+    background-color: rgba(37, 99, 235, 0.25);
+    color: inherit;
+  }
+
+  html.dark ::selection {
+    background-color: rgba(96, 165, 250, 0.35);
+  }
+
+  /* Native controls / scrollbars track theme */
+  html.dark {
+    scrollbar-color: #3d4b63 #0b1220;
+  }
+
+  /* Chrome autofill otherwise flashes white in dark mode */
+  html.dark input:-webkit-autofill,
+  html.dark textarea:-webkit-autofill,
+  html.dark select:-webkit-autofill {
+    -webkit-text-fill-color: #e8eef7;
+    caret-color: #e8eef7;
+    box-shadow: 0 0 0 1000px #151c2c inset;
+    transition: background-color 99999s ease-out;
+  }
+
   /* Ensure touch targets are accessible on mobile */
   @media (max-width: 640px) {
     button:not(.no-touch-target),
@@ -36,9 +102,6 @@
       justify-content: center;
     }
 
-    /* Main drawer: global `a:not(.no-touch-target)` uses inline-flex with higher
-       specificity than Tailwind `.flex`, so nav links sat side-by-side. Force
-       block-level flex rows only in the app sidebar. */
     aside.app-sidebar a:not(.no-touch-target) {
       display: flex;
       justify-content: flex-start;
@@ -49,41 +112,241 @@
 
 @layer components {
   .btn {
-    @apply inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 disabled:opacity-50 disabled:pointer-events-none ring-offset-white;
+    @apply inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 disabled:opacity-50 disabled:pointer-events-none ring-offset-white dark:ring-offset-slate-900;
   }
-  
+
   .btn-primary {
     @apply bg-blue-600 text-white hover:bg-blue-700;
   }
-  
+
   .btn-secondary {
-    @apply bg-gray-200 text-gray-900 hover:bg-gray-300;
+    @apply bg-gray-200 text-gray-900 hover:bg-gray-300 dark:bg-slate-700 dark:text-slate-100 dark:hover:bg-slate-600;
   }
-  
+
   .btn-outline {
-    @apply border border-gray-300 bg-transparent hover:bg-gray-50;
+    @apply border border-gray-300 bg-transparent hover:bg-gray-50 dark:border-slate-600 dark:hover:bg-slate-800;
   }
-  
+
   .card {
-    @apply rounded-lg border border-gray-200 bg-white shadow-sm;
+    @apply rounded-lg border border-gray-200 bg-white shadow-sm dark:border-slate-700 dark:bg-slate-900;
   }
-  
+
   .input {
-    @apply flex h-10 w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm ring-offset-white file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-gray-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50;
+    @apply flex h-10 w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm ring-offset-white file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-gray-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100 dark:ring-offset-slate-900 dark:placeholder:text-slate-400;
   }
-  
+
   .textarea {
-    @apply flex min-h-[80px] w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm ring-offset-white placeholder:text-gray-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50;
+    @apply flex min-h-[80px] w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm ring-offset-white placeholder:text-gray-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100 dark:ring-offset-slate-900 dark:placeholder:text-slate-400;
   }
 }
 
 @layer utilities {
   .scrollbar-hide {
-    -ms-overflow-style: none;  /* IE and Edge */
-    scrollbar-width: none;  /* Firefox */
+    -ms-overflow-style: none;
+    scrollbar-width: none;
   }
-  
+
   .scrollbar-hide::-webkit-scrollbar {
-    display: none;  /* Chrome, Safari and Opera */
+    display: none;
   }
+}
+
+/*
+ * Site-wide dark remaps for existing light-only Tailwind utilities.
+ * Hierarchy: page (gray-50 / shell) darkest → cards (white) elevated → gray-100 chips.
+ * Keeps text-white on accent buttons intact.
+ */
+html.dark .bg-white {
+  background-color: var(--ost-surface);
+}
+html.dark .bg-gray-50 {
+  background-color: var(--ost-page);
+}
+html.dark .bg-gray-100 {
+  background-color: #1c2538;
+}
+html.dark .bg-gray-200 {
+  background-color: #2a3548;
+}
+html.dark .bg-gray-300 {
+  background-color: #3d4b63;
+}
+
+html.dark .hover\:bg-white:hover {
+  background-color: var(--ost-elevated);
+}
+html.dark .hover\:bg-gray-50:hover {
+  background-color: #1c2538;
+}
+html.dark .hover\:bg-gray-100:hover {
+  background-color: #243044;
+}
+html.dark .hover\:bg-gray-200:hover {
+  background-color: #3d4b63;
+}
+
+/* Active / tinted chips (sidebar, badges, soft panels) */
+html.dark .bg-blue-50,
+html.dark .bg-blue-50\/40,
+html.dark .bg-blue-100 {
+  background-color: rgba(59, 130, 246, 0.18);
+}
+html.dark .hover\:bg-blue-50:hover,
+html.dark .hover\:bg-blue-50\/40:hover {
+  background-color: rgba(59, 130, 246, 0.28);
+}
+html.dark .bg-amber-50,
+html.dark .bg-amber-50\/40,
+html.dark .bg-amber-100 {
+  background-color: rgba(245, 158, 11, 0.16);
+}
+html.dark .bg-red-50 {
+  background-color: rgba(239, 68, 68, 0.16);
+}
+html.dark .hover\:bg-red-50:hover,
+html.dark .hover\:bg-red-50\/60:hover {
+  background-color: rgba(239, 68, 68, 0.26);
+}
+html.dark .bg-emerald-50,
+html.dark .bg-emerald-100 {
+  background-color: rgba(16, 185, 129, 0.16);
+}
+html.dark .bg-violet-100 {
+  background-color: rgba(139, 92, 246, 0.18);
+}
+html.dark .bg-indigo-100 {
+  background-color: rgba(99, 102, 241, 0.18);
+}
+html.dark .bg-sky-100 {
+  background-color: rgba(14, 165, 233, 0.16);
+}
+html.dark .bg-teal-100 {
+  background-color: rgba(20, 184, 166, 0.16);
+}
+html.dark .bg-orange-100 {
+  background-color: rgba(249, 115, 22, 0.16);
+}
+html.dark .bg-rose-100 {
+  background-color: rgba(244, 63, 94, 0.16);
+}
+html.dark .bg-cyan-100 {
+  background-color: rgba(6, 182, 212, 0.16);
+}
+
+html.dark .text-black {
+  color: var(--ost-text);
+}
+html.dark .hover\:text-black:hover {
+  color: #f8fafc;
+}
+html.dark .text-gray-900 {
+  color: #f1f5f9;
+}
+html.dark .text-gray-800 {
+  color: #e2e8f0;
+}
+html.dark .text-gray-700 {
+  color: #cbd5e1;
+}
+html.dark .text-gray-600 {
+  color: #a8b6c8;
+}
+html.dark .text-gray-500 {
+  color: #8b9bb0;
+}
+html.dark .text-gray-400 {
+  color: #6b7c93;
+}
+html.dark .text-gray-300 {
+  color: #4b5a70;
+}
+html.dark .hover\:text-gray-900:hover {
+  color: #f8fafc;
+}
+html.dark .hover\:text-gray-800:hover {
+  color: #f1f5f9;
+}
+
+html.dark .text-blue-600,
+html.dark .text-blue-700 {
+  color: #7db4ff;
+}
+html.dark .text-blue-800,
+html.dark .hover\:text-blue-800:hover {
+  color: #93c5fd;
+}
+html.dark .hover\:text-blue-600:hover,
+html.dark .hover\:text-blue-700:hover {
+  color: #bfdbfe;
+}
+
+html.dark .border-gray-100 {
+  border-color: #1c2538;
+}
+html.dark .border-gray-200 {
+  border-color: var(--ost-border);
+}
+html.dark .border-gray-300 {
+  border-color: #3d4b63;
+}
+html.dark .border-amber-200 {
+  border-color: rgba(245, 158, 11, 0.45);
+}
+html.dark .border-amber-300 {
+  border-color: rgba(245, 158, 11, 0.55);
+}
+html.dark .border-red-100 {
+  border-color: rgba(239, 68, 68, 0.35);
+}
+html.dark .border-blue-300,
+html.dark .border-blue-500 {
+  border-color: #3b82f6;
+}
+html.dark .divide-gray-100 > :not([hidden]) ~ :not([hidden]) {
+  border-color: #1c2538;
+}
+html.dark .divide-gray-200 > :not([hidden]) ~ :not([hidden]) {
+  border-color: var(--ost-border);
+}
+
+html.dark .placeholder\:text-gray-400::placeholder,
+html.dark .placeholder\:text-gray-500::placeholder,
+html.dark .placeholder-gray-400::placeholder,
+html.dark .placeholder-gray-500::placeholder {
+  color: #6b7c93;
+}
+
+html.dark .shadow-sm {
+  --tw-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.45);
+  --tw-shadow-colored: 0 1px 2px 0 var(--tw-shadow-color);
+  box-shadow: var(--tw-ring-offset-shadow, 0 0 #0000), var(--tw-ring-shadow, 0 0 #0000), var(--tw-shadow);
+}
+html.dark .shadow,
+html.dark .shadow-md {
+  --tw-shadow: 0 4px 16px -2px rgb(0 0 0 / 0.55);
+  box-shadow: var(--tw-ring-offset-shadow, 0 0 #0000), var(--tw-ring-shadow, 0 0 #0000), var(--tw-shadow);
+}
+html.dark .shadow-lg {
+  --tw-shadow: 0 12px 28px -6px rgb(0 0 0 / 0.6);
+  box-shadow: var(--tw-ring-offset-shadow, 0 0 #0000), var(--tw-ring-shadow, 0 0 #0000), var(--tw-shadow);
+}
+
+html.dark .ring-offset-white {
+  --tw-ring-offset-color: var(--ost-page);
+}
+
+html.dark .border-dashed {
+  border-color: #3d4b63;
+}
+
+/* Soften bright yellow stars / warnings on dark */
+html.dark .text-yellow-500 {
+  color: #fbbf24;
+}
+
+/* Sticky chrome: slightly translucent over content */
+html.dark header.sticky {
+  background-color: rgba(21, 28, 44, 0.92);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
 }
