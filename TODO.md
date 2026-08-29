@@ -51,16 +51,17 @@
 - [ ] **Amazon SES — follow-ups (deferred)** — SNS webhook + auto bounce/complaint suppression when mailing at scale; optional suppression Admin UI. **Sending works without this.**
 - [x] **Dark / light mode** — `ThemeProvider` (`ost-theme`); Light → Dark → System cycle in header; FOUC-safe boot; site-wide CSS surfaces; Profile Appearance.
 - [x] **MAUDE brand request** — `POST /api/maude/brand-request` + `MaudeBrandRequest` table; search UI “Don’t see it? Request we add it”.
-- [ ] **Cloudflare R2 media** — Code wired (`r2MediaService` + `MEDIA_PROVIDER=auto`). Bucket `orthoandspinetools` on account `4298f947…` (Orthoandspine). **Blocked:** S3 endpoint TLS not provisioned yet (`sslv3 alert handshake failure` on `*.r2.cloudflarestorage.com`). Need working TLS + `R2_PUBLIC_URL` (r2.dev/custom domain). Cloudinary remains active fallback.
-- [ ] **Cloudflare Images + Stream** — Token + Images hash saved; Images direct-upload URL works but file upload/`Stream` still unauthorized until products fully enabled. Optional vs R2.
-- [ ] **Cloudflare off-site backups** — Copy daily DB dumps to Cloudflare R2 (same account, `backups/` prefix) once R2 S3 TLS is live; keep Hetzner volume as primary.
+- [x] **Cloudflare R2 media** — Live: `MEDIA_PROVIDER=r2`, bucket `orthoandspinetools` on `4298f947…`, public `https://pub-c36d475ac3284cb2bfde3c1ae5d28ccf.r2.dev`. New uploads → R2; existing Cloudinary URLs still work.
+- [ ] **Cloudflare Images + Stream** — Optional; R2 covers images+videos for now. Images/Stream products not fully authorized for uploads yet.
+- [ ] **Cloudflare off-site backups** — Copy daily DB dumps to R2 (`backups/` prefix); keep Hetzner volume as primary.
+- [ ] **R2 production URL** — Optional custom domain (e.g. `media.orthoandspinetools.com`) instead of rate-limited `r2.dev`.
 - [ ] **Security follow-ups** — Fail startup on default secrets; enable upload virus scanning (ClamAV). Rotate Cloudflare API token that was pasted in chat.
 - [x] **Google Search Console** — Domain verified; sitemap submitted (`/sitemap.xml`).
 - [ ] **Optional** — Rich Results Test on home + `/post/:id`; dedicated 1200×630 `og-share.png` for richer homepage/hub cards.
 
 ### **0. Deploy status — verify live**
 - [x] **https://orthoandspinetools.com** — home, hubs, sitemap, OG previews with post images, edit-post tags, `/maude`
-- [x] **Latest deploy (Aug 29)** — dark/light mode + MAUDE brand request + media provider plumbing (R2/Images/Cloudinary); active uploads still **Cloudinary** until R2 TLS is ready
+- [x] **Latest deploy (Aug 29)** — **Media on Cloudflare R2** (`activeProvider: r2`); dark/light mode; MAUDE brand request; Cloudinary retained only for already-uploaded assets
 - [ ] After **every** frontend/nginx recreate: `--force-recreate nginx` if needed (stale upstream → 502)
 
 ### **1. Deploy (production server)**
@@ -116,16 +117,16 @@ Never run `docker compose down -v` (deletes production DB volume).
 - **Post media (WIP)** — Re-test create-post upload if needed; existing posts display images OK
 - **Notifications** — Vote/mention/moderation triggers (v1 comment/reply shipped)
 
-**Live snapshot (Aug 29, 2026):** Dark/light theme · MAUDE brand request + Device—Company titles · Cloudflare R2/Images media plumbing (uploads still Cloudinary; R2 TLS pending) · smoke **31/31** · secrets rotated · volume backups · uptime monitoring · post OG images
+**Live snapshot (Aug 29, 2026):** **Media → Cloudflare R2** · dark/light theme · MAUDE brand request · Cloudinary kept for legacy URLs only · smoke **31/31** · secrets rotated · volume backups · uptime monitoring
 
 ---
 
 ## 📋 **NEXT PRIORITIES (summary)**
 
-1. **Cloudflare R2 TLS** — Wait for S3 endpoint cert on `4298f947…`; then verify PutObject + set `R2_PUBLIC_URL`; switch media off Cloudinary for new uploads
-2. **Content** — More real specialty posts; clean up **Case** tags on product/tool posts
-3. **Manual QA** — Physician NPI signup, intl. pending queue, email verification
-4. **Cloudflare backups** — Off-site DB dump copy to R2 after media endpoint is live
+1. **Manual QA** — Create post with image/video; confirm media URL is `pub-….r2.dev`; physician NPI / intl. pending / email verify
+2. **R2 custom domain** — Prefer `media.orthoandspinetools.com` over `r2.dev` for production
+3. **Content** — More real specialty posts; clean up **Case** tags on product/tool posts
+4. **Cloudflare backups** — Off-site DB dump copy to R2 `backups/`
 5. **Scaling** — CPX21 resize when ready
 
 **Deferred (not launch blockers):** SES SNS webhook for auto bounce/complaint suppression — see `docs/SES_AWS_SETUP.md` when digest/user volume grows.
@@ -255,5 +256,5 @@ docker compose -f docker-compose.prod.yml exec backend npm run backfill-case-pos
 ---
 
 **Last Updated:** Aug 29, 2026  
-**Status:** 🚀 Live — dark/light mode, MAUDE brand requests, media provider plumbing (R2 pending TLS); Cloudinary still serving uploads  
-**You are here:** Wait for Cloudflare R2 S3 TLS; then public URL + cut over media; content/tag cleanup; physician QA
+**Status:** 🚀 Live — new media uploads on Cloudflare R2; Cloudinary legacy URLs still serve  
+**You are here:** QA a create-post upload on R2; optional custom media domain; R2 DB backups; content/tag cleanup
