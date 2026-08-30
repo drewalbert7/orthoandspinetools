@@ -350,7 +350,8 @@ export interface MaudeBrandSearchHit {
   company?: string | null;
   count: number;
   icon: MaudeDeviceIcon;
-  match: 'exact' | 'prefix' | 'contains';
+  match: 'concept' | 'exact' | 'prefix' | 'contains';
+  conceptLabel?: string;
 }
 
 export interface MaudeBrandSeries {

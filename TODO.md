@@ -24,6 +24,7 @@
 | **8** | **Content** | ⏳ More real specialty posts; fix tags on backfilled posts as needed |
 | **9** | **MAUDE brand synopsis** | ✅ Click brand → problem codes + recent FDA narrative excerpts (`/api/maude/synopsis`) |
 | **10** | **MAUDE coverage gaps** | ✅ Device—Company titles; Unknown-specialty implants (discs, Superion, INFUSE, mobile-bearing knees) |
+| **11** | **MAUDE smart search** | ✅ Clinical phrases → implant brands (cervical/lumbar disc arthroplasty, SI, INFUSE, …) |
 
 **Ongoing disk habit:** `./scripts/docker-disk-check.sh report` before `--no-cache` builds.
 
@@ -61,7 +62,7 @@
 
 ### **0. Deploy status — verify live**
 - [x] **https://orthoandspinetools.com** — home, hubs, sitemap, OG previews with post images, edit-post tags, `/maude`
-- [x] **Latest deploy (Aug 29)** — **Media on Cloudflare R2** (`activeProvider: r2`); dark/light mode; MAUDE brand request; Cloudinary retained only for already-uploaded assets
+- [x] **Latest deploy (Aug 30)** — MAUDE smart clinical search live; R2 media; dark/light mode; MAUDE brand request
 - [ ] After **every** frontend/nginx recreate: `--force-recreate nginx` if needed (stale upstream → 502)
 
 ### **1. Deploy (production server)**
@@ -117,7 +118,7 @@ Never run `docker compose down -v` (deletes production DB volume).
 - **Post media (WIP)** — Re-test create-post upload if needed; existing posts display images OK
 - **Notifications** — Vote/mention/moderation triggers (v1 comment/reply shipped)
 
-**Live snapshot (Aug 29, 2026):** **Media → Cloudflare R2** (images + videos; UX unchanged; Images/Stream not required) · dark/light theme · MAUDE brand request · Cloudinary legacy URLs only · smoke **31/31** · secrets rotated · volume backups · uptime monitoring
+**Live snapshot (Aug 30, 2026):** **MAUDE smart search** (cervical/lumbar disc arthroplasty → brands) · **Media → Cloudflare R2** · dark/light theme · MAUDE brand request · Cloudinary legacy URLs only · secrets rotated · volume backups · uptime monitoring
 
 ---
 
@@ -255,6 +256,6 @@ docker compose -f docker-compose.prod.yml exec backend npm run backfill-case-pos
 
 ---
 
-**Last Updated:** Aug 29, 2026  
-**Status:** 🚀 Live — R2 media for new image/video uploads (same app UX); Cloudinary legacy URLs still serve  
-**You are here:** QA create-post image + video on R2; optional custom media domain; R2 DB backups; content/tag cleanup
+**Last Updated:** Aug 30, 2026  
+**Status:** 🚀 Live — MAUDE smart clinical search; R2 media; Cloudinary legacy URLs still serve  
+**You are here:** Optional endoscopic/nav spine coverage gaps; R2 custom media domain; R2 DB backups; content/tag cleanup

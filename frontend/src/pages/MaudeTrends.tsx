@@ -670,7 +670,8 @@ function BrandSearchBar({
         shortLabel: string;
         company?: string | null;
         count: number;
-        match?: 'exact' | 'prefix' | 'contains' | 'local';
+        match?: 'exact' | 'prefix' | 'contains' | 'local' | 'concept';
+        conceptLabel?: string;
         icon?: MaudeDeviceIcon;
         source: 'fda' | 'local';
       }
@@ -683,6 +684,7 @@ function BrandSearchBar({
         company: hit.company,
         count: hit.count,
         match: hit.match,
+        conceptLabel: hit.conceptLabel,
         icon: hit.icon,
         source: 'fda',
       });
@@ -700,7 +702,7 @@ function BrandSearchBar({
       });
     }
 
-    const rank = { exact: 0, prefix: 1, contains: 2, local: 3 } as const;
+    const rank = { concept: 0, exact: 1, prefix: 2, contains: 3, local: 4 } as const;
     return [...byName.values()].sort((a, b) => {
       const ra = rank[a.match || 'local'];
       const rb = rank[b.match || 'local'];
@@ -824,8 +826,14 @@ function BrandSearchBar({
                   <span className="block truncate font-medium text-gray-900">{s.shortLabel}</span>
                   <span className="block text-[11px] text-gray-400">
                     {s.company ? `${s.company} · ` : ''}
-                    {s.source === 'fda' ? 'FDA brand' : 'On this chart'}
-                    {s.match && s.match !== 'local' ? ` · ${s.match} match` : ''}
+                    {s.match === 'concept'
+                      ? s.conceptLabel
+                        ? `${s.conceptLabel}`
+                        : 'Clinical match'
+                      : s.source === 'fda'
+                        ? 'FDA brand'
+                        : 'On this chart'}
+                    {s.match && s.match !== 'local' && s.match !== 'concept' ? ` · ${s.match}` : ''}
                   </span>
                 </span>
                 <span className="shrink-0 text-xs font-medium tabular-nums text-gray-600">
