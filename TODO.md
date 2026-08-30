@@ -51,7 +51,7 @@
 - [ ] **Amazon SES — follow-ups (deferred)** — SNS webhook + auto bounce/complaint suppression when mailing at scale; optional suppression Admin UI. **Sending works without this.**
 - [x] **Dark / light mode** — `ThemeProvider` (`ost-theme`); Light → Dark → System cycle in header; FOUC-safe boot; site-wide CSS surfaces; Profile Appearance.
 - [x] **MAUDE brand request** — `POST /api/maude/brand-request` + `MaudeBrandRequest` table; search UI “Don’t see it? Request we add it”.
-- [x] **Cloudflare R2 media** — Live: `MEDIA_PROVIDER=r2`, bucket `orthoandspinetools` on `4298f947…`, public `https://pub-c36d475ac3284cb2bfde3c1ae5d28ccf.r2.dev`. New uploads → R2 (off-server; scales without filling VPS disk); existing Cloudinary URLs still work. **No Cloudflare Images/Stream subscription required** for this path.
+- [x] **Cloudflare R2 media** — Live: `MEDIA_PROVIDER=r2`, bucket `orthoandspinetools` on `4298f947…`, public `https://pub-c36d475ac3284cb2bfde3c1ae5d28ccf.r2.dev`. App UX unchanged — users still upload images/videos the same way; files land in R2 (not VPS disk). Existing Cloudinary URLs still work. **No Cloudflare Images/Stream subscription required.**
 - [x] **Cloudflare Images + Stream** — **Skipped / not required** on the R2 path. Revisit only if we want CF-managed image transforms or video transcoding/player later.
 - [ ] **Cloudflare off-site backups** — Copy daily DB dumps to R2 (`backups/` prefix); keep Hetzner volume as primary.
 - [ ] **R2 production URL** — Optional custom domain (e.g. `media.orthoandspinetools.com`) instead of rate-limited `r2.dev`.
@@ -117,7 +117,7 @@ Never run `docker compose down -v` (deletes production DB volume).
 - **Post media (WIP)** — Re-test create-post upload if needed; existing posts display images OK
 - **Notifications** — Vote/mention/moderation triggers (v1 comment/reply shipped)
 
-**Live snapshot (Aug 29, 2026):** **Media → Cloudflare R2** (Images/Stream not required) · dark/light theme · MAUDE brand request · Cloudinary legacy URLs only · smoke **31/31** · secrets rotated · volume backups · uptime monitoring
+**Live snapshot (Aug 29, 2026):** **Media → Cloudflare R2** (images + videos; UX unchanged; Images/Stream not required) · dark/light theme · MAUDE brand request · Cloudinary legacy URLs only · smoke **31/31** · secrets rotated · volume backups · uptime monitoring
 
 ---
 
@@ -256,5 +256,5 @@ docker compose -f docker-compose.prod.yml exec backend npm run backfill-case-pos
 ---
 
 **Last Updated:** Aug 29, 2026  
-**Status:** 🚀 Live — media on Cloudflare R2 (no Images/Stream sub needed); Cloudinary legacy URLs still serve  
-**You are here:** QA create-post upload on R2; optional custom media domain; R2 DB backups; content/tag cleanup
+**Status:** 🚀 Live — R2 media for new image/video uploads (same app UX); Cloudinary legacy URLs still serve  
+**You are here:** QA create-post image + video on R2; optional custom media domain; R2 DB backups; content/tag cleanup
