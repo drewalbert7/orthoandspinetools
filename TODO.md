@@ -47,6 +47,7 @@
 - [x] **Feed query indexes** — `posts`, `comments`, `post_votes`, `post_tags` indexes for home/community/profile feeds.
 - [x] **Clickable links in posts** — `remark-gfm` autolinks bare URLs in post/comment bodies; `remark-breaks` preserves single newlines (applies everywhere `MarkdownContent` renders).
 - [x] **MAUDE implant trends** — Public `/maude`: brand-ranked openFDA chart; Device—Company titles; brand search/trending/synopsis; Unknown-specialty coverage (cervical discs, Superion, INFUSE, mobile-bearing/UKA knees); SKU rollups; daily warm cron + `OPENFDA_API_KEY`.
+- [x] **MAUDE smart search** — Clinical phrases expand to implant brands (e.g. “cervical disc arthroplasty” → Mobi-C / prodisc C / M6-C…; “lumbar disc arthroplasty” → CHARITÉ / prodisc L / activL); also SI fusion, interspinous, INFUSE, kypho, pedicle fixation, UKA, RSA.
 - [x] **Secret rotation** — Rotated production `JWT_SECRET` + `POSTGRES_PASSWORD` off compose defaults; scrubbed plaintext DB password from tracked docs/scripts.
 - [x] **Digest cron hardening** — Moved `EMAIL_DIGEST_CRON_SECRET` out of crontab into `scripts/digest-cron.sh` (loads `.env`); rotated the secret.
 - [ ] **Amazon SES — follow-ups (deferred)** — SNS webhook + auto bounce/complaint suppression when mailing at scale; optional suppression Admin UI. **Sending works without this.**
