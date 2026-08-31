@@ -53,9 +53,10 @@
 - [ ] **Amazon SES — follow-ups (deferred)** — SNS webhook + auto bounce/complaint suppression when mailing at scale; optional suppression Admin UI. **Sending works without this.**
 - [x] **Dark / light mode** — `ThemeProvider` (`ost-theme`); Light → Dark → System cycle in header; FOUC-safe boot; site-wide CSS surfaces; Profile Appearance.
 - [x] **MAUDE brand request** — `POST /api/maude/brand-request` + `MaudeBrandRequest` table; search UI “Don’t see it? Request we add it”.
-- [x] **Cloudflare R2 media** — Live: `MEDIA_PROVIDER=r2`, bucket `orthoandspinetools` on `4298f947…`, public `https://pub-c36d475ac3284cb2bfde3c1ae5d28ccf.r2.dev`. App UX unchanged — users still upload images/videos the same way; files land in R2 (not VPS disk). Existing Cloudinary URLs still work. **No Cloudflare Images/Stream subscription required.**
-- [x] **Cloudflare Images + Stream** — **Skipped / not required** on the R2 path. Revisit only if we want CF-managed image transforms or video transcoding/player later.
-- [ ] **Cloudflare off-site backups** — Copy daily DB dumps to R2 (`backups/` prefix); keep Hetzner volume as primary.
+- [x] **Cloudflare R2 media** — Available as fallback (`MEDIA_PROVIDER=r2`). Bucket `orthoandspinetools` on `4298f947…`, public `https://pub-c36d475ac3284cb2bfde3c1ae5d28ccf.r2.dev`. Existing Cloudinary + R2 URLs still serve.
+- [x] **Cloudflare Images + Stream dialed-in** — Live `MEDIA_PROVIDER=cloudflare`. Variants `feed`/`avatar`/`thumb`/`banner` + flexible transforms. Nginx CSP allows Stream iframes. CreatePost Stream preview. Light sharp prep (EXIF/soft-cap) + CF delivery sizing. Smoke: image/avatar/banner/video → 200.
+- [x] **Reddit-like image sizing** — CF delivery variants (scale-down 1920 / avatar 256 / etc.) + server-side `sharp` pre-resize before upload; feed UI `object-contain` + max-height.
+- [x] **Cloudflare off-site backups** — Daily `database-backup-production.sh` (02:00 cron) dumps to Hetzner volume, then uploads `backups/*.sql.gz` to R2. Local retention 7d; R2 retention 30d (`R2_BACKUP_RETENTION_DAYS`). Skip with `SKIP_R2_BACKUP=1`.
 - [ ] **R2 production URL** — Optional custom domain (e.g. `media.orthoandspinetools.com`) instead of rate-limited `r2.dev`.
 - [ ] **Security follow-ups** — Fail startup on default secrets; enable upload virus scanning (ClamAV). Rotate Cloudflare API token that was pasted in chat.
 - [x] **Google Search Console** — Domain verified; sitemap submitted (`/sitemap.xml`).
@@ -112,24 +113,23 @@ Never run `docker compose down -v` (deletes production DB volume).
 ### **3. Backlog**
 - **Scaling** — VPS RAM/disk upgrade before ~5k users; Redis for multi-replica rate limits; managed Postgres later
 - **Link previews** — Optional branded `og-share.png` (1200×630)
-- **Disk / ops** — Cloudflare R2 off-site backup copy; root disk stays lean via volume backups + Docker log limits
+- **Disk / ops** — Cloudflare R2 off-site DB backups ✅; root disk stays lean via volume backups + Docker log limits
 - **SEO** — Lighthouse / Rich Results; confirm `VITE_SITE_URL` / `PUBLIC_SITE_URL` in prod builds
 - **Admin** — SES suppression UI (with SNS webhook); email alert on intl. physician signup (optional)
 - **Content** — More real specialty posts; remove **Case** tag from non-case posts via edit
 - **Post media (WIP)** — Re-test create-post upload if needed; existing posts display images OK
 - **Notifications** — Vote/mention/moderation triggers (v1 comment/reply shipped)
 
-**Live snapshot (Aug 30, 2026):** **MAUDE smart search** (cervical/lumbar disc arthroplasty → brands) · **Media → Cloudflare R2** · dark/light theme · MAUDE brand request · Cloudinary legacy URLs only · secrets rotated · volume backups · uptime monitoring
+**Live snapshot (Aug 30, 2026):** **Media → Cloudflare Images + Stream** (Reddit-like sizing) · R2/Cloudinary legacy URLs still serve · MAUDE smart search · dark/light theme
 
 ---
 
 ## 📋 **NEXT PRIORITIES (summary)**
 
-1. **Manual QA** — Create post with image/video; confirm media URL is `pub-….r2.dev`; physician NPI / intl. pending / email verify
-2. **R2 custom domain** — Prefer `media.orthoandspinetools.com` over `r2.dev` for production
+1. **Manual QA** — Create post with image/video; confirm Cloudflare Images/Stream delivery; physician NPI / intl. pending / email verify
+2. **R2 custom domain** — Prefer `media.orthoandspinetools.com` over `r2.dev` if R2 is used for public media again
 3. **Content** — More real specialty posts; clean up **Case** tags on product/tool posts
-4. **Cloudflare backups** — Off-site DB dump copy to R2 `backups/`
-5. **Scaling** — CPX21 resize when ready
+4. **Scaling** — CPX21 resize when ready
 
 **Deferred (not launch blockers):** SES SNS webhook for auto bounce/complaint suppression — see `docs/SES_AWS_SETUP.md` when digest/user volume grows.
 
@@ -258,5 +258,5 @@ docker compose -f docker-compose.prod.yml exec backend npm run backfill-case-pos
 ---
 
 **Last Updated:** Aug 30, 2026  
-**Status:** 🚀 Live — MAUDE smart clinical search; R2 media; Cloudinary legacy URLs still serve  
-**You are here:** Optional endoscopic/nav spine coverage gaps; R2 custom media domain; R2 DB backups; content/tag cleanup
+**Status:** 🚀 Live — Cloudflare Images+Stream media; R2 off-site DB backups; MAUDE smart search  
+**You are here:** Optional endoscopic/nav spine coverage gaps; optional R2 custom media domain; content/tag cleanup

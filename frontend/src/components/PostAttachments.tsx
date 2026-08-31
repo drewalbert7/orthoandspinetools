@@ -20,11 +20,33 @@ function inferMediaKind(mime: string, src: string): 'image' | 'video' | 'file' {
   if (m.startsWith('video/')) return 'video';
   if (!src) return 'file';
   const u = src.toLowerCase();
-  if (u.includes('/image/upload')) return 'image';
+  if (u.includes('cloudflarestream.com') || u.includes('videodelivery.net')) return 'video';
+  if (u.includes('/image/upload') || u.includes('imagedelivery.net')) return 'image';
   if (u.includes('/video/upload')) return 'video';
   if (/\.(jpe?g|png|gif|webp|svg|avif|bmp|heic|heif)(\?|#|$)/i.test(u)) return 'image';
-  if (/\.(mp4|webm|mov|m4v|ogv)(\?|#|$)/i.test(u)) return 'video';
+  if (/\.(mp4|webm|mov|m4v|ogv|m3u8)(\?|#|$)/i.test(u)) return 'video';
   return 'file';
+}
+
+function isCloudflareStreamUrl(src: string): boolean {
+  const u = (src || '').toLowerCase();
+  return u.includes('cloudflarestream.com') || u.includes('videodelivery.net');
+}
+
+function streamIframeSrc(src: string): string {
+  // Accept iframe URL, HLS, MP4 download, or bare uid path → normalize to /iframe
+  try {
+    const url = new URL(src);
+    const parts = url.pathname.split('/').filter(Boolean);
+    const uid = parts[0];
+    if (uid && /^[a-f0-9]{32}$/i.test(uid)) {
+      return `${url.origin}/${uid}/iframe`;
+    }
+  } catch {
+    /* keep original */
+  }
+  if (src.includes('/iframe')) return src;
+  return src;
 }
 
 function mediaSrc(attachment: TimelineAttachment): string {
@@ -146,17 +168,30 @@ const PostAttachments: React.FC<PostAttachmentsProps> = ({ attachments, postId, 
     const primaryVideo = videoItems[0];
     const mediaSrcV = primaryVideo.src;
     const extraAfterVideo = list.length > 1;
+    const useStreamPlayer = isCloudflareStreamUrl(mediaSrcV);
     return (
       <div className={rootMb}>
         <div className="relative bg-gray-100 rounded-md overflow-hidden">
-          <video
-            src={mediaSrcV}
-            className="w-full h-auto object-contain rounded-md"
-            controls
-            playsInline
-            preload="metadata"
-            style={{ maxHeight: videoMaxH }}
-          />
+          {useStreamPlayer ? (
+            <iframe
+              src={streamIframeSrc(mediaSrcV)}
+              title="Video"
+              className="w-full rounded-md border-0"
+              style={{ maxHeight: videoMaxH, aspectRatio: '16 / 9', minHeight: isDetail ? 360 : 240 }}
+              allow="accelerometer; gyroscope; autoplay; encrypted-media; picture-in-picture"
+              allowFullScreen
+              loading="lazy"
+            />
+          ) : (
+            <video
+              src={mediaSrcV}
+              className="w-full h-auto object-contain rounded-md"
+              controls
+              playsInline
+              preload="metadata"
+              style={{ maxHeight: videoMaxH }}
+            />
+          )}
           {postId && (
             <div className="px-2 py-1.5 border-t border-gray-200 bg-white/90">
               <Link

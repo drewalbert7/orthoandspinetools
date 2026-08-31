@@ -96,6 +96,7 @@ export function preferredCloudinaryOgDeliveryUrl(url: string): string {
 function urlLooksLikeRasterImage(url: string): boolean {
   const lower = url.toLowerCase();
   if (/\/image\/upload\//i.test(lower)) return true;
+  if (lower.includes('imagedelivery.net')) return true;
   return IMAGE_EXT_IN_URL.test(lower);
 }
 

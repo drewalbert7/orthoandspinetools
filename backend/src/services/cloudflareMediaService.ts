@@ -55,7 +55,8 @@ export function isCloudflareStreamConfigured(): boolean {
 }
 
 export function isCloudflareMediaReady(): boolean {
-  return isCloudflareImagesConfigured();
+  // Delivery URLs need the Images account hash (Dashboard → Images → Developer Resources)
+  return isCloudflareImagesConfigured() && Boolean(imagesHash());
 }
 
 function authHeaders(): Record<string, string> {
@@ -96,34 +97,40 @@ function buildImagesDeliveryUrl(imageId: string, variantOrFlex: string): string 
   return `https://imagedelivery.net/${hash}/${imageId}/${variantOrFlex}`;
 }
 
-function avatarFlexVariant(): string {
-  return 'w=256,h=256,fit=cover,gravity=face,f=auto';
-}
-
-function thumbFlexVariant(size = 300): string {
-  return `w=${size},h=${size},fit=cover,f=auto`;
+/** Named variants created in Cloudflare Images (Reddit-like sizes). */
+function namedOrFlex(
+  imageId: string,
+  named: string,
+  flex: string
+): string {
+  return (
+    buildImagesDeliveryUrl(imageId, named) ||
+    buildImagesDeliveryUrl(imageId, flex) ||
+    buildImagesDeliveryUrl(imageId, imagesVariant())
+  );
 }
 
 export function getCloudflareImageUrl(
   imageId: string,
-  options: { width?: number; height?: number; avatar?: boolean; thumb?: boolean } = {}
+  options: { width?: number; height?: number; avatar?: boolean; thumb?: boolean; banner?: boolean } = {}
 ): string {
   if (options.avatar) {
-    return buildImagesDeliveryUrl(imageId, avatarFlexVariant()) || buildImagesDeliveryUrl(imageId, imagesVariant());
+    return namedOrFlex(imageId, 'avatar', 'w=256,h=256,fit=cover,gravity=face,f=auto');
   }
   if (options.thumb) {
-    const size = options.width || options.height || 300;
-    return buildImagesDeliveryUrl(imageId, thumbFlexVariant(size)) || buildImagesDeliveryUrl(imageId, imagesVariant());
+    const size = options.width || options.height || 64;
+    return namedOrFlex(imageId, 'thumb', `w=${size},h=${size},fit=cover,f=auto`);
+  }
+  if (options.banner) {
+    return namedOrFlex(imageId, 'banner', 'w=1920,h=1080,fit=scale-down,f=auto');
   }
   if (options.width || options.height) {
     const w = options.width || 1920;
-    const h = options.height || 1080;
-    return (
-      buildImagesDeliveryUrl(imageId, `w=${w},h=${h},fit=scale-down,f=auto`) ||
-      buildImagesDeliveryUrl(imageId, imagesVariant())
-    );
+    const h = options.height || 1920;
+    return namedOrFlex(imageId, 'feed', `w=${w},h=${h},fit=scale-down,f=auto`);
   }
-  return buildImagesDeliveryUrl(imageId, imagesVariant());
+  // Default feed delivery — scale-down to 1920
+  return namedOrFlex(imageId, 'feed', 'w=1920,h=1920,fit=scale-down,f=auto');
 }
 
 function toUploadFile(buffer: Buffer, originalName: string, mime: string): File {
@@ -133,45 +140,70 @@ function toUploadFile(buffer: Buffer, originalName: string, mime: string): File 
 export async function uploadImageToCloudflare(
   buffer: Buffer,
   originalName: string,
-  options: { isAvatar?: boolean; folder?: string; metadata?: Record<string, string> } = {}
+  options: {
+    isAvatar?: boolean;
+    isBanner?: boolean;
+    folder?: string;
+    metadata?: Record<string, string>;
+  } = {}
 ): Promise<CloudflareUploadResult> {
   if (!isCloudflareImagesConfigured()) {
     throw new AppError('Cloudflare Images not configured', 500);
   }
 
-  const form = new FormData();
-  form.append('file', toUploadFile(buffer, originalName || 'upload.jpg', guessMime(originalName, 'image/jpeg')));
-
+  // Direct Creator Upload — more reliable than /images/v1 multipart on some accounts
+  const draftForm = new FormData();
+  draftForm.append('requireSignedURLs', 'false');
   const meta: Record<string, string> = {
     source: 'orthoandspinetools',
     ...(options.folder ? { folder: options.folder } : {}),
     ...(options.metadata || {}),
   };
-  form.append('metadata', JSON.stringify(meta));
+  draftForm.append('metadata', JSON.stringify(meta));
+  // Prefer UUID ids from CF (custom slash ids complicate DELETE routes)
+  // Do not set custom id unless needed for debugging.
 
-  if (options.folder) {
-    const safe = `${options.folder}/${Date.now()}-${sanitizeName(originalName)}`.replace(/^\/+|\/+$/g, '');
-    if (safe.length <= 1024 && !isUuid(safe)) {
-      form.append('id', safe);
+  const draft = await cfJson<{ id: string; uploadURL: string }>(
+    `https://api.cloudflare.com/client/v4/accounts/${accountId()}/images/v2/direct_upload`,
+    {
+      method: 'POST',
+      headers: authHeaders(),
+      body: draftForm,
     }
+  );
+
+  if (!draft?.id || !draft?.uploadURL) {
+    throw new AppError('Cloudflare Images did not return an upload URL', 502);
   }
 
-  const result = await cfJson<{
-    id: string;
-    filename?: string;
-    variants?: string[];
-  }>(`https://api.cloudflare.com/client/v4/accounts/${accountId()}/images/v1`, {
-    method: 'POST',
-    headers: authHeaders(),
-    body: form,
-  });
+  const fileForm = new FormData();
+  fileForm.append(
+    'file',
+    toUploadFile(buffer, originalName || 'upload.jpg', guessMime(originalName, 'image/jpeg'))
+  );
+  const upRes = await fetch(draft.uploadURL, { method: 'POST', body: fileForm });
+  let upBody: any = null;
+  try {
+    upBody = await upRes.json();
+  } catch {
+    upBody = null;
+  }
+  if (!upRes.ok || upBody?.success === false) {
+    const msg = upBody?.errors?.[0]?.message || `Cloudflare Images upload failed (${upRes.status})`;
+    throw new AppError(String(msg), 502);
+  }
 
-  const id = result.id;
-  const fromApi = pickVariantUrl(result.variants, imagesVariant());
-  const secure =
-    fromApi ||
-    getCloudflareImageUrl(id, options.isAvatar ? { avatar: true } : {}) ||
-    getCloudflareImageUrl(id);
+  const id = (upBody?.result?.id as string) || draft.id;
+  const variants: string[] | undefined = upBody?.result?.variants;
+  const fromApi = pickVariantUrl(variants, imagesVariant());
+
+  const sized = options.isAvatar
+    ? getCloudflareImageUrl(id, { avatar: true })
+    : options.isBanner
+      ? getCloudflareImageUrl(id, { banner: true })
+      : getCloudflareImageUrl(id, { width: 1920, height: 1920 });
+
+  const secure = sized || fromApi || getCloudflareImageUrl(id) || '';
   if (!secure) {
     throw new AppError(
       'Cloudflare Images upload succeeded but no delivery URL. Set CLOUDFLARE_IMAGES_HASH (Images → Developer Resources).',
@@ -179,15 +211,12 @@ export async function uploadImageToCloudflare(
     );
   }
 
-  const optimized = options.isAvatar
-    ? getCloudflareImageUrl(id, { avatar: true }) || secure
-    : getCloudflareImageUrl(id) || secure;
   const thumbnail = getCloudflareImageUrl(id, { thumb: true, width: 64 }) || secure;
 
   return {
     public_id: id,
     secure_url: secure,
-    optimized_url: optimized,
+    optimized_url: sized || secure,
     thumbnail_url: thumbnail,
     width: options.isAvatar ? 256 : 0,
     height: options.isAvatar ? 256 : 0,
@@ -233,13 +262,21 @@ export async function uploadVideoToCloudflare(
   });
 
   const uid = result.uid;
-  const hls = result.playback?.hls || `https://videodelivery.net/${uid}/manifest/video.m3u8`;
-  const thumb = result.thumbnail || `https://videodelivery.net/${uid}/thumbnails/thumbnail.jpg`;
+  const hls =
+    result.playback?.hls || `https://videodelivery.net/${uid}/manifest/video.m3u8`;
+  // Prefer customer subdomain from HLS for iframe / MP4 (works in <video> after encode)
+  const hostMatch = /^https:\/\/([^/]+)\//i.exec(hls);
+  const host = hostMatch?.[1] || 'videodelivery.net';
+  const iframe = `https://${host}/${uid}/iframe`;
+  const mp4 = `https://${host}/${uid}/downloads/default.mp4`;
+  const thumb =
+    result.thumbnail || `https://${host}/${uid}/thumbnails/thumbnail.jpg`;
 
   return {
     public_id: uid,
-    secure_url: hls,
-    optimized_url: hls,
+    // iframe is always playable; frontend also handles Stream hosts
+    secure_url: iframe,
+    optimized_url: mp4,
     thumbnail_url: thumb,
     width: result.input?.width || 0,
     height: result.input?.height || 0,
@@ -277,21 +314,6 @@ export async function deleteFromCloudflare(publicId: string, kind: CloudflareMed
     return;
   }
   await deleteCloudflareImage(publicId);
-}
-
-function sanitizeName(name: string): string {
-  return (
-    name
-      .replace(/\.[^/.]+$/, '')
-      .toLowerCase()
-      .replace(/[^a-z0-9._-]+/g, '-')
-      .replace(/-+/g, '-')
-      .slice(0, 80) || 'file'
-  );
-}
-
-function isUuid(value: string): boolean {
-  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value);
 }
 
 function extOf(name: string): string {

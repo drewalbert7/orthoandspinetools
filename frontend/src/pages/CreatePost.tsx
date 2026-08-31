@@ -383,6 +383,8 @@ const CreatePost: React.FC = () => {
             mimetype: vid.mimetype || 'video/mp4',
             size: vid.size ?? 0,
             cloudinaryPublicId: vid.cloudinaryPublicId,
+            optimizedUrl: vid.optimizedUrl,
+            thumbnailUrl: vid.thumbnailUrl,
             duration: vid.duration,
             width: vid.width,
             height: vid.height,
@@ -501,6 +503,35 @@ const CreatePost: React.FC = () => {
                     alt=""
                     className="w-full h-24 sm:h-32 object-cover rounded-md border border-gray-200"
                   />
+                ) : media.url &&
+                  (media.url.includes('cloudflarestream.com') || media.url.includes('videodelivery.net')) ? (
+                  <div className="relative w-full h-24 sm:h-32 rounded-md border border-gray-200 overflow-hidden bg-gray-900">
+                    {media.thumbnailUrl ? (
+                      <img
+                        src={media.thumbnailUrl}
+                        alt=""
+                        className="w-full h-full object-cover"
+                      />
+                    ) : null}
+                    <iframe
+                      src={
+                        (() => {
+                          try {
+                            const u = new URL(media.url);
+                            const uid = u.pathname.split('/').filter(Boolean)[0];
+                            if (uid) return `${u.origin}/${uid}/iframe?muted=true&preload=true`;
+                          } catch {
+                            /* fall through */
+                          }
+                          return media.url.includes('/iframe') ? media.url : media.url;
+                        })()
+                      }
+                      title="Video preview"
+                      className="absolute inset-0 w-full h-full border-0"
+                      allow="accelerometer; gyroscope; autoplay; encrypted-media; picture-in-picture"
+                      loading="lazy"
+                    />
+                  </div>
                 ) : (
                   <video
                     src={media.url}

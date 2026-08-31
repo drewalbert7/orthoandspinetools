@@ -24,7 +24,7 @@ export const securityHeaders = (req: Request, res: Response, next: NextFunction)
     "script-src 'self' 'unsafe-inline'; " +
     "style-src 'self' 'unsafe-inline'; " +
     "connect-src 'self' https://api.cloudinary.com https://api.cloudflare.com https://upload.imagedelivery.net https://videodelivery.net https://*.cloudflarestream.com https://*.r2.cloudflarestorage.com https://*.r2.dev; " +
-    "frame-src 'self' https://iframe.videodelivery.net https://*.cloudflarestream.com; " +
+    "frame-src 'self' https://iframe.videodelivery.net https://videodelivery.net https://*.cloudflarestream.com; " +
     "frame-ancestors 'none';"
   );
 

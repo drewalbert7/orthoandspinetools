@@ -1,8 +1,8 @@
 # Backend Dockerfile
 FROM node:18-alpine
 
-# Install OpenSSL, curl for health checks, and other dependencies for Prisma
-RUN apk add --no-cache openssl openssl-dev curl
+# OpenSSL/curl for Prisma + healthchecks; vips for sharp (Reddit-like image resize)
+RUN apk add --no-cache openssl openssl-dev curl vips
 
 # Set working directory
 WORKDIR /app

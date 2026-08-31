@@ -947,6 +947,8 @@ class ApiService {
       mimetype: string;
       cloudinaryUrl?: string;
       cloudinaryPublicId?: string;
+      optimizedUrl?: string;
+      thumbnailUrl?: string;
       duration?: number;
       width?: number;
       height?: number;
@@ -965,6 +967,8 @@ class ApiService {
         mimetype: item.mimetype,
         cloudinaryUrl: item.url || item.cloudinaryUrl,
         cloudinaryPublicId: item.cloudinaryPublicId,
+        optimizedUrl: item.optimizedUrl,
+        thumbnailUrl: item.thumbnailUrl,
         duration: item.duration,
         width: item.width,
         height: item.height,

@@ -37,6 +37,7 @@ services:
         max-size: "10m"
         max-file: "3"
     env_file:
+      - .env
       - .env.cloudinary
     environment:
       NODE_ENV: production
@@ -49,8 +50,8 @@ services:
       CORS_ORIGINS: https://orthoandspinetools.com,https://www.orthoandspinetools.com
       # Canonical origin for OG/HTML share previews (optional; else X-Forwarded-* from nginx)
       PUBLIC_SITE_URL: ${PUBLIC_SITE_URL:-https://orthoandspinetools.com}
-      # Media: R2 preferred when set; Cloudflare Images/Stream then Cloudinary as fallbacks
-      MEDIA_PROVIDER: ${MEDIA_PROVIDER:-auto}
+      # Media: cloudflare = Images+Stream (Reddit-like sizing); r2 / cloudinary as alternatives
+      MEDIA_PROVIDER: ${MEDIA_PROVIDER:-cloudflare}
       CLOUDFLARE_ACCOUNT_ID: ${CLOUDFLARE_ACCOUNT_ID:-}
       CLOUDFLARE_API_TOKEN: ${CLOUDFLARE_API_TOKEN:-}
       CLOUDFLARE_IMAGES_HASH: ${CLOUDFLARE_IMAGES_HASH:-}

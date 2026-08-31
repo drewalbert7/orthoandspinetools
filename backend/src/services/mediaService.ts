@@ -1,4 +1,5 @@
 import { AppError } from '../middleware/errorHandler';
+import { optimizeImageForUpload } from './imageOptimize';
 import {
   deleteFromCloudinary,
   getOptimizedImageUrl as getCloudinaryOptimizedUrl,
@@ -50,9 +51,9 @@ function preferredProvider(): MediaProvider | null {
   if (forced === 'cloudinary') {
     return isCloudinaryMediaReady() ? 'cloudinary' : null;
   }
-  // auto: R2 → Cloudflare Images/Stream → Cloudinary
-  if (isR2MediaReady()) return 'r2';
+  // auto: Cloudflare Images/Stream → R2 → Cloudinary
   if (isCloudflareMediaReady()) return 'cloudflare';
+  if (isR2MediaReady()) return 'r2';
   if (isCloudinaryMediaReady()) return 'cloudinary';
   return null;
 }
@@ -137,24 +138,48 @@ export async function uploadImageMedia(
     throw new AppError('No media storage configured (R2, Cloudflare Images, or Cloudinary)', 500);
   }
 
+  const kind = options.isAvatar ? 'avatar' : options.folder?.includes('banner') ? 'banner' : 'feed';
+  // Cloudflare Images applies Reddit-like variants on delivery — only soft-prep (EXIF + soft cap).
+  // R2/Cloudinary need full resize/encode here.
+  const optimized = await optimizeImageForUpload(buffer, originalName, kind, {
+    mode: provider === 'cloudflare' ? 'light' : 'full',
+  });
+
   if (provider === 'r2') {
     const folder = options.isAvatar
       ? 'orthoandspinetools/avatars'
       : options.folder || 'orthoandspinetools/images';
-    return fromR2(await uploadToR2(buffer, originalName, { folder, kind: 'image' }));
+    const uploaded = await uploadToR2(optimized.buffer, optimized.originalName, {
+      folder,
+      kind: 'image',
+      contentType: optimized.contentType,
+    });
+    return {
+      ...fromR2(uploaded),
+      width: optimized.width || uploaded.width,
+      height: optimized.height || uploaded.height,
+      format: optimized.format,
+      bytes: optimized.bytes,
+    };
   }
 
   if (provider === 'cloudflare') {
-    return fromCloudflare(
-      await uploadImageToCloudflare(buffer, originalName, {
-        isAvatar: options.isAvatar,
-        folder: options.folder || 'orthoandspinetools',
-      })
-    );
+    const uploaded = await uploadImageToCloudflare(optimized.buffer, optimized.originalName, {
+      isAvatar: options.isAvatar,
+      isBanner: kind === 'banner',
+      folder: options.folder || 'orthoandspinetools',
+    });
+    return {
+      ...fromCloudflare(uploaded),
+      width: optimized.width || uploaded.width,
+      height: optimized.height || uploaded.height,
+      format: optimized.format,
+      bytes: optimized.bytes,
+    };
   }
 
   return fromCloudinary(
-    await uploadToCloudinary(buffer, originalName, options.folder || 'orthoandspinetools', {
+    await uploadToCloudinary(optimized.buffer, optimized.originalName, options.folder || 'orthoandspinetools', {
       isAvatar: options.isAvatar,
       autoConvert: true,
     }),

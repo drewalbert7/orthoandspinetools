@@ -693,6 +693,7 @@ router.post('/post-videos-cloudinary',
         duration: media.duration,
         width: media.width,
         height: media.height,
+        optimizedUrl: media.optimized_url,
         thumbnailUrl: media.thumbnail_url,
       });
     } catch (error) {
