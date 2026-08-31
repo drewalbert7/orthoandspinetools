@@ -64,7 +64,7 @@
 
 ### **0. Deploy status — verify live**
 - [x] **https://orthoandspinetools.com** — home, hubs, sitemap, OG previews with post images, edit-post tags, `/maude`
-- [x] **Latest deploy (Aug 30)** — MAUDE smart clinical search live; R2 media; dark/light mode; MAUDE brand request
+- [x] **Latest deploy (Aug 30)** — Cloudflare Images+Stream media; R2 off-site DB backups; MAUDE smart search; dark/light mode
 - [ ] After **every** frontend/nginx recreate: `--force-recreate nginx` if needed (stale upstream → 502)
 
 ### **1. Deploy (production server)**
