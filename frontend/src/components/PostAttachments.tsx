@@ -74,8 +74,8 @@ type Enriched = { att: TimelineAttachment; src: string; kind: 'image' | 'video' 
 const PostAttachments: React.FC<PostAttachmentsProps> = ({ attachments, postId, variant = 'default' }) => {
   const isDetail = variant === 'detail';
   const rootMb = isDetail ? 'mb-6' : 'mb-3';
-  const singleMaxH = isDetail ? '80vh' : '600px';
-  const videoMaxH = isDetail ? '80vh' : '600px';
+  const singleMaxH = isDetail ? '80vh' : 'min(42vh, 420px)';
+  const videoMaxH = isDetail ? '80vh' : 'min(42vh, 420px)';
   const list = attachments ?? [];
   if (list.length === 0) {
     return null;
@@ -177,7 +177,7 @@ const PostAttachments: React.FC<PostAttachmentsProps> = ({ attachments, postId, 
               src={streamIframeSrc(mediaSrcV)}
               title="Video"
               className="w-full rounded-md border-0"
-              style={{ maxHeight: videoMaxH, aspectRatio: '16 / 9', minHeight: isDetail ? 360 : 240 }}
+              style={{ maxHeight: videoMaxH, aspectRatio: '16 / 9', minHeight: isDetail ? 280 : 160 }}
               allow="accelerometer; gyroscope; autoplay; encrypted-media; picture-in-picture"
               allowFullScreen
               loading="lazy"

@@ -18,6 +18,16 @@ const Sidebar: React.FC<SidebarProps> = ({ isMobileOpen, onMobileClose }) => {
   // Local state for optimistic updates
   const [optimisticFollows, setOptimisticFollows] = useState<Set<string>>(new Set());
 
+  // Lock background scroll while the mobile drawer is open
+  useEffect(() => {
+    if (!isMobileOpen) return;
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.body.style.overflow = prev;
+    };
+  }, [isMobileOpen]);
+
   // Fetch all communities
   const { data: communities, isLoading: communitiesLoading, error: communitiesError } = useQuery({
     queryKey: ['communities'],
@@ -116,10 +126,11 @@ const Sidebar: React.FC<SidebarProps> = ({ isMobileOpen, onMobileClose }) => {
       <aside
         className={`
         app-sidebar
-        w-64 bg-white shadow-sm border-r border-gray-200 h-full overflow-y-auto
+        w-[min(18rem,88vw)] bg-white shadow-sm border-r border-gray-200 h-full overflow-y-auto overscroll-contain
         fixed lg:static inset-y-0 left-0 z-50 lg:z-auto
         transform transition-transform duration-300 ease-in-out
         ${isMobileOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
+        dark:bg-slate-900 dark:border-slate-700
       `}
       >
         <div className="p-4">
@@ -138,7 +149,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isMobileOpen, onMobileClose }) => {
         <nav className="space-y-2 mb-6">
           <Link
             to="/"
-            className={`flex items-center space-x-3 px-3 py-2 rounded-lg transition-colors ${
+            className={`touch-target flex items-center space-x-3 px-3 py-2.5 rounded-lg transition-colors ${
               isActive('/') ? 'bg-blue-100 text-blue-700' : 'text-gray-700 hover:bg-gray-100'
             }`}
             onClick={onMobileClose}
@@ -151,7 +162,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isMobileOpen, onMobileClose }) => {
 
           <Link
             to="/popular"
-            className={`flex items-center space-x-3 px-3 py-2 rounded-lg transition-colors ${
+            className={`touch-target flex items-center space-x-3 px-3 py-2.5 rounded-lg transition-colors ${
               isActive('/popular') ? 'bg-blue-100 text-blue-700' : 'text-gray-700 hover:bg-gray-100'
             }`}
             onClick={onMobileClose}
@@ -164,7 +175,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isMobileOpen, onMobileClose }) => {
 
           <Link
             to="/cases"
-            className={`flex items-center space-x-3 px-3 py-2 rounded-lg transition-colors ${
+            className={`touch-target flex items-center space-x-3 px-3 py-2.5 rounded-lg transition-colors ${
               isActive('/cases') ? 'bg-blue-100 text-blue-700' : 'text-gray-700 hover:bg-gray-100'
             }`}
             onClick={onMobileClose}
@@ -182,7 +193,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isMobileOpen, onMobileClose }) => {
 
           <Link
             to="/maude"
-            className={`flex items-center space-x-3 px-3 py-2 rounded-lg transition-colors ${
+            className={`touch-target flex items-center space-x-3 px-3 py-2.5 rounded-lg transition-colors ${
               isActive('/maude') ? 'bg-blue-100 text-blue-700' : 'text-gray-700 hover:bg-gray-100'
             }`}
             onClick={onMobileClose}
@@ -201,7 +212,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isMobileOpen, onMobileClose }) => {
           <div>
             <Link
               to="/startups"
-              className={`flex items-center space-x-3 px-3 py-2 rounded-lg transition-colors ${
+              className={`touch-target flex items-center space-x-3 px-3 py-2.5 rounded-lg transition-colors ${
                 isActive('/startups') ? 'bg-blue-100 text-blue-700' : 'text-gray-700 hover:bg-gray-100'
               }`}
               onClick={onMobileClose}
@@ -213,7 +224,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isMobileOpen, onMobileClose }) => {
             </Link>
             <Link
               to="/create-post?mode=launch"
-              className="mt-0.5 flex items-center gap-2 pl-11 pr-3 py-1.5 rounded-lg text-xs font-medium text-blue-700 hover:bg-blue-50 transition-colors"
+              className="mt-0.5 flex items-center gap-2 pl-11 pr-3 py-2 min-h-[36px] rounded-lg text-xs font-medium text-blue-700 hover:bg-blue-50 transition-colors"
               onClick={onMobileClose}
             >
               <svg className="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden>
@@ -227,7 +238,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isMobileOpen, onMobileClose }) => {
             href="https://orthoandspinejobs.com"
             target="_blank"
             rel="noopener noreferrer"
-            className="flex items-center space-x-3 px-3 py-2 rounded-lg text-gray-700 hover:bg-gray-100 transition-colors"
+            className="touch-target flex items-center space-x-3 px-3 py-2.5 rounded-lg text-gray-700 hover:bg-gray-100 transition-colors"
             onClick={onMobileClose}
           >
             <svg className="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden>

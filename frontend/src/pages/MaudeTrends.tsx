@@ -1567,7 +1567,7 @@ const MaudeTrends: React.FC = () => {
 
         <div className="mt-4">
           <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-gray-500">Specialty</p>
-          <div className="flex flex-wrap gap-2">
+          <div className="flex gap-2 overflow-x-auto pb-1 -mx-1 px-1 sm:flex-wrap sm:overflow-visible scrollbar-thin">
             {SPECIALTIES.map((s) => (
               <button
                 key={s.id}
@@ -1576,7 +1576,7 @@ const MaudeTrends: React.FC = () => {
                   setSelectedBrand(null);
                   updateParams({ specialty: s.id === 'all' ? null : s.id, brand: null });
                 }}
-                className={`rounded-full px-3 py-1.5 text-xs font-medium transition-colors ${
+                className={`shrink-0 rounded-full px-3 py-1.5 text-xs font-medium transition-colors ${
                   specialty === s.id
                     ? 'bg-blue-600 text-white'
                     : 'bg-gray-100 text-gray-700 hover:bg-gray-200'

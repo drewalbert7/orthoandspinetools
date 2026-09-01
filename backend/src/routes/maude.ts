@@ -218,6 +218,17 @@ router.post(
           id: created.id,
           error: 'error' in sent ? sent.error : 'unknown',
         });
+      } else if (sent.ok) {
+        logger.info('MAUDE brand request notify email sent', {
+          id: created.id,
+          toDomain: notifyTo.split('@')[1],
+          messageId: 'messageId' in sent ? sent.messageId : undefined,
+        });
+      } else {
+        logger.warn('MAUDE brand request notify email skipped', {
+          id: created.id,
+          toDomain: notifyTo.split('@')[1],
+        });
       }
     }
 

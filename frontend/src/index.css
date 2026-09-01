@@ -92,20 +92,22 @@ html.theme-animating *:not(svg):not(path):not(circle):not(line):not(polyline):no
     transition: background-color 99999s ease-out;
   }
 
-  /* Ensure touch targets are accessible on mobile */
+  /* Touch targets: opt-in only. Global min-height on every a/button
+     bloated feed titles, meta links, and chips on mobile. */
   @media (max-width: 640px) {
-    button:not(.no-touch-target),
-    a:not(.no-touch-target) {
+    .touch-target {
       min-height: 44px;
+      min-width: 44px;
       display: inline-flex;
       align-items: center;
       justify-content: center;
     }
 
-    aside.app-sidebar a:not(.no-touch-target) {
+    aside.app-sidebar a.touch-target,
+    aside.app-sidebar .touch-target {
       display: flex;
       justify-content: flex-start;
-      align-items: center;
+      width: 100%;
     }
   }
 }
@@ -223,8 +225,20 @@ html.dark .bg-sky-100 {
 html.dark .bg-teal-100 {
   background-color: rgba(20, 184, 166, 0.16);
 }
+html.dark .bg-orange-50,
+html.dark .bg-orange-50\/80,
 html.dark .bg-orange-100 {
   background-color: rgba(249, 115, 22, 0.16);
+}
+html.dark .border-orange-200 {
+  border-color: rgba(249, 115, 22, 0.35);
+}
+html.dark .bg-yellow-50,
+html.dark .bg-yellow-100 {
+  background-color: rgba(234, 179, 8, 0.14);
+}
+html.dark .border-yellow-200 {
+  border-color: rgba(234, 179, 8, 0.35);
 }
 html.dark .bg-rose-100 {
   background-color: rgba(244, 63, 94, 0.16);

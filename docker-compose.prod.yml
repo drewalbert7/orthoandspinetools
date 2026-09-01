@@ -83,6 +83,9 @@ services:
       # openFDA MAUDE trends (optional key raises rate limits; warm cron uses MAUDE_CRON_SECRET)
       OPENFDA_API_KEY: ${OPENFDA_API_KEY:-}
       MAUDE_CRON_SECRET: ${MAUDE_CRON_SECRET:-}
+      # Inbox for "request we add this brand" on /maude (SES). Falls back to UPTIME_ALERT_TO in code.
+      MAUDE_REQUEST_TO: ${MAUDE_REQUEST_TO:-}
+      UPTIME_ALERT_TO: ${UPTIME_ALERT_TO:-}
     depends_on:
       postgres:
         condition: service_healthy

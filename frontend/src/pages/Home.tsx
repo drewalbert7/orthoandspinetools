@@ -38,7 +38,7 @@ const PostCard: React.FC<{ post: Post }> = ({ post }) => {
       {/* Content Section */}
       <div className="p-3">
         {/* Post Header */}
-        <div className="flex items-center space-x-1 text-xs text-gray-500 mb-1">
+        <div className="flex flex-wrap items-center gap-x-1 gap-y-1 text-xs text-gray-500 mb-1">
           <Link 
             to={communitySlug ? `/community/${communitySlug}` : '/'}
             className="font-medium text-gray-900 hover:underline flex items-center space-x-1"
@@ -78,7 +78,7 @@ const PostCard: React.FC<{ post: Post }> = ({ post }) => {
           onClick={(e) => navigateToPostFromFeedCardBackground(e, navigate, post.id)}
         >
           <Link to={`/post/${post.id}`} className="block">
-            <h3 className="text-lg font-medium text-gray-900 mb-2 hover:text-blue-600 transition-colors leading-tight">
+            <h3 className="text-base sm:text-lg font-medium text-gray-900 mb-2 hover:text-blue-600 transition-colors leading-tight">
               {post.title}
             </h3>
           </Link>
@@ -120,7 +120,7 @@ const PostCard: React.FC<{ post: Post }> = ({ post }) => {
         </div>
 
         {/* Action Bar with Voting - Reddit Style */}
-        <div className="flex items-center space-x-2 text-xs text-gray-500 pt-2 border-t border-gray-100">
+        <div className="flex flex-wrap items-center gap-2 text-xs text-gray-500 pt-2 border-t border-gray-100">
           {/* Voting Section - Using VoteButton Component */}
           <VoteButton
             postId={post.id}
@@ -132,7 +132,7 @@ const PostCard: React.FC<{ post: Post }> = ({ post }) => {
           {/* Comments */}
           <Link 
             to={`/post/${post.id}`}
-            className="flex items-center space-x-1 px-2 py-1 rounded-md border border-gray-200 hover:border-gray-300 bg-gray-50 hover:bg-gray-100 transition-colors"
+            className="flex items-center space-x-1 px-2 py-1.5 min-h-[36px] rounded-md border border-gray-200 hover:border-gray-300 bg-gray-50 hover:bg-gray-100 transition-colors"
           >
             <svg className="w-4 h-4 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />

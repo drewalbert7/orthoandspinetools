@@ -149,6 +149,8 @@ const UKA_MOBILE_BEARING =
   'device.openfda.device_name:"Prosthesis, Knee, Femorotibial, Unicompartmental, Semi-Constrained, Metal/Polymer, Mobile Bearing"';
 const RHBMP_FILLER =
   'device.openfda.device_name:"Filler, Recombinant Human Bone Morphogenetic Protein, Collagen Scaffold With Metal Prosthesis, Osteoinduction" OR device.openfda.device_name:"Filler, Recombinant Human Bone Morphogenetic Protein, Collagen Scaffold, Osteoinduction"';
+/** ACDF plates, cages, stand-alone cervical interbodies (not disc arthroplasty). */
+const ACDF_IMPLANTS = `(device.openfda.device_name:(cervical AND (plate OR interbody OR cage OR "stand-alone" OR standalone OR "stand alone" OR "anterior cervical")) OR device.brand_name:(ATLANTIS OR ZEVO OR SKYLINE OR "ZERO-P" OR "ZERO P" OR "SLIM LOC" OR SLIMLOC OR ACIS OR COROENT OR TRESTLE OR REFLEX OR FIDJI OR LINEUM OR PREVAIL OR "TRITANIUM C" OR PRECEPT OR EVEREST OR SILHOUETTE))`;
 
 /** Unknown-specialty implant classes that still belong in All Orthopedic. */
 const ORTHO_UNKNOWN_IMPLANTS = `(${DISC_ARTHROPLASTY} OR ${SPINOUS_SPACER} OR ${MOBILE_BEARING_KNEE} OR ${UKA_MOBILE_BEARING} OR ${RHBMP_FILLER})`;
@@ -169,7 +171,7 @@ export const MAUDE_SPECIALTIES: Record<
   spine: {
     label: 'Spine',
     communitySlug: 'spine',
-    searchClause: `((${ORTHO} AND (device.openfda.device_name:spinal OR device.openfda.device_name:intervertebral OR device.openfda.device_name:pedicle OR device.openfda.device_name:vertebral OR device.openfda.device_name:cervical OR device.openfda.device_name:sacro OR device.openfda.device_name:spinous OR device.openfda.device_name:kypho OR device.openfda.device_name:vertebro OR device.brand_name:HORIZON OR device.brand_name:INFUSE OR device.brand_name:IFUSE OR device.brand_name:iFuse)) OR ${DISC_ARTHROPLASTY} OR ${SPINOUS_SPACER} OR ${RHBMP_FILLER})`,
+    searchClause: `((${ORTHO} AND (device.openfda.device_name:spinal OR device.openfda.device_name:intervertebral OR device.openfda.device_name:pedicle OR device.openfda.device_name:vertebral OR device.openfda.device_name:cervical OR device.openfda.device_name:sacro OR device.openfda.device_name:spinous OR device.openfda.device_name:kypho OR device.openfda.device_name:vertebro OR device.brand_name:HORIZON OR device.brand_name:INFUSE OR device.brand_name:IFUSE OR device.brand_name:iFuse)) OR ${DISC_ARTHROPLASTY} OR ${SPINOUS_SPACER} OR ${RHBMP_FILLER} OR ${ACDF_IMPLANTS})`,
   },
   'hip-knee-arthroplasty': {
     label: 'Hip & Knee Arthroplasty',
@@ -236,6 +238,11 @@ const BRAND_FAMILY_COMPANY: Array<{ test: RegExp; company: string }> = [
   { test: /^cd\s*horizon/i, company: 'Medtronic' },
   { test: /\bmetrx\b/i, company: 'Medtronic' },
   { test: /^prestige(\s+cervical|\s+disc)/i, company: 'Medtronic' },
+  { test: /^atlantis\b/i, company: 'Medtronic' },
+  { test: /^zevo\b/i, company: 'Medtronic' },
+  { test: /^vertex\b/i, company: 'Medtronic' },
+  { test: /^prevail\b/i, company: 'Medtronic' },
+  { test: /^capstone\b/i, company: 'Medtronic' },
   { test: /^superion\b|^vertiflex\b/i, company: 'Boston Scientific' },
   { test: /^coflex\b/i, company: 'Presidio Surgical' },
   { test: /^infuse\b/i, company: 'Medtronic' },
@@ -244,20 +251,31 @@ const BRAND_FAMILY_COMPANY: Array<{ test: RegExp; company: string }> = [
   { test: /^expedium/i, company: 'DePuy Synthes' },
   { test: /^viper/i, company: 'DePuy Synthes' },
   { test: /^pinnacle/i, company: 'DePuy Synthes' },
+  { test: /^zero[-\s]?p\b/i, company: 'DePuy Synthes' },
+  { test: /^slim[-\s]?loc\b/i, company: 'DePuy Synthes' },
+  { test: /^acis\b/i, company: 'DePuy Synthes' },
+  { test: /^trestle\b/i, company: 'DePuy Synthes' },
+  { test: /^skyline\b/i, company: 'DePuy Synthes' },
   { test: /^corail/i, company: 'DePuy Synthes' },
   { test: /^inhance/i, company: 'DePuy Synthes' },
   { test: /^orthocord|^truespan/i, company: 'DePuy Synthes' },
   { test: /\bmitek\b/i, company: 'DePuy Synthes' },
   { test: /^triathlon/i, company: 'Stryker' },
+  { test: /^tritanium\s*c\b/i, company: 'Stryker' },
   { test: /^tritanium/i, company: 'Stryker' },
   { test: /^t2\b|^t2\s/i, company: 'Stryker' },
   { test: /^xia\b/i, company: 'Stryker' },
   { test: /^acre?e?a?d?\b|^acreo/i, company: 'Stryker' },
+  { test: /^reflex\b/i, company: 'Stryker' },
+  { test: /^solis\b/i, company: 'Stryker' },
   { test: /^persona\b|^nexgen|^taperloc|^g7\b|^emphasys|^comprehensive\b/i, company: 'Zimmer Biomet' },
   { test: /^mobi-?c\b/i, company: 'Zimmer Biomet' },
   { test: /^creo\b/i, company: 'Globus Medical' },
   { test: /^secure-?c\b/i, company: 'Globus Medical' },
   { test: /^reline|^catalyft|^nuvasive|^simplify\b/i, company: 'NuVasive' },
+  { test: /^precept\b/i, company: 'NuVasive' },
+  { test: /^everest\b/i, company: 'NuVasive' },
+  { test: /^coroent\b/i, company: 'NuVasive' },
   { test: /^prodisc/i, company: 'Centinel Spine' },
   { test: /^m6-?c\b|^m6\s+cervical/i, company: 'Orthofix' },
   { test: /^fiber(wire|tak)|^tightrope|^swivelock|^healix|^bipush|^pushlock/i, company: 'Arthrex' },
@@ -365,6 +383,109 @@ const BRAND_ROLLUPS: Array<{ test: RegExp; filterName: string; displayName: stri
     filterName: 'IFUSE',
     displayName: 'iFuse Implant System',
     company: 'SI-BONE',
+  },
+  // --- ACDF plates / cages / stand-alone ---
+  {
+    test: /^zero[-\s]?p\b/i,
+    filterName: 'ZERO-P',
+    displayName: 'Zero-P Cervical Cage / Plate',
+    company: 'DePuy Synthes',
+  },
+  {
+    test: /^atlantis\b/i,
+    filterName: 'ATLANTIS',
+    displayName: 'Atlantis Anterior Cervical Plate',
+    company: 'Medtronic',
+  },
+  {
+    test: /^zevo\b/i,
+    filterName: 'ZEVO',
+    displayName: 'ZEVO Anterior Cervical Plate',
+    company: 'Medtronic',
+  },
+  {
+    test: /^skyline\b/i,
+    filterName: 'SKYLINE',
+    displayName: 'Skyline Anterior Cervical Plate',
+    company: 'DePuy Synthes',
+  },
+  {
+    test: /^slim[-\s]?loc\b/i,
+    filterName: 'SLIM LOC',
+    displayName: 'Slim Loc Anterior Cervical Plate',
+    company: 'DePuy Synthes',
+  },
+  {
+    test: /^acis\b/i,
+    filterName: 'ACIS',
+    displayName: 'ACIS Cervical Cage',
+    company: 'DePuy Synthes',
+  },
+  {
+    test: /^trestle\b/i,
+    filterName: 'TRESTLE',
+    displayName: 'Trestle Anterior Cervical Plate',
+    company: 'DePuy Synthes',
+  },
+  {
+    test: /^reflex\b/i,
+    filterName: 'REFLEX',
+    displayName: 'Reflex Hybrid Anterior Cervical Plate',
+    company: 'Stryker',
+  },
+  {
+    test: /^coroent\b/i,
+    filterName: 'COROENT',
+    displayName: 'CoRoent Cervical Interbody',
+    company: 'NuVasive',
+  },
+  {
+    test: /^precept\b/i,
+    filterName: 'PRECEPT',
+    displayName: 'Precept Spinal System',
+    company: 'NuVasive',
+  },
+  {
+    test: /^everest\b/i,
+    filterName: 'EVEREST',
+    displayName: 'Everest Spinal System',
+    company: 'NuVasive',
+  },
+  {
+    test: /^solis\b/i,
+    filterName: 'SOLIS',
+    displayName: 'Solis Cervical Cage',
+    company: 'Stryker',
+  },
+  {
+    test: /^tritanium\s*c\b/i,
+    filterName: 'TRITANIUM C',
+    displayName: 'Tritanium C Anterior Cervical Cage',
+    company: 'Stryker',
+  },
+  {
+    test: /^prevail\b/i,
+    filterName: 'PREVAIL',
+    displayName: 'PEEK Prevail Cervical Interbody',
+    company: 'Medtronic',
+  },
+  {
+    test: /^vertex\b/i,
+    filterName: 'VERTEX',
+    displayName: 'Vertex Reconstruction System',
+    company: 'Medtronic',
+  },
+  {
+    test: /^silhouette\b/i,
+    filterName: 'SILHOUETTE',
+    displayName: 'Silhouette Spinal System',
+    company: 'Zimmer Biomet',
+  },
+  {
+    test: /^fidji\b/i,
+    filterName: 'FIDJI',
+    displayName: 'Fidji Cervical Cage',
+    company: 'Zimmer Biomet',
   },
   {
     test: /^attune\b/i,
@@ -1125,6 +1246,17 @@ const SEARCH_CONCEPTS: MaudeSearchConcept[] = [
     prefer: /\bmobi|prodisc|simplify|m6|secure|prestige|pcm|bryan|activ|charit|disc/i,
   },
   {
+    id: 'acdf',
+    label: 'ACDF / anterior cervical fusion',
+    // Clinical phrases only — brand names use rollups / prefix search (do not match here)
+    test: /\b(acdf|anterior\s+cervical(\s+(discectomy|decompression))?(\s+and)?(\s+fusion)?|cervical\s+(plate|cage|interbody|fusion)|stand[-\s]?alone\s+cervical)\b/i,
+    clause: ACDF_IMPLANTS,
+    prefer:
+      /\bzero[-\s]?p|atlantis|zevo|skyline|slim[-\s]?loc|acis|coroent|solis\s+cervical|trestle|reflex|fidji|lineum|prevail|tritanium\s*c|cervical\s+(plate|cage|interbody)|stand[-\s]?alone|acdf/i,
+    demote:
+      /\bmobi|prodisc|simplify|m6-?c|secure-?c|prestige|pcm\b|bryan|charit|activ.?[cl]|artificial\s+disc|arthroplasty|vertex\b|pinnacle\b|cadd|infusion\s+pump|ambulatory|pump\b|abutment|dental/i,
+  },
+  {
     id: 'spinous-spacer',
     label: 'Interspinous spacer',
     test: /\b(interspinous|spinous\s+(process\s+)?spacer|superion|vertiflex|coflex|x-?stop|Wallis)\b/i,
@@ -1258,7 +1390,7 @@ export async function searchMaudeBrands(options: {
   const safe = sanitizeBrandForSearch(raw).replace(/[?*]/g, '');
   if (safe.length < 2) return [];
 
-  const cacheKey = `${specialty}|${safe.toLowerCase()}|${limit}|v2`;
+  const cacheKey = `${specialty}|${safe.toLowerCase()}|${limit}|v3`;
   const cached = brandSearchCache.get(cacheKey);
   if (cached && cached.expiresAt > Date.now()) return cached.value;
 
@@ -1298,7 +1430,26 @@ export async function searchMaudeBrands(options: {
     }
   };
 
-  // 1) Clinical concept expansion (e.g. cervical / lumbar disc arthroplasty)
+  // 0) Direct rollup hit (e.g. "Zero-P", "Tritanium C") — seed before openFDA so hyphen brands work
+  for (const rollup of BRAND_ROLLUPS) {
+    if (rollup.test.test(safe) || rollup.test.test(raw) || rollup.filterName.toLowerCase() === qLower) {
+      upsert(rollup.filterName, 1, 'exact', 850);
+      try {
+        const quoted = `"${rollup.filterName.replace(/"/g, '')}"`;
+        const rows = await fetchBrandCounts(
+          `${specialtyDef.searchClause} AND device.brand_name:${quoted}`,
+          40
+        );
+        for (const row of rows) {
+          upsert(row.name, row.count, 'exact', 880 + Math.min(row.count, 100));
+        }
+      } catch {
+        /* ignore */
+      }
+    }
+  }
+
+  // 1) Clinical concept expansion (e.g. cervical / lumbar disc arthroplasty, ACDF)
   for (const concept of concepts.slice(0, 2)) {
     const search = `(${specialtyDef.searchClause}) AND (${concept.clause})`;
     try {
@@ -1327,8 +1478,16 @@ export async function searchMaudeBrands(options: {
   }
 
   // 2) Direct brand prefix / wildcard (classic autocomplete)
+  // openFDA Lucene 404s on unquoted hyphenated wildcards (Zero-P*) — quote or space-normalize.
   try {
-    const brandSearch = `${specialtyDef.searchClause} AND device.brand_name:${safe}*`;
+    const brandClauses: string[] = [];
+    if (safe.includes('-')) {
+      brandClauses.push(`device.brand_name:"${safe}"`);
+      brandClauses.push(`device.brand_name:${safe.replace(/-/g, ' ').replace(/[?*]/g, '')}*`);
+    } else {
+      brandClauses.push(`device.brand_name:${safe}*`);
+    }
+    const brandSearch = `${specialtyDef.searchClause} AND (${brandClauses.join(' OR ')})`;
     const brandRows = await fetchBrandCounts(brandSearch, 80);
     for (const row of brandRows) {
       const nameLower = row.name.toLowerCase();
@@ -1347,6 +1506,9 @@ export async function searchMaudeBrands(options: {
       } else if (cleanLower.split(/\s+/).some((t) => t.startsWith(qLower))) {
         match = 'prefix';
         score = 500;
+      } else if (safe.includes('-') && cleanLower.replace(/-/g, ' ').includes(qLower.replace(/-/g, ' '))) {
+        match = 'contains';
+        score = 450;
       } else {
         continue;
       }

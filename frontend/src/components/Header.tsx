@@ -101,7 +101,7 @@ const Header: React.FC<HeaderProps> = ({ isMobileSidebarOpen, onMobileSidebarTog
             {/* Mobile Hamburger Menu Button */}
             <button
               onClick={onMobileSidebarToggle}
-              className="lg:hidden p-2 text-gray-600 hover:text-gray-900 transition-colors mr-2 dark:text-slate-300 dark:hover:text-white"
+              className="touch-target lg:hidden p-2 text-gray-600 hover:text-gray-900 transition-colors mr-1 sm:mr-2 dark:text-slate-300 dark:hover:text-white"
               aria-label="Toggle mobile menu"
             >
               {isMobileSidebarOpen ? (
@@ -113,7 +113,7 @@ const Header: React.FC<HeaderProps> = ({ isMobileSidebarOpen, onMobileSidebarTog
             
             {/* Logo and Brand */}
             <Link to="/" className="flex items-center gap-2 min-w-0 shrink-0" aria-label="OrthoAndSpineTools home">
-              <BrandLogo heightClass="h-8 sm:h-9" maxWidthClass="max-w-[min(100%,10rem)] sm:max-w-[12rem]" />
+              <BrandLogo heightClass="h-7 sm:h-9" maxWidthClass="max-w-[2.25rem] sm:max-w-[12rem]" />
               <span className="text-xl font-bold text-reddit hidden sm:inline truncate">
                 OrthoAndSpineTools
               </span>
@@ -123,7 +123,7 @@ const Header: React.FC<HeaderProps> = ({ isMobileSidebarOpen, onMobileSidebarTog
           {/* Search — works on mobile and desktop */}
           <form
             onSubmit={handleSearchSubmit}
-            className="flex-1 min-w-0 max-w-lg mx-2 sm:mx-4 md:mx-8"
+            className="flex-1 min-w-0 max-w-lg mx-1.5 sm:mx-4 md:mx-8"
             role="search"
             aria-label="Search posts and communities"
           >
@@ -146,11 +146,11 @@ const Header: React.FC<HeaderProps> = ({ isMobileSidebarOpen, onMobileSidebarTog
           </form>
 
           {/* Right Side Navigation */}
-          <div className="flex items-center space-x-2 sm:space-x-3">
+          <div className="flex items-center gap-0.5 sm:gap-3 shrink-0">
             <button
               type="button"
               onClick={cycleTheme}
-              className="rounded-md p-2 text-gray-600 transition-colors hover:bg-gray-100 hover:text-gray-900 dark:text-slate-300 dark:hover:bg-slate-800 dark:hover:text-white"
+              className="touch-target rounded-md p-2 text-gray-600 transition-colors hover:bg-gray-100 hover:text-gray-900 dark:text-slate-300 dark:hover:bg-slate-800 dark:hover:text-white"
               aria-label={
                 theme === 'light'
                   ? 'Theme: Light. Click for Dark'
@@ -176,15 +176,17 @@ const Header: React.FC<HeaderProps> = ({ isMobileSidebarOpen, onMobileSidebarTog
             </button>
             {user ? (
               <>
-                {/* Create Post Button - White background with black text */}
+                {/* Create Post — icon-only on narrow phones */}
                 <Link
                   to="/create-post"
-                  className="flex items-center space-x-1 rounded-md border border-gray-200 bg-white px-3 py-1.5 text-sm font-medium text-black transition-colors hover:bg-gray-100 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100 dark:hover:bg-slate-700"
+                  className="touch-target flex items-center gap-1 rounded-md border border-gray-200 bg-white px-2 sm:px-3 py-1.5 text-sm font-medium text-black transition-colors hover:bg-gray-100 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100 dark:hover:bg-slate-700"
+                  aria-label="Create post"
+                  title="Create post"
                 >
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
                     <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
                   </svg>
-                  <span>Create</span>
+                  <span className="hidden sm:inline">Create</span>
                 </Link>
 
                 {/* Notification Bell */}
@@ -192,7 +194,7 @@ const Header: React.FC<HeaderProps> = ({ isMobileSidebarOpen, onMobileSidebarTog
                   <button
                     type="button"
                     onClick={() => setIsNotificationOpen(!isNotificationOpen)}
-                    className="relative flex items-center justify-center p-2 text-gray-800 transition-colors hover:text-gray-600 dark:text-slate-200 dark:hover:text-white"
+                    className="touch-target relative flex items-center justify-center p-2 text-gray-800 transition-colors hover:text-gray-600 dark:text-slate-200 dark:hover:text-white"
                     aria-expanded={isNotificationOpen}
                     aria-haspopup="true"
                     aria-label={`Notifications${unreadCount > 0 ? `, ${unreadCount} unread` : ''}`}
@@ -359,18 +361,18 @@ const Header: React.FC<HeaderProps> = ({ isMobileSidebarOpen, onMobileSidebarTog
               </>
             ) : (
               <>
-                {/* Login/Register Links */}
                 <Link
                   to="/login"
-                  className="text-reddit hover:text-reddit-text px-3 py-2 rounded-md text-sm font-medium"
+                  className="touch-target text-reddit hover:text-reddit-text px-2 sm:px-3 py-2 rounded-md text-sm font-medium"
                 >
-                  Sign In
+                  Sign in
                 </Link>
                 <Link
                   to="/register"
-                  className="bg-reddit-orange text-white px-4 py-2 rounded-full hover:bg-orange-600 transition-colors text-sm font-medium"
+                  className="touch-target bg-reddit-orange text-white px-2.5 sm:px-4 py-1.5 sm:py-2 rounded-full hover:bg-orange-600 transition-colors text-xs sm:text-sm font-medium whitespace-nowrap"
                 >
-                  Join Now
+                  Join
+                  <span className="hidden sm:inline"> Now</span>
                 </Link>
               </>
             )}

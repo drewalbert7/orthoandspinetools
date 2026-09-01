@@ -558,12 +558,12 @@ const CreatePost: React.FC = () => {
   );
 
   return (
-    <div className="max-w-4xl mx-auto bg-white min-h-screen px-3 sm:px-4 md:px-6">
+    <div className="max-w-4xl mx-auto bg-white sm:min-h-screen">
       <DocumentMeta title="Create post" noIndex />
       <div className="p-3 sm:p-4 md:p-6">
         {/* Header */}
-        <div className="flex items-center justify-between mb-4 sm:mb-6 md:mb-8">
-          <div>
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between mb-4 sm:mb-6 md:mb-8">
+          <div className="min-w-0">
             <h1 className="text-xl sm:text-2xl font-bold text-gray-900">
               {isLaunchMode ? 'Launch a product' : isCaseMode ? 'Create a case post' : 'Create post'}
             </h1>

@@ -57,7 +57,8 @@ function ThemedToaster() {
   const dark = resolved === 'dark';
   return (
     <Toaster
-      position="top-right"
+      position="top-center"
+      containerStyle={{ top: '4.5rem' }}
       toastOptions={{
         style: dark
           ? {
@@ -111,7 +112,7 @@ function App() {
                   isMobileOpen={isMobileSidebarOpen}
                   onMobileClose={() => setIsMobileSidebarOpen(false)}
                 />
-                <main className="min-w-0 w-full flex-1 p-3 sm:p-4 md:p-6">
+                <main className="min-w-0 w-full flex-1 overflow-x-hidden p-2.5 sm:p-4 md:p-6">
                   <Routes>
                     <Route path="/" element={<Home />} />
                     <Route path="/popular" element={<Popular />} />

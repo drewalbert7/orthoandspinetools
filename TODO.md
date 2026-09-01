@@ -56,7 +56,9 @@
 - [x] **Cloudflare R2 media** — Available as fallback (`MEDIA_PROVIDER=r2`). Bucket `orthoandspinetools` on `4298f947…`, public `https://pub-c36d475ac3284cb2bfde3c1ae5d28ccf.r2.dev`. Existing Cloudinary + R2 URLs still serve.
 - [x] **Cloudflare Images + Stream dialed-in** — Live `MEDIA_PROVIDER=cloudflare`. Variants `feed`/`avatar`/`thumb`/`banner` + flexible transforms. Nginx CSP allows Stream iframes. CreatePost Stream preview. Light sharp prep (EXIF/soft-cap) + CF delivery sizing. Smoke: image/avatar/banner/video → 200.
 - [x] **Reddit-like image sizing** — CF delivery variants (scale-down 1920 / avatar 256 / etc.) + server-side `sharp` pre-resize before upload; feed UI `object-contain` + max-height.
-- [x] **Cloudflare off-site backups** — Daily `database-backup-production.sh` (02:00 cron) dumps to Hetzner volume, then uploads `backups/*.sql.gz` to R2. Local retention 7d; R2 retention 30d (`R2_BACKUP_RETENTION_DAYS`). Skip with `SKIP_R2_BACKUP=1`.
+- [x] **MAUDE ACDF coverage** — Clinical concept “ACDF / anterior cervical fusion” + rollups (Zero-P, Atlantis, Zevo, Skyline, Slim Loc, ACIS, CoRoent, Tritanium C, Prevail, …). Hyphen brand Lucene fix. CADD-Solis pump noise demoted.
+- [x] **MAUDE brand-request alerts** — `MAUDE_REQUEST_TO` (+ `UPTIME_ALERT_TO`) passed into backend; SES emails `admin@orthoandspinetools.com` on new requests.
+- [x] **Mobile UX pass** — Opt-in `.touch-target` (no global 44px inflation); denser header; wrapping feed/post/comment actions; shorter policy banner; feed media height; drawer scroll lock; MAUDE chip scroll; dark orange/yellow remaps.
 - [ ] **R2 production URL** — Optional custom domain (e.g. `media.orthoandspinetools.com`) instead of rate-limited `r2.dev`.
 - [ ] **Security follow-ups** — Fail startup on default secrets; enable upload virus scanning (ClamAV). Rotate Cloudflare API token that was pasted in chat.
 - [x] **Google Search Console** — Domain verified; sitemap submitted (`/sitemap.xml`).
@@ -64,7 +66,7 @@
 
 ### **0. Deploy status — verify live**
 - [x] **https://orthoandspinetools.com** — home, hubs, sitemap, OG previews with post images, edit-post tags, `/maude`
-- [x] **Latest deploy (Aug 30)** — Cloudflare Images+Stream media; R2 off-site DB backups; MAUDE smart search; dark/light mode
+- [x] **Latest deploy (Aug 31)** — Mobile UX pass; MAUDE ACDF concept/rollups; SES brand-request alerts; Cloudflare Images+Stream; R2 backups
 - [ ] After **every** frontend/nginx recreate: `--force-recreate nginx` if needed (stale upstream → 502)
 
 ### **1. Deploy (production server)**
@@ -257,6 +259,6 @@ docker compose -f docker-compose.prod.yml exec backend npm run backfill-case-pos
 
 ---
 
-**Last Updated:** Aug 30, 2026  
-**Status:** 🚀 Live — Cloudflare Images+Stream media; R2 off-site DB backups; MAUDE smart search  
+**Last Updated:** Aug 31, 2026  
+**Status:** 🚀 Live — Mobile UX; MAUDE ACDF + SES brand-request alerts; Cloudflare Images+Stream; R2 backups  
 **You are here:** Optional endoscopic/nav spine coverage gaps; optional R2 custom media domain; content/tag cleanup
