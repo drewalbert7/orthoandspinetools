@@ -1347,6 +1347,14 @@ class ApiService {
     }
   }
 
+  async recordPageView(path: string, referrer?: string): Promise<void> {
+    await api.post(
+      '/analytics/pageview',
+      { path, referrer: referrer || null },
+      { timeout: 4000 }
+    );
+  }
+
   async getAdminStats(): Promise<{
     totalUsers: number;
     totalPosts: number;
@@ -1355,6 +1363,20 @@ class ApiService {
     postsThisWeek: number;
     commentsThisWeek: number;
     newUsersThisWeek: number;
+    traffic: {
+      pageViewsToday: number;
+      pageViewsWeek: number;
+      pageViewsMonth: number;
+      uniqueVisitorsToday: number;
+      uniqueVisitorsWeek: number;
+      uniqueVisitorsMonth: number;
+      startupsPageViewsWeek: number;
+      loggedInViewsWeek: number;
+      topPagesWeek: Array<{ path: string; views: number }>;
+      dailyPageViews: Array<{ date: string; views: number }>;
+      trackingSince?: string;
+    };
+    gaMeasurementId: string | null;
   }> {
     try {
       const response = await api.get('/moderation/stats');

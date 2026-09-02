@@ -61,17 +61,33 @@ if [ -n "$USERNAME" ]; then
 fi
 
 echo ""
-echo "4. noIndex on auth pages"
+echo "4. Search bot previews (Googlebot)"
+POST_ID_G="${POST_ID:-$(curl -sS "$BASE/api/posts?limit=1" | python3 -c "import sys,json; d=json.load(sys.stdin); print(d['data']['posts'][0]['id'])" 2>/dev/null || true)}"
+if [ -n "$POST_ID_G" ]; then
+  check "googlebot post-specific title" bash -c "curl -sS -A 'Mozilla/5.0 (compatible; Googlebot/2.1; +http://www.google.com/bot.html)' '$BASE/post/$POST_ID_G' | grep -q 'og:title'"
+  check "googlebot json-ld" bash -c "curl -sS -A 'Mozilla/5.0 (compatible; Googlebot/2.1; +http://www.google.com/bot.html)' '$BASE/post/$POST_ID_G' | grep -q 'DiscussionForumPosting'"
+fi
+
+echo ""
+echo "5. AI bot JSON-LD"
+if [ -n "$POST_ID" ]; then
+  check "gptbot json-ld" bash -c "curl -sS -A 'GPTBot' '$BASE/post/$POST_ID' | grep -q 'DiscussionForumPosting'"
+fi
+
+echo ""
+echo "6. noIndex on auth pages"
 for path in "/login" "/register" "/forgot-password"; do
-  if curl -sS "$BASE$path" | grep -qi 'noindex'; then
+  if curl -sSI "$BASE$path" | grep -qi 'x-robots-tag:.*noindex'; then
+    check "noindex header $path" true
+  elif curl -sS "$BASE$path" | grep -qi 'noindex'; then
     check "noindex $path" true
   else
-    warn "noindex not in initial HTML for $path (may be client-rendered)"
+    warn "noindex not found for $path (check nginx X-Robots-Tag or client meta)"
   fi
 done
 
 echo ""
-echo "5. Lighthouse (optional)"
+echo "7. Lighthouse (optional)"
 if command -v npx >/dev/null 2>&1; then
   OUT_DIR="${TMPDIR:-/tmp}/oast-seo-lighthouse"
   mkdir -p "$OUT_DIR"
@@ -92,7 +108,7 @@ else
 fi
 
 echo ""
-echo "6. Google Search Console (manual)"
+echo "8. Google Search Console (manual)"
 echo "  → https://search.google.com/search-console"
 echo "  → Add property: $BASE"
 echo "  → Verify via DNS TXT or HTML file"

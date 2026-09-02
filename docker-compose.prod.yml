@@ -85,6 +85,7 @@ services:
       MAUDE_CRON_SECRET: ${MAUDE_CRON_SECRET:-}
       # Inbox for "request we add this brand" on /maude (SES). Falls back to UPTIME_ALERT_TO in code.
       MAUDE_REQUEST_TO: ${MAUDE_REQUEST_TO:-}
+      GA_MEASUREMENT_ID: ${VITE_GA_MEASUREMENT_ID:-G-2HVXSX6V78}
       UPTIME_ALERT_TO: ${UPTIME_ALERT_TO:-}
     depends_on:
       postgres:

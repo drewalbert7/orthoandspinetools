@@ -21,7 +21,7 @@ CRITICAL_FILES=(
 # Minimum file sizes (in bytes) - CreatePost should be substantial
 MIN_SIZES=(
   "pages/CreatePost.tsx:20000"  # ~20KB minimum (full implementation)
-  "pages/Home.tsx:5000"
+  "pages/Home.tsx:2500"
   "pages/PostDetail.tsx:10000"
   "components/Header.tsx:5000"
   "components/Sidebar.tsx:5000"

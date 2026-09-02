@@ -66,6 +66,7 @@ model User {
   notifications     Notification[]
   postPollVotes     PostPollVote[]
   maudeBrandRequests MaudeBrandRequest[]
+  analyticsPageViews AnalyticsPageView[]
   
   @@map("users")
 }
@@ -541,5 +542,21 @@ model MaudeBrandRequest {
   @@index([status, createdAt])
   @@index([brand])
   @@map("maude_brand_requests")
+}
+
+model AnalyticsPageView {
+  id          String   @id @default(cuid())
+  path        String
+  referrer    String?
+  visitorHash String   @map("visitor_hash")
+  userId      String?  @map("user_id")
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([createdAt])
+  @@index([path, createdAt])
+  @@index([visitorHash, createdAt])
+  @@map("analytics_page_views")
 }
 

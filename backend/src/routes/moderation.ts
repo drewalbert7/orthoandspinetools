@@ -1,4 +1,5 @@
-import { Router, Request, Response } from 'express';
+import { Router, Response } from 'express';
+import { buildTrafficAnalytics } from '../lib/adminAnalytics';
 import { authenticate, AuthRequest } from '../middleware/auth';
 import { requireAdmin, requireCommunityModerator, canModeratePost, canModerateComment } from '../middleware/authorization';
 import { asyncHandler, AppError } from '../middleware/errorHandler';
@@ -581,7 +582,18 @@ router.get('/permissions', authenticate, asyncHandler(async (req: AuthRequest, r
 
 // Get platform analytics (admin only)
 router.get('/stats', authenticate, requireAdmin, asyncHandler(async (_req: AuthRequest, res: Response) => {
-  const [userCount, postCount, commentCount, communityCount, recentPosts] = await Promise.all([
+  const weekStart = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+
+  const [
+    userCount,
+    postCount,
+    commentCount,
+    communityCount,
+    recentPosts,
+    recentComments,
+    newUsersThisWeek,
+    traffic,
+  ] = await Promise.all([
     prisma.user.count(),
     prisma.post.count({ where: { isDeleted: false } }),
     prisma.comment.count({ where: { isDeleted: false } }),
@@ -589,23 +601,24 @@ router.get('/stats', authenticate, requireAdmin, asyncHandler(async (_req: AuthR
     prisma.post.count({
       where: {
         isDeleted: false,
-        createdAt: { gte: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000) },
+        createdAt: { gte: weekStart },
       },
     }),
+    prisma.comment.count({
+      where: {
+        isDeleted: false,
+        createdAt: { gte: weekStart },
+      },
+    }),
+    prisma.user.count({
+      where: {
+        createdAt: { gte: weekStart },
+      },
+    }),
+    buildTrafficAnalytics(),
   ]);
 
-  const recentComments = await prisma.comment.count({
-    where: {
-      isDeleted: false,
-      createdAt: { gte: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000) },
-    },
-  });
-
-  const newUsersThisWeek = await prisma.user.count({
-    where: {
-      createdAt: { gte: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000) },
-    },
-  });
+  const gaMeasurementId = (process.env.GA_MEASUREMENT_ID || process.env.VITE_GA_MEASUREMENT_ID || '').trim() || null;
 
   res.json({
     success: true,
@@ -617,6 +630,8 @@ router.get('/stats', authenticate, requireAdmin, asyncHandler(async (_req: AuthR
       postsThisWeek: recentPosts,
       commentsThisWeek: recentComments,
       newUsersThisWeek,
+      traffic,
+      gaMeasurementId,
     },
   });
 }));

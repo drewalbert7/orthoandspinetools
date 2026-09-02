@@ -1,4 +1,11 @@
 import type { Request } from 'express';
+import {
+  buildCommunityDiscussionJsonLd,
+  buildHubCollectionJsonLd,
+  buildPostDiscussionJsonLd,
+  buildUserProfileJsonLd,
+  jsonLdScriptTag,
+} from './seoJsonLd';
 
 export const OG_SITE_NAME = 'OrthoAndSpineTools';
 export const OG_DEFAULT_DESCRIPTION =
@@ -85,7 +92,28 @@ export function preferredCloudinaryOgDeliveryUrl(url: string): string {
 function urlLooksLikeRasterImage(url: string): boolean {
   const lower = url.toLowerCase();
   if (/\/image\/upload\//i.test(lower)) return true;
+  if (lower.includes('imagedelivery.net')) return true;
   return IMAGE_EXT_IN_URL.test(lower);
+}
+
+/** Prefer 1200×630 delivery for Cloudflare Images URLs (link-preview friendly). */
+export function preferredCloudflareOgDeliveryUrl(url: string): string {
+  const u = url.trim().split('?')[0];
+  if (!/imagedelivery\.net/i.test(u)) return url.trim();
+
+  const parts = u.split('/');
+  if (parts.length >= 6 && parts[2] === 'imagedelivery.net') {
+    return `${parts[0]}//${parts[2]}/${parts[3]}/${parts[4]}/w=1200,h=630,fit=cover,f=auto`;
+  }
+  return url.trim();
+}
+
+/** Normalize media URLs for Open Graph (Cloudinary transforms or Cloudflare flex variants). */
+export function preferredOgDeliveryUrl(url: string): string {
+  const u = url.trim();
+  if (/\/image\/upload\//i.test(u)) return preferredCloudinaryOgDeliveryUrl(u);
+  if (/imagedelivery\.net/i.test(u)) return preferredCloudflareOgDeliveryUrl(u);
+  return u;
 }
 
 export function siteOriginFromRequest(req: Request): string {
@@ -124,14 +152,14 @@ export function pickOgImage(origin: string, attachments: OgPostPayload['attachme
     const url = firstResolvedAttachmentUrl(origin, a);
     if (!url) continue;
     if (mime.startsWith('image/') || (!mime.startsWith('video/') && urlLooksLikeRasterImage(url))) {
-      return preferredCloudinaryOgDeliveryUrl(url);
+      return preferredOgDeliveryUrl(url);
     }
   }
   for (const a of attachments) {
     const mime = (a.mimeType || '').toLowerCase();
     if (!mime.startsWith('video/')) continue;
     const url = absolutizeMediaUrl(origin, a.thumbnailUrl || a.cloudinaryUrl || a.path);
-    if (url) return preferredCloudinaryOgDeliveryUrl(url);
+    if (url) return preferredOgDeliveryUrl(url);
   }
   return undefined;
 }
@@ -195,7 +223,10 @@ type ShareImageMeta = {
 function shareImageMeta(origin: string, imageUrl: string | undefined, alt: string): ShareImageMeta {
   const url = imageUrl || defaultOgImage(origin);
   const isDefault = url.includes('/brand-logo');
-  const isOgSized = /c_fill,w_1200,h_630/i.test(url) || (!isDefault && /\/image\/upload\//i.test(url));
+  const isOgSized =
+    /c_fill,w_1200,h_630/i.test(url) ||
+    /w=1200,h=630/i.test(url) ||
+    (!isDefault && (/\/image\/upload\//i.test(url) || /imagedelivery\.net/i.test(url)));
   return {
     url,
     width: isOgSized ? 1200 : isDefault ? DEFAULT_OG_IMAGE_WIDTH : undefined,
@@ -263,7 +294,11 @@ function authorDisplayName(author: OgPostPayload['author']): string {
   return full || author.username;
 }
 
-export function buildPostShareHtml(post: OgPostPayload, origin: string): string {
+export function buildPostShareHtml(
+  post: OgPostPayload,
+  origin: string,
+  commentCount = 0
+): string {
   const canonical = `${origin}/post/${post.id}`;
   const headline = formatHeadline(post.title, post.community?.name);
   const description = buildOgMetaDescription(post);
@@ -288,7 +323,8 @@ export function buildPostShareHtml(post: OgPostPayload, origin: string): string 
   const articleExtra = `${section ? `<meta property="article:section" content="${e(section)}">` : ''}
 <meta property="article:published_time" content="${e(published)}">
 <meta property="article:modified_time" content="${e(modified)}">
-<meta property="article:author" content="${e(authorName)}">`;
+<meta property="article:author" content="${e(authorName)}">
+${jsonLdScriptTag(buildPostDiscussionJsonLd(post, origin, commentCount))}`;
 
   const hero = primaryImage
     ? `<figure style="margin:0 0 1.25rem;border-radius:12px;overflow:hidden;border:1px solid #e5e7eb;background:#f3f4f6">
@@ -378,7 +414,7 @@ function pickCommunityOgImage(origin: string, community: OgCommunityPayload): st
   const banner = community.bannerImage ? absolutizeMediaUrl(origin, community.bannerImage) : undefined;
   const profile = community.profileImage ? absolutizeMediaUrl(origin, community.profileImage) : undefined;
   const img = banner || profile;
-  return img ? preferredCloudinaryOgDeliveryUrl(img) : defaultOgImage(origin);
+  return img ? preferredOgDeliveryUrl(img) : defaultOgImage(origin);
 }
 
 export function buildCommunityShareHtml(community: OgCommunityPayload, origin: string): string {
@@ -410,6 +446,7 @@ ${shareMetaTags({
   canonical,
   ogType: 'website',
   image: imageMeta,
+  extraHead: jsonLdScriptTag(buildCommunityDiscussionJsonLd(community, origin)),
 })}
 </head>
 <body style="margin:0;background:#f9fafb">
@@ -433,6 +470,8 @@ export function buildPageShareHtml(pageKey: OgPageKey, origin: string): string {
     pageKey === 'home'
       ? 'Professional community for orthopedic and spine surgeons — cases, tools, biologics, and startups.'
       : page.description;
+  const hubName = page.title.replace(` | ${OG_SITE_NAME}`, '');
+  const hubJsonLd = buildHubCollectionJsonLd(origin, page.path, hubName, page.description);
 
   return `<!DOCTYPE html>
 <html lang="en">
@@ -443,6 +482,7 @@ ${shareMetaTags({
   canonical,
   ogType: page.ogType,
   image: imageMeta,
+  extraHead: jsonLdScriptTag(hubJsonLd),
 })}
 </head>
 <body style="margin:0;background:#f9fafb">
@@ -484,7 +524,7 @@ export function buildUserShareHtml(user: OgUserPayload, origin: string): string 
   let description = descriptionParts.join(' · ');
   if (description.length > 300) description = `${description.slice(0, 297).trimEnd()}…`;
   const ogImage = user.profileImage
-    ? preferredCloudinaryOgDeliveryUrl(absolutizeMediaUrl(origin, user.profileImage) || defaultOgImage(origin))
+    ? preferredOgDeliveryUrl(absolutizeMediaUrl(origin, user.profileImage) || defaultOgImage(origin))
     : defaultOgImage(origin);
   const imageMeta = shareImageMeta(
     origin,
@@ -492,6 +532,8 @@ export function buildUserShareHtml(user: OgUserPayload, origin: string): string 
     `${displayName} (@${user.username}) on ${OG_SITE_NAME}`
   );
   const e = escapeHtml;
+  const profileMeta = `<meta property="profile:username" content="${e(user.username)}">
+${jsonLdScriptTag(buildUserProfileJsonLd(user, origin))}`;
 
   return `<!DOCTYPE html>
 <html lang="en">
@@ -502,7 +544,7 @@ ${shareMetaTags({
   canonical,
   ogType: 'profile',
   image: imageMeta,
-  extraHead: `<meta property="profile:username" content="${e(user.username)}">`,
+  extraHead: profileMeta,
 })}
 </head>
 <body style="margin:0;background:#f9fafb">

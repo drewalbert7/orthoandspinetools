@@ -5,10 +5,32 @@ import { buildLlmsFullText } from '../lib/buildLlmsFull';
 
 const router = Router();
 
+const postSelect = {
+  id: true,
+  title: true,
+  content: true,
+  createdAt: true,
+  author: { select: { username: true } },
+  community: { select: { slug: true, name: true } },
+} as const;
+
+const startupTagFilter = {
+  tags: {
+    some: {
+      tag: {
+        OR: [
+          { name: { contains: 'startup', mode: 'insensitive' as const } },
+          { description: { contains: 'startup', mode: 'insensitive' as const } },
+        ],
+      },
+    },
+  },
+};
+
 router.get(
   '/',
   asyncHandler(async (_req: Request, res: Response) => {
-    const [communities, posts, users] = await Promise.all([
+    const [communities, posts, startupPosts, users] = await Promise.all([
       prisma.community.findMany({
         where: { isActive: true },
         select: { slug: true, name: true, description: true },
@@ -16,13 +38,13 @@ router.get(
       }),
       prisma.post.findMany({
         where: { isDeleted: false },
-        select: {
-          id: true,
-          title: true,
-          createdAt: true,
-          author: { select: { username: true } },
-          community: { select: { slug: true, name: true } },
-        },
+        select: postSelect,
+        orderBy: { createdAt: 'desc' },
+        take: 500,
+      }),
+      prisma.post.findMany({
+        where: { isDeleted: false, ...startupTagFilter },
+        select: postSelect,
         orderBy: { createdAt: 'desc' },
         take: 100,
       }),
@@ -39,7 +61,7 @@ router.get(
     res
       .type('text/plain; charset=utf-8')
       .set('Cache-Control', 'public, max-age=3600, stale-while-revalidate=86400')
-      .send(buildLlmsFullText({ communities, posts, users }));
+      .send(buildLlmsFullText({ communities, posts, startupPosts, users }));
   })
 );
 

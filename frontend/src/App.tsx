@@ -32,6 +32,7 @@ import VerifyEmail from './pages/VerifyEmail';
 import PrivacyPolicy from './pages/PrivacyPolicy';
 import TermsOfService from './pages/TermsOfService';
 import GoogleAnalytics from './components/GoogleAnalytics';
+import SiteAnalytics from './components/SiteAnalytics';
 import SitePolicyBanner from './components/SitePolicyBanner';
 import SiteFooter from './components/SiteFooter';
 
@@ -101,6 +102,7 @@ function App() {
         <AuthProvider>
           <Router>
             <GoogleAnalytics />
+            <SiteAnalytics />
             <div className="min-h-screen bg-gray-50 text-gray-900">
               <Header
                 isMobileSidebarOpen={isMobileSidebarOpen}

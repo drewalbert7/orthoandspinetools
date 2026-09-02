@@ -1,18 +1,34 @@
 import { getPublicSiteUrl } from './sesConfig';
+import { stripToPlainText } from './postOgPreviewHtml';
 
 type LlmsCommunity = { slug: string; name: string; description: string | null };
 type LlmsPost = {
   id: string;
   title: string;
+  content: string | null;
   createdAt: Date;
   author: { username: string };
   community: { slug: string; name: string } | null;
 };
 type LlmsUser = { username: string; firstName: string; lastName: string; specialty: string | null };
 
+function formatPostLine(origin: string, post: LlmsPost): string[] {
+  const date = post.createdAt.toISOString().slice(0, 10);
+  const comm = post.community ? `o/${post.community.name}` : 'community';
+  const lines = [
+    `- ${origin}/post/${post.id} — "${post.title}" — ${comm} — u/${post.author.username} — ${date}`,
+  ];
+  const excerpt = post.content ? stripToPlainText(post.content, 220) : '';
+  if (excerpt) {
+    lines.push(`  ${excerpt}`);
+  }
+  return lines;
+}
+
 export function buildLlmsFullText(params: {
   communities: LlmsCommunity[];
   posts: LlmsPost[];
+  startupPosts: LlmsPost[];
   users: LlmsUser[];
 }): string {
   const origin = getPublicSiteUrl();
@@ -38,7 +54,7 @@ export function buildLlmsFullText(params: {
     '',
     '## URL patterns',
     '',
-    `- ${origin}/post/{id} — Discussion thread (JSON-LD: DiscussionForumPosting in browser; OG HTML for social bots)`,
+    `- ${origin}/post/{id} — Discussion thread (JSON-LD: DiscussionForumPosting; OG HTML for crawlers)`,
     `- ${origin}/community/{slug} — Community hub (JSON-LD: DiscussionForum)`,
     `- ${origin}/user/{username} — Public member profile (JSON-LD: Person)`,
     '',
@@ -70,19 +86,26 @@ export function buildLlmsFullText(params: {
     lines.push(`- ${origin}/user/${u.username} — ${name || u.username}${spec}`);
   }
 
+  lines.push('', '## Startup & product posts', '');
+  if (params.startupPosts.length === 0) {
+    lines.push(`- (none yet) — browse ${origin}/startups for orthopedic and spine startup discussions`);
+  } else {
+    for (const p of params.startupPosts) {
+      lines.push(...formatPostLine(origin, p));
+    }
+  }
+
   lines.push('', '## Recent posts (newest first)', '');
   for (const p of params.posts) {
-    const date = p.createdAt.toISOString().slice(0, 10);
-    const comm = p.community ? `o/${p.community.name}` : 'community';
-    lines.push(`- ${origin}/post/${p.id} — "${p.title}" — ${comm} — u/${p.author.username} — ${date}`);
+    lines.push(...formatPostLine(origin, p));
   }
 
   lines.push(
     '',
     '## Structured data',
     '',
-    '- Home, hub pages, posts, communities, and public profiles inject schema.org JSON-LD when loaded in a browser.',
-    '- Post permalinks serve Open Graph HTML to social/chat crawlers for rich previews.',
+    '- Post, community, profile, and hub pages serve schema.org JSON-LD in crawler HTML and in the browser SPA.',
+    '- Post permalinks include DiscussionForumPosting metadata for search engines and AI systems.',
     ''
   );
 

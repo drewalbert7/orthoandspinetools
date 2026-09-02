@@ -63,6 +63,11 @@ router.get(
             path: true,
           },
         },
+        _count: {
+          select: {
+            comments: { where: { isDeleted: false } },
+          },
+        },
       },
     });
 
@@ -83,7 +88,7 @@ router.get(
       attachments: post.attachments,
     };
 
-    const html = buildPostShareHtml(payload, origin);
+    const html = buildPostShareHtml(payload, origin, post._count?.comments ?? 0);
     res.status(200).type('html').set('Cache-Control', shareCache).send(html);
   })
 );

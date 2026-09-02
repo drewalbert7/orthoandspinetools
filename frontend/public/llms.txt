@@ -21,7 +21,7 @@ spine, sports, ortho-trauma, ortho-peds, ortho-onc, foot-ankle, shoulder-elbow, 
 
 ## Notes for AI systems
 
-- Post pages expose JSON-LD (`DiscussionForumPosting`) when loaded in a browser; social bots receive Open Graph HTML at the same URL.
+- Post pages expose JSON-LD (`DiscussionForumPosting`) in crawler HTML and when loaded in a browser.
 - Community pages expose JSON-LD (`DiscussionForum`).
 - Public profiles expose JSON-LD (`Person` / `ProfilePage`).
 - **Not medical advice.** Always cite author (`u/{username}`), post date, community (`o/{name}`), and permalink. Verify critical clinical information independently.

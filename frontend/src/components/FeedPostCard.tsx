@@ -9,6 +9,8 @@ import PostPollBlock from './PostPollBlock';
 import MarkdownContent from './MarkdownContent';
 import ShareButton from './ShareButton';
 import AuthorVerificationsInline from './AuthorVerificationsInline';
+import StartupPostBadge from './StartupPostBadge';
+import { isStartupPost } from '../lib/startupPost';
 
 function formatTimeAgo(date: Date): string {
   const now = new Date();
@@ -31,9 +33,14 @@ const FeedPostCard: React.FC<{ post: Post }> = ({ post }) => {
     Boolean(user && post.authorId === user.id && !post.isLocked && !post.isDeleted);
   const comm = post.community;
   const communitySlug = comm?.slug || comm?.id || '';
+  const startup = isStartupPost(post);
 
   return (
-    <div className="bg-white border border-gray-200 hover:border-gray-300 transition-colors">
+    <div
+      className={`bg-white border border-gray-200 hover:border-gray-300 transition-colors ${
+        startup ? 'border-l-4 border-l-amber-400 bg-amber-50/40' : ''
+      }`}
+    >
       <div className="p-3">
         <div className="flex flex-wrap items-center gap-x-1 gap-y-1 text-xs text-gray-500 mb-1">
           <Link
@@ -53,6 +60,12 @@ const FeedPostCard: React.FC<{ post: Post }> = ({ post }) => {
             )}
             <span>o/{comm?.name ?? 'community'}</span>
           </Link>
+          {startup ? (
+            <>
+              <span>•</span>
+              <StartupPostBadge compact />
+            </>
+          ) : null}
           <span>•</span>
           <span className="inline-flex items-center flex-wrap gap-x-0">
             Posted by{' '}

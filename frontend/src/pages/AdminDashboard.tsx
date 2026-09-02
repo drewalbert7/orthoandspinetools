@@ -783,27 +783,131 @@ const AdminDashboard: React.FC = () => {
                   <p className="mt-4 text-gray-600">Loading analytics...</p>
                 </div>
               ) : statsData ? (
-                <div className="space-y-6">
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                    <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
-                      <p className="text-sm text-gray-500">Total Users</p>
-                      <p className="text-2xl font-bold text-gray-900">{statsData.totalUsers}</p>
+                <div className="space-y-8">
+                  <div>
+                    <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
+                      <h3 className="text-lg font-semibold text-gray-900">Site traffic</h3>
+                      {statsData.gaMeasurementId ? (
+                        <a
+                          href="https://analytics.google.com/analytics/web/"
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-sm font-medium text-blue-700 hover:text-blue-900 hover:underline"
+                        >
+                          Open Google Analytics ({statsData.gaMeasurementId}) →
+                        </a>
+                      ) : null}
                     </div>
-                    <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
-                      <p className="text-sm text-gray-500">Total Posts</p>
-                      <p className="text-2xl font-bold text-gray-900">{statsData.totalPosts}</p>
-                    </div>
-                    <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
-                      <p className="text-sm text-gray-500">Total Comments</p>
-                      <p className="text-2xl font-bold text-gray-900">{statsData.totalComments}</p>
-                    </div>
-                    <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
-                      <p className="text-sm text-gray-500">Communities</p>
-                      <p className="text-2xl font-bold text-gray-900">{statsData.totalCommunities}</p>
+                    {statsData.traffic.trackingSince ? (
+                      <p className="text-xs text-gray-500 mb-4">
+                        First-party tracking since {new Date(statsData.traffic.trackingSince).toLocaleString()}
+                      </p>
+                    ) : (
+                      <p className="text-sm text-gray-500 mb-4">
+                        Traffic data will appear as visitors browse public pages.
+                      </p>
+                    )}
+                    <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-3">
+                      <div className="bg-sky-50 rounded-lg p-4 border border-sky-100">
+                        <p className="text-xs text-sky-700">Page views today</p>
+                        <p className="text-2xl font-bold text-sky-950">{statsData.traffic.pageViewsToday}</p>
+                      </div>
+                      <div className="bg-sky-50 rounded-lg p-4 border border-sky-100">
+                        <p className="text-xs text-sky-700">Page views (7d)</p>
+                        <p className="text-2xl font-bold text-sky-950">{statsData.traffic.pageViewsWeek}</p>
+                      </div>
+                      <div className="bg-sky-50 rounded-lg p-4 border border-sky-100">
+                        <p className="text-xs text-sky-700">Page views (30d)</p>
+                        <p className="text-2xl font-bold text-sky-950">{statsData.traffic.pageViewsMonth}</p>
+                      </div>
+                      <div className="bg-indigo-50 rounded-lg p-4 border border-indigo-100">
+                        <p className="text-xs text-indigo-700">Unique visitors today</p>
+                        <p className="text-2xl font-bold text-indigo-950">{statsData.traffic.uniqueVisitorsToday}</p>
+                      </div>
+                      <div className="bg-indigo-50 rounded-lg p-4 border border-indigo-100">
+                        <p className="text-xs text-indigo-700">Unique visitors (7d)</p>
+                        <p className="text-2xl font-bold text-indigo-950">{statsData.traffic.uniqueVisitorsWeek}</p>
+                      </div>
+                      <div className="bg-indigo-50 rounded-lg p-4 border border-indigo-100">
+                        <p className="text-xs text-indigo-700">Logged-in views (7d)</p>
+                        <p className="text-2xl font-bold text-indigo-950">{statsData.traffic.loggedInViewsWeek}</p>
+                      </div>
                     </div>
                   </div>
+
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    <div className="bg-white rounded-lg border border-gray-200 p-4">
+                      <h4 className="text-sm font-semibold text-gray-900 mb-3">Daily page views (14 days)</h4>
+                      {statsData.traffic.dailyPageViews.some((d) => d.views > 0) ? (
+                        <div className="flex items-end gap-1 h-40">
+                          {statsData.traffic.dailyPageViews.map((day) => {
+                            const max = Math.max(...statsData.traffic.dailyPageViews.map((d) => d.views), 1);
+                            const height = Math.max(4, Math.round((day.views / max) * 128));
+                            return (
+                              <div key={day.date} className="flex-1 min-w-0 flex flex-col items-center justify-end gap-1">
+                                <span className="text-[10px] text-gray-500">{day.views || ''}</span>
+                                <div
+                                  className="w-full max-w-[2rem] rounded-t bg-blue-500"
+                                  style={{ height: `${height}px` }}
+                                  title={`${day.date}: ${day.views} views`}
+                                />
+                                <span className="text-[10px] text-gray-400 truncate w-full text-center">
+                                  {day.date.slice(5)}
+                                </span>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      ) : (
+                        <p className="text-sm text-gray-500">No traffic recorded yet.</p>
+                      )}
+                    </div>
+
+                    <div className="bg-white rounded-lg border border-gray-200 p-4">
+                      <h4 className="text-sm font-semibold text-gray-900 mb-3">Top pages (7 days)</h4>
+                      {statsData.traffic.topPagesWeek.length > 0 ? (
+                        <div className="space-y-2">
+                          {statsData.traffic.topPagesWeek.map((row) => (
+                            <div key={row.path} className="flex items-center justify-between gap-3 text-sm">
+                              <span className="truncate text-gray-800 font-mono">{row.path}</span>
+                              <span className="shrink-0 font-semibold text-gray-900">{row.views}</span>
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <p className="text-sm text-gray-500">No page data yet.</p>
+                      )}
+                      <div className="mt-4 pt-4 border-t border-gray-100 text-sm text-gray-600">
+                        <span className="font-medium text-amber-800">{statsData.traffic.startupsPageViewsWeek}</span>{' '}
+                        views on <span className="font-mono">/startups</span> this week
+                      </div>
+                    </div>
+                  </div>
+
                   <div>
-                    <h3 className="text-lg font-semibold text-gray-900 mb-4">This Week</h3>
+                    <h3 className="text-lg font-semibold text-gray-900 mb-4">Platform totals</h3>
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                      <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
+                        <p className="text-sm text-gray-500">Total Users</p>
+                        <p className="text-2xl font-bold text-gray-900">{statsData.totalUsers}</p>
+                      </div>
+                      <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
+                        <p className="text-sm text-gray-500">Total Posts</p>
+                        <p className="text-2xl font-bold text-gray-900">{statsData.totalPosts}</p>
+                      </div>
+                      <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
+                        <p className="text-sm text-gray-500">Total Comments</p>
+                        <p className="text-2xl font-bold text-gray-900">{statsData.totalComments}</p>
+                      </div>
+                      <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
+                        <p className="text-sm text-gray-500">Communities</p>
+                        <p className="text-2xl font-bold text-gray-900">{statsData.totalCommunities}</p>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div>
+                    <h3 className="text-lg font-semibold text-gray-900 mb-4">This week (content)</h3>
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                       <div className="bg-blue-50 rounded-lg p-4 border border-blue-100">
                         <p className="text-sm text-blue-600">New Users</p>

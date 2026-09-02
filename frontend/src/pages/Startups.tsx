@@ -7,7 +7,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { DocumentMeta } from '../components/DocumentMeta';
 import { buildHubCollectionJsonLd } from '../lib/seo';
 
-const STARTUP_TAG_MATCH = 'startup';
+import { STARTUP_TAG_MATCH } from '../lib/startupPost';
 
 type SortOption = 'best' | 'hot' | 'newest' | 'top' | 'rising';
 
