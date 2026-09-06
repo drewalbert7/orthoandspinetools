@@ -1,4 +1,5 @@
 import { prisma } from './prisma';
+import { buildBotAnalytics } from './botAnalytics';
 
 type DailyRow = { day: Date; views: number };
 
@@ -122,5 +123,6 @@ export async function buildTrafficAnalytics() {
         select: { createdAt: true },
       })
     )?.createdAt?.toISOString(),
+    bots: await buildBotAnalytics(),
   };
 }

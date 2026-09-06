@@ -1,12 +1,10 @@
 import React, { useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { Link } from 'react-router-dom';
 import { apiService } from '../services/apiService';
 import { DocumentMeta } from '../components/DocumentMeta';
 import { buildHomeJsonLd, SEO_DEFAULTS } from '../lib/seo';
 import { useAuth } from '../contexts/AuthContext';
 import FeedPostCard from '../components/FeedPostCard';
-import { isStartupPost } from '../lib/startupPost';
 
 const Home: React.FC = () => {
   const { user } = useAuth();
@@ -33,8 +31,6 @@ const Home: React.FC = () => {
     ? data.posts
     : (feedFallbackData?.posts || []);
 
-  const startupCount = useMemo(() => posts.filter(isStartupPost).length, [posts]);
-
   return (
     <div className="mx-auto min-w-0 max-w-4xl px-2 sm:px-4">
       <DocumentMeta
@@ -44,17 +40,6 @@ const Home: React.FC = () => {
         jsonLd={homeJsonLd}
       />
       <div className="space-y-2 p-2 sm:p-4">
-        {startupCount > 0 ? (
-          <div className="flex flex-wrap items-center justify-between gap-2 rounded-md border border-amber-200 bg-amber-50/80 px-3 py-2 text-sm">
-            <p className="text-amber-950">
-              <span className="font-semibold">{startupCount}</span>{' '}
-              startup launch{startupCount === 1 ? '' : 'es'} in this feed
-            </p>
-            <Link to="/startups" className="font-medium text-blue-700 hover:text-blue-900 hover:underline">
-              Browse all startups →
-            </Link>
-          </div>
-        ) : null}
         {(isLoading || feedFallbackLoading) ? (
           <div className="flex items-center justify-center py-8">
             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>

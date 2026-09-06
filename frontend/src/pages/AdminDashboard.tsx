@@ -1,8 +1,8 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '../contexts/AuthContext';
 import { apiService } from '../services/apiService';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import MarkdownContent from '../components/MarkdownContent';
 import toast from 'react-hot-toast';
 import { DocumentMeta } from '../components/DocumentMeta';
@@ -10,13 +10,31 @@ import { DocumentMeta } from '../components/DocumentMeta';
 type TabType = 'users' | 'moderation' | 'communities' | 'analytics';
 type UserFilter = 'all' | 'pending_physician';
 
+const VALID_TABS: TabType[] = ['users', 'moderation', 'communities', 'analytics'];
+
 const AdminDashboard: React.FC = () => {
   const { user: currentUser } = useAuth();
   const queryClient = useQueryClient();
-  const [activeTab, setActiveTab] = useState<TabType>('users');
+  const [searchParams, setSearchParams] = useSearchParams();
+  const tabParam = searchParams.get('tab');
+  const initialTab: TabType =
+    tabParam && VALID_TABS.includes(tabParam as TabType) ? (tabParam as TabType) : 'users';
+  const [activeTab, setActiveTab] = useState<TabType>(initialTab);
   const [searchTerm, setSearchTerm] = useState('');
   const [userFilter, setUserFilter] = useState<UserFilter>('all');
   const [page, setPage] = useState(1);
+
+  useEffect(() => {
+    if (tabParam && VALID_TABS.includes(tabParam as TabType) && tabParam !== activeTab) {
+      setActiveTab(tabParam as TabType);
+    }
+  }, [tabParam, activeTab]);
+
+  const selectTab = (tab: TabType) => {
+    setActiveTab(tab);
+    setPage(1);
+    setSearchParams(tab === 'users' ? {} : { tab }, { replace: true });
+  };
 
   const { data: permissions, isFetched, isError } = useQuery({
     queryKey: ['moderation-permissions'],
@@ -229,7 +247,7 @@ const AdminDashboard: React.FC = () => {
           ].map((tab) => (
             <button
               key={tab.id}
-              onClick={() => setActiveTab(tab.id as TabType)}
+              onClick={() => selectTab(tab.id as TabType)}
               className={`px-6 py-3 text-sm font-medium flex items-center space-x-2 ${
                 activeTab === tab.id
                   ? 'text-blue-600 border-b-2 border-blue-600'
@@ -883,6 +901,127 @@ const AdminDashboard: React.FC = () => {
                       </div>
                     </div>
                   </div>
+
+                  {statsData.traffic.bots ? (
+                    <div>
+                      <div className="flex flex-wrap items-end justify-between gap-2 mb-4">
+                        <div>
+                          <h3 className="text-lg font-semibold text-gray-900">Bots &amp; agents</h3>
+                          <p className="text-xs text-gray-500 mt-0.5">
+                            First-party nginx log + beacon · scanners excluded from headline totals ·{' '}
+                            {statsData.traffic.bots.source}
+                          </p>
+                        </div>
+                      </div>
+                      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
+                        <div className="bg-slate-50 rounded-lg p-4 border border-slate-200">
+                          <p className="text-xs text-slate-600">Bot hits (7d)</p>
+                          <p className="text-2xl font-bold text-slate-950">{statsData.traffic.bots.hits7d}</p>
+                        </div>
+                        <div className="bg-violet-50 rounded-lg p-4 border border-violet-100">
+                          <p className="text-xs text-violet-700">AI agents (7d)</p>
+                          <p className="text-2xl font-bold text-violet-950">{statsData.traffic.bots.aiAgent7d}</p>
+                        </div>
+                        <div className="bg-fuchsia-50 rounded-lg p-4 border border-fuchsia-100">
+                          <p className="text-xs text-fuchsia-700">AI crawlers (7d)</p>
+                          <p className="text-2xl font-bold text-fuchsia-950">{statsData.traffic.bots.aiCrawl7d}</p>
+                        </div>
+                        <div className="bg-slate-50 rounded-lg p-4 border border-slate-200">
+                          <p className="text-xs text-slate-600">Bots today</p>
+                          <p className="text-2xl font-bold text-slate-950">{statsData.traffic.bots.hitsToday}</p>
+                          <p className="text-[10px] text-slate-500 mt-1">{statsData.traffic.bots.hits.toLocaleString()} all-time headline</p>
+                        </div>
+                      </div>
+                      <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-4 gap-4">
+                        <div className="bg-white rounded-lg border border-gray-200 p-4">
+                          <h4 className="text-sm font-semibold text-gray-900 mb-3">Top families</h4>
+                          {statsData.traffic.bots.topFamilies.length > 0 ? (
+                            <div className="space-y-2 max-h-56 overflow-y-auto">
+                              {statsData.traffic.bots.topFamilies.map((row) => (
+                                <div key={row.family} className="flex items-center justify-between gap-2 text-sm">
+                                  <span className="truncate">
+                                    <span className="font-medium text-gray-900">{row.family}</span>
+                                    <span className="text-xs text-gray-500 ml-1">{row.category}</span>
+                                  </span>
+                                  <span className="shrink-0 font-semibold tabular-nums">{row.views}</span>
+                                </div>
+                              ))}
+                            </div>
+                          ) : (
+                            <p className="text-sm text-gray-500">No bot families yet — run the log tailer.</p>
+                          )}
+                        </div>
+                        <div className="bg-white rounded-lg border border-gray-200 p-4">
+                          <h4 className="text-sm font-semibold text-gray-900 mb-3">Top paths</h4>
+                          {statsData.traffic.bots.topPaths.length > 0 ? (
+                            <div className="space-y-2 max-h-56 overflow-y-auto">
+                              {statsData.traffic.bots.topPaths.map((row) => (
+                                <div key={row.path} className="flex items-center justify-between gap-2 text-sm">
+                                  <span className="truncate font-mono text-gray-800">{row.path}</span>
+                                  <span className="shrink-0 font-semibold tabular-nums">{row.views}</span>
+                                </div>
+                              ))}
+                            </div>
+                          ) : (
+                            <p className="text-sm text-gray-500">No paths yet.</p>
+                          )}
+                        </div>
+                        <div className="bg-white rounded-lg border border-gray-200 p-4">
+                          <h4 className="text-sm font-semibold text-gray-900 mb-3">By category</h4>
+                          {statsData.traffic.bots.byCategory.length > 0 ? (
+                            <div className="space-y-2 max-h-56 overflow-y-auto">
+                              {statsData.traffic.bots.byCategory.map((row) => (
+                                <div key={row.category} className="flex items-center justify-between gap-2 text-sm">
+                                  <span className="font-mono text-gray-800">{row.category}</span>
+                                  <span className="shrink-0 font-semibold tabular-nums">{row.views}</span>
+                                </div>
+                              ))}
+                            </div>
+                          ) : (
+                            <p className="text-sm text-gray-500">No categories yet.</p>
+                          )}
+                          {statsData.traffic.bots.aiFamilies7d.length > 0 ? (
+                            <div className="mt-4 pt-3 border-t border-gray-100">
+                              <p className="text-xs font-semibold text-gray-700 mb-2">AI families (7d)</p>
+                              <div className="space-y-1.5">
+                                {statsData.traffic.bots.aiFamilies7d.map((row) => (
+                                  <div key={row.family} className="flex justify-between text-xs gap-2">
+                                    <span className="truncate">{row.family}</span>
+                                    <span className="tabular-nums font-medium">{row.views}</span>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          ) : null}
+                        </div>
+                        <div className="bg-white rounded-lg border border-gray-200 p-4">
+                          <h4 className="text-sm font-semibold text-gray-900 mb-3">Recent hits</h4>
+                          {statsData.traffic.bots.recent.length > 0 ? (
+                            <div className="space-y-2 max-h-56 overflow-y-auto">
+                              {statsData.traffic.bots.recent.map((row, i) => (
+                                <div key={`${row.at}-${i}`} className="text-xs border-b border-gray-50 pb-1.5 last:border-0">
+                                  <div className="flex justify-between gap-2">
+                                    <span className="font-medium text-gray-900">{row.family}</span>
+                                    <span className="text-gray-400 shrink-0">
+                                      {new Date(row.at).toLocaleString(undefined, {
+                                        month: 'short',
+                                        day: 'numeric',
+                                        hour: '2-digit',
+                                        minute: '2-digit',
+                                      })}
+                                    </span>
+                                  </div>
+                                  <div className="text-gray-500 truncate font-mono">{row.path}</div>
+                                </div>
+                              ))}
+                            </div>
+                          ) : (
+                            <p className="text-sm text-gray-500">No recent bot hits.</p>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  ) : null}
 
                   <div>
                     <h3 className="text-lg font-semibold text-gray-900 mb-4">Platform totals</h3>

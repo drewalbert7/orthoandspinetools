@@ -1375,6 +1375,19 @@ class ApiService {
       topPagesWeek: Array<{ path: string; views: number }>;
       dailyPageViews: Array<{ date: string; views: number }>;
       trackingSince?: string;
+      bots: {
+        hits: number;
+        hitsToday: number;
+        hits7d: number;
+        aiAgent7d: number;
+        aiCrawl7d: number;
+        byCategory: Array<{ category: string; views: number }>;
+        topFamilies: Array<{ family: string; category: string; views: number }>;
+        topPaths: Array<{ path: string; views: number }>;
+        aiFamilies7d: Array<{ family: string; category: string; views: number }>;
+        recent: Array<{ family: string; category: string; path: string; at: string }>;
+        source: string;
+      };
     };
     gaMeasurementId: string | null;
   }> {

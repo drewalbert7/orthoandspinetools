@@ -560,3 +560,60 @@ model AnalyticsPageView {
   @@map("analytics_page_views")
 }
 
+model AnalyticsBot {
+  family    String   @id
+  category  String
+  views     Int      @default(0)
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@index([category])
+  @@map("analytics_bots")
+}
+
+model AnalyticsBotPath {
+  path      String   @id
+  views     Int      @default(0)
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("analytics_bot_paths")
+}
+
+model AnalyticsBotDaily {
+  day     DateTime @id @db.Date
+  views   Int      @default(0)
+  aiAgent Int      @default(0) @map("ai_agent")
+  aiCrawl Int      @default(0) @map("ai_crawl")
+
+  @@map("analytics_bot_daily")
+}
+
+model AnalyticsBotDailyFamily {
+  day    DateTime @db.Date
+  family String
+  views  Int      @default(0)
+
+  @@id([day, family])
+  @@map("analytics_bot_daily_family")
+}
+
+model AnalyticsBotRecent {
+  id        String   @id @default(cuid())
+  family    String
+  category  String
+  path      String
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@index([createdAt])
+  @@map("analytics_bot_recent")
+}
+
+model AnalyticsBotState {
+  key           String    @id
+  inode         String?
+  offset        BigInt    @default(0)
+  backfilledAt  DateTime? @map("backfilled_at")
+  updatedAt     DateTime  @updatedAt @map("updated_at")
+
+  @@map("analytics_bot_state")
+}
+

@@ -1,0 +1,19 @@
+[Unit]
+Description=OrthoAndSpineTools bot/LLM nginx access-log analytics
+Requires=docker.service
+After=docker.service network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+WorkingDirectory=/home/dstrad/orthoandspinetools-main
+EnvironmentFile=-/home/dstrad/orthoandspinetools-main/.env
+# SITE_ACCESS_LOG is set inside the compose service to /var/log/nginx/access.log
+# (host path ./nginx/logs mounted read-only). BOT_IGNORE_IPS from .env or compose default.
+ExecStart=/usr/bin/docker compose -f docker-compose.prod.yml up -d --no-deps bot-analytics
+ExecStop=/usr/bin/docker compose -f docker-compose.prod.yml stop bot-analytics
+TimeoutStartSec=120
+
+[Install]
+WantedBy=multi-user.target

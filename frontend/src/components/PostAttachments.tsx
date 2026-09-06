@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 
 interface TimelineAttachment {
@@ -34,7 +34,6 @@ function isCloudflareStreamUrl(src: string): boolean {
 }
 
 function streamIframeSrc(src: string): string {
-  // Accept iframe URL, HLS, MP4 download, or bare uid path → normalize to /iframe
   try {
     const url = new URL(src);
     const parts = url.pathname.split('/').filter(Boolean);
@@ -50,7 +49,6 @@ function streamIframeSrc(src: string): string {
 }
 
 function mediaSrc(attachment: TimelineAttachment): string {
-  // Prefer canonical delivery URL from upload; optimized/thumbnail are SDK-derived and used to 404 when version was wrong (nested public_id + forced v1).
   return (
     attachment.cloudinaryUrl ||
     attachment.path ||
@@ -70,6 +68,197 @@ interface PostAttachmentsProps {
 }
 
 type Enriched = { att: TimelineAttachment; src: string; kind: 'image' | 'video' | 'file' };
+
+/** Reddit-style multi-image carousel: one image at a time with arrows, counter, and dots. */
+const ImageCarousel: React.FC<{
+  items: Enriched[];
+  maxHeight: string;
+  postId?: string;
+  isDetail: boolean;
+}> = ({ items, maxHeight, postId, isDetail }) => {
+  const [index, setIndex] = useState(0);
+  const touchStartX = useRef<number | null>(null);
+  const touchDeltaX = useRef(0);
+  const total = items.length;
+  const current = items[Math.min(index, total - 1)] ?? items[0];
+
+  useEffect(() => {
+    setIndex((i) => (i >= total ? 0 : i));
+  }, [total]);
+
+  const go = useCallback(
+    (next: number) => {
+      if (total <= 1) return;
+      setIndex(((next % total) + total) % total);
+    },
+    [total]
+  );
+
+  const stop = (e: React.SyntheticEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+  };
+
+  const openCurrent = () => {
+    if (postId) return;
+    window.open(current.src, '_blank');
+  };
+
+  const onKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'ArrowLeft') {
+      stop(e);
+      go(index - 1);
+    } else if (e.key === 'ArrowRight') {
+      stop(e);
+      go(index + 1);
+    } else if (e.key === 'Enter' || e.key === ' ') {
+      if (!postId) {
+        stop(e);
+        openCurrent();
+      }
+    }
+  };
+
+  const onTouchStart = (e: React.TouchEvent) => {
+    touchStartX.current = e.touches[0]?.clientX ?? null;
+    touchDeltaX.current = 0;
+  };
+
+  const onTouchMove = (e: React.TouchEvent) => {
+    if (touchStartX.current == null) return;
+    touchDeltaX.current = (e.touches[0]?.clientX ?? touchStartX.current) - touchStartX.current;
+  };
+
+  const onTouchEnd = (e: React.TouchEvent) => {
+    const dx = touchDeltaX.current;
+    touchStartX.current = null;
+    touchDeltaX.current = 0;
+    if (Math.abs(dx) < 48) return;
+    e.stopPropagation();
+    if (dx < 0) go(index + 1);
+    else go(index - 1);
+  };
+
+  const img = (
+    <img
+      src={current.src}
+      alt=""
+      className="w-full h-auto object-contain select-none"
+      style={{ maxHeight }}
+      loading={index === 0 ? 'eager' : 'lazy'}
+      decoding="async"
+      draggable={false}
+    />
+  );
+
+  return (
+    <div
+      className="relative bg-gray-100 rounded-md overflow-hidden group outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+      role="region"
+      aria-roledescription="carousel"
+      aria-label={`Image ${index + 1} of ${total}`}
+      tabIndex={0}
+      onKeyDown={onKeyDown}
+      onTouchStart={onTouchStart}
+      onTouchMove={onTouchMove}
+      onTouchEnd={onTouchEnd}
+      onClick={(e) => e.stopPropagation()}
+    >
+      <div className="relative flex items-center justify-center min-h-[10rem] bg-neutral-900/5">
+        {postId ? (
+          <Link
+            to={`/post/${postId}`}
+            className="block w-full focus:outline-none"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {img}
+          </Link>
+        ) : (
+          <button
+            type="button"
+            className="block w-full cursor-zoom-in p-0 border-0 bg-transparent"
+            onClick={(e) => {
+              stop(e);
+              openCurrent();
+            }}
+            aria-label="Open image"
+          >
+            {img}
+          </button>
+        )}
+
+        <div
+          className="absolute top-2 right-2 z-10 rounded-full bg-black/70 text-white text-[11px] sm:text-xs font-semibold tabular-nums px-2 py-0.5 pointer-events-none"
+          aria-hidden
+        >
+          {index + 1}/{total}
+        </div>
+
+        <button
+          type="button"
+          aria-label="Previous image"
+          className="absolute left-1.5 sm:left-2 top-1/2 -translate-y-1/2 z-10 flex h-8 w-8 sm:h-9 sm:w-9 items-center justify-center rounded-full bg-black/55 text-white hover:bg-black/75 transition-opacity opacity-90 sm:opacity-0 sm:group-hover:opacity-100 focus:opacity-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-white touch-target"
+          onClick={(e) => {
+            stop(e);
+            go(index - 1);
+          }}
+        >
+          <svg className="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden>
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M15 19l-7-7 7-7" />
+          </svg>
+        </button>
+
+        <button
+          type="button"
+          aria-label="Next image"
+          className="absolute right-1.5 sm:right-2 top-1/2 -translate-y-1/2 z-10 flex h-8 w-8 sm:h-9 sm:w-9 items-center justify-center rounded-full bg-black/55 text-white hover:bg-black/75 transition-opacity opacity-90 sm:opacity-0 sm:group-hover:opacity-100 focus:opacity-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-white touch-target"
+          onClick={(e) => {
+            stop(e);
+            go(index + 1);
+          }}
+        >
+          <svg className="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden>
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M9 5l7 7-7 7" />
+          </svg>
+        </button>
+      </div>
+
+      {total > 1 ? (
+        <div
+          className={`flex items-center justify-center gap-1.5 py-2 bg-white border-t border-gray-100 ${
+            isDetail ? 'py-2.5' : ''
+          }`}
+          role="tablist"
+          aria-label="Image slides"
+        >
+          {items.map((item, i) => (
+            <button
+              key={item.att.id}
+              type="button"
+              role="tab"
+              aria-selected={i === index}
+              aria-label={`Go to image ${i + 1}`}
+              className={`h-1.5 rounded-full transition-all touch-target ${
+                i === index ? 'w-4 bg-gray-800' : 'w-1.5 bg-gray-300 hover:bg-gray-400'
+              }`}
+              onClick={(e) => {
+                stop(e);
+                setIndex(i);
+              }}
+            />
+          ))}
+        </div>
+      ) : null}
+
+      {/* Prefetch neighbors for snappier swipes */}
+      <div className="sr-only" aria-hidden>
+        {items.map((item, i) =>
+          Math.abs(i - index) === 1 ? <img key={`preload-${item.att.id}`} src={item.src} alt="" /> : null
+        )}
+      </div>
+    </div>
+  );
+};
 
 const PostAttachments: React.FC<PostAttachmentsProps> = ({ attachments, postId, variant = 'default' }) => {
   const isDetail = variant === 'detail';
@@ -114,55 +303,6 @@ const PostAttachments: React.FC<PostAttachmentsProps> = ({ attachments, postId, 
   const videoItems = list
     .map((att) => enriched.find((e) => e.att.id === att.id))
     .filter((e): e is Enriched => !!e && e.kind === 'video' && !!e.src);
-
-  const renderImageTile = (item: Enriched, opts: { overlayPlus?: number; tileClass?: string }) => {
-    const { overlayPlus, tileClass = '' } = opts;
-    const inner = (
-      <>
-        <img
-          src={item.src}
-          alt=""
-          className="absolute inset-0 w-full h-full object-cover hover:opacity-95 transition-opacity"
-          loading="lazy"
-          decoding="async"
-        />
-        {overlayPlus != null && overlayPlus > 0 ? (
-          <div className="absolute inset-0 bg-black/55 flex items-center justify-center text-white text-lg sm:text-2xl font-semibold tabular-nums">
-            +{overlayPlus}
-          </div>
-        ) : null}
-      </>
-    );
-    const boxClass = `relative bg-gray-100 overflow-hidden rounded-md aspect-[4/3] ${tileClass}`;
-    if (postId) {
-      return (
-        <Link
-          key={item.att.id}
-          to={`/post/${postId}`}
-          className={`${boxClass} block focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500`}
-        >
-          {inner}
-        </Link>
-      );
-    }
-    return (
-      <div
-        key={item.att.id}
-        className={`${boxClass} cursor-pointer`}
-        onClick={() => window.open(item.src, '_blank')}
-        onKeyDown={(e) => {
-          if (e.key === 'Enter' || e.key === ' ') {
-            e.preventDefault();
-            window.open(item.src, '_blank');
-          }
-        }}
-        role="button"
-        tabIndex={0}
-      >
-        {inner}
-      </div>
-    );
-  };
 
   if (imageItems.length === 0 && videoItems.length > 0) {
     const primaryVideo = videoItems[0];
@@ -213,30 +353,18 @@ const PostAttachments: React.FC<PostAttachmentsProps> = ({ attachments, postId, 
   }
 
   if (imageItems.length >= 2) {
-    const show = imageItems.slice(0, 4);
-    const shownIds = new Set(show.map((s) => s.att.id));
-    const moreCount = list.filter((a) => !shownIds.has(a.id)).length;
-    const hiddenImageCount = Math.max(0, imageItems.length - 4);
-    const overlayOnLast = show.length === 4 && hiddenImageCount > 0 ? hiddenImageCount : undefined;
-    const footerMore = moreCount - hiddenImageCount;
-
+    const nonImageExtra = list.length - imageItems.length;
     return (
       <div className={rootMb}>
-        <div
-          className={`grid gap-0.5 rounded-md overflow-hidden bg-gray-100 ${
-            show.length === 1 ? 'grid-cols-1' : 'grid-cols-2'
-          }`}
-        >
-          {show.map((item, idx) => {
-            const isThirdOfThree = show.length === 3 && idx === 2;
-            const tileClass = isThirdOfThree ? 'col-span-2 aspect-[21/9]' : '';
-            const overlayPlus = idx === 3 ? overlayOnLast : undefined;
-            return renderImageTile(item, { overlayPlus, tileClass });
-          })}
-        </div>
-        {footerMore > 0 ? (
+        <ImageCarousel
+          items={imageItems}
+          maxHeight={singleMaxH}
+          postId={postId}
+          isDetail={isDetail}
+        />
+        {nonImageExtra > 0 ? (
           <div className="text-xs text-gray-500 mt-2 text-center">
-            +{footerMore} more attachment{footerMore !== 1 ? 's' : ''}
+            +{nonImageExtra} more attachment{nonImageExtra !== 1 ? 's' : ''}
           </div>
         ) : null}
       </div>

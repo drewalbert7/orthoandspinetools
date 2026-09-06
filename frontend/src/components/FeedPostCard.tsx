@@ -36,11 +36,7 @@ const FeedPostCard: React.FC<{ post: Post }> = ({ post }) => {
   const startup = isStartupPost(post);
 
   return (
-    <div
-      className={`bg-white border border-gray-200 hover:border-gray-300 transition-colors ${
-        startup ? 'border-l-4 border-l-amber-400 bg-amber-50/40' : ''
-      }`}
-    >
+    <div className="bg-white border border-gray-200 hover:border-gray-300 transition-colors">
       <div className="p-3">
         <div className="flex flex-wrap items-center gap-x-1 gap-y-1 text-xs text-gray-500 mb-1">
           <Link

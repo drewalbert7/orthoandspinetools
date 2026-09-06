@@ -8,7 +8,7 @@
 | **OPS QUICK REFERENCE** | Database, SSL, Docker disk, scripts |
 | **Archive** | Full history → `CHANGELOG.md` |
 
-## 🔥 **NEXT UP — START HERE** (updated Aug 29, 2026)
+## 🔥 **NEXT UP — START HERE** (updated Sep 6, 2026)
 
 ### **Pick up here (step-by-step)**
 
@@ -25,6 +25,7 @@
 | **9** | **MAUDE brand synopsis** | ✅ Click brand → problem codes + recent FDA narrative excerpts (`/api/maude/synopsis`) |
 | **10** | **MAUDE coverage gaps** | ✅ Device—Company titles; Unknown-specialty implants (discs, Superion, INFUSE, mobile-bearing knees) |
 | **11** | **MAUDE smart search** | ✅ Clinical phrases → implant brands (cervical/lumbar disc arthroplasty, SI, INFUSE, …) |
+| **12** | **Bot / LLM analytics** | ✅ Nginx log tailer + admin **Bots & agents**; header **Stats**; humans stay on JS beacon |
 
 **Ongoing disk habit:** `./scripts/docker-disk-check.sh report` before `--no-cache` builds.
 
@@ -63,10 +64,11 @@
 - [ ] **Security follow-ups** — Fail startup on default secrets; enable upload virus scanning (ClamAV). Rotate Cloudflare API token that was pasted in chat.
 - [x] **Google Search Console** — Domain verified; sitemap submitted (`/sitemap.xml`).
 - [ ] **Optional** — Rich Results Test on home + `/post/:id`; dedicated 1200×630 `og-share.png` for richer homepage/hub cards.
+- [x] **First-party bot + LLM agent traffic** — Postgres `analytics_bot*` tables; UA classification (ai_agent / ai_crawl / search / …); `bot-analytics` compose service tails `nginx/logs/access.log` (14d backfill + cursor); `/pageview` bot UAs never inflate human counts; Admin Analytics **Bots & agents**; header **Stats** → `/admin?tab=analytics`. Unit: `scripts/orthoandspinetools-bot-analytics.service` (`sudo` enable if not yet installed).
 
 ### **0. Deploy status — verify live**
 - [x] **https://orthoandspinetools.com** — home, hubs, sitemap, OG previews with post images, edit-post tags, `/maude`
-- [x] **Latest deploy (Aug 31)** — Mobile UX pass; MAUDE ACDF concept/rollups; SES brand-request alerts; Cloudflare Images+Stream; R2 backups
+- [x] **Latest deploy (Sep 6)** — Bot/LLM analytics tailer + admin Stats; multi-image carousel polish; startup feed badge simplification
 - [ ] After **every** frontend/nginx recreate: `--force-recreate nginx` if needed (stale upstream → 502)
 
 ### **1. Deploy (production server)**
@@ -77,7 +79,7 @@
 | Disk | `/dev/sda1` **38G** root · **Hetzner volume 106016238** 20G at `/mnt/HC_Volume_106016238` for DB backups |
 | Repo | `~/orthoandspinetools-main` |
 | Compose | `docker-compose.prod.yml` |
-| Containers | `orthoandspinetools-{postgres,backend,frontend,nginx}` |
+| Containers | `orthoandspinetools-{postgres,backend,frontend,nginx,bot-analytics}` |
 | Secrets | `.env`, `.env.cloudinary`, Cloudflare `CLOUDFLARE_*` (never commit); SES vars on server only |
 | SSL renew | ✅ Cron active: `0 3 1 * *` → `scripts/ssl-renew-cron.sh` |
 | Disk cleanup | ✅ Cron active: `0 4 1 * *` → `scripts/docker-disk-check.sh cleanup` |
@@ -86,7 +88,7 @@
 cd ~/orthoandspinetools-main
 GIT_SSH_COMMAND='ssh -F /dev/null -o StrictHostKeyChecking=accept-new' git pull origin main
 docker compose -f docker-compose.prod.yml build --no-cache backend frontend   # watch disk!
-docker compose -f docker-compose.prod.yml up -d backend frontend nginx
+docker compose -f docker-compose.prod.yml up -d backend frontend nginx bot-analytics
 ./scripts/production-qa-smoke.sh
 ```
 

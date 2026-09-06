@@ -6,10 +6,11 @@ import { optionalAuth, type AuthRequest } from '../middleware/auth';
 import { prisma } from '../lib/prisma';
 import {
   analyticsVisitorHash,
-  isAnalyticsBot,
   normalizeAnalyticsPath,
   sanitizeReferrer,
 } from '../lib/analytics';
+import { classifyBot } from '../lib/botClassify';
+import { recordBotHit } from '../lib/botAnalytics';
 
 const router = Router();
 
@@ -36,13 +37,16 @@ router.post(
       return;
     }
 
-    if (isAnalyticsBot(req.get('user-agent'))) {
+    const path = normalizeAnalyticsPath(req.body.path);
+    if (!path) {
       res.status(204).end();
       return;
     }
 
-    const path = normalizeAnalyticsPath(req.body.path);
-    if (!path) {
+    // Bot UAs: record as bot traffic, never as human pageviews
+    const bot = classifyBot(req.get('user-agent'));
+    if (bot) {
+      await recordBotHit({ classification: bot, path }).catch(() => {});
       res.status(204).end();
       return;
     }

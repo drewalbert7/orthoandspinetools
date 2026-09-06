@@ -20,7 +20,8 @@ export function normalizeAnalyticsPath(raw: string): string | null {
 }
 
 export function isAnalyticsBot(userAgent: string | undefined): boolean {
-  if (!userAgent) return false;
+  // Prefer classifyBot in call sites; keep for backward-compat coarse checks.
+  if (!userAgent) return true;
   return BOT_UA.test(userAgent);
 }
 
