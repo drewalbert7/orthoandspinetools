@@ -68,8 +68,8 @@
 
 ### **0. Deploy status — verify live**
 - [x] **https://orthoandspinetools.com** — home, hubs, sitemap, OG previews with post images, edit-post tags, `/maude`
-- [x] **Latest deploy (Sep 6)** — Bot/LLM analytics tailer + admin Stats; multi-image carousel polish; startup feed badge simplification
-- [ ] After **every** frontend/nginx recreate: `--force-recreate nginx` if needed (stale upstream → 502)
+- [x] **Latest deploy (Sep 6)** — Bot/LLM analytics + admin Stats; evening **502 fixed** by `--force-recreate nginx` (stale upstream after frontend recreate)
+- [x] **Ops rule (hard)** — After **every** `backend`/`frontend` recreate, always: `docker compose -f docker-compose.prod.yml up -d --force-recreate nginx` (cached Docker DNS → 502 Connection refused on old IPs)
 
 ### **1. Deploy (production server)**
 
@@ -88,7 +88,8 @@
 cd ~/orthoandspinetools-main
 GIT_SSH_COMMAND='ssh -F /dev/null -o StrictHostKeyChecking=accept-new' git pull origin main
 docker compose -f docker-compose.prod.yml build --no-cache backend frontend   # watch disk!
-docker compose -f docker-compose.prod.yml up -d backend frontend nginx bot-analytics
+docker compose -f docker-compose.prod.yml up -d backend frontend bot-analytics
+docker compose -f docker-compose.prod.yml up -d --force-recreate nginx   # required: refresh upstream IPs
 ./scripts/production-qa-smoke.sh
 ```
 
@@ -180,7 +181,8 @@ docker compose -f docker-compose.prod.yml exec backend npm run backfill-case-pos
 
 **SSL paths in nginx:** `nginx/ssl/certs/fullchain.pem` + `privkey.pem`
 
-**nginx after config change:** `docker compose -f docker-compose.prod.yml up -d --force-recreate nginx`
+**nginx after backend/frontend recreate or config change:** always `--force-recreate` (stale upstream IPs → intermittent 502):
+`docker compose -f docker-compose.prod.yml up -d --force-recreate nginx`
 
 ---
 
