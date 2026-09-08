@@ -111,8 +111,9 @@ Full agent copy: **`AGENTS.md`**. Cursor rule: `.cursor/rules/analytics-durabili
 
 ### **0. Deploy status — verify live**
 - [x] **https://orthoandspinetools.com** — home, hubs, sitemap, OG previews with post images, edit-post tags, `/maude`
-- [x] **Latest deploy (Sep 6)** — Bot/LLM analytics + admin Stats; evening **502 fixed** by `--force-recreate nginx` (stale upstream after frontend recreate)
+- [x] **Latest deploy (Sep 7)** — Analytics durability (`AGENTS.md`, daily analytics table dumps, report script); prior Sep 6 bot/LLM analytics + nginx force-recreate after 502
 - [x] **Ops rule (hard)** — After **every** `backend`/`frontend` recreate, always: `docker compose -f docker-compose.prod.yml up -d --force-recreate nginx` (cached Docker DNS → 502 Connection refused on old IPs)
+- [x] **Analytics backup cron** — `15 2 * * *` → `scripts/analytics-backup.sh` → `/mnt/HC_Volume_106016238/orthoandspinetools-backups/analytics/`
 
 ### **1. Deploy (production server)**
 
