@@ -1,0 +1,31 @@
+---
+description: Critical analytics data durability — never wipe, double-count, or store under deploy paths
+alwaysApply: true
+---
+
+# Analytics data durability (CRITICAL)
+
+Read before changing analytics, deploy, nginx, systemd, or storage. Full detail: `AGENTS.md` + `TODO.md`.
+
+## This site’s store
+
+- Live analytics = **PostgreSQL** volume `orthoandspinetools-main_postgres_data` (outside git / not under `dist/` or rsync `--delete`).
+- Humans: `analytics_page_views` via JS beacon. Bots: `analytics_bot*` via nginx log tailer. Cursor: `analytics_bot_state.backfilled_at` gates one-shot backfill.
+- Backups: `scripts/analytics-backup.sh` → `/mnt/HC_Volume_106016238/orthoandspinetools-backups/analytics/` (`analytics-latest.sql.gz`, ≥30d). Cron via `scripts/install-analytics-backup-cron.sh`.
+
+## Before / after changes
+
+- Before risky work: run backup; note dump size/mtime/sha256.
+- After: `./scripts/analytics-durability-report.sh` and report viewsToday / views7d / bots.hits7d.
+
+## Forbidden without explicit user approval
+
+- Truncate/delete/replace analytics tables or dumps
+- Clear `analytics_bot_state` / force full log re-backfill
+- Move storage without copy + verify
+- Store live analytics under deploy-cleaned paths
+- `docker compose down -v`
+
+## Semantics
+
+- Do not invent historical human pageviews. UTC days. Do not “fix” accuracy by wiping. Scanners stay out of bot headlines.

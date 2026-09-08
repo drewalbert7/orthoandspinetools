@@ -308,6 +308,9 @@ async function main() {
   log(`  ignore IPs: ${[...IGNORE_IPS].join(', ')}`);
   log(`  backfill days: ${BACKFILL_DAYS}`);
 
+  // DURABILITY: one-shot backfill only when backfilledAt is unset.
+  // Never clear analytics_bot_state or force re-backfill without explicit approval
+  // (would double-count). Restarts must resume from inode+offset cursor only.
   const state = await prisma.analyticsBotState.findUnique({ where: { key: STATE_KEY } });
   if (!state?.backfilledAt) {
     await backfill(ACCESS_LOG);

@@ -2,13 +2,55 @@
 
 | Section | Purpose |
 |--------|---------|
+| **PROJECT BOUNDARY (MAJOR RULE)** | Keep all git + coding inside this repo only — **never spill into other projects** |
+| **ANALYTICS DURABILITY (CRITICAL)** | Postgres volume + dump backups — never wipe, double-count, or store under deploy paths |
 | **NEXT UP — START HERE** | Deploy facts, QA checklist, backlog — **canonical source of truth** |
 | **NEXT PRIORITIES (summary)** | Short roadmap; **NEXT UP wins** if they disagree |
 | **CODING AGENT INSTRUCTIONS** | Onboarding for contributors and agents |
 | **OPS QUICK REFERENCE** | Database, SSL, Docker disk, scripts |
 | **Archive** | Full history → `CHANGELOG.md` |
 
-## 🔥 **NEXT UP — START HERE** (updated Sep 6, 2026)
+## ⛔ **PROJECT BOUNDARY — MAJOR RULE** (do not violate)
+
+**All git and coding for OrthoAndSpineTools stays inside this project only.**
+
+| Allowed | Forbidden |
+|---------|-----------|
+| Paths under `~/orthoandspinetools-main` (this repo) | Editing, creating, deleting, or refactoring files in **any other** project/repo/site |
+| `git` commands in **this** repo only (`orthoandspinetools` / `orthoandspinetools-main`) | `git add` / `commit` / `push` / `pull` / `checkout` in other repos |
+| Reading other projects **only** as reference when explicitly asked (copy ideas, don’t write there) | “Drive-by” fixes, shared scripts, or commits that touch sibling folders (`~/…`, `/srv/sites/…`, other domains) |
+| Deploy/ops for **this** stack (`docker-compose.prod.yml`, this nginx, this systemd units) | Changing Physician Forge, The Direct Care List, Lemmy, or any other site “while we’re here” |
+
+**Why:** This server hosts multiple sites. Spilling edits/commits across projects causes wrong deploys, mixed history, and hard-to-debug outages.
+
+**Agent checklist before every write or git command:**
+1. Confirm cwd / target path is under `orthoandspinetools-main`.
+2. Confirm `git rev-parse --show-toplevel` is this repo.
+3. If a task seems to need another project → **stop and ask**; do not touch it.
+
+## 🛡️ **ANALYTICS DATA DURABILITY — CRITICAL** (read before analytics / deploy / nginx / systemd / storage)
+
+Full agent copy: **`AGENTS.md`**. Cursor rule: `.cursor/rules/analytics-durability.mdc`.
+
+**This site uses PostgreSQL (not `analytics.json`).** Live data lives in Docker volume `orthoandspinetools-main_postgres_data` — outside the git tree and outside any static/`rsync --delete` target.
+
+| Rule | Detail |
+|------|--------|
+| **Persist outside deploy** | Never put live analytics under `dist/`, `public/`, or the project tree that deploy deletes |
+| **Before change** | Note dump size/mtime/sha256; confirm deploy won’t wipe `postgres_data`; confirm bot backfill stays gated by `analytics_bot_state.backfilled_at` |
+| **Safe writes** | No truncate/reset on startup if data exists; dump backups = write `.tmp` then `mv` |
+| **Backups** | `scripts/analytics-backup.sh` → `/mnt/HC_Volume_106016238/orthoandspinetools-backups/analytics/` (`analytics-*.sql.gz` + `analytics-latest.sql.gz`, ≥30d). Cron: `scripts/install-analytics-backup-cron.sh` (daily 02:15). Full DB still at 02:00. |
+| **Semantics** | Humans = JS beacon only (no invented history). Bots = nginx log. Scanners out of headlines. UTC days. |
+| **Forbidden w/o approval** | Delete/truncate analytics tables or dumps; clear bot cursor / full re-backfill; move path without copy+verify; `docker compose down -v` |
+| **After change** | Report data path, backup path, cursor preserved, headlines (`viewsToday` / `views7d` / `bots.hits7d`) via `./scripts/analytics-durability-report.sh` |
+
+```bash
+./scripts/analytics-backup.sh                    # run before risky migrations
+./scripts/install-analytics-backup-cron.sh       # once
+./scripts/analytics-durability-report.sh         # after analytics-related work
+```
+
+## 🔥 **NEXT UP — START HERE** (updated Sep 7, 2026)
 
 ### **Pick up here (step-by-step)**
 
@@ -65,6 +107,7 @@
 - [x] **Google Search Console** — Domain verified; sitemap submitted (`/sitemap.xml`).
 - [ ] **Optional** — Rich Results Test on home + `/post/:id`; dedicated 1200×630 `og-share.png` for richer homepage/hub cards.
 - [x] **First-party bot + LLM agent traffic** — Postgres `analytics_bot*` tables; UA classification (ai_agent / ai_crawl / search / …); `bot-analytics` compose service tails `nginx/logs/access.log` (14d backfill + cursor); `/pageview` bot UAs never inflate human counts; Admin Analytics **Bots & agents**; header **Stats** → `/admin?tab=analytics`. Unit: `scripts/orthoandspinetools-bot-analytics.service` (`sudo` enable if not yet installed).
+- [x] **Analytics durability** — Rules in `AGENTS.md` + `.cursor/rules/analytics-durability.mdc` + TODO; live data on Postgres volume (not git/deploy); daily `analytics-backup.sh` → Hetzner `…/backups/analytics/` (≥30d); backfill gated by `backfilled_at`.
 
 ### **0. Deploy status — verify live**
 - [x] **https://orthoandspinetools.com** — home, hubs, sitemap, OG previews with post images, edit-post tags, `/maude`
@@ -145,15 +188,17 @@ Never run `docker compose down -v` (deletes production DB volume).
 ## 🤖 **CODING AGENT INSTRUCTIONS**
 
 **Before any work:**
-1. Read **NEXT UP** above (do not re-ask how production is hosted)
-2. Run `df -h /` and `docker system df` on the server — **disk was critical this session**
-3. Check `https://orthoandspinetools.com`
-4. Run `./scripts/production-qa-smoke.sh` after deploy-affecting changes
-5. Update this file when completing major tasks
+1. Read **PROJECT BOUNDARY — MAJOR RULE** above — **all git + coding stays in this repo only; never spill into other projects**
+2. Read **ANALYTICS DATA DURABILITY — CRITICAL** (and `AGENTS.md`) before touching analytics, deploy, nginx, systemd, or storage
+3. Read **NEXT UP** above (do not re-ask how production is hosted)
+4. Run `df -h /` and `docker system df` on the server — **disk was critical this session**
+5. Check `https://orthoandspinetools.com`
+6. Run `./scripts/production-qa-smoke.sh` after deploy-affecting changes
+7. Update this file when completing major tasks
 
 **Stack:** React/Vite/Tailwind frontend · Node/Express/Prisma/PostgreSQL backend · Docker + nginx + Let's Encrypt
 
-**Do not:** break existing features; commit secrets; run destructive DB ops without approval; **`docker compose down -v`** (deletes DB volume)
+**Do not:** break existing features; commit secrets; run destructive DB ops without approval; **`docker compose down -v`** (deletes DB volume); **edit or git other projects on this host**; wipe/reset analytics tables or force bot log re-backfill without explicit approval
 
 **Git push on server** (SSH config has bad options in `~/.ssh/config`):
 ```bash
@@ -171,8 +216,11 @@ GIT_SSH_COMMAND='ssh -F /dev/null -o StrictHostKeyChecking=accept-new' git pull 
 ./scripts/seo-audit.sh                 # SEO + OG curl checks; optional Lighthouse
 ./scripts/ses-webhook-status.sh          # SES/SNS env check
 ./scripts/quick-restart.sh               # safe restart (never docker compose down)
-./scripts/database-backup-production.sh    # manual DB backup (uses volume when mounted)
+./scripts/database-backup-production.sh    # manual full DB backup (uses volume when mounted)
 ./scripts/database-backup-cron.sh          # cron entrypoint (daily 02:00)
+./scripts/analytics-backup.sh              # analytics tables only → …/backups/analytics/
+./scripts/install-analytics-backup-cron.sh # once: daily 02:15 analytics dump
+./scripts/analytics-durability-report.sh   # post-change fingerprint + headlines
 ./scripts/setup-backup-volume.sh           # one-time Hetzner volume backup dir setup
 docker compose -f docker-compose.prod.yml exec backend npm run backfill-case-post-tags
 ```
