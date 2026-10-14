@@ -80,7 +80,7 @@ export type MaudeBrandSeries = {
   cumulativeSeries: MaudeDailyPoint[];
 };
 
-/** Brands with rising recent report rate vs the prior window. */
+/** Brands ranked by Reddit-style rising momentum (recent vs prior window). */
 export type MaudeTrendingBrand = {
   name: string;
   shortLabel: string;
@@ -94,6 +94,8 @@ export type MaudeTrendingBrand = {
   windowLabel: string;
   /** True when prior period had ~0 reports and recent has activity. */
   isNew: boolean;
+  /** Higher = hotter rising (sort key for list + graph). */
+  risingScore: number;
 };
 
 type CacheEntry = {
@@ -774,31 +776,39 @@ function computeTrend(
   return { recentAvg, priorAvg, changePct, direction, windowLabel };
 }
 
+function risingWindowSize(days: number, grain: 'day' | 'month', seriesLen: number): number {
+  if (grain === 'month') {
+    return Math.min(3, Math.max(1, Math.floor(seriesLen / 4) || 1));
+  }
+  // Daily grain: compare last ~15% of the window (min 5d, max 30d)
+  return Math.min(30, Math.max(5, Math.round(days * 0.15)));
+}
+
+/**
+ * Reddit-style rising: reward recent growth and enough volume so tiny
+ * 1→2 blips don't outrank real momentum. Scores every brand (up/flat/down)
+ * so the UI can sort the full list + graph in one connected order.
+ */
 function computeTrendingBrands(
   brandSeries: MaudeBrandSeries[],
   days: number,
   grain: 'day' | 'month'
 ): MaudeTrendingBrand[] {
-  const windowSize =
-    grain === 'month'
-      ? Math.min(3, Math.max(1, Math.floor((brandSeries[0]?.series.length || 0) / 4) || 1))
-      : days >= 365
-        ? 30
-        : 7;
+  const seriesLen = brandSeries[0]?.series.length || 0;
+  const windowSize = risingWindowSize(days, grain, seriesLen);
   const windowLabel = grain === 'month' ? `${windowSize}mo` : `${windowSize}d`;
+  const smooth = grain === 'month' ? 2 : 3;
 
   const scored: MaudeTrendingBrand[] = [];
   for (const brand of brandSeries) {
     const series = brand.series;
-    if (series.length < windowSize * 2) continue;
+    if (series.length < Math.max(4, windowSize + 1)) continue;
 
     const recent = series.slice(-windowSize);
-    const prior = series.slice(-windowSize * 2, -windowSize);
+    const priorStart = Math.max(0, series.length - windowSize * 2);
+    const prior = series.slice(priorStart, series.length - windowSize);
     const recentTotal = recent.reduce((s, p) => s + p.count, 0);
     const priorTotal = prior.reduce((s, p) => s + p.count, 0);
-
-    // Need meaningful recent activity
-    if (recentTotal < 3) continue;
 
     const isNew = priorTotal === 0 && recentTotal > 0;
     let changePct: number;
@@ -811,7 +821,13 @@ function computeTrendingBrands(
     const direction: 'up' | 'down' | 'flat' =
       Math.abs(changePct) < 8 && !isNew ? 'flat' : changePct > 0 || isNew ? 'up' : 'down';
 
-    if (direction !== 'up') continue;
+    // Rising score ≈ velocity × log(activity). Use recent+prior so declines
+    // (recent=0) still rank below flats instead of collapsing to 0.
+    const velocity = (recentTotal - priorTotal) / (priorTotal + smooth);
+    const volumeFactor = Math.log2(recentTotal + priorTotal + 2);
+    let risingScore = velocity * volumeFactor * 100;
+    if (isNew) risingScore += 25 + recentTotal * 2;
+    if (recentTotal === 0 && priorTotal === 0) risingScore = -1000;
 
     scored.push({
       name: brand.name,
@@ -825,17 +841,17 @@ function computeTrendingBrands(
       direction,
       windowLabel,
       isNew,
+      risingScore,
     });
   }
 
   scored.sort((a, b) => {
-    // New signals first, then steepest % rise; break ties by recent volume
-    if (a.isNew !== b.isNew) return a.isNew ? -1 : 1;
-    if (b.changePct !== a.changePct) return b.changePct - a.changePct;
-    return b.recentTotal - a.recentTotal;
+    if (b.risingScore !== a.risingScore) return b.risingScore - a.risingScore;
+    if (b.recentTotal !== a.recentTotal) return b.recentTotal - a.recentTotal;
+    return b.count - a.count;
   });
 
-  return scored.slice(0, 10);
+  return scored;
 }
 
 export function classifyDeviceIcon(name: string): MaudeDeviceIcon {

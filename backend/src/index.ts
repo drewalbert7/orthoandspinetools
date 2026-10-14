@@ -23,6 +23,7 @@ import sesEventsRoutes from './routes/sesEvents';
 import sitemapRoutes from './routes/sitemap';
 import llmsFullRoutes from './routes/llmsFull';
 import maudeRoutes from './routes/maude';
+import implantRoutes from './routes/implants';
 import analyticsRoutes from './routes/analytics';
 
 // Import middleware
@@ -169,6 +170,7 @@ app.use('/api/moderation', moderationRoutes);
 app.use('/api/notifications', notificationRoutes);
 app.use('/api/ses/events', sesEventsRoutes);
 app.use('/api/maude', maudeRoutes);
+app.use('/api/implants', implantRoutes);
 app.use('/api/analytics', analyticsRoutes);
 
 // Error handling middleware

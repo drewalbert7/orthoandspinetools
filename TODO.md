@@ -68,6 +68,7 @@ Full agent copy: **`AGENTS.md`**. Cursor rule: `.cursor/rules/analytics-durabili
 | **10** | **MAUDE coverage gaps** | ✅ Device—Company titles; Unknown-specialty implants (discs, Superion, INFUSE, mobile-bearing knees) |
 | **11** | **MAUDE smart search** | ✅ Clinical phrases → implant brands (cervical/lumbar disc arthroplasty, SI, INFUSE, …) |
 | **12** | **Bot / LLM analytics** | ✅ Nginx log tailer + admin **Bots & agents**; header **Stats**; humans stay on JS beacon |
+| **13** | **Implant Directory** | 🟡 Shell live: `/implants` + Postgres models + 5 spine seeds; reviews members-only; **MCP/API monetization later** |
 
 **Ongoing disk habit:** `./scripts/docker-disk-check.sh report` before `--no-cache` builds.
 
@@ -108,10 +109,21 @@ Full agent copy: **`AGENTS.md`**. Cursor rule: `.cursor/rules/analytics-durabili
 - [ ] **Optional** — Rich Results Test on home + `/post/:id`; dedicated 1200×630 `og-share.png` for richer homepage/hub cards.
 - [x] **First-party bot + LLM agent traffic** — Postgres `analytics_bot*` tables; UA classification (ai_agent / ai_crawl / search / …); `bot-analytics` compose service tails `nginx/logs/access.log` (14d backfill + cursor); `/pageview` bot UAs never inflate human counts; Admin Analytics **Bots & agents**; header **Stats** → `/admin?tab=analytics`. Unit: `scripts/orthoandspinetools-bot-analytics.service` (`sudo` enable if not yet installed).
 - [x] **Analytics durability** — Rules in `AGENTS.md` + `.cursor/rules/analytics-durability.mdc` + TODO; live data on Postgres volume (not git/deploy); daily `analytics-backup.sh` → Hetzner `…/backups/analytics/` (≥30d); backfill gated by `backfilled_at`.
+- [x] **Implant Directory shell** — Nav under Cases → `/implants` + `/implants/:slug`; Postgres `implants` / `implant_images` / `implant_reviews`; 5 spine seeds; directory public; **reviews members-only** (any logged-in user).
+- [ ] **Implant Directory — harden before scale** (do these before MCP / big ingest):
+  1. **Search UX** — Debounce directory `q` (currently refetches every keystroke); add cursor/offset pagination (`total` + `next`); device-class filter chips.
+  2. **API guards** — Rate-limit `GET /api/implants` + `POST …/reviews` (same pattern as MAUDE/auth); return real `total` count, not page size.
+  3. **Identity** — Canonical brand keys + multi-`maudeBrandKey` / alias normalization so MAUDE links don’t miss variants; draft → verified workflow for Grokbot edits.
+  4. **Images / rights** — CF Images pipeline with `license_note` + attribution required before publish; never hotlink manufacturer sites without clearance.
+  5. **Reviews quality** — Rate-limit + min length; report/hide; optional physician badge weight later; keep bodies plain text.
+  6. **Discoverability** — `/implants/:slug.md` twins, sitemap entries, `llms.txt` section (TDCL pattern) once ≥~50 verified rows.
+  7. **Ingest** — Signed admin/Grokbot upsert API + audit log; no anonymous writes to catalog.
+  8. **MAUDE on profile** — Cached snapshot card (12mo count / rising) instead of only a deep-link.
+- [ ] **Implant Directory — MCP / paid data** — Licensed API + MCP connector (Nomads-style); optional SQLite/JSON export. **Blocked until harden checklist + data quality are solid.**
 
 ### **0. Deploy status — verify live**
 - [x] **https://orthoandspinetools.com** — home, hubs, sitemap, OG previews with post images, edit-post tags, `/maude`
-- [x] **Latest deploy (Sep 7)** — Analytics durability (`AGENTS.md`, daily analytics table dumps, report script); prior Sep 6 bot/LLM analytics + nginx force-recreate after 502
+- [x] **Latest deploy (Oct 13)** — Implant Directory shell (`/implants`, 5 spine seeds, member reviews); MAUDE Rising sort for graph+list; analytics durability still in force
 - [x] **Ops rule (hard)** — After **every** `backend`/`frontend` recreate, always: `docker compose -f docker-compose.prod.yml up -d --force-recreate nginx` (cached Docker DNS → 502 Connection refused on old IPs)
 - [x] **Analytics backup cron** — `15 2 * * *` → `scripts/analytics-backup.sh` → `/mnt/HC_Volume_106016238/orthoandspinetools-backups/analytics/`
 
@@ -175,10 +187,11 @@ Never run `docker compose down -v` (deletes production DB volume).
 
 ## 📋 **NEXT PRIORITIES (summary)**
 
-1. **Manual QA** — Create post with image/video; confirm Cloudflare Images/Stream delivery; physician NPI / intl. pending / email verify
-2. **R2 custom domain** — Prefer `media.orthoandspinetools.com` over `r2.dev` if R2 is used for public media again
-3. **Content** — More real specialty posts; clean up **Case** tags on product/tool posts
-4. **Scaling** — CPX21 resize when ready
+1. **Implant Directory fill-out** — Rights-cleared product/XR images; more spine systems; Grokbot ingest; AI assessments
+2. **Manual QA** — Create post with image/video; physician NPI / intl. pending / email verify
+3. **Implant MCP / paid API** — After data quality is solid (license + export + connector)
+4. **R2 custom domain** — Prefer `media.orthoandspinetools.com` over `r2.dev` if needed
+5. **Scaling** — CPX21 resize when ready
 
 **Deferred (not launch blockers):** SES SNS webhook for auto bounce/complaint suppression — see `docs/SES_AWS_SETUP.md` when digest/user volume grows.
 

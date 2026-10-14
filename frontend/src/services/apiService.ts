@@ -364,6 +364,38 @@ export interface MaudeBrandSeries {
   cumulativeSeries: Array<{ date: string; count: number }>;
 }
 
+export interface ImplantDirectoryItem {
+  id: string;
+  slug: string;
+  brandName: string;
+  systemName?: string | null;
+  company?: string | null;
+  specialty: string;
+  anatomy?: string | null;
+  deviceClass: string;
+  description?: string | null;
+  maudeBrandKey?: string | null;
+  reviewCount: number;
+  productImage?: { url: string; alt?: string | null } | null;
+  xrayImage?: { url: string; alt?: string | null } | null;
+}
+
+export interface ImplantReview {
+  id: string;
+  rating: number;
+  title?: string | null;
+  body: string;
+  createdAt: string;
+  author: { username: string; firstName: string; lastName: string };
+}
+
+export interface ImplantDetail extends ImplantDirectoryItem {
+  aliases: string[];
+  images: Array<{ kind: string; url: string; alt?: string | null; attribution?: string | null }>;
+  reviews: ImplantReview[] | null;
+  reviewsLocked: boolean;
+}
+
 export interface MaudeTrendingBrand {
   name: string;
   shortLabel: string;
@@ -376,6 +408,8 @@ export interface MaudeTrendingBrand {
   direction: 'up' | 'down' | 'flat';
   windowLabel: string;
   isNew: boolean;
+  /** Higher = hotter rising; list + graph share this order. */
+  risingScore?: number;
 }
 
 export type MaudeDeviceIcon =
@@ -1249,6 +1283,47 @@ class ApiService {
       return data as MaudeTrendData;
     } catch (error: unknown) {
       throw new Error(apiErrorMessage(error, 'Failed to fetch MAUDE trends'));
+    }
+  }
+
+  async getImplants(params: {
+    q?: string;
+    specialty?: string;
+    deviceClass?: string;
+    limit?: number;
+  } = {}): Promise<{ count: number; implants: ImplantDirectoryItem[] }> {
+    try {
+      const search = new URLSearchParams();
+      if (params.q) search.set('q', params.q);
+      if (params.specialty) search.set('specialty', params.specialty);
+      if (params.deviceClass) search.set('deviceClass', params.deviceClass);
+      if (params.limit) search.set('limit', String(params.limit));
+      const qs = search.toString();
+      const response = await api.get(`/implants${qs ? `?${qs}` : ''}`);
+      return response.data.data;
+    } catch (error: unknown) {
+      throw new Error(apiErrorMessage(error, 'Failed to load implant directory'));
+    }
+  }
+
+  async getImplant(slug: string): Promise<ImplantDetail> {
+    try {
+      const response = await api.get(`/implants/${encodeURIComponent(slug)}`);
+      return response.data.data;
+    } catch (error: unknown) {
+      throw new Error(apiErrorMessage(error, 'Failed to load implant'));
+    }
+  }
+
+  async upsertImplantReview(
+    slug: string,
+    payload: { rating: number; title?: string; body: string }
+  ): Promise<ImplantReview> {
+    try {
+      const response = await api.post(`/implants/${encodeURIComponent(slug)}/reviews`, payload);
+      return response.data.data;
+    } catch (error: unknown) {
+      throw new Error(apiErrorMessage(error, 'Failed to save review'));
     }
   }
 

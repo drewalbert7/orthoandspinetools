@@ -67,6 +67,7 @@ model User {
   postPollVotes     PostPollVote[]
   maudeBrandRequests MaudeBrandRequest[]
   analyticsPageViews AnalyticsPageView[]
+  implantReviews     ImplantReview[]
   
   @@map("users")
 }
@@ -615,5 +616,77 @@ model AnalyticsBotState {
   updatedAt     DateTime  @updatedAt @map("updated_at")
 
   @@map("analytics_bot_state")
+}
+
+/// Proprietary implant directory (public catalog; reviews are members-only).
+model Implant {
+  id              String   @id @default(cuid())
+  slug            String   @unique
+  brandName       String   @map("brand_name")
+  systemName      String?  @map("system_name")
+  company         String?
+  specialty       String   @default("spine")
+  anatomy         String?
+  deviceClass     String   @map("device_class")
+  description     String?
+  status          String   @default("published") // draft | published | verified
+  maudeBrandKey   String?  @map("maude_brand_key")
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+  publishedAt     DateTime? @map("published_at")
+
+  aliases  ImplantAlias[]
+  images   ImplantImage[]
+  reviews  ImplantReview[]
+
+  @@index([specialty, status])
+  @@index([deviceClass])
+  @@index([company])
+  @@map("implants")
+}
+
+model ImplantAlias {
+  id        String  @id @default(cuid())
+  implantId String  @map("implant_id")
+  alias     String
+  implant   Implant @relation(fields: [implantId], references: [id], onDelete: Cascade)
+
+  @@unique([implantId, alias])
+  @@index([alias])
+  @@map("implant_aliases")
+}
+
+model ImplantImage {
+  id           String   @id @default(cuid())
+  implantId    String   @map("implant_id")
+  kind         String   // product | xray | diagram
+  url          String
+  alt          String?
+  attribution  String?
+  licenseNote  String?  @map("license_note")
+  sortOrder    Int      @default(0) @map("sort_order")
+  createdAt    DateTime @default(now()) @map("created_at")
+  implant      Implant  @relation(fields: [implantId], references: [id], onDelete: Cascade)
+
+  @@index([implantId, kind])
+  @@map("implant_images")
+}
+
+model ImplantReview {
+  id        String   @id @default(cuid())
+  implantId String   @map("implant_id")
+  userId    String   @map("user_id")
+  rating    Int      // 1-5
+  title     String?
+  body      String
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  implant Implant @relation(fields: [implantId], references: [id], onDelete: Cascade)
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([implantId, userId])
+  @@index([implantId, createdAt])
+  @@map("implant_reviews")
 }
 

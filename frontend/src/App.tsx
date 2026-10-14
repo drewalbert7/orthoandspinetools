@@ -14,6 +14,8 @@ import Home from './pages/Home';
 import Popular from './pages/Popular';
 import Startups from './pages/Startups';
 import Cases from './pages/Cases';
+import ImplantDirectory from './pages/ImplantDirectory';
+import ImplantDetail from './pages/ImplantDetail';
 import MaudeTrends from './pages/MaudeTrends';
 import PostDetail from './pages/PostDetail';
 import EditPost from './pages/EditPost';
@@ -120,6 +122,8 @@ function App() {
                     <Route path="/popular" element={<Popular />} />
                     <Route path="/startups" element={<Startups />} />
                     <Route path="/cases" element={<Cases />} />
+                    <Route path="/implants" element={<ImplantDirectory />} />
+                    <Route path="/implants/:slug" element={<ImplantDetail />} />
                     <Route path="/maude" element={<MaudeTrends />} />
                     <Route path="/search" element={<Search />} />
                     <Route path="/login" element={<LoginForm />} />

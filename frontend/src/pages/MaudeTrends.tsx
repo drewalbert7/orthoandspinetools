@@ -529,61 +529,66 @@ function SingleSeriesChart({
   );
 }
 
-function TrendingBrandsPanel({
-  brands,
-  onSelect,
+function SortModeToggle({
+  mode,
+  onChange,
+  risingWindowLabel,
 }: {
-  brands: MaudeTrendingBrand[];
-  onSelect: (name: string) => void;
+  mode: 'rising' | 'volume';
+  onChange: (mode: 'rising' | 'volume') => void;
+  risingWindowLabel?: string;
 }) {
-  if (brands.length === 0) {
-    return (
-      <div className="rounded-lg border border-dashed border-gray-200 bg-gray-50 px-3 py-4 text-sm text-gray-500">
-        No clear rising brands in this window yet — try a longer timeline or another specialty.
-      </div>
-    );
-  }
-
-  const windowLabel = brands[0]?.windowLabel || 'recent';
-
   return (
-    <div>
-      <div className="mb-2 flex items-center justify-between gap-2">
-        <div className="flex items-center gap-2">
-          <TrendingUp className="h-4 w-4 text-red-600" />
-          <h2 className="text-sm font-semibold text-gray-900">Trending implants</h2>
-        </div>
-        <p className="text-xs text-gray-500">vs prior {windowLabel}</p>
+    <div className="flex flex-wrap items-center gap-2">
+      <div className="inline-flex rounded-md border border-gray-200 p-0.5">
+        <button
+          type="button"
+          onClick={() => onChange('rising')}
+          className={`inline-flex items-center gap-1 rounded px-2.5 py-1 text-xs font-medium ${
+            mode === 'rising' ? 'bg-gray-900 text-white' : 'text-gray-600 hover:bg-gray-50'
+          }`}
+        >
+          <TrendingUp className="h-3.5 w-3.5" />
+          Rising
+        </button>
+        <button
+          type="button"
+          onClick={() => onChange('volume')}
+          className={`rounded px-2.5 py-1 text-xs font-medium ${
+            mode === 'volume' ? 'bg-gray-900 text-white' : 'text-gray-600 hover:bg-gray-50'
+          }`}
+        >
+          Top
+        </button>
       </div>
-      <ol className="divide-y divide-gray-100 overflow-hidden rounded-lg border border-red-100 bg-white">
-        {brands.map((b, i) => (
-          <li key={b.name}>
-            <button
-              type="button"
-              onClick={() => onSelect(b.name)}
-              className="flex w-full items-center gap-3 px-3 py-2.5 text-left transition-colors hover:bg-red-50/60"
-            >
-              <span className="w-5 shrink-0 text-xs font-semibold text-gray-400">{i + 1}</span>
-              <span className="min-w-0 flex-1">
-                <span className="block truncate text-sm font-medium text-gray-900">{b.shortLabel}</span>
-                <span className="mt-0.5 block text-xs text-gray-500">
-                  {b.company ? `${b.company} · ` : ''}
-                  {b.recentTotal.toLocaleString()} recent · {b.priorTotal.toLocaleString()} prior
-                  {b.isNew ? ' · new activity' : ''}
-                </span>
-              </span>
-              <span className="shrink-0 rounded-full bg-red-50 px-2 py-0.5 text-xs font-semibold text-red-700">
-                {b.isNew && b.priorTotal === 0 ? 'New' : `+${Math.round(b.changePct)}%`}
-              </span>
-            </button>
-          </li>
-        ))}
-      </ol>
-      <p className="mt-2 text-xs text-gray-400">
-        Ranked by recent report growth rate (not total volume). Tap a brand to open its cumulative chart.
-      </p>
+      {mode === 'rising' && risingWindowLabel ? (
+        <p className="text-xs text-gray-500">vs prior {risingWindowLabel}</p>
+      ) : null}
     </div>
   );
+}
+
+/** Same order for chart lines + list rows (Reddit-style rising, or volume). */
+function rankBrandSeries(
+  brands: MaudeBrandSeries[],
+  trending: MaudeTrendingBrand[],
+  mode: 'rising' | 'volume'
+): MaudeBrandSeries[] {
+  if (mode === 'rising' && trending.length > 0) {
+    const byName = new Map(brands.map((b) => [b.name, b]));
+    const ordered: MaudeBrandSeries[] = [];
+    const seen = new Set<string>();
+    for (const t of trending) {
+      const hit = byName.get(t.name);
+      if (hit) {
+        ordered.push(hit);
+        seen.add(t.name);
+      }
+    }
+    const rest = brands.filter((b) => !seen.has(b.name)).sort((a, b) => b.count - a.count);
+    return [...ordered, ...rest];
+  }
+  return [...brands].sort((a, b) => b.count - a.count);
 }
 
 function BrandSearchBar({
@@ -926,12 +931,16 @@ function BrandSearchBar({
 function MultiBrandChart({
   brands,
   trending,
+  sortMode,
+  onSortModeChange,
   mode,
   grain,
   onSelectBrand,
 }: {
   brands: MaudeBrandSeries[];
   trending: MaudeTrendingBrand[];
+  sortMode: 'rising' | 'volume';
+  onSortModeChange: (mode: 'rising' | 'volume') => void;
   mode: 'daily' | 'cumulative';
   grain: 'day' | 'month';
   onSelectBrand: (name: string) => void;
@@ -942,26 +951,13 @@ function MultiBrandChart({
   const innerW = width - pad.left - pad.right;
   const innerH = height - pad.top - pad.bottom;
 
-  const [listMode, setListMode] = useState<'volume' | 'trending'>('volume');
-
-  // Rank list: by volume or by momentum (trending first)
-  const ranked = useMemo(() => {
-    if (listMode === 'trending' && trending.length > 0) {
-      const byName = new Map(brands.map((b) => [b.name, b]));
-      const ordered: MaudeBrandSeries[] = [];
-      const seen = new Set<string>();
-      for (const t of trending) {
-        const hit = byName.get(t.name);
-        if (hit) {
-          ordered.push(hit);
-          seen.add(t.name);
-        }
-      }
-      const rest = brands.filter((b) => !seen.has(b.name)).sort((a, b) => b.count - a.count);
-      return [...ordered, ...rest];
-    }
-    return [...brands].sort((a, b) => b.count - a.count);
-  }, [brands, trending, listMode]);
+  // Chart lines + list rows share one order (Rising default = Reddit-style)
+  const ranked = useMemo(
+    () => rankBrandSeries(brands, trending, sortMode),
+    [brands, trending, sortMode]
+  );
+  const trendByName = useMemo(() => new Map(trending.map((t) => [t.name, t])), [trending]);
+  const risingWindowLabel = trending[0]?.windowLabel;
 
   const colorByName = useMemo(() => {
     const map = new Map<string, string>();
@@ -1227,7 +1223,7 @@ function MultiBrandChart({
                 d={path}
                 fill="none"
                 stroke={color}
-                strokeWidth={focused ? 3.25 : dimmed ? 1.1 : bi < 5 ? 2.4 : 1.8}
+                strokeWidth={focused ? 3.25 : dimmed ? 1.1 : bi < 8 ? 2.4 : 1.5}
                 strokeLinejoin="round"
                 opacity={dimmed ? 0.12 : 0.95}
                 style={{ pointerEvents: 'stroke' }}
@@ -1295,34 +1291,37 @@ function MultiBrandChart({
       <div className="mt-3">
         <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
           <p className="text-xs font-semibold uppercase tracking-wider text-gray-500">
-            Implants {listMode === 'trending' ? 'by momentum' : 'by report volume'}
+            {sortMode === 'rising' ? 'Rising implants' : 'Top implants by volume'}
           </p>
-          <div className="inline-flex rounded-md border border-gray-200 p-0.5">
-            <button
-              type="button"
-              onClick={() => setListMode('volume')}
-              className={`rounded px-2 py-0.5 text-xs font-medium ${
-                listMode === 'volume' ? 'bg-gray-900 text-white' : 'text-gray-600 hover:bg-gray-50'
-              }`}
-            >
-              Volume
-            </button>
-            <button
-              type="button"
-              onClick={() => setListMode('trending')}
-              className={`rounded px-2 py-0.5 text-xs font-medium ${
-                listMode === 'trending' ? 'bg-gray-900 text-white' : 'text-gray-600 hover:bg-gray-50'
-              }`}
-            >
-              Trending
-            </button>
-          </div>
+          <SortModeToggle
+            mode={sortMode}
+            onChange={onSortModeChange}
+            risingWindowLabel={risingWindowLabel}
+          />
         </div>
+        <p className="mb-2 text-xs text-gray-500">
+          {sortMode === 'rising'
+            ? 'Same order as the chart — hottest recent growth first (like Reddit Rising).'
+            : 'Same order as the chart — most reports in this window first.'}
+        </p>
         <ol className="divide-y divide-gray-100 rounded-lg border border-gray-200 bg-white">
           {ranked.map((brand, bi) => {
             const color = colorByName.get(brand.name) || BRAND_COLORS[bi % BRAND_COLORS.length];
             const focused = focusBrand === brand.name;
-            const trendMeta = trending.find((t) => t.name === brand.name);
+            const trendMeta = trendByName.get(brand.name);
+            const changeLabel = trendMeta
+              ? trendMeta.isNew && trendMeta.priorTotal === 0
+                ? 'New'
+                : `${trendMeta.changePct >= 0 ? '+' : ''}${Math.round(trendMeta.changePct)}%`
+              : null;
+            const changeClass =
+              !trendMeta
+                ? ''
+                : trendMeta.direction === 'up' || trendMeta.isNew
+                  ? 'text-red-600'
+                  : trendMeta.direction === 'down'
+                    ? 'text-emerald-700'
+                    : 'text-gray-500';
             return (
               <li key={brand.name}>
                 <button
@@ -1343,15 +1342,18 @@ function MultiBrandChart({
                     <span className="block truncate text-sm font-medium text-gray-900">
                       {brand.shortLabel}
                     </span>
-                    {brand.company ? (
-                      <span className="block truncate text-[11px] text-gray-500">{brand.company}</span>
-                    ) : null}
-                  </span>
-                  {trendMeta && (
-                    <span className="shrink-0 text-xs font-semibold text-red-600">
-                      {trendMeta.isNew ? 'New' : `+${Math.round(trendMeta.changePct)}%`}
+                    <span className="block truncate text-[11px] text-gray-500">
+                      {brand.company ? `${brand.company} · ` : ''}
+                      {trendMeta
+                        ? `${trendMeta.recentTotal.toLocaleString()} recent · ${trendMeta.priorTotal.toLocaleString()} prior`
+                        : `${brand.count.toLocaleString()} in window`}
                     </span>
-                  )}
+                  </span>
+                  {changeLabel ? (
+                    <span className={`shrink-0 text-xs font-semibold tabular-nums ${changeClass}`}>
+                      {changeLabel}
+                    </span>
+                  ) : null}
                   <span className="shrink-0 text-sm font-semibold tabular-nums text-gray-800">
                     {brand.count.toLocaleString()}
                   </span>
@@ -1379,6 +1381,8 @@ const MaudeTrends: React.FC = () => {
   const [chartMode, setChartMode] = useState<'daily' | 'cumulative'>(
     modeFromUrl === 'daily' ? 'daily' : 'cumulative'
   );
+  /** Rising (default) = Reddit-style momentum; Top = report volume. Shared by chart + lists. */
+  const [sortMode, setSortMode] = useState<'rising' | 'volume'>('rising');
 
   const updateParams = (patch: Record<string, string | null>) => {
     const next = new URLSearchParams(searchParams);
@@ -1457,17 +1461,19 @@ const MaudeTrends: React.FC = () => {
     return data.series;
   }, [data, chartMode]);
 
-  const brandSeries = useMemo(
-    () => [...(data?.brandSeries || [])].sort((a, b) => b.count - a.count),
-    [data?.brandSeries]
+  const brandSeries = useMemo(() => data?.brandSeries || [], [data?.brandSeries]);
+  const trendingBrands = useMemo(() => data?.trendingBrands || [], [data?.trendingBrands]);
+  const rankedBrands = useMemo(
+    () => rankBrandSeries(brandSeries, trendingBrands, sortMode),
+    [brandSeries, trendingBrands, sortMode]
   );
   const showMultiBrand = !selectedBrand && !brandFromUrl && brandSeries.length > 0;
 
   const colorByName = useMemo(() => {
     const map = new Map<string, string>();
-    brandSeries.forEach((b, i) => map.set(b.name, BRAND_COLORS[i % BRAND_COLORS.length]));
+    rankedBrands.forEach((b, i) => map.set(b.name, BRAND_COLORS[i % BRAND_COLORS.length]));
     return map;
-  }, [brandSeries]);
+  }, [rankedBrands]);
 
   const searchSuggestions = useMemo(() => {
     const fromSeries = brandSeries.map((b) => ({
@@ -1541,9 +1547,9 @@ const MaudeTrends: React.FC = () => {
           <div>
             <h1 className="text-lg font-semibold text-gray-900 sm:text-xl">MAUDE report trends</h1>
             <p className="mt-1 text-sm text-gray-600">
-              Multi-year adverse-event volume from FDA openFDA (MAUDE). Pick a specialty to compare the{' '}
-              <strong>top 20 brands</strong> cumulatively over time. Spikes are signals — not proof a device is
-              unsafe.
+              Multi-year adverse-event volume from FDA openFDA (MAUDE). Compare brands by{' '}
+              <strong>Rising</strong> (recent growth, like Reddit Rising) or <strong>Top</strong> volume. Chart and
+              list stay in the same order. Spikes are signals — not proof a device is unsafe.
             </p>
           </div>
           {data && <TrendBadge trend={data.trend} />}
@@ -1617,15 +1623,6 @@ const MaudeTrends: React.FC = () => {
           </div>
         </div>
 
-        {!selectedBrand && !brandFromUrl && data && (
-          <div className="mt-5 border-t border-gray-100 pt-4">
-            <TrendingBrandsPanel
-              brands={data.trendingBrands || []}
-              onSelect={selectBrandByName}
-            />
-          </div>
-        )}
-
         <div className={`mt-5 border-t border-gray-100 pt-4 ${isFetching ? 'opacity-90' : ''}`}>
           {isLoading && !data ? (
             <div className="space-y-3 py-6">
@@ -1652,7 +1649,7 @@ const MaudeTrends: React.FC = () => {
                 <div>
                   <p className="text-sm font-medium text-gray-900">
                     {showMultiBrand
-                      ? `${data.label} · top ${brandSeries.length} brands`
+                      ? `${data.label} · ${sortMode === 'rising' ? 'rising' : 'top'} ${rankedBrands.length} brands`
                       : data.label}
                   </p>
                   <p className="text-xs text-gray-500">
@@ -1715,7 +1712,9 @@ const MaudeTrends: React.FC = () => {
               {showMultiBrand ? (
                 <MultiBrandChart
                   brands={brandSeries}
-                  trending={data.trendingBrands || []}
+                  trending={trendingBrands}
+                  sortMode={sortMode}
+                  onSortModeChange={setSortMode}
                   mode={chartMode}
                   grain={grain}
                   onSelectBrand={selectBrandByName}
@@ -1743,23 +1742,39 @@ const MaudeTrends: React.FC = () => {
       )}
 
       <div className="mb-4 border border-gray-200 bg-white p-3 sm:p-4">
-        <div className="mb-3 flex items-center justify-between gap-2">
-          <h2 className="text-sm font-semibold text-gray-900">Top implant brands by report volume</h2>
-          {(selectedBrand || brandFromUrl) && (
-            <button
-              type="button"
-              onClick={clearBrand}
-              className="text-xs font-medium text-blue-600 hover:text-blue-800"
-            >
-              Clear brand filter
-            </button>
-          )}
+        <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+          <h2 className="text-sm font-semibold text-gray-900">
+            {sortMode === 'rising' ? 'Rising implant brands' : 'Top implant brands by volume'}
+          </h2>
+          <div className="flex flex-wrap items-center gap-2">
+            <SortModeToggle
+              mode={sortMode}
+              onChange={setSortMode}
+              risingWindowLabel={trendingBrands[0]?.windowLabel}
+            />
+            {(selectedBrand || brandFromUrl) && (
+              <button
+                type="button"
+                onClick={clearBrand}
+                className="text-xs font-medium text-blue-600 hover:text-blue-800"
+              >
+                Clear brand filter
+              </button>
+            )}
+          </div>
         </div>
         {isLoading && !data ? (
-          <p className="text-sm text-gray-500">Loading top brands…</p>
+          <p className="text-sm text-gray-500">Loading brands…</p>
         ) : (
           <TopImplantsGrid
-            devices={[...(data?.topDevices || [])].sort((a, b) => b.count - a.count)}
+            devices={rankedBrands.map((b) => ({
+              name: b.name,
+              count: b.count,
+              icon: b.icon,
+              shortLabel: b.shortLabel,
+              company: b.company ?? null,
+              kind: 'brand' as const,
+            }))}
             selectedName={selectedBrand?.name || brandFromUrl || null}
             onSelect={(device) => {
               if (!device) {
@@ -1774,9 +1789,10 @@ const MaudeTrends: React.FC = () => {
           />
         )}
         <p className="mt-2 text-xs text-gray-400">
-          Ranked by FDA <code className="rounded bg-gray-100 px-1">brand_name</code> (commercial product names).
-          Blank / UNK reporter values are excluded. Tap a brand to focus the chart above. Filters sync to the URL for
-          sharing.
+          {sortMode === 'rising'
+            ? 'Same Rising order as the chart and list above — recent growth vs the prior window.'
+            : 'Same volume order as the chart and list above.'}{' '}
+          Tap a brand to focus its cumulative series. Filters sync to the URL for sharing.
         </p>
       </div>
     </div>
