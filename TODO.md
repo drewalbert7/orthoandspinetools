@@ -119,7 +119,8 @@ Full agent copy: **`AGENTS.md`**. Cursor rule: `.cursor/rules/analytics-durabili
   6. **Reviews** — **Public read**; write/rate requires login (prompt); rate-limit + min length 20 (report/hide later).
   7. **AI SEO / discoverability** — Per-listing `/implants/:slug` + `/implants/:slug.md`; MedicalDevice JSON-LD; sitemap + `llms.txt` / `llms-full.txt`.
   8. **MAUDE on profile** — Deep-link live; cached 12mo/rising snapshot card still TODO.
-- [x] **Implant Directory — all subspecialties** — Filters match communities/MAUDE (`spine` … `biologics`); seed listings per specialty; default browse = All.
+- [x] **Implant Directory — all subspecialties** — Chip filter with **All specialties** + each community specialty; seed listings per specialty.
+- [x] **Implant Directory — smart search** — Clinical phrases (cervical TDR, TKA, pedicle screw, INFUSE…), FTS/trgm/alias ranking, specialty synonym `search_text`, inferred-specialty boost when All.
 - [x] **Admin edit** — `drewalbertmd` (`isAdmin`): edit any post; PATCH implant listings + ingest/publish via JWT; audit in `implant_edit_logs`.
 - [x] **DB durability (Cloudflare)** — Daily full Postgres → Hetzner volume + **R2** (`scripts/database-backup-production.sh` + `backup-to-r2.js`); analytics dumps also → R2 `…/analytics/`.
 - [ ] **Implant Directory — images fill-out** — Rights-cleared product/XR via CF Images; attach via ingest `images[]`. **← next**

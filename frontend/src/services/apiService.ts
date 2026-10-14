@@ -418,6 +418,8 @@ export interface ImplantListResponse {
   pageSize: number;
   totalPages: number;
   count: number;
+  specialty?: string;
+  inferredSpecialty?: string | null;
   implants: ImplantDirectoryItem[];
 }
 
@@ -1336,6 +1338,8 @@ class ApiService {
         pageSize: data.pageSize ?? data.implants?.length ?? 0,
         totalPages: data.totalPages ?? 1,
         count: data.count ?? data.implants?.length ?? 0,
+        specialty: data.specialty,
+        inferredSpecialty: data.inferredSpecialty ?? null,
         implants: data.implants || [],
       };
     } catch (error: unknown) {

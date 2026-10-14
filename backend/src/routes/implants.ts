@@ -13,7 +13,11 @@ import {
   searchImplantIds,
   slugifyImplant,
 } from '../lib/implantSearch';
-import { IMPLANT_SPECIALTIES, isKnownImplantSpecialty } from '../lib/implantSpecialties';
+import {
+  IMPLANT_SPECIALTIES,
+  isKnownImplantSpecialty,
+  normalizeImplantSpecialty,
+} from '../lib/implantSpecialties';
 import { logger } from '../utils/logger';
 
 const router = Router();
@@ -166,7 +170,7 @@ router.get(
     }
 
     const q = String(req.query.q || '').trim();
-    const specialty = String(req.query.specialty || '').trim();
+    const specialty = normalizeImplantSpecialty(String(req.query.specialty || ''));
     const deviceClass = String(req.query.deviceClass || '').trim();
     const page = Math.max(1, parseInt(String(req.query.page || '1'), 10) || 1);
     const pageSize = Math.min(
@@ -178,7 +182,7 @@ router.get(
     );
     const offset = (page - 1) * pageSize;
 
-    const { ids, total } = await searchImplantIds({
+    const { ids, total, inferredSpecialty } = await searchImplantIds({
       q,
       specialty,
       deviceClass,
@@ -209,6 +213,8 @@ router.get(
         pageSize,
         totalPages: Math.max(1, Math.ceil(total / pageSize)),
         count: ordered.length,
+        specialty: specialty || 'all',
+        inferredSpecialty: inferredSpecialty || null,
         implants: ordered.map(publicImplantCard),
       },
     });
@@ -223,7 +229,10 @@ router.get(
     res.json({
       success: true,
       data: {
-        specialties: IMPLANT_SPECIALTIES.map((s) => ({ id: s.id, label: s.label })),
+        specialties: [
+          { id: 'all', label: 'All specialties' },
+          ...IMPLANT_SPECIALTIES.map((s) => ({ id: s.id, label: s.label })),
+        ],
       },
     });
   })
