@@ -173,11 +173,11 @@ const ImplantDetail: React.FC = () => {
 
   if (isLoading) {
     return (
-      <div className="mx-auto min-w-0 max-w-4xl animate-pulse px-3 sm:px-4">
+      <div className="mx-auto min-w-0 max-w-4xl animate-pulse px-3 pb-8 sm:px-4">
         <div className="mb-3 h-4 w-40 rounded bg-gray-200" />
-        <div className="mb-4 border border-gray-200 bg-white p-3 sm:p-5">
-          <div className="flex flex-col gap-5 sm:flex-row">
-            <div className="mx-auto aspect-square w-full max-w-[280px] rounded-lg bg-gray-100 sm:mx-0" />
+        <div className="mb-4 rounded-md border border-gray-200 bg-white p-3 sm:p-5">
+          <div className="flex flex-col gap-4 sm:flex-row sm:gap-5">
+            <div className="aspect-square w-full rounded-lg bg-gray-100 sm:max-w-[280px]" />
             <div className="min-w-0 flex-1 space-y-3">
               <div className="h-7 w-2/3 rounded bg-gray-200" />
               <div className="h-4 w-1/2 rounded bg-gray-100" />
@@ -186,7 +186,7 @@ const ImplantDetail: React.FC = () => {
             </div>
           </div>
         </div>
-        <div className="h-40 rounded border border-gray-200 bg-white" />
+        <div className="h-40 rounded-md border border-gray-200 bg-white" />
       </div>
     );
   }
@@ -221,7 +221,7 @@ const ImplantDetail: React.FC = () => {
       : null;
 
   return (
-    <div className="mx-auto min-w-0 max-w-4xl px-3 sm:px-4">
+    <div className="mx-auto min-w-0 max-w-4xl px-3 pb-8 sm:px-4">
       <DocumentMeta
         title={pageTitle}
         description={pageDescription}
@@ -234,44 +234,53 @@ const ImplantDetail: React.FC = () => {
         jsonLd={jsonLd}
       />
 
-      <div className="mb-3 flex flex-wrap items-center justify-between gap-2 text-sm">
-        <Link to="/implants" className="font-medium text-blue-600 hover:text-blue-800">
-          ← Implant Directory
+      <div className="mb-3 flex min-w-0 items-center justify-between gap-2 text-sm">
+        <Link
+          to="/implants"
+          className="touch-target shrink-0 font-medium text-blue-600 hover:text-blue-800"
+        >
+          ← Directory
         </Link>
         <a
           href={`/implants/${data.slug}.md`}
-          className="font-mono text-xs font-medium text-gray-600 hover:text-gray-900"
+          className="min-w-0 truncate font-mono text-[11px] font-medium text-gray-600 hover:text-gray-900 sm:text-xs"
+          title={`/implants/${data.slug}.md`}
         >
-          /implants/{data.slug}.md
+          <span className="sm:hidden">.md</span>
+          <span className="hidden sm:inline">/implants/{data.slug}.md</span>
         </a>
       </div>
 
-      <div className="mb-4 border border-gray-200 bg-white p-3 sm:p-5">
-        <div className="flex flex-col gap-5 sm:flex-row sm:items-start">
+      <div className="mb-4 rounded-md border border-gray-200 bg-white p-3 sm:p-5">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:gap-5">
           <ImplantMediaGallery
             brandName={data.brandName}
             images={data.images || []}
-            className="mx-auto sm:mx-0"
+            className="w-full sm:w-auto sm:shrink-0"
           />
           <div className="min-w-0 flex-1">
             <div className="flex flex-wrap items-start justify-between gap-2">
-              <div className="min-w-0">
-                <h1 className="text-xl font-semibold text-gray-900">{data.brandName}</h1>
+              <div className="min-w-0 flex-1">
+                <h1 className="text-xl font-semibold leading-snug text-gray-900 [overflow-wrap:anywhere]">
+                  {data.brandName}
+                </h1>
                 {data.systemName ? (
-                  <p className="mt-0.5 text-sm text-gray-600">{data.systemName}</p>
+                  <p className="mt-0.5 text-sm text-gray-600 [overflow-wrap:anywhere]">
+                    {data.systemName}
+                  </p>
                 ) : null}
               </div>
-              <div className="flex shrink-0 flex-wrap items-start justify-end gap-2">
-                {data.techniqueGuideUrl ? (
-                  <TechniqueGuideLink
-                    url={data.techniqueGuideUrl}
-                    title={data.techniqueGuideTitle}
-                  />
-                ) : null}
-                <AiRatingBadge rating={data.aiRating} size="md" />
-              </div>
+              <AiRatingBadge rating={data.aiRating} size="md" className="shrink-0" />
             </div>
-            <p className="mt-2 text-sm text-gray-500">
+            {data.techniqueGuideUrl ? (
+              <div className="mt-3">
+                <TechniqueGuideLink
+                  url={data.techniqueGuideUrl}
+                  title={data.techniqueGuideTitle}
+                />
+              </div>
+            ) : null}
+            <p className="mt-2 text-sm leading-snug text-gray-500 [overflow-wrap:anywhere]">
               {[
                 data.company,
                 data.anatomy,
@@ -282,20 +291,22 @@ const ImplantDetail: React.FC = () => {
                 .join(' · ')}
             </p>
             {data.aiSummary ? (
-              <p className="mt-3 rounded-md border border-blue-100 bg-blue-50/50 px-3 py-2 text-sm leading-relaxed text-gray-800">
+              <p className="mt-3 rounded-md border border-blue-100 bg-blue-50 px-3 py-2 text-sm leading-relaxed text-gray-800">
                 <span className="font-semibold text-blue-800">AI take: </span>
                 {data.aiSummary}
               </p>
             ) : null}
             {(data.longDescription || data.description) && (
-              <p className="mt-3 text-sm leading-relaxed text-gray-700">
+              <p className="mt-3 text-sm leading-relaxed text-gray-700 [overflow-wrap:anywhere]">
                 {data.longDescription || data.description}
               </p>
             )}
             {data.aliases?.length ? (
-              <p className="mt-2 text-xs text-gray-500">Also known as: {data.aliases.join(', ')}</p>
+              <p className="mt-2 text-xs text-gray-500 [overflow-wrap:anywhere]">
+                Also known as: {data.aliases.join(', ')}
+              </p>
             ) : null}
-            <div className="mt-4 flex flex-wrap items-center gap-3 text-sm">
+            <div className="mt-4 flex flex-wrap items-center gap-x-3 gap-y-2 text-sm">
               {data.maudeBrandKey ? (
                 <a href="#maude-snapshot" className="font-medium text-blue-600 hover:text-blue-800">
                   MAUDE snapshot →
@@ -303,16 +314,16 @@ const ImplantDetail: React.FC = () => {
               ) : null}
               <span className="text-gray-500">
                 {commentCount} comment{commentCount === 1 ? '' : 's'}
-                {data.status === 'verified' ? ' · verified listing' : ''}
+                {data.status === 'verified' ? ' · verified' : ''}
               </span>
               {imageCount > 1 ? (
                 <a href="#gallery-thumbs" className="font-medium text-gray-600 hover:text-gray-900">
-                  {imageCount} media · jump to thumbs →
+                  {imageCount} media →
                 </a>
               ) : null}
             </div>
-            <p className="mt-2 text-[11px] text-gray-400">
-              Directory Score (0–10): catalog completeness + vote-weighted discussion evidence. Not medical advice.
+            <p className="mt-2 text-[11px] leading-snug text-gray-400">
+              Directory Score (0–10): catalog + discussion evidence. Not medical advice.
             </p>
             {(data.catalogScore != null || data.communityScore != null) && (
               <p className="mt-1 text-[11px] tabular-nums text-gray-400">
@@ -336,7 +347,9 @@ const ImplantDetail: React.FC = () => {
                 <h2 className="text-xs font-semibold uppercase tracking-wider text-gray-500">
                   Indications (directory notes)
                 </h2>
-                <p className="mt-1 whitespace-pre-wrap text-sm text-gray-700">{data.indications}</p>
+                <p className="mt-1 whitespace-pre-wrap text-sm text-gray-700 [overflow-wrap:anywhere]">
+                  {data.indications}
+                </p>
               </div>
             ) : null}
             {showCaveats ? (
@@ -344,7 +357,9 @@ const ImplantDetail: React.FC = () => {
                 <h2 className="text-xs font-semibold uppercase tracking-wider text-gray-500">
                   Caveats (directory notes)
                 </h2>
-                <p className="mt-1 whitespace-pre-wrap text-sm text-gray-700">{data.contraindications}</p>
+                <p className="mt-1 whitespace-pre-wrap text-sm text-gray-700 [overflow-wrap:anywhere]">
+                  {data.contraindications}
+                </p>
               </div>
             ) : null}
           </div>
@@ -354,7 +369,7 @@ const ImplantDetail: React.FC = () => {
       {data.maudeBrandKey ? (
         <div
           id="maude-snapshot"
-          className="mb-4 scroll-mt-24 border border-gray-200 bg-white p-3 sm:p-4"
+          className="mb-4 scroll-mt-24 rounded-md border border-gray-200 bg-white p-3 sm:p-4"
         >
           <div className="flex flex-wrap items-baseline justify-between gap-2">
             <h2 className="text-sm font-semibold text-gray-900">MAUDE snapshot</h2>
@@ -387,7 +402,7 @@ const ImplantDetail: React.FC = () => {
       ) : null}
 
       {user?.isAdmin ? (
-        <div className="mb-4 border border-amber-200 bg-amber-50/40 p-3 sm:p-5">
+        <div className="mb-4 rounded-md border border-amber-200 bg-amber-50 p-3 sm:p-5">
           <div className="flex flex-wrap items-center justify-between gap-2">
             <h2 className="text-sm font-semibold text-gray-900">Admin — edit listing</h2>
             <button
@@ -432,7 +447,7 @@ const ImplantDetail: React.FC = () => {
                   <input
                     value={adminForm[key]}
                     onChange={(e) => setAdminForm((f) => ({ ...f, [key]: e.target.value }))}
-                    className="mt-0.5 w-full rounded border border-gray-200 px-2 py-1.5 text-sm text-gray-900"
+                    className="mt-0.5 w-full rounded border border-gray-200 bg-white px-2 py-1.5 text-sm text-gray-900"
                     placeholder={
                       key === 'techniqueGuideUrl'
                         ? 'https://…/…-surgical-technique.pdf — not brochure/catalog'
@@ -448,7 +463,7 @@ const ImplantDetail: React.FC = () => {
                 <select
                   value={adminForm.specialty}
                   onChange={(e) => setAdminForm((f) => ({ ...f, specialty: e.target.value }))}
-                  className="mt-0.5 w-full rounded border border-gray-200 px-2 py-1.5 text-sm"
+                  className="mt-0.5 w-full rounded border border-gray-200 bg-white px-2 py-1.5 text-sm text-gray-900"
                 >
                   {IMPLANT_SPECIALTIES.map((s) => (
                     <option key={s.id} value={s.id}>
@@ -462,7 +477,7 @@ const ImplantDetail: React.FC = () => {
                 <select
                   value={adminForm.status}
                   onChange={(e) => setAdminForm((f) => ({ ...f, status: e.target.value }))}
-                  className="mt-0.5 w-full rounded border border-gray-200 px-2 py-1.5 text-sm"
+                  className="mt-0.5 w-full rounded border border-gray-200 bg-white px-2 py-1.5 text-sm text-gray-900"
                 >
                   <option value="draft">draft</option>
                   <option value="published">published</option>
@@ -478,7 +493,7 @@ const ImplantDetail: React.FC = () => {
                   step={0.1}
                   value={adminForm.aiRating}
                   onChange={(e) => setAdminForm((f) => ({ ...f, aiRating: e.target.value }))}
-                  className="mt-0.5 w-full rounded border border-gray-200 px-2 py-1.5 text-sm text-gray-900"
+                  className="mt-0.5 w-full rounded border border-gray-200 bg-white px-2 py-1.5 text-sm text-gray-900"
                   placeholder="Leave blank to keep algorithm"
                 />
               </label>
@@ -489,7 +504,7 @@ const ImplantDetail: React.FC = () => {
                   onChange={(e) => setAdminForm((f) => ({ ...f, aiSummary: e.target.value }))}
                   rows={2}
                   maxLength={500}
-                  className="mt-0.5 w-full rounded border border-gray-200 px-2 py-1.5 text-sm"
+                  className="mt-0.5 w-full rounded border border-gray-200 bg-white px-2 py-1.5 text-sm text-gray-900"
                 />
               </label>
               <label className="text-xs text-gray-600 sm:col-span-2">
@@ -497,7 +512,7 @@ const ImplantDetail: React.FC = () => {
                 <input
                   value={adminForm.aliases}
                   onChange={(e) => setAdminForm((f) => ({ ...f, aliases: e.target.value }))}
-                  className="mt-0.5 w-full rounded border border-gray-200 px-2 py-1.5 text-sm"
+                  className="mt-0.5 w-full rounded border border-gray-200 bg-white px-2 py-1.5 text-sm text-gray-900"
                 />
               </label>
               <label className="text-xs text-gray-600 sm:col-span-2">
@@ -506,7 +521,7 @@ const ImplantDetail: React.FC = () => {
                   value={adminForm.description}
                   onChange={(e) => setAdminForm((f) => ({ ...f, description: e.target.value }))}
                   rows={2}
-                  className="mt-0.5 w-full rounded border border-gray-200 px-2 py-1.5 text-sm"
+                  className="mt-0.5 w-full rounded border border-gray-200 bg-white px-2 py-1.5 text-sm text-gray-900"
                 />
               </label>
               <label className="text-xs text-gray-600 sm:col-span-2">
@@ -515,7 +530,7 @@ const ImplantDetail: React.FC = () => {
                   value={adminForm.longDescription}
                   onChange={(e) => setAdminForm((f) => ({ ...f, longDescription: e.target.value }))}
                   rows={4}
-                  className="mt-0.5 w-full rounded border border-gray-200 px-2 py-1.5 text-sm"
+                  className="mt-0.5 w-full rounded border border-gray-200 bg-white px-2 py-1.5 text-sm text-gray-900"
                 />
               </label>
               <div className="sm:col-span-2">
@@ -539,16 +554,16 @@ const ImplantDetail: React.FC = () => {
       />
 
       {(data.related || []).length > 0 ? (
-        <section className="mb-8 mt-6">
+        <section className="mb-4 mt-6">
           <h2 className="mb-3 text-sm font-semibold text-gray-900">Related implants</h2>
-          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2 lg:grid-cols-3 sm:gap-3">
             {data.related!.map((r) => (
               <Link
                 key={r.id}
                 to={`/implants/${r.slug}`}
-                className="flex gap-3 rounded-lg border border-gray-200 bg-white p-2.5 transition-colors hover:border-blue-300 hover:bg-blue-50/30"
+                className="flex gap-3 rounded-lg border border-gray-200 bg-white p-2.5 transition-colors hover:border-blue-300 hover:bg-blue-50"
               >
-                <div className="h-14 w-14 shrink-0 overflow-hidden rounded-md border border-gray-100 bg-gray-50">
+                <div className="h-12 w-12 shrink-0 overflow-hidden rounded-md border border-gray-100 bg-gray-50 sm:h-14 sm:w-14">
                   {r.productImage?.url ? (
                     <img
                       src={r.productImage.url}

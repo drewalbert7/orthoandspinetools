@@ -142,6 +142,7 @@ Full agent copy: **`AGENTS.md`**. Cursor rule: `.cursor/rules/analytics-durabili
 - [x] **Latest deploy (Oct 14c)** — Public `/stats` + globe; implant comments + Directory Score; page finish; technique PDF guides on list/detail
 - [x] **Latest deploy (Oct 14d)** — STG-only technique PDFs; MAUDE Rising/Top color stability; globe idle spin from North America; production QA **31/31**; analytics volume + backups intact (`viewsToday`/`views7d`/`bots.hits7d` via durability report)
 - [x] **Latest deploy (Oct 14e)** — Implant share cards: `/api/og/implant/:slug` + nginx bot rewrite; Cloudflare/Cloudinary 1200×630 OG delivery; DocumentMeta `og:image:secure_url` + dims; hub implant OG copy polish
+- [x] **Latest deploy (Oct 14f)** — Implant Directory + detail mobile layout (2-col filters, full-width gallery, touch targets); dark-mode remaps for slate/score badges/blue panels; STG + discussion polish
 - [x] **Ops rule (hard)** — After **every** `backend`/`frontend` recreate, always: `docker compose -f docker-compose.prod.yml up -d --force-recreate nginx` (cached Docker DNS → 502 Connection refused on old IPs)
 - [x] **Analytics backup cron** — `15 2 * * *` → `scripts/analytics-backup.sh` → `/mnt/HC_Volume_106016238/orthoandspinetools-backups/analytics/`
 

@@ -69,7 +69,7 @@ export function ImplantMediaGallery({ brandName, images, className = '' }: Props
   if (count === 0) {
     return (
       <div
-        className={`flex aspect-square w-full max-w-[280px] flex-col items-center justify-center gap-2 rounded-lg border border-dashed border-gray-200 bg-gray-50 text-gray-400 ${className}`}
+        className={`flex aspect-square w-full max-w-none flex-col items-center justify-center gap-2 rounded-lg border border-dashed border-gray-200 bg-gray-50 text-gray-400 sm:max-w-[280px] ${className}`}
       >
         <Bone className="h-10 w-10" />
         <span className="text-xs">Product image coming soon</span>
@@ -78,7 +78,7 @@ export function ImplantMediaGallery({ brandName, images, className = '' }: Props
   }
 
   return (
-    <div id="gallery" className={`w-full max-w-[320px] ${className}`}>
+    <div id="gallery" className={`w-full max-w-none sm:max-w-[320px] ${className}`}>
       <div className="relative overflow-hidden rounded-lg border border-gray-200 bg-white">
         <button
           type="button"
@@ -104,7 +104,7 @@ export function ImplantMediaGallery({ brandName, images, className = '' }: Props
           <button
             type="button"
             onClick={() => setLightbox(true)}
-            className="absolute right-2 top-2 rounded bg-black/65 p-1 text-white hover:bg-black/80"
+            className="touch-target absolute right-2 top-2 rounded bg-black/65 p-2 text-white hover:bg-black/80"
             aria-label="Open lightbox"
           >
             <Expand className="h-3.5 w-3.5" />
@@ -115,18 +115,18 @@ export function ImplantMediaGallery({ brandName, images, className = '' }: Props
             <button
               type="button"
               onClick={() => go(-1)}
-              className="absolute left-1 top-1/2 -translate-y-1/2 rounded-full bg-white/90 p-1 text-gray-700 shadow hover:bg-white"
+              className="touch-target absolute left-1 top-1/2 -translate-y-1/2 rounded-full bg-white/90 p-2 text-gray-700 shadow hover:bg-white"
               aria-label="Previous image"
             >
-              <ChevronLeft className="h-4 w-4" />
+              <ChevronLeft className="h-5 w-5" />
             </button>
             <button
               type="button"
               onClick={() => go(1)}
-              className="absolute right-1 top-1/2 -translate-y-1/2 rounded-full bg-white/90 p-1 text-gray-700 shadow hover:bg-white"
+              className="touch-target absolute right-1 top-1/2 -translate-y-1/2 rounded-full bg-white/90 p-2 text-gray-700 shadow hover:bg-white"
               aria-label="Next image"
             >
-              <ChevronRight className="h-4 w-4" />
+              <ChevronRight className="h-5 w-5" />
             </button>
             <div className="absolute bottom-2 right-2 rounded bg-black/65 px-1.5 py-0.5 text-[10px] tabular-nums text-white">
               {index + 1} / {count}
@@ -136,13 +136,16 @@ export function ImplantMediaGallery({ brandName, images, className = '' }: Props
       </div>
 
       {count > 1 ? (
-        <div id="gallery-thumbs" className="mt-2 flex scroll-mt-24 gap-1.5 overflow-x-auto pb-0.5">
+        <div
+          id="gallery-thumbs"
+          className="mt-2 flex scroll-mt-24 gap-1.5 overflow-x-auto pb-1 [-webkit-overflow-scrolling:touch] scrollbar-hide"
+        >
           {sorted.map((img, i) => (
             <button
               key={`${img.url}-${i}`}
               type="button"
               onClick={() => setIndex(i)}
-              className={`relative h-14 w-14 shrink-0 overflow-hidden rounded-md border bg-white ${
+              className={`relative h-14 w-14 shrink-0 overflow-hidden rounded-md border bg-white sm:h-14 sm:w-14 ${
                 i === index
                   ? 'border-blue-600 ring-1 ring-blue-600'
                   : 'border-gray-200 hover:border-gray-400'

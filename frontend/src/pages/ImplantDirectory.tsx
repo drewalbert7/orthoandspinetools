@@ -15,7 +15,7 @@ import { apiService, type ImplantDirectoryItem } from '../services/apiService';
 
 /** Compact Direct-Care-style control — scoped to Implant Directory only */
 const filterControlClass =
-  'h-9 appearance-none rounded-md border border-gray-300 bg-white pl-3 pr-8 text-sm text-gray-800 shadow-none focus:border-gray-400 focus:outline-none focus:ring-0';
+  'h-10 w-full appearance-none rounded-md border border-gray-300 bg-white pl-3 pr-8 text-sm text-gray-800 shadow-none focus:border-gray-400 focus:outline-none focus:ring-0 sm:h-9';
 
 function FilterSelect({
   value,
@@ -31,12 +31,12 @@ function FilterSelect({
   className?: string;
 }) {
   return (
-    <div className={`relative shrink-0 ${className}`}>
+    <div className={`relative min-w-0 ${className}`}>
       <select
         aria-label={ariaLabel}
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        className={`${filterControlClass} w-full min-w-[9.5rem]`}
+        className={filterControlClass}
       >
         {children}
       </select>
@@ -60,7 +60,7 @@ function ProductThumb({ implant }: { implant: ImplantDirectoryItem }) {
   const extra = implant.galleryExtraCount || 0;
   if (implant.productImage?.url) {
     return (
-      <div className="relative h-12 w-12 shrink-0 sm:h-14 sm:w-14">
+      <div className="relative h-11 w-11 shrink-0 sm:h-14 sm:w-14">
         <img
           src={implant.productImage.url}
           alt={implant.productImage.alt || implant.brandName}
@@ -78,7 +78,7 @@ function ProductThumb({ implant }: { implant: ImplantDirectoryItem }) {
   }
   return (
     <div
-      className="flex h-12 w-12 shrink-0 items-center justify-center rounded border border-dashed border-gray-200 bg-gray-50 text-gray-400 sm:h-14 sm:w-14"
+      className="flex h-11 w-11 shrink-0 items-center justify-center rounded border border-dashed border-gray-200 bg-gray-50 text-gray-400 sm:h-14 sm:w-14"
       title="Product image coming soon"
     >
       <Bone className="h-5 w-5" />
@@ -210,7 +210,7 @@ const ImplantDirectory: React.FC = () => {
   );
 
   return (
-    <div className="mx-auto min-w-0 max-w-4xl px-3 sm:px-4">
+    <div className="mx-auto min-w-0 max-w-4xl px-3 pb-8 sm:px-4">
       <DocumentMeta
         title="Implant Directory"
         description="Browse orthopedic implants across all subspecialties with proprietary Directory Scores, surgical technique PDFs when available, product photos, MAUDE signals, and discussion."
@@ -218,43 +218,52 @@ const ImplantDirectory: React.FC = () => {
         jsonLd={hubJsonLd}
       />
 
-      {/* Compact header + filter bar (Direct Care pattern — this page only) */}
       <div className="mb-3">
         <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
-          <h1 className="text-2xl font-bold tracking-tight text-slate-900 sm:text-[1.65rem]">
+          <h1 className="text-xl font-bold tracking-tight text-gray-900 sm:text-2xl sm:text-[1.65rem]">
             Implant Directory
           </h1>
           <Link
             to="/maude"
-            className="text-sm font-medium text-blue-600 hover:text-blue-800"
+            className="touch-target inline-flex items-center text-sm font-medium text-blue-600 hover:text-blue-800"
           >
             MAUDE trends →
           </Link>
         </div>
-        <p className="mt-1 text-sm text-gray-500">
-          Directory Score on every listing · surgical technique PDF when linked · product photo · X-ray /
-          diagram when we have them ·{' '}
-          <Link to="/maude" className="text-gray-600 underline-offset-2 hover:underline">
-            openFDA trends
-          </Link>
+        <p className="mt-1 text-sm leading-snug text-gray-500">
+          <span className="sm:hidden">
+            Directory Score · technique PDF · photos ·{' '}
+            <Link to="/maude" className="text-gray-600 underline-offset-2 hover:underline">
+              openFDA
+            </Link>
+          </span>
+          <span className="hidden sm:inline">
+            Directory Score on every listing · surgical technique PDF when linked · product photo · X-ray /
+            diagram when we have them ·{' '}
+            <Link to="/maude" className="text-gray-600 underline-offset-2 hover:underline">
+              openFDA trends
+            </Link>
+          </span>
         </p>
 
         <div className="mt-3">
-          <label className="relative block max-w-xl">
+          <label className="relative block">
             <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-gray-400" />
             <input
               type="search"
               value={qInput}
               onChange={(e) => setQInput(e.target.value)}
-              placeholder="Search brand, company, alias, clinical phrase…"
-              className="h-9 w-full rounded-md border border-gray-300 bg-white py-0 pl-8 pr-3 text-sm text-gray-900 placeholder:text-gray-400 focus:border-gray-400 focus:outline-none focus:ring-0"
+              placeholder="Search brand, company, alias…"
+              enterKeyHint="search"
+              className="h-10 w-full rounded-md border border-gray-300 bg-white py-0 pl-8 pr-3 text-base text-gray-900 placeholder:text-gray-400 focus:border-gray-400 focus:outline-none focus:ring-0 sm:h-9 sm:max-w-xl sm:text-sm"
             />
           </label>
         </div>
 
-        <div className="mt-2.5 flex flex-wrap items-center gap-2">
+        <div className="mt-2.5 grid grid-cols-2 gap-2 sm:flex sm:flex-wrap sm:items-center">
           <FilterSelect
             aria-label="Specialty"
+            className="sm:w-auto sm:min-w-[9.5rem]"
             value={specialty}
             onChange={(id) =>
               patchParams((p) => {
@@ -272,6 +281,7 @@ const ImplantDirectory: React.FC = () => {
 
           <FilterSelect
             aria-label="Device class"
+            className="sm:w-auto sm:min-w-[9.5rem]"
             value={deviceClass}
             onChange={(id) =>
               patchParams((p) => {
@@ -301,7 +311,7 @@ const ImplantDirectory: React.FC = () => {
                 else p.set('verified', '1');
               })
             }
-            className={`h-9 shrink-0 rounded-md border px-3 text-xs font-semibold uppercase tracking-wide transition-colors disabled:cursor-not-allowed disabled:opacity-45 ${
+            className={`h-10 shrink-0 rounded-md border px-3 text-xs font-semibold uppercase tracking-wide transition-colors disabled:cursor-not-allowed disabled:opacity-45 sm:h-9 ${
               verified
                 ? 'border-blue-600 bg-blue-600 text-white'
                 : 'border-gray-300 bg-gray-100 text-gray-500 hover:bg-gray-200'
@@ -316,6 +326,7 @@ const ImplantDirectory: React.FC = () => {
 
           <FilterSelect
             aria-label="Sort"
+            className="sm:w-auto sm:min-w-[9.5rem]"
             value={sort}
             onChange={(id) =>
               patchParams((p) => {
@@ -340,29 +351,29 @@ const ImplantDirectory: React.FC = () => {
                 setSearchParams({});
                 setPage(1);
               }}
-              className="h-9 px-1 text-xs font-medium text-gray-500 hover:text-gray-800"
+              className="col-span-2 h-10 px-1 text-left text-xs font-medium text-gray-500 hover:text-gray-800 sm:col-span-1 sm:h-9 sm:text-center"
             >
-              Clear
+              Clear filters
             </button>
           ) : null}
         </div>
       </div>
 
-      <div className={`border border-gray-200 bg-white ${isFetching ? 'opacity-90' : ''}`}>
-        <div className="flex flex-wrap items-center justify-between gap-2 border-b border-gray-100 px-3 py-1.5 sm:px-3">
-          <p className="text-xs text-gray-500">
+      <div className={`overflow-hidden rounded-md border border-gray-200 bg-white ${isFetching ? 'opacity-90' : ''}`}>
+        <div className="flex flex-wrap items-center justify-between gap-2 border-b border-gray-100 px-3 py-2">
+          <p className="min-w-0 text-xs text-gray-500 [overflow-wrap:anywhere]">
             {isLoading && !data
               ? 'Loading…'
               : `${total.toLocaleString()} implant${total === 1 ? '' : 's'}`}
             {q ? ` matching “${q}”` : ''}
             {verified ? ' · verified only' : ''}
           </p>
-          <p className="text-xs text-gray-400">
+          <p className="shrink-0 text-xs tabular-nums text-gray-400">
             {page} / {totalPages}
           </p>
         </div>
         {inferredSpecialty && specialty === 'all' && q ? (
-          <p className="border-b border-gray-100 px-3 py-1 text-[11px] text-gray-500">
+          <p className="border-b border-gray-100 px-3 py-1.5 text-[11px] text-gray-500">
             Boosted for{' '}
             <button
               type="button"
@@ -396,10 +407,10 @@ const ImplantDirectory: React.FC = () => {
           <ul className="divide-y divide-gray-100">
             {implants.map((implant: ImplantDirectoryItem) => (
               <li key={implant.id}>
-                <div className="flex items-center gap-2 px-3 py-2 transition-colors hover:bg-gray-50 sm:gap-3 sm:px-3">
+                <div className="flex items-center gap-2 px-2.5 py-2.5 transition-colors hover:bg-gray-50 sm:gap-3 sm:px-3">
                   <Link
                     to={`/implants/${implant.slug}`}
-                    className="flex min-w-0 flex-1 items-center gap-3"
+                    className="flex min-w-0 flex-1 items-center gap-2.5 sm:gap-3"
                   >
                     <ProductThumb implant={implant} />
                     <div className="min-w-0 flex-1">
@@ -407,7 +418,9 @@ const ImplantDirectory: React.FC = () => {
                         <span className="truncate text-sm font-semibold text-gray-900">
                           {implant.brandName}
                         </span>
-                        <DeviceClassLabel value={implant.deviceClass} />
+                        <span className="hidden sm:inline">
+                          <DeviceClassLabel value={implant.deviceClass} />
+                        </span>
                         {implant.status === 'verified' ? (
                           <span className="text-[10px] font-semibold uppercase tracking-wide text-blue-700">
                             Verified
@@ -417,24 +430,24 @@ const ImplantDirectory: React.FC = () => {
                       <p className="mt-0.5 truncate text-xs text-gray-500">
                         {[
                           implant.company,
-                          implant.anatomy,
                           specialtyLabel(implant.specialty),
+                          implant.deviceClass.replace(/_/g, ' '),
                         ]
                           .filter(Boolean)
                           .join(' · ')}
                       </p>
                     </div>
                   </Link>
-                  {isTechniqueGuidePdfUrl(implant.techniqueGuideUrl) ? (
-                    <TechniqueGuideLink
-                      url={implant.techniqueGuideUrl!}
-                      title={implant.techniqueGuideTitle}
-                      compact
-                    />
-                  ) : null}
-                  <div className="flex shrink-0 flex-col items-end gap-0.5">
+                  <div className="flex shrink-0 flex-col items-end gap-1 self-center">
+                    {isTechniqueGuidePdfUrl(implant.techniqueGuideUrl) ? (
+                      <TechniqueGuideLink
+                        url={implant.techniqueGuideUrl!}
+                        title={implant.techniqueGuideTitle}
+                        compact
+                      />
+                    ) : null}
                     <AiRatingBadge rating={implant.aiRating} />
-                    <div className="text-right text-[10px] text-gray-400">
+                    <div className="hidden text-right text-[10px] text-gray-400 sm:block">
                       {implant.memberRatingAvg != null ? (
                         <span>★ {implant.memberRatingAvg.toFixed(1)}</span>
                       ) : (
@@ -449,12 +462,12 @@ const ImplantDirectory: React.FC = () => {
         )}
 
         {totalPages > 1 ? (
-          <div className="flex items-center justify-between border-t border-gray-100 px-3 py-2">
+          <div className="flex items-center justify-between gap-2 border-t border-gray-100 px-3 py-2.5">
             <button
               type="button"
               disabled={page <= 1}
               onClick={() => goPage(Math.max(1, page - 1))}
-              className="rounded-md border border-gray-200 px-2.5 py-1 text-sm text-gray-700 hover:bg-gray-50 disabled:opacity-40"
+              className="touch-target min-h-10 rounded-md border border-gray-200 px-3 py-1.5 text-sm text-gray-700 hover:bg-gray-50 disabled:opacity-40"
             >
               Previous
             </button>
@@ -462,7 +475,7 @@ const ImplantDirectory: React.FC = () => {
               type="button"
               disabled={page >= totalPages}
               onClick={() => goPage(Math.min(totalPages, page + 1))}
-              className="rounded-md border border-gray-200 px-2.5 py-1 text-sm text-gray-700 hover:bg-gray-50 disabled:opacity-40"
+              className="touch-target min-h-10 rounded-md border border-gray-200 px-3 py-1.5 text-sm text-gray-700 hover:bg-gray-50 disabled:opacity-40"
             >
               Next
             </button>
@@ -470,7 +483,7 @@ const ImplantDirectory: React.FC = () => {
         ) : null}
       </div>
 
-      <p className="mt-1.5 px-0.5 text-[11px] text-gray-400">
+      <p className="mt-2 px-0.5 text-[11px] leading-snug text-gray-400">
         AI scores are editorial (0–10), not medical advice or FDA endorsement.
       </p>
     </div>

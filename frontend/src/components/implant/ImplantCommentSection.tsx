@@ -57,20 +57,20 @@ const ImplantCommentSection: React.FC<Props> = ({ slug, comments, locked }) => {
   const loginRedirect = `/login?redirect=${encodeURIComponent(`/implants/${slug}`)}`;
 
   return (
-    <div className="border border-gray-200 bg-white p-3 sm:p-5">
+    <div className="rounded-md border border-gray-200 bg-white p-3 sm:p-5">
       <div className="flex flex-wrap items-baseline justify-between gap-2">
         <h2 className="text-sm font-semibold text-gray-900">Discussion</h2>
         <p className="text-xs text-gray-500">
-          {topLevel.length} {topLevel.length === 1 ? 'comment' : 'comments'} · upvote / downvote like the feed
+          {topLevel.length} {topLevel.length === 1 ? 'comment' : 'comments'}
+          <span className="hidden sm:inline"> · upvote / downvote like the feed</span>
         </p>
       </div>
-      <p className="mt-1 text-xs text-gray-500">
-        Clinical notes and experience welcome. Votes help rank useful takes; they also feed the proprietary
-        Directory Score (not medical advice).
+      <p className="mt-1 text-xs leading-snug text-gray-500">
+        Clinical notes welcome. Votes rank takes and feed the Directory Score (not medical advice).
       </p>
 
       {user && !locked ? (
-        <div className="mt-4 flex items-start gap-3 border-b border-gray-100 pb-4">
+        <div className="mt-4 flex items-start gap-2 border-b border-gray-100 pb-4 sm:gap-3">
           <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-orange-500 text-sm font-bold text-white">
             {user.username.charAt(0).toUpperCase()}
           </div>
@@ -81,14 +81,14 @@ const ImplantCommentSection: React.FC<Props> = ({ slug, comments, locked }) => {
               placeholder="What are your thoughts on this implant?"
               rows={4}
               maxLength={5000}
-              className="w-full resize-none rounded-md border border-gray-300 p-3 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500"
+              className="w-full resize-none rounded-md border border-gray-300 bg-white p-3 text-base text-gray-900 focus:outline-none focus:ring-2 focus:ring-orange-500 sm:text-sm"
             />
             <div className="mt-2 flex justify-end">
               <button
                 type="button"
                 disabled={!draft.trim() || createMutation.isPending}
                 onClick={() => createMutation.mutate({ body: draft.trim() })}
-                className="rounded-md bg-orange-500 px-4 py-2 text-sm font-medium text-white hover:bg-orange-600 disabled:cursor-not-allowed disabled:opacity-50"
+                className="touch-target min-h-10 rounded-md bg-orange-500 px-4 py-2 text-sm font-medium text-white hover:bg-orange-600 disabled:cursor-not-allowed disabled:opacity-50"
               >
                 {createMutation.isPending ? 'Posting…' : 'Comment'}
               </button>
@@ -173,15 +173,15 @@ function ImplantCommentCard({
   const isReplying = replyTo === comment.id;
 
   return (
-    <div className={depth > 0 ? 'ml-4 border-l-2 border-gray-200 pl-4' : ''}>
+    <div className={depth > 0 ? 'ml-2 border-l-2 border-gray-200 pl-2 sm:ml-4 sm:pl-4' : ''}>
       <div className="mb-2 rounded-md border border-gray-200 bg-white">
         <div className="flex">
-          <div className="flex flex-col items-center bg-gray-50 p-2">
+          <div className="flex flex-col items-center bg-gray-50 px-1.5 py-2 sm:px-2">
             <button
               type="button"
               disabled={!canInteract || comment.isDeleted}
               onClick={() => onVote(comment.id, 'upvote')}
-              className={`rounded p-1 transition-colors hover:bg-gray-200 disabled:opacity-40 ${
+              className={`touch-target rounded p-1.5 transition-colors hover:bg-gray-200 disabled:opacity-40 ${
                 comment.userVote === 'upvote' ? 'text-orange-500' : 'text-gray-400'
               }`}
               aria-label="Upvote"
@@ -195,7 +195,7 @@ function ImplantCommentCard({
               </svg>
             </button>
             <span
-              className={`text-xs font-medium ${
+              className={`text-xs font-medium tabular-nums ${
                 comment.voteScore > 0
                   ? 'text-orange-500'
                   : comment.voteScore < 0
@@ -209,7 +209,7 @@ function ImplantCommentCard({
               type="button"
               disabled={!canInteract || comment.isDeleted}
               onClick={() => onVote(comment.id, 'downvote')}
-              className={`rounded p-1 transition-colors hover:bg-gray-200 disabled:opacity-40 ${
+              className={`touch-target rounded p-1.5 transition-colors hover:bg-gray-200 disabled:opacity-40 ${
                 comment.userVote === 'downvote' ? 'text-blue-500' : 'text-gray-400'
               }`}
               aria-label="Downvote"
@@ -224,15 +224,15 @@ function ImplantCommentCard({
             </button>
           </div>
 
-          <div className="min-w-0 flex-1 p-3">
-            <div className="mb-2 flex flex-wrap items-center gap-2 text-xs text-gray-500">
+          <div className="min-w-0 flex-1 p-2.5 sm:p-3">
+            <div className="mb-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-gray-500">
               <span className="font-medium text-gray-900">u/{comment.author.username}</span>
               {comment.author.specialty ? (
                 <span className="rounded-full bg-blue-100 px-2 py-0.5 text-xs text-blue-800">
                   {comment.author.specialty}
                 </span>
               ) : null}
-              <span>·</span>
+              <span className="text-gray-400">·</span>
               <span>{formatDistanceToNow(new Date(comment.createdAt), { addSuffix: true })}</span>
             </div>
 
@@ -244,11 +244,11 @@ function ImplantCommentCard({
               </MarkdownContent>
             )}
 
-            <div className="flex flex-wrap items-center gap-4 text-xs text-gray-500">
+            <div className="flex flex-wrap items-center gap-3 text-xs text-gray-500 sm:gap-4">
               {canInteract && depth < 1 && !comment.isDeleted ? (
                 <button
                   type="button"
-                  className="hover:text-gray-700"
+                  className="touch-target py-1 hover:text-gray-700"
                   onClick={() => onReplyTo(isReplying ? null : comment.id)}
                 >
                   Reply
@@ -257,7 +257,7 @@ function ImplantCommentCard({
               {canDelete && !comment.isDeleted ? (
                 <button
                   type="button"
-                  className="text-red-600 hover:text-red-800"
+                  className="touch-target py-1 text-red-600 hover:text-red-800"
                   onClick={() => {
                     if (window.confirm('Delete this comment?')) onDelete(comment.id);
                   }}
@@ -271,24 +271,28 @@ function ImplantCommentCard({
       </div>
 
       {isReplying && canInteract ? (
-        <div className="mb-3 ml-4">
+        <div className="mb-3 ml-0 sm:ml-4">
           <div className="rounded-md border border-gray-200 bg-gray-50 p-3">
             <textarea
               value={replyDraft}
               onChange={(e) => onReplyDraft(e.target.value)}
               placeholder="What are your thoughts?"
               rows={3}
-              className="w-full resize-none rounded-md border border-gray-300 p-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500"
+              className="w-full resize-none rounded-md border border-gray-300 bg-white p-2 text-base text-gray-900 focus:outline-none focus:ring-2 focus:ring-orange-500 sm:text-sm"
             />
             <div className="mt-2 flex justify-end gap-2">
-              <button type="button" className="px-3 py-1 text-sm text-gray-600" onClick={() => onReplyTo(null)}>
+              <button
+                type="button"
+                className="touch-target px-3 py-1.5 text-sm text-gray-600"
+                onClick={() => onReplyTo(null)}
+              >
                 Cancel
               </button>
               <button
                 type="button"
                 disabled={!replyDraft.trim() || posting}
                 onClick={() => onSubmitReply(comment.id)}
-                className="rounded-md bg-orange-500 px-3 py-1 text-sm text-white hover:bg-orange-600 disabled:opacity-50"
+                className="touch-target min-h-10 rounded-md bg-orange-500 px-3 py-1.5 text-sm text-white hover:bg-orange-600 disabled:opacity-50"
               >
                 {posting ? 'Posting…' : 'Reply'}
               </button>
