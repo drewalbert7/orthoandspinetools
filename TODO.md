@@ -68,7 +68,7 @@ Full agent copy: **`AGENTS.md`**. Cursor rule: `.cursor/rules/analytics-durabili
 | **10** | **MAUDE coverage gaps** | ✅ Device—Company titles; Unknown-specialty implants (discs, Superion, INFUSE, mobile-bearing knees) |
 | **11** | **MAUDE smart search** | ✅ Clinical phrases → implant brands (cervical/lumbar disc arthroplasty, SI, INFUSE, …) |
 | **12** | **Bot / LLM analytics** | ✅ Nginx log tailer + admin **Bots & agents**; header **Stats**; humans stay on JS beacon |
-| **13** | **Implant Directory** | ✅ AI scores + gallery UI + all specialties; images fill-out next; **MCP later** |
+| **13** | **Implant Directory** | ✅ AI scores + gallery + seed manufacturer images (CF); catalog growth next; **MCP later** |
 
 **Ongoing disk habit:** `./scripts/docker-disk-check.sh report` before `--no-cache` builds.
 
@@ -125,8 +125,8 @@ Full agent copy: **`AGENTS.md`**. Cursor rule: `.cursor/rules/analytics-durabili
 - [x] **DB durability (Cloudflare)** — Daily full Postgres → Hetzner volume + **R2** (`scripts/database-backup-production.sh` + `backup-to-r2.js`); analytics dumps also → R2 `…/analytics/`.
 - [x] **Implant Directory — AI scores + media UI** — `ai_rating` 0–10 + summary on every listing; single product thumb; detail gallery for product/X-ray/diagram; browse sorted by AI score.
 - [x] **Implant Directory — compact filters** — Direct-Care-style row (specialty / class / Verified / sort) on `/implants` only; no chip sprawl.
-- [ ] **Implant Directory — images fill-out** — Rights-cleared product/XR via CF Images; attach via ingest `images[]`. **← next**
-- [ ] **Implant Directory — catalog growth** — More systems via Grokbot ingest (draft → verify); refine AI assessments.
+- [x] **Implant Directory — images fill-out** — Seed listings have manufacturer product (and where available XR/diagram) on Cloudflare Images with attribution + `licenseNote`; list/detail `productImage` / gallery live for all 15 seeds.
+- [ ] **Implant Directory — catalog growth** — More systems via Grokbot ingest (draft → verify); refine AI assessments; more XR/diagram where rights clear. **← next**
 - [ ] **Implant Directory — MAUDE snapshot card** — Cached 12mo count / rising on detail (not only deep-link).
 - [ ] **Implant Directory — MCP / paid data** — Licensed API + MCP connector (Nomads-style); optional SQLite/JSON export. **Blocked until images + data quality are solid.**
 
@@ -198,7 +198,7 @@ Never run `docker compose down -v` (deletes production DB volume).
 
 ## 📋 **NEXT PRIORITIES (summary)**
 
-1. **Implant Directory fill-out** — Rights-cleared product/XR images; more spine systems; Grokbot ingest; AI assessments
+1. **Implant Directory catalog growth** — More systems via Grokbot ingest; extra XR/diagram; refine AI assessments
 2. **Manual QA** — Create post with image/video; physician NPI / intl. pending / email verify
 3. **Implant MCP / paid API** — After data quality is solid (license + export + connector)
 4. **R2 custom domain** — Prefer `media.orthoandspinetools.com` over `r2.dev` if needed
