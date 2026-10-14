@@ -40,15 +40,46 @@ const ImplantDetail: React.FC = () => {
 
   const jsonLd = useMemo(() => {
     if (!data) return undefined;
+    const origin = 'https://orthoandspinetools.com';
     return {
       '@context': 'https://schema.org',
-      '@type': 'MedicalDevice',
-      name: data.brandName,
-      description: data.description || undefined,
-      manufacturer: data.company
-        ? { '@type': 'Organization', name: data.company }
-        : undefined,
-      url: `https://orthoandspinetools.com/implants/${data.slug}`,
+      '@graph': [
+        {
+          '@type': 'MedicalDevice',
+          '@id': `${origin}/implants/${data.slug}#device`,
+          name: data.brandName,
+          alternateName: data.aliases?.length ? data.aliases : undefined,
+          description: data.seoDescription || data.description || undefined,
+          manufacturer: data.company
+            ? { '@type': 'Organization', name: data.company }
+            : undefined,
+          url: `${origin}/implants/${data.slug}`,
+          sameAs: [`${origin}/implants/${data.slug}.md`],
+        },
+        {
+          '@type': 'BreadcrumbList',
+          itemListElement: [
+            {
+              '@type': 'ListItem',
+              position: 1,
+              name: 'Home',
+              item: origin,
+            },
+            {
+              '@type': 'ListItem',
+              position: 2,
+              name: 'Implant Directory',
+              item: `${origin}/implants`,
+            },
+            {
+              '@type': 'ListItem',
+              position: 3,
+              name: data.brandName,
+              item: `${origin}/implants/${data.slug}`,
+            },
+          ],
+        },
+      ],
     };
   }, [data]);
 
@@ -71,22 +102,31 @@ const ImplantDetail: React.FC = () => {
     );
   }
 
+  const pageTitle = data.seoTitle || `${data.brandName} · Implant Directory`;
+  const pageDescription =
+    data.seoDescription ||
+    data.description ||
+    `${data.brandName}${data.company ? ` by ${data.company}` : ''} — implant profile on OrthoAndSpineTools.`;
+
   return (
     <div className="mx-auto min-w-0 max-w-4xl px-3 sm:px-4">
       <DocumentMeta
-        title={`${data.brandName} · Implant Directory`}
-        description={
-          data.description ||
-          `${data.brandName}${data.company ? ` by ${data.company}` : ''} — implant profile on OrthoAndSpineTools.`
-        }
+        title={pageTitle}
+        description={pageDescription}
         canonicalPath={`/implants/${data.slug}`}
         jsonLd={jsonLd}
       />
 
-      <div className="mb-3 text-sm">
+      <div className="mb-3 flex flex-wrap items-center justify-between gap-2 text-sm">
         <Link to="/implants" className="font-medium text-blue-600 hover:text-blue-800">
           ← Implant Directory
         </Link>
+        <a
+          href={`/implants/${data.slug}.md`}
+          className="font-mono text-xs font-medium text-gray-600 hover:text-gray-900"
+        >
+          /implants/{data.slug}.md
+        </a>
       </div>
 
       <div className="mb-4 border border-gray-200 bg-white p-3 sm:p-5">
@@ -94,12 +134,16 @@ const ImplantDetail: React.FC = () => {
           <div className="flex gap-2">
             {[data.productImage, data.xrayImage].map((img, idx) =>
               img?.url ? (
-                <img
-                  key={idx}
-                  src={img.url}
-                  alt={img.alt || data.brandName}
-                  className="h-28 w-28 rounded-md border border-gray-200 object-cover bg-white"
-                />
+                <figure key={idx} className="m-0">
+                  <img
+                    src={img.url}
+                    alt={img.alt || data.brandName}
+                    className="h-28 w-28 rounded-md border border-gray-200 object-cover bg-white"
+                  />
+                  <figcaption className="mt-1 text-center text-[10px] text-gray-400">
+                    {idx === 0 ? 'Product' : 'X-ray'}
+                  </figcaption>
+                </figure>
               ) : (
                 <div
                   key={idx}
@@ -121,13 +165,13 @@ const ImplantDetail: React.FC = () => {
                 .filter(Boolean)
                 .join(' · ')}
             </p>
-            {data.description ? (
-              <p className="mt-3 text-sm leading-relaxed text-gray-700">{data.description}</p>
-            ) : null}
-            {data.aliases?.length ? (
-              <p className="mt-2 text-xs text-gray-500">
-                Also known as: {data.aliases.join(', ')}
+            {(data.longDescription || data.description) && (
+              <p className="mt-3 text-sm leading-relaxed text-gray-700">
+                {data.longDescription || data.description}
               </p>
+            )}
+            {data.aliases?.length ? (
+              <p className="mt-2 text-xs text-gray-500">Also known as: {data.aliases.join(', ')}</p>
             ) : null}
             <div className="mt-4 flex flex-wrap gap-3 text-sm">
               {data.maudeBrandKey ? (
@@ -144,6 +188,37 @@ const ImplantDetail: React.FC = () => {
             </div>
           </div>
         </div>
+
+        {(data.indications || data.contraindications) && (
+          <div className="mt-5 grid gap-4 border-t border-gray-100 pt-4 sm:grid-cols-2">
+            {data.indications ? (
+              <div>
+                <h2 className="text-xs font-semibold uppercase tracking-wider text-gray-500">
+                  Indications (directory notes)
+                </h2>
+                <p className="mt-1 whitespace-pre-wrap text-sm text-gray-700">{data.indications}</p>
+              </div>
+            ) : null}
+            {data.contraindications ? (
+              <div>
+                <h2 className="text-xs font-semibold uppercase tracking-wider text-gray-500">
+                  Caveats (directory notes)
+                </h2>
+                <p className="mt-1 whitespace-pre-wrap text-sm text-gray-700">{data.contraindications}</p>
+              </div>
+            ) : null}
+          </div>
+        )}
+
+        {data.images?.some((i) => i.attribution || i.licenseNote) ? (
+          <p className="mt-4 text-[11px] text-gray-400">
+            Image rights:{' '}
+            {data.images
+              .filter((i) => i.attribution || i.licenseNote)
+              .map((i) => [i.kind, i.attribution, i.licenseNote].filter(Boolean).join(' · '))
+              .join(' · ')}
+          </p>
+        ) : null}
       </div>
 
       <div className="mb-4 border border-gray-200 bg-white p-3 sm:p-5">
@@ -162,8 +237,8 @@ const ImplantDetail: React.FC = () => {
               className="mt-3 space-y-2 border-b border-gray-100 pb-4"
               onSubmit={(e) => {
                 e.preventDefault();
-                if (!body.trim()) {
-                  toast.error('Write a short review first');
+                if (body.trim().length < 20) {
+                  toast.error('Review needs at least 20 characters');
                   return;
                 }
                 reviewMutation.mutate();
@@ -195,10 +270,11 @@ const ImplantDetail: React.FC = () => {
               <textarea
                 value={body}
                 onChange={(e) => setBody(e.target.value)}
-                placeholder="Clinical notes, pearls, caveats…"
+                placeholder="Clinical notes, pearls, caveats… (min 20 characters)"
                 rows={4}
                 className="w-full rounded-md border border-gray-200 px-3 py-2 text-sm"
                 required
+                minLength={20}
               />
               <button
                 type="submit"

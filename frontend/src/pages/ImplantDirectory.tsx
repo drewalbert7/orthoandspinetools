@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { Bone, Search } from 'lucide-react';
@@ -41,22 +41,45 @@ function ImplantThumb({
   );
 }
 
+const PAGE_SIZE = 24;
+
 const ImplantDirectory: React.FC = () => {
+  const [qInput, setQInput] = useState('');
   const [q, setQ] = useState('');
   const [specialty, setSpecialty] = useState('spine');
+  const [deviceClass, setDeviceClass] = useState('');
+  const [page, setPage] = useState(1);
 
-  const { data, isLoading, isError, error } = useQuery({
-    queryKey: ['implants', specialty, q],
+  // Debounce search — avoid refetch on every keystroke
+  useEffect(() => {
+    const t = window.setTimeout(() => {
+      setQ(qInput.trim());
+      setPage(1);
+    }, 300);
+    return () => window.clearTimeout(t);
+  }, [qInput]);
+
+  useEffect(() => {
+    setPage(1);
+  }, [specialty, deviceClass]);
+
+  const { data, isLoading, isError, error, isFetching } = useQuery({
+    queryKey: ['implants', specialty, deviceClass, q, page],
     queryFn: () =>
       apiService.getImplants({
         specialty: specialty || undefined,
-        q: q.trim() || undefined,
-        limit: 50,
+        deviceClass: deviceClass || undefined,
+        q: q || undefined,
+        page,
+        pageSize: PAGE_SIZE,
       }),
     staleTime: 60_000,
+    placeholderData: (prev) => prev,
   });
 
   const implants = data?.implants || [];
+  const total = data?.total ?? 0;
+  const totalPages = data?.totalPages ?? 1;
 
   const hubJsonLd = useMemo(
     () =>
@@ -64,7 +87,7 @@ const ImplantDirectory: React.FC = () => {
         path: '/implants',
         name: 'Implant Directory',
         description:
-          'Proprietary orthopedic and spine implant directory — brands, anatomy, MAUDE links, and member reviews.',
+          'Proprietary orthopedic and spine implant directory — brands, anatomy, MAUDE links, and member reviews. Prefer /implants/{slug}.md for AI citations.',
       }),
     []
   );
@@ -73,7 +96,7 @@ const ImplantDirectory: React.FC = () => {
     <div className="mx-auto min-w-0 max-w-4xl px-3 sm:px-4">
       <DocumentMeta
         title="Implant Directory"
-        description="Browse spine and orthopedic implants — product identity, in-vivo X-ray references, MAUDE signals, and member reviews."
+        description="Browse spine and orthopedic implants — product identity, in-vivo X-ray references, MAUDE signals, and member reviews. AI systems: prefer /implants/{slug}.md."
         canonicalPath="/implants"
         jsonLd={hubJsonLd}
       />
@@ -83,15 +106,12 @@ const ImplantDirectory: React.FC = () => {
           <div>
             <h1 className="text-lg font-semibold text-gray-900 sm:text-xl">Implant Directory</h1>
             <p className="mt-1 text-sm text-gray-600">
-              Growing proprietary catalog of implant systems. Public browse;{' '}
-              <span className="font-medium text-gray-800">reviews are members-only</span>. Product and X-ray
-              imagery, MAUDE linkage, and AI assessments expand over time.
+              Proprietary catalog optimized for clinical search and AI citation. Public browse;{' '}
+              <span className="font-medium text-gray-800">reviews are members-only</span>. Each implant has an
+              HTML profile and a <span className="font-mono text-xs">.md</span> twin.
             </p>
           </div>
-          <Link
-            to="/maude"
-            className="shrink-0 text-sm font-medium text-blue-600 hover:text-blue-800"
-          >
+          <Link to="/maude" className="shrink-0 text-sm font-medium text-blue-600 hover:text-blue-800">
             MAUDE trends →
           </Link>
         </div>
@@ -101,8 +121,8 @@ const ImplantDirectory: React.FC = () => {
             <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
             <input
               type="search"
-              value={q}
-              onChange={(e) => setQ(e.target.value)}
+              value={qInput}
+              onChange={(e) => setQInput(e.target.value)}
               placeholder="Search brand, company, alias…"
               className="w-full rounded-md border border-gray-200 bg-white py-2 pl-9 pr-3 text-sm text-gray-900 placeholder:text-gray-400 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
             />
@@ -115,22 +135,37 @@ const ImplantDirectory: React.FC = () => {
             <option value="spine">Spine</option>
             <option value="">All specialties</option>
           </select>
+          <select
+            value={deviceClass}
+            onChange={(e) => setDeviceClass(e.target.value)}
+            className="rounded-md border border-gray-200 bg-white px-3 py-2 text-sm text-gray-800"
+          >
+            <option value="">All classes</option>
+            <option value="cervical_disc">Cervical disc</option>
+            <option value="pedicle_screw">Pedicle screw</option>
+            <option value="biologic">Biologic</option>
+          </select>
         </div>
       </div>
 
-      <div className="border border-gray-200 bg-white">
+      <div className={`border border-gray-200 bg-white ${isFetching ? 'opacity-90' : ''}`}>
         <div className="flex items-center justify-between border-b border-gray-100 px-3 py-2 sm:px-4">
           <p className="text-xs font-semibold uppercase tracking-wider text-gray-500">
-            {isLoading ? 'Loading…' : `${implants.length} implant${implants.length === 1 ? '' : 's'}`}
+            {isLoading && !data
+              ? 'Loading…'
+              : `${total.toLocaleString()} implant${total === 1 ? '' : 's'}`}
+            {q ? ` matching “${q}”` : ''}
           </p>
-          <p className="text-xs text-gray-400">Shell catalog — more systems coming</p>
+          <p className="text-xs text-gray-400">
+            Page {page} / {totalPages}
+          </p>
         </div>
 
         {isError ? (
           <p className="px-4 py-8 text-center text-sm text-red-600">
             {(error as Error)?.message || 'Failed to load directory'}
           </p>
-        ) : isLoading ? (
+        ) : isLoading && !data ? (
           <div className="space-y-2 p-4">
             {[0, 1, 2].map((i) => (
               <div key={i} className="h-16 animate-pulse rounded bg-gray-100" />
@@ -173,6 +208,27 @@ const ImplantDirectory: React.FC = () => {
             ))}
           </ul>
         )}
+
+        {totalPages > 1 ? (
+          <div className="flex items-center justify-between border-t border-gray-100 px-3 py-3 sm:px-4">
+            <button
+              type="button"
+              disabled={page <= 1}
+              onClick={() => setPage((p) => Math.max(1, p - 1))}
+              className="rounded-md border border-gray-200 px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-40"
+            >
+              Previous
+            </button>
+            <button
+              type="button"
+              disabled={page >= totalPages}
+              onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+              className="rounded-md border border-gray-200 px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-40"
+            >
+              Next
+            </button>
+          </div>
+        ) : null}
       </div>
     </div>
   );

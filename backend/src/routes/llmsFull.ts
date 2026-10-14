@@ -30,7 +30,7 @@ const startupTagFilter = {
 router.get(
   '/',
   asyncHandler(async (_req: Request, res: Response) => {
-    const [communities, posts, startupPosts, users] = await Promise.all([
+    const [communities, posts, startupPosts, users, implants] = await Promise.all([
       prisma.community.findMany({
         where: { isActive: true },
         select: { slug: true, name: true, description: true },
@@ -56,12 +56,25 @@ router.get(
         select: { username: true, firstName: true, lastName: true, specialty: true },
         orderBy: { username: 'asc' },
       }),
+      prisma.implant.findMany({
+        where: { status: { in: ['published', 'verified'] } },
+        select: {
+          slug: true,
+          brandName: true,
+          company: true,
+          specialty: true,
+          deviceClass: true,
+          description: true,
+        },
+        orderBy: { brandName: 'asc' },
+        take: 500,
+      }),
     ]);
 
     res
       .type('text/plain; charset=utf-8')
       .set('Cache-Control', 'public, max-age=3600, stale-while-revalidate=86400')
-      .send(buildLlmsFullText({ communities, posts, startupPosts, users }));
+      .send(buildLlmsFullText({ communities, posts, startupPosts, users, implants }));
   })
 );
 

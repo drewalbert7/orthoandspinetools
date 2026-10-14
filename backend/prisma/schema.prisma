@@ -629,8 +629,16 @@ model Implant {
   anatomy         String?
   deviceClass     String   @map("device_class")
   description     String?
+  /// Longer clinical / AI-citable body for detail + .md twins
+  longDescription String?  @map("long_description") @db.Text
+  indications     String?  @db.Text
+  contraindications String? @db.Text
+  seoTitle        String?  @map("seo_title")
+  seoDescription  String?  @map("seo_description")
   status          String   @default("published") // draft | published | verified
   maudeBrandKey   String?  @map("maude_brand_key")
+  /// Denormalized search blob (brand, aliases, company, class, anatomy…)
+  searchText      String   @default("") @map("search_text") @db.Text
   createdAt       DateTime @default(now()) @map("created_at")
   updatedAt       DateTime @updatedAt @map("updated_at")
   publishedAt     DateTime? @map("published_at")
@@ -638,11 +646,26 @@ model Implant {
   aliases  ImplantAlias[]
   images   ImplantImage[]
   reviews  ImplantReview[]
+  editLogs ImplantEditLog[]
 
   @@index([specialty, status])
   @@index([deviceClass])
   @@index([company])
+  @@index([status, publishedAt])
   @@map("implants")
+}
+
+model ImplantEditLog {
+  id        String   @id @default(cuid())
+  implantId String   @map("implant_id")
+  actor     String   // ingest:grokbot | admin:{id} | user:{id}
+  action    String   // upsert | publish | verify | image_add | status_change
+  detail    String?  @db.Text
+  createdAt DateTime @default(now()) @map("created_at")
+  implant   Implant  @relation(fields: [implantId], references: [id], onDelete: Cascade)
+
+  @@index([implantId, createdAt])
+  @@map("implant_edit_logs")
 }
 
 model ImplantAlias {

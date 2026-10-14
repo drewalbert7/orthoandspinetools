@@ -68,7 +68,7 @@ Full agent copy: **`AGENTS.md`**. Cursor rule: `.cursor/rules/analytics-durabili
 | **10** | **MAUDE coverage gaps** | ✅ Device—Company titles; Unknown-specialty implants (discs, Superion, INFUSE, mobile-bearing knees) |
 | **11** | **MAUDE smart search** | ✅ Clinical phrases → implant brands (cervical/lumbar disc arthroplasty, SI, INFUSE, …) |
 | **12** | **Bot / LLM analytics** | ✅ Nginx log tailer + admin **Bots & agents**; header **Stats**; humans stay on JS beacon |
-| **13** | **Implant Directory** | 🟡 Shell live: `/implants` + Postgres models + 5 spine seeds; reviews members-only; **MCP/API monetization later** |
+| **13** | **Implant Directory** | ✅ Harden+SEO: FTS/trgm search, debounce+pagination, rate limits, ingest/draft, `/implants/{slug}.md`, sitemap/llms; images fill-out next; **MCP later** |
 
 **Ongoing disk habit:** `./scripts/docker-disk-check.sh report` before `--no-cache` builds.
 
@@ -110,20 +110,23 @@ Full agent copy: **`AGENTS.md`**. Cursor rule: `.cursor/rules/analytics-durabili
 - [x] **First-party bot + LLM agent traffic** — Postgres `analytics_bot*` tables; UA classification (ai_agent / ai_crawl / search / …); `bot-analytics` compose service tails `nginx/logs/access.log` (14d backfill + cursor); `/pageview` bot UAs never inflate human counts; Admin Analytics **Bots & agents**; header **Stats** → `/admin?tab=analytics`. Unit: `scripts/orthoandspinetools-bot-analytics.service` (`sudo` enable if not yet installed).
 - [x] **Analytics durability** — Rules in `AGENTS.md` + `.cursor/rules/analytics-durability.mdc` + TODO; live data on Postgres volume (not git/deploy); daily `analytics-backup.sh` → Hetzner `…/backups/analytics/` (≥30d); backfill gated by `backfilled_at`.
 - [x] **Implant Directory shell** — Nav under Cases → `/implants` + `/implants/:slug`; Postgres `implants` / `implant_images` / `implant_reviews`; 5 spine seeds; directory public; **reviews members-only** (any logged-in user).
-- [ ] **Implant Directory — harden before scale** (do these before MCP / big ingest):
-  1. **Search UX** — Debounce directory `q` (currently refetches every keystroke); add cursor/offset pagination (`total` + `next`); device-class filter chips.
-  2. **API guards** — Rate-limit `GET /api/implants` + `POST …/reviews` (same pattern as MAUDE/auth); return real `total` count, not page size.
-  3. **Identity** — Canonical brand keys + multi-`maudeBrandKey` / alias normalization so MAUDE links don’t miss variants; draft → verified workflow for Grokbot edits.
-  4. **Images / rights** — CF Images pipeline with `license_note` + attribution required before publish; never hotlink manufacturer sites without clearance.
-  5. **Reviews quality** — Rate-limit + min length; report/hide; optional physician badge weight later; keep bodies plain text.
-  6. **Discoverability** — `/implants/:slug.md` twins, sitemap entries, `llms.txt` section (TDCL pattern) once ≥~50 verified rows.
-  7. **Ingest** — Signed admin/Grokbot upsert API + audit log; no anonymous writes to catalog.
-  8. **MAUDE on profile** — Cached snapshot card (12mo count / rising) instead of only a deep-link.
+- [x] **Implant Directory — harden + AI SEO search** (before MCP / big ingest):
+  1. **Search UX** — Debounced directory `q` (300ms); page/`pageSize` pagination with real `total`/`totalPages`; specialty + device-class filters.
+  2. **API guards** — Rate-limit list/detail/reviews/ingest; public list returns only published|verified.
+  3. **DB search** — `search_text` + `pg_trgm` + FTS GIN indexes; alias-aware ranked search (`implantSearch.ts`).
+  4. **Ingest / draft** — `POST /api/implants/ingest` + publish (header `x-implant-ingest-secret`); `implant_edit_logs`; draft → published|verified.
+  5. **Images / rights** — Ingest accepts product|xray|diagram with required `licenseNote` on product/xray; CF Images pipeline still TODO for bulk rights-cleared assets.
+  6. **Reviews quality** — Rate-limit + min length 20; members-only read/write (report/hide later).
+  7. **AI SEO / discoverability** — Per-listing `/implants/:slug` + `/implants/:slug.md`; MedicalDevice JSON-LD; sitemap + `llms.txt` / `llms-full.txt`.
+  8. **MAUDE on profile** — Deep-link live; cached 12mo/rising snapshot card still TODO.
+- [ ] **Implant Directory — images fill-out** — Rights-cleared product/XR via CF Images; attach via ingest `images[]`.
+- [ ] **Implant Directory — MAUDE snapshot card** — Cached 12mo count / rising on detail (not only deep-link).
 - [ ] **Implant Directory — MCP / paid data** — Licensed API + MCP connector (Nomads-style); optional SQLite/JSON export. **Blocked until harden checklist + data quality are solid.**
 
 ### **0. Deploy status — verify live**
 - [x] **https://orthoandspinetools.com** — home, hubs, sitemap, OG previews with post images, edit-post tags, `/maude`
 - [x] **Latest deploy (Oct 13)** — Implant Directory shell (`/implants`, 5 spine seeds, member reviews); MAUDE Rising sort for graph+list; analytics durability still in force
+- [x] **Latest deploy (Oct 14)** — Implant Directory harden: FTS search, debounce/pagination, ingest/draft, AI SEO detail + `.md` twins, sitemap/llms
 - [x] **Ops rule (hard)** — After **every** `backend`/`frontend` recreate, always: `docker compose -f docker-compose.prod.yml up -d --force-recreate nginx` (cached Docker DNS → 502 Connection refused on old IPs)
 - [x] **Analytics backup cron** — `15 2 * * *` → `scripts/analytics-backup.sh` → `/mnt/HC_Volume_106016238/orthoandspinetools-backups/analytics/`
 

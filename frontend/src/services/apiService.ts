@@ -374,10 +374,14 @@ export interface ImplantDirectoryItem {
   anatomy?: string | null;
   deviceClass: string;
   description?: string | null;
+  seoTitle?: string | null;
+  seoDescription?: string | null;
+  status?: string;
   maudeBrandKey?: string | null;
   reviewCount: number;
   productImage?: { url: string; alt?: string | null } | null;
   xrayImage?: { url: string; alt?: string | null } | null;
+  markdownPath?: string;
 }
 
 export interface ImplantReview {
@@ -390,10 +394,29 @@ export interface ImplantReview {
 }
 
 export interface ImplantDetail extends ImplantDirectoryItem {
+  longDescription?: string | null;
+  indications?: string | null;
+  contraindications?: string | null;
   aliases: string[];
-  images: Array<{ kind: string; url: string; alt?: string | null; attribution?: string | null }>;
+  images: Array<{
+    kind: string;
+    url: string;
+    alt?: string | null;
+    attribution?: string | null;
+    licenseNote?: string | null;
+  }>;
   reviews: ImplantReview[] | null;
   reviewsLocked: boolean;
+  canonicalPath?: string;
+}
+
+export interface ImplantListResponse {
+  total: number;
+  page: number;
+  pageSize: number;
+  totalPages: number;
+  count: number;
+  implants: ImplantDirectoryItem[];
 }
 
 export interface MaudeTrendingBrand {
@@ -1290,17 +1313,29 @@ class ApiService {
     q?: string;
     specialty?: string;
     deviceClass?: string;
+    page?: number;
+    pageSize?: number;
     limit?: number;
-  } = {}): Promise<{ count: number; implants: ImplantDirectoryItem[] }> {
+  } = {}): Promise<ImplantListResponse> {
     try {
       const search = new URLSearchParams();
       if (params.q) search.set('q', params.q);
       if (params.specialty) search.set('specialty', params.specialty);
       if (params.deviceClass) search.set('deviceClass', params.deviceClass);
-      if (params.limit) search.set('limit', String(params.limit));
+      if (params.page) search.set('page', String(params.page));
+      if (params.pageSize) search.set('pageSize', String(params.pageSize));
+      else if (params.limit) search.set('pageSize', String(params.limit));
       const qs = search.toString();
       const response = await api.get(`/implants${qs ? `?${qs}` : ''}`);
-      return response.data.data;
+      const data = response.data.data;
+      return {
+        total: data.total ?? data.count ?? 0,
+        page: data.page ?? 1,
+        pageSize: data.pageSize ?? data.implants?.length ?? 0,
+        totalPages: data.totalPages ?? 1,
+        count: data.count ?? data.implants?.length ?? 0,
+        implants: data.implants || [],
+      };
     } catch (error: unknown) {
       throw new Error(apiErrorMessage(error, 'Failed to load implant directory'));
     }

@@ -8,7 +8,7 @@ const router = Router();
 router.get(
   '/',
   asyncHandler(async (_req: Request, res: Response) => {
-    const [communities, posts, users] = await Promise.all([
+    const [communities, posts, users, implants] = await Promise.all([
       prisma.community.findMany({
         select: { slug: true, updatedAt: true },
         orderBy: { name: 'asc' },
@@ -27,10 +27,28 @@ router.get(
         select: { username: true, updatedAt: true },
         orderBy: { username: 'asc' },
       }),
+      prisma.implant.findMany({
+        where: { status: { in: ['published', 'verified'] } },
+        select: { slug: true, updatedAt: true },
+        orderBy: { slug: 'asc' },
+        take: 50000,
+      }),
     ]);
 
     const entries = [
       ...STATIC_SITEMAP_PAGES,
+      ...implants.map((i) => ({
+        path: `/implants/${i.slug}`,
+        lastmod: i.updatedAt,
+        changefreq: 'weekly',
+        priority: '0.8',
+      })),
+      ...implants.map((i) => ({
+        path: `/implants/${i.slug}.md`,
+        lastmod: i.updatedAt,
+        changefreq: 'weekly',
+        priority: '0.75',
+      })),
       ...communities.map((c) => ({
         path: `/community/${c.slug}`,
         lastmod: c.updatedAt,

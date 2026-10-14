@@ -11,6 +11,14 @@ type LlmsPost = {
   community: { slug: string; name: string } | null;
 };
 type LlmsUser = { username: string; firstName: string; lastName: string; specialty: string | null };
+type LlmsImplant = {
+  slug: string;
+  brandName: string;
+  company: string | null;
+  specialty: string;
+  deviceClass: string;
+  description: string | null;
+};
 
 function formatPostLine(origin: string, post: LlmsPost): string[] {
   const date = post.createdAt.toISOString().slice(0, 10);
@@ -30,6 +38,7 @@ export function buildLlmsFullText(params: {
   posts: LlmsPost[];
   startupPosts: LlmsPost[];
   users: LlmsUser[];
+  implants?: LlmsImplant[];
 }): string {
   const origin = getPublicSiteUrl();
   const lines: string[] = [
@@ -47,9 +56,11 @@ export function buildLlmsFullText(params: {
     `- ${origin}/ — Latest posts`,
     `- ${origin}/popular — Popular posts`,
     `- ${origin}/cases — Case-tagged posts`,
+    `- ${origin}/implants — Implant Directory (proprietary device catalog)`,
     `- ${origin}/startups — Startup / product launch posts`,
+    `- ${origin}/maude — FDA MAUDE implant adverse-event trends`,
     `- ${origin}/search — Search posts and communities`,
-    `- ${origin}/sitemap.xml — Machine-readable URL list (posts, communities, profiles)`,
+    `- ${origin}/sitemap.xml — Machine-readable URL list (posts, communities, profiles, implants)`,
     `- ${origin}/llms.txt — Short AI index`,
     '',
     '## URL patterns',
@@ -57,6 +68,8 @@ export function buildLlmsFullText(params: {
     `- ${origin}/post/{id} — Discussion thread (JSON-LD: DiscussionForumPosting; OG HTML for crawlers)`,
     `- ${origin}/community/{slug} — Community hub (JSON-LD: DiscussionForum)`,
     `- ${origin}/user/{username} — Public member profile (JSON-LD: Person)`,
+    `- ${origin}/implants/{slug} — Implant profile (JSON-LD: MedicalDevice)`,
+    `- ${origin}/implants/{slug}.md — AI-citable Markdown twin (prefer for citations)`,
     '',
     '## How to cite a post',
     '',
@@ -84,6 +97,21 @@ export function buildLlmsFullText(params: {
     const name = [u.firstName, u.lastName].filter(Boolean).join(' ').trim();
     const spec = u.specialty ? ` (${u.specialty})` : '';
     lines.push(`- ${origin}/user/${u.username} — ${name || u.username}${spec}`);
+  }
+
+  lines.push('', '## Implant Directory (prefer .md twins)', '');
+  const implants = params.implants || [];
+  if (implants.length === 0) {
+    lines.push(`- Browse ${origin}/implants — catalog is growing`);
+  } else {
+    for (const i of implants) {
+      const company = i.company ? ` — ${i.company}` : '';
+      const desc = i.description?.trim().replace(/\s+/g, ' ').slice(0, 140);
+      lines.push(
+        `- ${origin}/implants/${i.slug}.md — ${i.brandName}${company} (${i.specialty}, ${i.deviceClass.replace(/_/g, ' ')})` +
+          (desc ? ` — ${desc}` : '')
+      );
+    }
   }
 
   lines.push('', '## Startup & product posts', '');

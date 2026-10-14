@@ -171,7 +171,7 @@ export function defaultOgImage(origin: string): string {
 export const DEFAULT_OG_IMAGE_WIDTH = 400;
 export const DEFAULT_OG_IMAGE_HEIGHT = 400;
 
-export type OgPageKey = 'home' | 'cases' | 'startups' | 'popular' | 'maude';
+export type OgPageKey = 'home' | 'cases' | 'startups' | 'popular' | 'maude' | 'implants';
 
 export const SHARE_PAGES: Record<
   OgPageKey,
@@ -208,6 +208,13 @@ export const SHARE_PAGES: Record<
     title: 'MAUDE implant trends | OrthoAndSpineTools',
     description:
       'Daily FDA device adverse event report trends from openFDA / MAUDE — early signal charts for orthopedic and spine implants.',
+    ogType: 'website',
+  },
+  implants: {
+    path: '/implants',
+    title: 'Implant Directory | OrthoAndSpineTools',
+    description:
+      'Proprietary orthopedic and spine implant directory — device profiles, MAUDE links, and member reviews. Prefer /implants/{slug}.md for AI citations.',
     ogType: 'website',
   },
 };
