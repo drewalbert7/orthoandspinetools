@@ -76,6 +76,24 @@ const BRAND_COLORS = [
   '#14746f',
 ];
 
+/** Stable per brand so Rising ↔ Top reorder does not recolor / jump the chart. */
+function stableBrandColor(name: string): string {
+  let h = 2166136261;
+  for (let i = 0; i < name.length; i++) {
+    h ^= name.charCodeAt(i);
+    h = Math.imul(h, 16777619);
+  }
+  return BRAND_COLORS[Math.abs(h) % BRAND_COLORS.length];
+}
+
+function stableColorByName(names: Iterable<string>): Map<string, string> {
+  const map = new Map<string, string>();
+  for (const name of names) {
+    if (!map.has(name)) map.set(name, stableBrandColor(name));
+  }
+  return map;
+}
+
 function formatDataThrough(iso: string | null | undefined): string | null {
   if (!iso) return null;
   const d = new Date(`${iso.slice(0, 10)}T00:00:00Z`);
@@ -561,9 +579,15 @@ function SortModeToggle({
           Top
         </button>
       </div>
-      {mode === 'rising' && risingWindowLabel ? (
-        <p className="text-xs text-gray-500">vs prior {risingWindowLabel}</p>
-      ) : null}
+      {/* Fixed slot so Rising ↔ Top does not shift layout */}
+      <p
+        className={`min-w-[7.5rem] text-xs text-gray-500 ${
+          mode === 'rising' && risingWindowLabel ? '' : 'invisible'
+        }`}
+        aria-hidden={!(mode === 'rising' && risingWindowLabel)}
+      >
+        vs prior {risingWindowLabel || '7d'}
+      </p>
     </div>
   );
 }
@@ -959,11 +983,19 @@ function MultiBrandChart({
   const trendByName = useMemo(() => new Map(trending.map((t) => [t.name, t])), [trending]);
   const risingWindowLabel = trending[0]?.windowLabel;
 
-  const colorByName = useMemo(() => {
-    const map = new Map<string, string>();
-    ranked.forEach((b, i) => map.set(b.name, BRAND_COLORS[i % BRAND_COLORS.length]));
-    return map;
-  }, [ranked]);
+  // Colors + stroke weight keyed by brand (not Rising/Top rank) so the chart does not jump
+  const colorByName = useMemo(
+    () => stableColorByName(brands.map((b) => b.name)),
+    [brands]
+  );
+  const thickBrandNames = useMemo(() => {
+    return new Set(
+      [...brands]
+        .sort((a, b) => b.count - a.count)
+        .slice(0, 8)
+        .map((b) => b.name)
+    );
+  }, [brands]);
 
   const fullDates =
     ranked[0]?.[mode === 'cumulative' ? 'cumulativeSeries' : 'series'].map((p) => p.date) || [];
@@ -1204,10 +1236,13 @@ function MultiBrandChart({
               </text>
             </g>
           ))}
-          {visibleSeries.map(({ brand, points }, bi) => {
-            const color = colorByName.get(brand.name) || BRAND_COLORS[bi % BRAND_COLORS.length];
+          {[...visibleSeries]
+            .sort((a, b) => a.brand.name.localeCompare(b.brand.name))
+            .map(({ brand, points }) => {
+            const color = colorByName.get(brand.name) || stableBrandColor(brand.name);
             const focused = focusBrand === brand.name;
             const dimmed = focusBrand != null && !focused;
+            const thick = thickBrandNames.has(brand.name);
             const pts = points.map((p, i) => {
               const x =
                 pad.left + (points.length <= 1 ? innerW / 2 : (i / (points.length - 1)) * innerW);
@@ -1223,7 +1258,7 @@ function MultiBrandChart({
                 d={path}
                 fill="none"
                 stroke={color}
-                strokeWidth={focused ? 3.25 : dimmed ? 1.1 : bi < 8 ? 2.4 : 1.5}
+                strokeWidth={focused ? 3.25 : dimmed ? 1.1 : thick ? 2.4 : 1.5}
                 strokeLinejoin="round"
                 opacity={dimmed ? 0.12 : 0.95}
                 style={{ pointerEvents: 'stroke' }}
@@ -1290,8 +1325,8 @@ function MultiBrandChart({
 
       <div className="mt-3">
         <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
-          <p className="text-xs font-semibold uppercase tracking-wider text-gray-500">
-            {sortMode === 'rising' ? 'Rising implants' : 'Top implants by volume'}
+          <p className="min-h-[1rem] text-xs font-semibold uppercase tracking-wider text-gray-500">
+            {sortMode === 'rising' ? 'Rising implants' : 'Top by volume'}
           </p>
           <SortModeToggle
             mode={sortMode}
@@ -1299,14 +1334,14 @@ function MultiBrandChart({
             risingWindowLabel={risingWindowLabel}
           />
         </div>
-        <p className="mb-2 text-xs text-gray-500">
+        <p className="mb-2 min-h-[2.5rem] text-xs text-gray-500 sm:min-h-[1.25rem]">
           {sortMode === 'rising'
             ? 'Same order as the chart — hottest recent growth first (like Reddit Rising).'
             : 'Same order as the chart — most reports in this window first.'}
         </p>
         <ol className="divide-y divide-gray-100 rounded-lg border border-gray-200 bg-white">
           {ranked.map((brand, bi) => {
-            const color = colorByName.get(brand.name) || BRAND_COLORS[bi % BRAND_COLORS.length];
+            const color = colorByName.get(brand.name) || stableBrandColor(brand.name);
             const focused = focusBrand === brand.name;
             const trendMeta = trendByName.get(brand.name);
             const changeLabel = trendMeta
@@ -1469,11 +1504,10 @@ const MaudeTrends: React.FC = () => {
   );
   const showMultiBrand = !selectedBrand && !brandFromUrl && brandSeries.length > 0;
 
-  const colorByName = useMemo(() => {
-    const map = new Map<string, string>();
-    rankedBrands.forEach((b, i) => map.set(b.name, BRAND_COLORS[i % BRAND_COLORS.length]));
-    return map;
-  }, [rankedBrands]);
+  const colorByName = useMemo(
+    () => stableColorByName(brandSeries.map((b) => b.name)),
+    [brandSeries]
+  );
 
   const searchSuggestions = useMemo(() => {
     const fromSeries = brandSeries.map((b) => ({
@@ -1743,8 +1777,8 @@ const MaudeTrends: React.FC = () => {
 
       <div className="mb-4 border border-gray-200 bg-white p-3 sm:p-4">
         <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-          <h2 className="text-sm font-semibold text-gray-900">
-            {sortMode === 'rising' ? 'Rising implant brands' : 'Top implant brands by volume'}
+          <h2 className="min-h-[1.25rem] text-sm font-semibold text-gray-900">
+            {sortMode === 'rising' ? 'Rising implant brands' : 'Top brands by volume'}
           </h2>
           <div className="flex flex-wrap items-center gap-2">
             <SortModeToggle

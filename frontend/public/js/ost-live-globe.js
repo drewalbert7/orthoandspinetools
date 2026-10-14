@@ -581,16 +581,13 @@ export function initLiveGlobe(rootEl, options = {}) {
       livePins = buildLivePins(next)
       placePins = buildPlacePins(next.topCountries || [], 'place')
     }
+    // Prefer North America framing; live Americas pins may nudge latitude target.
+    // Do not snap lon0/lat0 on poll — that kills idle spin and feels jumpy.
     targetView = { ...HOME }
-    // Keep the camera on North America — worldwide place pins (NZ/MY/NL…) must not yank the view.
     const liveAm = livePins.filter(inAmericas)
     if (liveAm.length) {
       const focus = cameraFromGeo(centroidOf(liveAm))
-      if (focus) targetView = focus
-    }
-    if (!dragging) {
-      lon0 = HOME.lon
-      lat0 = HOME.lat
+      if (focus) targetView = { lon: HOME.lon, lat: focus.lat }
     }
     data = next
     dataAt = Date.now() - (next.age || 0) * 1000
@@ -891,15 +888,14 @@ export function initLiveGlobe(rootEl, options = {}) {
     const dt = Math.min(40, t - lastT || 16)
     lastT = t
     const idle = performance.now() - lastPointer > 1800
-    if (!dragging) {
+    if (!dragging && idle) {
       const focus = targetView || HOME
-      if (idle) {
-        // Ease back to North America (or live Americas focus) and hold still — no idle spin.
-        const k = Math.min(1, 0.0045 * dt)
-        lon0 = lerpLon(lon0, focus.lon, k)
-        lat0 += (focus.lat - lat0) * k
-      }
-      // After a drag, leave the camera where the user left it until idle re-homes.
+      // Slow continuous spin (≈90s / revolution). Hold latitude near North America / live focus.
+      lon0 += 0.004 * dt
+      if (lon0 > 180) lon0 -= 360
+      if (lon0 < -180) lon0 += 360
+      const k = Math.min(1, 0.0035 * dt)
+      lat0 += (focus.lat - lat0) * k
     }
     draw(t)
     if (elFeed && ready && data?.feed?.length && !isMembers) {
@@ -959,10 +955,11 @@ export function initLiveGlobe(rootEl, options = {}) {
   canvas.addEventListener('pointerleave', onLeave)
 
   setup()
-  // Face North America immediately — before the first fetch / spin frame.
+  // Start facing continental North America, then idle-spin from there.
   lon0 = HOME.lon
   lat0 = HOME.lat
   targetView = { ...HOME }
+  lastPointer = performance.now() - 2000 // allow spin immediately (no post-drag wait)
   draw(0)
   updatePanel()
   load()
