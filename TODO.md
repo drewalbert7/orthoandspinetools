@@ -68,7 +68,7 @@ Full agent copy: **`AGENTS.md`**. Cursor rule: `.cursor/rules/analytics-durabili
 | **10** | **MAUDE coverage gaps** | ✅ Device—Company titles; Unknown-specialty implants (discs, Superion, INFUSE, mobile-bearing knees) |
 | **11** | **MAUDE smart search** | ✅ Clinical phrases → implant brands (cervical/lumbar disc arthroplasty, SI, INFUSE, …) |
 | **12** | **Bot / LLM analytics** | ✅ Nginx log tailer + admin **Bots & agents**; header **Stats**; humans stay on JS beacon |
-| **13** | **Implant Directory** | ✅ AI scores + gallery + seed manufacturer images (CF); catalog growth next; **MCP later** |
+| **13** | **Implant Directory** | ✅ Page finish + technique PDFs on list/detail; Directory Score + comments; public `/stats`; catalog growth next; **MCP later** |
 
 **Ongoing disk habit:** `./scripts/docker-disk-check.sh report` before `--no-cache` builds.
 
@@ -107,7 +107,8 @@ Full agent copy: **`AGENTS.md`**. Cursor rule: `.cursor/rules/analytics-durabili
 - [ ] **Security follow-ups** — Fail startup on default secrets; enable upload virus scanning (ClamAV). Rotate Cloudflare API token that was pasted in chat.
 - [x] **Google Search Console** — Domain verified; sitemap submitted (`/sitemap.xml`).
 - [ ] **Optional** — Rich Results Test on home + `/post/:id`; dedicated 1200×630 `og-share.png` for richer homepage/hub cards.
-- [x] **First-party bot + LLM agent traffic** — Postgres `analytics_bot*` tables; UA classification (ai_agent / ai_crawl / search / …); `bot-analytics` compose service tails `nginx/logs/access.log` (14d backfill + cursor); `/pageview` bot UAs never inflate human counts; Admin Analytics **Bots & agents**; header **Stats** → `/admin?tab=analytics`. Unit: `scripts/orthoandspinetools-bot-analytics.service` (`sudo` enable if not yet installed).
+- [x] **First-party bot + LLM agent traffic** — Postgres `analytics_bot*` tables; UA classification (ai_agent / ai_crawl / search / …); `bot-analytics` compose service tails `nginx/logs/access.log` (14d backfill + cursor); `/pageview` bot UAs never inflate human counts; Admin Analytics **Bots & agents**; public **`/stats`** (OC-style humans + globe + bots) in header for everyone. Unit: `scripts/orthoandspinetools-bot-analytics.service` (`sudo` enable if not yet installed).
+- [x] **Public Stats page** — `GET /api/analytics/stats` + `/globe`; GeoIP country on new pageviews; Stats link in public header/sidebar.
 - [x] **Analytics durability** — Rules in `AGENTS.md` + `.cursor/rules/analytics-durability.mdc` + TODO; live data on Postgres volume (not git/deploy); daily `analytics-backup.sh` → Hetzner `…/backups/analytics/` (≥30d); backfill gated by `backfilled_at`.
 - [x] **Implant Directory shell** — Nav under Cases → `/implants` + `/implants/:slug`; Postgres `implants` / `implant_images` / `implant_reviews`; 5 spine seeds; directory public.
 - [x] **Implant Directory — harden + AI SEO search** (before MCP / big ingest):
@@ -116,9 +117,9 @@ Full agent copy: **`AGENTS.md`**. Cursor rule: `.cursor/rules/analytics-durabili
   3. **DB search** — `search_text` + `pg_trgm` + FTS GIN indexes; alias-aware ranked search (`implantSearch.ts`).
   4. **Ingest / draft** — `POST /api/implants/ingest` + publish (header `x-implant-ingest-secret`); `implant_edit_logs`; draft → published|verified.
   5. **Images / rights** — Ingest accepts product|xray|diagram with required `licenseNote` on product/xray; CF Images pipeline still TODO for bulk rights-cleared assets.
-  6. **Reviews** — **Public read**; write/rate requires login (prompt); rate-limit + min length 20 (report/hide later).
+  6. **Discussion** — Upvote/downvote comments (feed-style) fold into proprietary Directory Score (`ost-dir-v1`); legacy star reviews deprecated for scoring.
   7. **AI SEO / discoverability** — Per-listing `/implants/:slug` + `/implants/:slug.md`; MedicalDevice JSON-LD; sitemap + `llms.txt` / `llms-full.txt`.
-  8. **MAUDE on profile** — Deep-link live; cached 12mo/rising snapshot card still TODO.
+  8. **MAUDE on profile** — Deep-link + 12‑mo snapshot card on detail.
 - [x] **Implant Directory — all subspecialties** — Chip filter with **All specialties** + each community specialty; seed listings per specialty.
 - [x] **Implant Directory — smart search** — Clinical phrases (cervical TDR, TKA, pedicle screw, INFUSE…), FTS/trgm/alias ranking, specialty synonym `search_text`, inferred-specialty boost when All.
 - [x] **Admin edit** — `drewalbertmd` (`isAdmin`): edit any post; PATCH implant listings + ingest/publish via JWT; audit in `implant_edit_logs`.
@@ -126,8 +127,10 @@ Full agent copy: **`AGENTS.md`**. Cursor rule: `.cursor/rules/analytics-durabili
 - [x] **Implant Directory — AI scores + media UI** — `ai_rating` 0–10 + summary on every listing; single product thumb; detail gallery for product/X-ray/diagram; browse sorted by AI score.
 - [x] **Implant Directory — compact filters** — Direct-Care-style row (specialty / class / Verified / sort) on `/implants` only; no chip sprawl.
 - [x] **Implant Directory — images fill-out** — Seed listings have manufacturer product (and where available XR/diagram) on Cloudflare Images with attribution + `licenseNote`; list/detail `productImage` / gallery live for all 15 seeds.
-- [ ] **Implant Directory — catalog growth** — More systems via Grokbot ingest (draft → verify); refine AI assessments; more XR/diagram where rights clear. **← next**
-- [ ] **Implant Directory — MAUDE snapshot card** — Cached 12mo count / rising on detail (not only deep-link).
+- [x] **Public Stats** — Header **Stats** → `/stats` + live globe (human pageviews / geo); bots stay separate.
+- [x] **Implant Directory — page finish** — Hide IFU placeholders; product `ogImage` + JSON-LD; gallery thumbs link; related strip; MAUDE 12‑mo card; loading skeleton; XR lightbox; Verified disabled until count > 0; directory copy softened (X-ray not promised on every profile).
+- [x] **Implant Directory — technique guides** — Surgeon instructional / surgical technique PDF as primary guide: list icon left of score + detail CTA; direct PDF when available (7 seeds seeded); admin/ingest fields.
+- [ ] **Implant Directory — catalog growth** — More systems via Grokbot ingest (draft → verify); refine AI assessments; more XR/diagram where rights clear; more technique PDFs; swap Solera JP chart for English catalog shot when available. **← next**
 - [ ] **Implant Directory — MCP / paid data** — Licensed API + MCP connector (Nomads-style); optional SQLite/JSON export. **Blocked until images + data quality are solid.**
 
 ### **0. Deploy status — verify live**
@@ -135,6 +138,7 @@ Full agent copy: **`AGENTS.md`**. Cursor rule: `.cursor/rules/analytics-durabili
 - [x] **Latest deploy (Oct 13)** — Implant Directory shell (`/implants`, 5 spine seeds, member reviews); MAUDE Rising sort for graph+list; analytics durability still in force
 - [x] **Latest deploy (Oct 14)** — Implant Directory harden: FTS search, debounce/pagination, ingest/draft, AI SEO detail + `.md` twins, sitemap/llms
 - [x] **Latest deploy (Oct 14b)** — All-specialty directory seeds; public review read; admin post+implant edit; analytics→R2 off-site
+- [x] **Latest deploy (Oct 14c)** — Public `/stats` + globe; implant comments + Directory Score; page finish; technique PDF guides on list/detail
 - [x] **Ops rule (hard)** — After **every** `backend`/`frontend` recreate, always: `docker compose -f docker-compose.prod.yml up -d --force-recreate nginx` (cached Docker DNS → 502 Connection refused on old IPs)
 - [x] **Analytics backup cron** — `15 2 * * *` → `scripts/analytics-backup.sh` → `/mnt/HC_Volume_106016238/orthoandspinetools-backups/analytics/`
 
@@ -198,7 +202,7 @@ Never run `docker compose down -v` (deletes production DB volume).
 
 ## 📋 **NEXT PRIORITIES (summary)**
 
-1. **Implant Directory catalog growth** — More systems via Grokbot ingest; extra XR/diagram; refine AI assessments
+1. **Implant Directory catalog growth** — More systems via Grokbot ingest; extra XR/diagram; more technique PDFs; refine AI assessments
 2. **Manual QA** — Create post with image/video; physician NPI / intl. pending / email verify
 3. **Implant MCP / paid API** — After data quality is solid (license + export + connector)
 4. **R2 custom domain** — Prefer `media.orthoandspinetools.com` over `r2.dev` if needed

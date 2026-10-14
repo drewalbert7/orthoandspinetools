@@ -68,6 +68,8 @@ model User {
   maudeBrandRequests MaudeBrandRequest[]
   analyticsPageViews AnalyticsPageView[]
   implantReviews     ImplantReview[]
+  implantComments    ImplantComment[]
+  implantCommentVotes ImplantCommentVote[]
   
   @@map("users")
 }
@@ -550,6 +552,8 @@ model AnalyticsPageView {
   path        String
   referrer    String?
   visitorHash String   @map("visitor_hash")
+  /// ISO 3166-1 alpha-2 from GeoIP / CF-IPCountry when available
+  country     String?
   userId      String?  @map("user_id")
   createdAt   DateTime @default(now()) @map("created_at")
 
@@ -558,6 +562,7 @@ model AnalyticsPageView {
   @@index([createdAt])
   @@index([path, createdAt])
   @@index([visitorHash, createdAt])
+  @@index([country, createdAt])
   @@map("analytics_page_views")
 }
 
@@ -637,11 +642,25 @@ model Implant {
   seoDescription  String?  @map("seo_description")
   status          String   @default("published") // draft | published | verified
   maudeBrandKey   String?  @map("maude_brand_key")
-  /// Directory AI score 0–10 (preliminary / editorial — not clinical advice)
+  /// Direct URL to surgeon instructional / surgical technique sheet (prefer PDF)
+  techniqueGuideUrl   String?  @map("technique_guide_url") @db.Text
+  /// Short label for the guide link (e.g. "Surgical technique guide")
+  techniqueGuideTitle String?  @map("technique_guide_title")
+  /// Proprietary OST Directory Score 0–10 (catalog + community evidence — not clinical advice)
   aiRating        Float?   @map("ai_rating")
   aiSummary       String?  @map("ai_summary") @db.Text
   aiRatedAt       DateTime? @map("ai_rated_at")
-  /// Cached mean of member review ratings (1–5); null if no reviews
+  /// Structural catalog component 0–10 (completeness / verification / media)
+  catalogScore    Float?   @map("catalog_score")
+  /// Community evidence component 0–10 from vote-weighted implant comments
+  communityScore  Float?   @map("community_score")
+  /// Effective sample size used in community blend (confidence)
+  ratingSampleN   Float?   @map("rating_sample_n")
+  /// Algorithm id, e.g. ost-dir-v1
+  ratingVersion   String?  @map("rating_version")
+  /// Optional admin lock — when set, auto-recompute will not overwrite aiRating
+  aiRatingLocked  Boolean  @default(false) @map("ai_rating_locked")
+  /// Legacy: mean of star reviews (1–5); prefer communityScore going forward
   memberRatingAvg Float?   @map("member_rating_avg")
   /// Denormalized search blob (brand, aliases, company, class, anatomy…)
   searchText      String   @default("") @map("search_text") @db.Text
@@ -652,6 +671,7 @@ model Implant {
   aliases  ImplantAlias[]
   images   ImplantImage[]
   reviews  ImplantReview[]
+  comments ImplantComment[]
   editLogs ImplantEditLog[]
 
   @@index([specialty, status])
@@ -718,5 +738,43 @@ model ImplantReview {
   @@unique([implantId, userId])
   @@index([implantId, createdAt])
   @@map("implant_reviews")
+}
+
+/// Threaded discussion on an implant listing (upvote / downvote like posts).
+model ImplantComment {
+  id        String   @id @default(cuid())
+  implantId String   @map("implant_id")
+  userId    String   @map("user_id")
+  parentId  String?  @map("parent_id")
+  body      String   @db.Text
+  isDeleted Boolean  @default(false) @map("is_deleted")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  implant Implant              @relation(fields: [implantId], references: [id], onDelete: Cascade)
+  user    User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
+  parent  ImplantComment?      @relation("ImplantCommentReplies", fields: [parentId], references: [id], onDelete: Cascade)
+  replies ImplantComment[]     @relation("ImplantCommentReplies")
+  votes   ImplantCommentVote[]
+
+  @@index([implantId, createdAt])
+  @@index([parentId])
+  @@index([userId, createdAt])
+  @@map("implant_comments")
+}
+
+model ImplantCommentVote {
+  id        String   @id @default(cuid())
+  commentId String   @map("comment_id")
+  userId    String   @map("user_id")
+  value     Int      // 1 | -1
+  createdAt DateTime @default(now()) @map("created_at")
+
+  comment ImplantComment @relation(fields: [commentId], references: [id], onDelete: Cascade)
+  user    User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([commentId, userId])
+  @@index([userId])
+  @@map("implant_comment_votes")
 }
 

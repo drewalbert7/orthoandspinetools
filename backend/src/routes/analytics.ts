@@ -1,4 +1,4 @@
-import { Router, Response } from 'express';
+import { Router, Request, Response } from 'express';
 import rateLimit from 'express-rate-limit';
 import { body, validationResult } from 'express-validator';
 import { asyncHandler } from '../middleware/errorHandler';
@@ -11,6 +11,8 @@ import {
 } from '../lib/analytics';
 import { classifyBot } from '../lib/botClassify';
 import { recordBotHit } from '../lib/botAnalytics';
+import { lookupCountryCode } from '../lib/analyticsGeo';
+import { buildGlobePayload, buildPublicSiteStats } from '../lib/publicSiteStats';
 
 const router = Router();
 
@@ -20,6 +22,14 @@ const collectLimiter = rateLimit({
   standardHeaders: true,
   legacyHeaders: false,
   message: { success: false, message: 'Too many analytics events' },
+});
+
+const publicStatsLimiter = rateLimit({
+  windowMs: 60_000,
+  max: 60,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { success: false, message: 'Too many stats requests' },
 });
 
 router.post(
@@ -52,17 +62,42 @@ router.post(
     }
 
     const referrer = sanitizeReferrer(req.body.referrer);
+    const country = lookupCountryCode(req);
 
     await prisma.analyticsPageView.create({
       data: {
         path,
         referrer,
         visitorHash: analyticsVisitorHash(req),
+        country,
         userId: req.user?.id ?? null,
       },
     });
 
     res.status(204).end();
+  })
+);
+
+/** Public first-party stats (aggregates only — no visitor hashes / IPs). */
+router.get(
+  '/stats',
+  publicStatsLimiter,
+  asyncHandler(async (_req: Request, res: Response) => {
+    const data = await buildPublicSiteStats();
+    res.setHeader('Cache-Control', 'public, max-age=20');
+    // OC-compatible flat payload (and success wrapper for our clients).
+    res.json({ success: true, data, ...data });
+  })
+);
+
+/** Live globe pins + feed for the public Stats page. */
+router.get(
+  '/globe',
+  publicStatsLimiter,
+  asyncHandler(async (_req: Request, res: Response) => {
+    const data = await buildGlobePayload();
+    res.setHeader('Cache-Control', 'public, max-age=8');
+    res.json(data);
   })
 );
 

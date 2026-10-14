@@ -18,12 +18,20 @@ async function countViewsSince(since: Date): Promise<number> {
 }
 
 async function countUniqueVisitorsSince(since: Date): Promise<number> {
-  const rows = await prisma.analyticsPageView.findMany({
-    where: { createdAt: { gte: since } },
-    distinct: ['visitorHash'],
-    select: { visitorHash: true },
-  });
-  return rows.length;
+  const rows = await prisma.$queryRaw<Array<{ c: number }>>`
+    SELECT COUNT(DISTINCT visitor_hash)::int AS c
+    FROM analytics_page_views
+    WHERE created_at >= ${since}
+  `;
+  return Number(rows[0]?.c) || 0;
+}
+
+async function countUniqueVisitorsAllTime(): Promise<number> {
+  const rows = await prisma.$queryRaw<Array<{ c: number }>>`
+    SELECT COUNT(DISTINCT visitor_hash)::int AS c
+    FROM analytics_page_views
+  `;
+  return Number(rows[0]?.c) || 0;
 }
 
 async function countPathViewsSince(path: string, since: Date): Promise<number> {
@@ -71,6 +79,21 @@ async function dailyPageViews(days: number) {
   return series;
 }
 
+async function peakDayAllTime(): Promise<{ date: string; views: number } | null> {
+  const rows = await prisma.$queryRaw<DailyRow[]>`
+    SELECT date_trunc('day', created_at) AS day, COUNT(*)::int AS views
+    FROM analytics_page_views
+    GROUP BY 1
+    ORDER BY views DESC
+    LIMIT 1
+  `;
+  if (!rows.length) return null;
+  return {
+    date: startOfUtcDay(new Date(rows[0].day)).toISOString().slice(0, 10),
+    views: Number(rows[0].views) || 0,
+  };
+}
+
 export async function buildTrafficAnalytics() {
   const now = new Date();
   const todayStart = startOfUtcDay(now);
@@ -81,20 +104,26 @@ export async function buildTrafficAnalytics() {
     pageViewsToday,
     pageViewsWeek,
     pageViewsMonth,
+    pageViewsAllTime,
     uniqueVisitorsToday,
     uniqueVisitorsWeek,
     uniqueVisitorsMonth,
+    uniqueVisitorsAllTime,
     startupsPageViewsWeek,
     topPagesWeek,
     dailyViews,
     loggedInViewsWeek,
+    peakDay,
+    trackingSinceRow,
   ] = await Promise.all([
     countViewsSince(todayStart),
     countViewsSince(weekStart),
     countViewsSince(monthStart),
+    prisma.analyticsPageView.count(),
     countUniqueVisitorsSince(todayStart),
     countUniqueVisitorsSince(weekStart),
     countUniqueVisitorsSince(monthStart),
+    countUniqueVisitorsAllTime(),
     countPathViewsSince('/startups', weekStart),
     topPagesSince(weekStart, 10),
     dailyPageViews(14),
@@ -104,25 +133,39 @@ export async function buildTrafficAnalytics() {
         userId: { not: null },
       },
     }),
+    peakDayAllTime(),
+    prisma.analyticsPageView.findFirst({
+      orderBy: { createdAt: 'asc' },
+      select: { createdAt: true },
+    }),
   ]);
+
+  const trackingSince = trackingSinceRow?.createdAt?.toISOString();
+  const daysOnAir = trackingSince
+    ? Math.max(
+        1,
+        Math.floor((Date.now() - new Date(trackingSince).getTime()) / (24 * 60 * 60 * 1000)) + 1
+      )
+    : 0;
 
   return {
     pageViewsToday,
     pageViewsWeek,
     pageViewsMonth,
+    pageViewsAllTime,
     uniqueVisitorsToday,
     uniqueVisitorsWeek,
     uniqueVisitorsMonth,
+    uniqueVisitorsAllTime,
     startupsPageViewsWeek,
     loggedInViewsWeek,
     topPagesWeek,
     dailyPageViews: dailyViews,
-    trackingSince: (
-      await prisma.analyticsPageView.findFirst({
-        orderBy: { createdAt: 'asc' },
-        select: { createdAt: true },
-      })
-    )?.createdAt?.toISOString(),
+    peakDay,
+    daysOnAir,
+    avgViewsPerDay: daysOnAir > 0 ? Math.round((pageViewsAllTime / daysOnAir) * 10) / 10 : 0,
+    trackingSince,
     bots: await buildBotAnalytics(),
   };
 }
+

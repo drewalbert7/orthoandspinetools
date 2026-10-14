@@ -4,8 +4,11 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
 import { DocumentMeta } from '../components/DocumentMeta';
 import { AiRatingBadge } from '../components/implant/AiRatingBadge';
+import ImplantCommentSection from '../components/implant/ImplantCommentSection';
 import { ImplantMediaGallery } from '../components/implant/ImplantMediaGallery';
+import { TechniqueGuideLink } from '../components/implant/TechniqueGuideLink';
 import { useAuth } from '../contexts/AuthContext';
+import { isMeaningfulDirectoryNote } from '../lib/implantNotes';
 import { IMPLANT_SPECIALTIES, specialtyLabel } from '../lib/implantSpecialties';
 import { apiService } from '../services/apiService';
 
@@ -13,9 +16,6 @@ const ImplantDetail: React.FC = () => {
   const { slug = '' } = useParams<{ slug: string }>();
   const { user } = useAuth();
   const queryClient = useQueryClient();
-  const [rating, setRating] = useState(5);
-  const [title, setTitle] = useState('');
-  const [body, setBody] = useState('');
   const [adminOpen, setAdminOpen] = useState(false);
   const [adminForm, setAdminForm] = useState({
     brandName: '',
@@ -27,6 +27,8 @@ const ImplantDetail: React.FC = () => {
     description: '',
     longDescription: '',
     maudeBrandKey: '',
+    techniqueGuideUrl: '',
+    techniqueGuideTitle: '',
     aiRating: '',
     aiSummary: '',
     status: 'published',
@@ -51,29 +53,14 @@ const ImplantDetail: React.FC = () => {
       description: data.description || '',
       longDescription: data.longDescription || '',
       maudeBrandKey: data.maudeBrandKey || '',
+      techniqueGuideUrl: data.techniqueGuideUrl || '',
+      techniqueGuideTitle: data.techniqueGuideTitle || '',
       aiRating: data.aiRating != null ? String(data.aiRating) : '',
       aiSummary: data.aiSummary || '',
       status: data.status || 'published',
       aliases: (data.aliases || []).join(', '),
     });
   }, [data]);
-
-  const reviewMutation = useMutation({
-    mutationFn: () =>
-      apiService.upsertImplantReview(slug, {
-        rating,
-        title: title.trim() || undefined,
-        body: body.trim(),
-      }),
-    onSuccess: () => {
-      toast.success('Review saved');
-      setBody('');
-      setTitle('');
-      queryClient.invalidateQueries({ queryKey: ['implant', slug] });
-      queryClient.invalidateQueries({ queryKey: ['implants'] });
-    },
-    onError: (err: Error) => toast.error(err.message),
-  });
 
   const adminMutation = useMutation({
     mutationFn: () =>
@@ -87,6 +74,8 @@ const ImplantDetail: React.FC = () => {
         description: adminForm.description.trim() || null,
         longDescription: adminForm.longDescription.trim() || null,
         maudeBrandKey: adminForm.maudeBrandKey.trim() || null,
+        techniqueGuideUrl: adminForm.techniqueGuideUrl.trim() || null,
+        techniqueGuideTitle: adminForm.techniqueGuideTitle.trim() || null,
         aiRating: adminForm.aiRating.trim() === '' ? null : Number(adminForm.aiRating),
         aiSummary: adminForm.aiSummary.trim() || null,
         status: adminForm.status,
@@ -101,6 +90,29 @@ const ImplantDetail: React.FC = () => {
       queryClient.invalidateQueries({ queryKey: ['implants'] });
     },
     onError: (err: Error) => toast.error(err.message),
+  });
+
+  const shareImage = useMemo(() => {
+    if (!data) return null;
+    const product =
+      data.images?.find((i) => i.kind === 'product') ||
+      data.productImage ||
+      data.images?.[0] ||
+      null;
+    return product?.url || null;
+  }, [data]);
+
+  const { data: maudeSnap } = useQuery({
+    queryKey: ['maude-synopsis', data?.maudeBrandKey, data?.specialty],
+    queryFn: () =>
+      apiService.getMaudeBrandSynopsis({
+        brand: data!.maudeBrandKey!,
+        specialty: data!.specialty || 'all',
+        days: 365,
+      }),
+    enabled: Boolean(data?.maudeBrandKey),
+    staleTime: 10 * 60_000,
+    retry: 1,
   });
 
   const jsonLd = useMemo(() => {
@@ -118,6 +130,7 @@ const ImplantDetail: React.FC = () => {
           manufacturer: data.company
             ? { '@type': 'Organization', name: data.company }
             : undefined,
+          image: shareImage || undefined,
           url: `${origin}/implants/${data.slug}`,
           sameAs: [`${origin}/implants/${data.slug}.md`],
         },
@@ -146,12 +159,24 @@ const ImplantDetail: React.FC = () => {
         },
       ],
     };
-  }, [data]);
+  }, [data, shareImage]);
 
   if (isLoading) {
     return (
-      <div className="mx-auto max-w-4xl px-3 py-10 text-center text-sm text-gray-500 sm:px-4">
-        Loading implant…
+      <div className="mx-auto min-w-0 max-w-4xl animate-pulse px-3 sm:px-4">
+        <div className="mb-3 h-4 w-40 rounded bg-gray-200" />
+        <div className="mb-4 border border-gray-200 bg-white p-3 sm:p-5">
+          <div className="flex flex-col gap-5 sm:flex-row">
+            <div className="mx-auto aspect-square w-full max-w-[280px] rounded-lg bg-gray-100 sm:mx-0" />
+            <div className="min-w-0 flex-1 space-y-3">
+              <div className="h-7 w-2/3 rounded bg-gray-200" />
+              <div className="h-4 w-1/2 rounded bg-gray-100" />
+              <div className="h-16 w-full rounded bg-gray-100" />
+              <div className="h-4 w-1/3 rounded bg-gray-100" />
+            </div>
+          </div>
+        </div>
+        <div className="h-40 rounded border border-gray-200 bg-white" />
       </div>
     );
   }
@@ -172,6 +197,10 @@ const ImplantDetail: React.FC = () => {
     data.seoDescription ||
     data.description ||
     `${data.brandName}${data.company ? ` by ${data.company}` : ''} — implant profile on OrthoAndSpineTools.`;
+  const showIndications = isMeaningfulDirectoryNote(data.indications);
+  const showCaveats = isMeaningfulDirectoryNote(data.contraindications);
+  const imageCount = data.images?.length || 0;
+  const commentCount = data.commentCount ?? data.comments?.length ?? 0;
 
   return (
     <div className="mx-auto min-w-0 max-w-4xl px-3 sm:px-4">
@@ -179,6 +208,8 @@ const ImplantDetail: React.FC = () => {
         title={pageTitle}
         description={pageDescription}
         canonicalPath={`/implants/${data.slug}`}
+        ogImage={shareImage || undefined}
+        ogImageAlt={shareImage ? `${data.brandName} product image` : undefined}
         jsonLd={jsonLd}
       />
 
@@ -209,7 +240,15 @@ const ImplantDetail: React.FC = () => {
                   <p className="mt-0.5 text-sm text-gray-600">{data.systemName}</p>
                 ) : null}
               </div>
-              <AiRatingBadge rating={data.aiRating} size="md" />
+              <div className="flex shrink-0 flex-wrap items-start justify-end gap-2">
+                {data.techniqueGuideUrl ? (
+                  <TechniqueGuideLink
+                    url={data.techniqueGuideUrl}
+                    title={data.techniqueGuideTitle || 'Surgical technique guide'}
+                  />
+                ) : null}
+                <AiRatingBadge rating={data.aiRating} size="md" />
+              </div>
             </div>
             <p className="mt-2 text-sm text-gray-500">
               {[
@@ -237,32 +276,41 @@ const ImplantDetail: React.FC = () => {
             ) : null}
             <div className="mt-4 flex flex-wrap items-center gap-3 text-sm">
               {data.maudeBrandKey ? (
-                <Link
-                  to={`/maude?brand=${encodeURIComponent(data.maudeBrandKey)}&specialty=${encodeURIComponent(data.specialty || 'all')}`}
-                  className="font-medium text-blue-600 hover:text-blue-800"
-                >
-                  View MAUDE trends →
-                </Link>
+                <a href="#maude-snapshot" className="font-medium text-blue-600 hover:text-blue-800">
+                  MAUDE snapshot →
+                </a>
               ) : null}
               <span className="text-gray-500">
-                {data.reviewCount} member review{data.reviewCount === 1 ? '' : 's'}
-                {data.memberRatingAvg != null ? ` · ★ ${data.memberRatingAvg.toFixed(1)}` : ''}
+                {commentCount} comment{commentCount === 1 ? '' : 's'}
+                {data.status === 'verified' ? ' · verified listing' : ''}
               </span>
-              {(data.images?.length || 0) > 1 ? (
-                <a href="#gallery" className="font-medium text-gray-600 hover:text-gray-900">
-                  View {data.images!.length} images →
+              {imageCount > 1 ? (
+                <a href="#gallery-thumbs" className="font-medium text-gray-600 hover:text-gray-900">
+                  {imageCount} media · jump to thumbs →
                 </a>
               ) : null}
             </div>
             <p className="mt-2 text-[11px] text-gray-400">
-              AI score is an editorial directory rating (0–10), not medical advice.
+              Directory Score (0–10): catalog completeness + vote-weighted discussion evidence. Not medical advice.
             </p>
+            {(data.catalogScore != null || data.communityScore != null) && (
+              <p className="mt-1 text-[11px] tabular-nums text-gray-400">
+                {data.catalogScore != null ? `Catalog ${data.catalogScore.toFixed(1)}` : null}
+                {data.catalogScore != null && data.communityScore != null ? ' · ' : null}
+                {data.communityScore != null
+                  ? `Community ${data.communityScore.toFixed(1)}${
+                      data.ratingSampleN != null ? ` (n≈${data.ratingSampleN})` : ''
+                    }`
+                  : null}
+                {data.ratingVersion ? ` · ${data.ratingVersion}` : null}
+              </p>
+            )}
           </div>
         </div>
 
-        {(data.indications || data.contraindications) && (
+        {(showIndications || showCaveats) && (
           <div className="mt-5 grid gap-4 border-t border-gray-100 pt-4 sm:grid-cols-2">
-            {data.indications ? (
+            {showIndications ? (
               <div>
                 <h2 className="text-xs font-semibold uppercase tracking-wider text-gray-500">
                   Indications (directory notes)
@@ -270,7 +318,7 @@ const ImplantDetail: React.FC = () => {
                 <p className="mt-1 whitespace-pre-wrap text-sm text-gray-700">{data.indications}</p>
               </div>
             ) : null}
-            {data.contraindications ? (
+            {showCaveats ? (
               <div>
                 <h2 className="text-xs font-semibold uppercase tracking-wider text-gray-500">
                   Caveats (directory notes)
@@ -281,6 +329,41 @@ const ImplantDetail: React.FC = () => {
           </div>
         )}
       </div>
+
+      {data.maudeBrandKey ? (
+        <div
+          id="maude-snapshot"
+          className="mb-4 scroll-mt-24 border border-gray-200 bg-white p-3 sm:p-4"
+        >
+          <div className="flex flex-wrap items-baseline justify-between gap-2">
+            <h2 className="text-sm font-semibold text-gray-900">MAUDE snapshot</h2>
+            <Link
+              to={`/maude?brand=${encodeURIComponent(data.maudeBrandKey)}&specialty=${encodeURIComponent(data.specialty || 'all')}`}
+              className="text-xs font-medium text-blue-600 hover:text-blue-800"
+            >
+              Open trends →
+            </Link>
+          </div>
+          {maudeSnap ? (
+            <p className="mt-2 text-sm text-gray-700">
+              <span className="font-semibold tabular-nums text-gray-900">
+                {maudeSnap.totalReports.toLocaleString()}
+              </span>{' '}
+              openFDA adverse-event reports in the last 12 months for{' '}
+              <span className="font-medium">{maudeSnap.displayTitle || maudeSnap.brand}</span>
+              {maudeSnap.summary ? (
+                <span className="mt-1 block text-xs leading-relaxed text-gray-500">{maudeSnap.summary}</span>
+              ) : null}
+            </p>
+          ) : (
+            <p className="mt-2 text-sm text-gray-500">Loading 12-month report count…</p>
+          )}
+          <p className="mt-2 text-[10px] text-gray-400">
+            Counts are openFDA device reports matched to this brand key — not implant-specific incidence
+            rates and not medical advice.
+          </p>
+        </div>
+      ) : null}
 
       {user?.isAdmin ? (
         <div className="mb-4 border border-amber-200 bg-amber-50/40 p-3 sm:p-5">
@@ -314,14 +397,24 @@ const ImplantDetail: React.FC = () => {
                   ['anatomy', 'Anatomy'],
                   ['deviceClass', 'Device class'],
                   ['maudeBrandKey', 'MAUDE brand key'],
+                  ['techniqueGuideTitle', 'Technique guide label'],
+                  ['techniqueGuideUrl', 'Technique guide URL (PDF preferred)'],
                 ] as const
               ).map(([key, label]) => (
-                <label key={key} className="text-xs text-gray-600">
+                <label
+                  key={key}
+                  className={`text-xs text-gray-600 ${
+                    key === 'techniqueGuideUrl' ? 'sm:col-span-2' : ''
+                  }`}
+                >
                   {label}
                   <input
                     value={adminForm[key]}
                     onChange={(e) => setAdminForm((f) => ({ ...f, [key]: e.target.value }))}
                     className="mt-0.5 w-full rounded border border-gray-200 px-2 py-1.5 text-sm text-gray-900"
+                    placeholder={
+                      key === 'techniqueGuideUrl' ? 'https://…/surgical-technique.pdf' : undefined
+                    }
                   />
                 </label>
               ))}
@@ -352,7 +445,7 @@ const ImplantDetail: React.FC = () => {
                 </select>
               </label>
               <label className="text-xs text-gray-600">
-                AI rating (0–10)
+                Manual score override (0–10, locks auto)
                 <input
                   type="number"
                   min={0}
@@ -361,10 +454,11 @@ const ImplantDetail: React.FC = () => {
                   value={adminForm.aiRating}
                   onChange={(e) => setAdminForm((f) => ({ ...f, aiRating: e.target.value }))}
                   className="mt-0.5 w-full rounded border border-gray-200 px-2 py-1.5 text-sm text-gray-900"
+                  placeholder="Leave blank to keep algorithm"
                 />
               </label>
               <label className="text-xs text-gray-600 sm:col-span-2">
-                AI summary
+                Score summary (optional override text)
                 <textarea
                   value={adminForm.aiSummary}
                   onChange={(e) => setAdminForm((f) => ({ ...f, aiSummary: e.target.value }))}
@@ -413,96 +507,52 @@ const ImplantDetail: React.FC = () => {
         </div>
       ) : null}
 
-      <div className="mb-4 border border-gray-200 bg-white p-3 sm:p-5">
-        <h2 className="text-sm font-semibold text-gray-900">Reviews</h2>
-        <p className="mt-1 text-xs text-gray-500">Anyone can read. Log in to rate or write.</p>
+      <ImplantCommentSection
+        slug={data.slug}
+        comments={data.comments || []}
+        locked={Boolean(data.commentsLocked)}
+      />
 
-        {user ? (
-          <form
-            className="mt-3 space-y-2 border-b border-gray-100 pb-4"
-            onSubmit={(e) => {
-              e.preventDefault();
-              if (body.trim().length < 20) {
-                toast.error('Review needs at least 20 characters');
-                return;
-              }
-              reviewMutation.mutate();
-            }}
-          >
-            <p className="text-xs text-gray-500">One review per implant (you can update it anytime).</p>
-            <div className="flex flex-wrap items-center gap-2">
-              <label className="text-xs font-medium text-gray-600">Rating</label>
-              <select
-                value={rating}
-                onChange={(e) => setRating(Number(e.target.value))}
-                className="rounded border border-gray-200 px-2 py-1 text-sm"
+      {(data.related || []).length > 0 ? (
+        <section className="mb-8 mt-6">
+          <h2 className="mb-3 text-sm font-semibold text-gray-900">Related implants</h2>
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            {data.related!.map((r) => (
+              <Link
+                key={r.id}
+                to={`/implants/${r.slug}`}
+                className="flex gap-3 rounded-lg border border-gray-200 bg-white p-2.5 transition-colors hover:border-blue-300 hover:bg-blue-50/30"
               >
-                {[5, 4, 3, 2, 1].map((n) => (
-                  <option key={n} value={n}>
-                    {n} / 5
-                  </option>
-                ))}
-              </select>
-            </div>
-            <input
-              type="text"
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              placeholder="Title (optional)"
-              className="w-full rounded-md border border-gray-200 px-3 py-2 text-sm"
-              maxLength={160}
-            />
-            <textarea
-              value={body}
-              onChange={(e) => setBody(e.target.value)}
-              placeholder="Clinical notes, pearls, caveats… (min 20 characters)"
-              rows={4}
-              className="w-full rounded-md border border-gray-200 px-3 py-2 text-sm"
-              required
-              minLength={20}
-            />
-            <button
-              type="submit"
-              disabled={reviewMutation.isPending}
-              className="rounded-md bg-blue-600 px-3 py-1.5 text-sm font-semibold text-white hover:bg-blue-700 disabled:opacity-60"
-            >
-              {reviewMutation.isPending ? 'Saving…' : 'Save review'}
-            </button>
-          </form>
-        ) : (
-          <div className="mt-3 rounded-md border border-dashed border-gray-200 bg-gray-50 px-3 py-3 text-sm text-gray-600">
-            <Link
-              to={`/login?redirect=${encodeURIComponent(`/implants/${data.slug}`)}`}
-              className="font-medium text-blue-600 hover:text-blue-800"
-            >
-              Log in
-            </Link>{' '}
-            to write a review or leave a rating.
-          </div>
-        )}
-
-        {(data.reviews || []).length === 0 ? (
-          <p className="mt-4 text-sm text-gray-500">No reviews yet — be the first.</p>
-        ) : (
-          <ul className="mt-4 divide-y divide-gray-100">
-            {(data.reviews || []).map((r) => (
-              <li key={r.id} className="py-3">
-                <div className="flex flex-wrap items-baseline justify-between gap-2">
-                  <p className="text-sm font-medium text-gray-900">
-                    {r.author.firstName} {r.author.lastName}{' '}
-                    <span className="font-normal text-gray-500">@{r.author.username}</span>
-                  </p>
-                  <p className="text-xs text-gray-500">
-                    {r.rating}/5 · {new Date(r.createdAt).toLocaleDateString()}
+                <div className="h-14 w-14 shrink-0 overflow-hidden rounded-md border border-gray-100 bg-gray-50">
+                  {r.productImage?.url ? (
+                    <img
+                      src={r.productImage.url}
+                      alt=""
+                      className="h-full w-full object-contain p-0.5"
+                      loading="lazy"
+                    />
+                  ) : (
+                    <div className="flex h-full items-center justify-center text-[10px] text-gray-400">
+                      n/a
+                    </div>
+                  )}
+                </div>
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-start justify-between gap-1">
+                    <p className="truncate text-sm font-medium text-gray-900">{r.brandName}</p>
+                    <AiRatingBadge rating={r.aiRating} size="sm" showLabel={false} />
+                  </div>
+                  <p className="mt-0.5 truncate text-xs text-gray-500">
+                    {[r.company, specialtyLabel(r.specialty), r.deviceClass.replace(/_/g, ' ')]
+                      .filter(Boolean)
+                      .join(' · ')}
                   </p>
                 </div>
-                {r.title ? <p className="mt-1 text-sm font-medium text-gray-800">{r.title}</p> : null}
-                <p className="mt-1 whitespace-pre-wrap text-sm text-gray-700">{r.body}</p>
-              </li>
+              </Link>
             ))}
-          </ul>
-        )}
-      </div>
+          </div>
+        </section>
+      ) : null}
     </div>
   );
 };

@@ -4,6 +4,7 @@ import { useQuery } from '@tanstack/react-query';
 import { Bone, ChevronsUpDown, Image as ImageIcon, Search } from 'lucide-react';
 import { DocumentMeta } from '../components/DocumentMeta';
 import { AiRatingBadge } from '../components/implant/AiRatingBadge';
+import { TechniqueGuideLink } from '../components/implant/TechniqueGuideLink';
 import { buildHubCollectionJsonLd } from '../lib/seo';
 import {
   IMPLANT_SPECIALTY_FILTERS,
@@ -106,7 +107,7 @@ const DEVICE_CLASS_OPTIONS = [
 const SORT_OPTIONS = [
   { id: 'ai', label: 'sort: AI score' },
   { id: 'name', label: 'sort: name' },
-  { id: 'reviews', label: 'sort: reviews' },
+  { id: 'reviews', label: 'sort: discussion' },
 ] as const;
 
 const ImplantDirectory: React.FC = () => {
@@ -202,7 +203,7 @@ const ImplantDirectory: React.FC = () => {
         path: '/implants',
         name: 'Implant Directory',
         description:
-          'Proprietary orthopedic implant directory across all subspecialties — AI scores, brands, MAUDE links, and member reviews.',
+          'Proprietary orthopedic implant directory across all subspecialties — Directory Scores, brands, MAUDE links, and discussion.',
       }),
     []
   );
@@ -211,7 +212,7 @@ const ImplantDirectory: React.FC = () => {
     <div className="mx-auto min-w-0 max-w-4xl px-3 sm:px-4">
       <DocumentMeta
         title="Implant Directory"
-        description="Browse orthopedic implants across all subspecialties with AI directory scores, product images, X-ray galleries, MAUDE signals, and member reviews."
+        description="Browse orthopedic implants across all subspecialties with proprietary Directory Scores, surgical technique PDFs when available, product photos, MAUDE signals, and discussion."
         canonicalPath="/implants"
         jsonLd={hubJsonLd}
       />
@@ -230,7 +231,8 @@ const ImplantDirectory: React.FC = () => {
           </Link>
         </div>
         <p className="mt-1 text-sm text-gray-500">
-          AI score on every listing · product photo + X-ray gallery on each profile ·{' '}
+          Directory Score on every listing · technique PDF when linked · product photo · X-ray / diagram
+          when we have them ·{' '}
           <Link to="/maude" className="text-gray-600 underline-offset-2 hover:underline">
             openFDA trends
           </Link>
@@ -286,13 +288,19 @@ const ImplantDirectory: React.FC = () => {
 
           <button
             type="button"
+            disabled={(data?.verifiedCount ?? 0) === 0 && !verified}
+            title={
+              (data?.verifiedCount ?? 0) === 0 && !verified
+                ? 'No verified listings yet'
+                : `${data?.verifiedCount ?? 0} verified`
+            }
             onClick={() =>
               patchParams((p) => {
                 if (verified) p.delete('verified');
                 else p.set('verified', '1');
               })
             }
-            className={`h-9 shrink-0 rounded-md border px-3 text-xs font-semibold uppercase tracking-wide transition-colors ${
+            className={`h-9 shrink-0 rounded-md border px-3 text-xs font-semibold uppercase tracking-wide transition-colors disabled:cursor-not-allowed disabled:opacity-45 ${
               verified
                 ? 'border-blue-600 bg-blue-600 text-white'
                 : 'border-gray-300 bg-gray-100 text-gray-500 hover:bg-gray-200'
@@ -300,6 +308,9 @@ const ImplantDirectory: React.FC = () => {
             aria-pressed={verified}
           >
             Verified
+            {(data?.verifiedCount ?? 0) > 0 ? (
+              <span className="ml-1 tabular-nums opacity-80">{data!.verifiedCount}</span>
+            ) : null}
           </button>
 
           <FilterSelect
@@ -384,44 +395,53 @@ const ImplantDirectory: React.FC = () => {
           <ul className="divide-y divide-gray-100">
             {implants.map((implant: ImplantDirectoryItem) => (
               <li key={implant.id}>
-                <Link
-                  to={`/implants/${implant.slug}`}
-                  className="flex items-center gap-3 px-3 py-2 transition-colors hover:bg-gray-50 sm:px-3"
-                >
-                  <ProductThumb implant={implant} />
-                  <div className="min-w-0 flex-1">
-                    <div className="flex flex-wrap items-center gap-1.5">
-                      <span className="truncate text-sm font-semibold text-gray-900">
-                        {implant.brandName}
-                      </span>
-                      <DeviceClassLabel value={implant.deviceClass} />
-                      {implant.status === 'verified' ? (
-                        <span className="text-[10px] font-semibold uppercase tracking-wide text-blue-700">
-                          Verified
+                <div className="flex items-center gap-2 px-3 py-2 transition-colors hover:bg-gray-50 sm:gap-3 sm:px-3">
+                  <Link
+                    to={`/implants/${implant.slug}`}
+                    className="flex min-w-0 flex-1 items-center gap-3"
+                  >
+                    <ProductThumb implant={implant} />
+                    <div className="min-w-0 flex-1">
+                      <div className="flex flex-wrap items-center gap-1.5">
+                        <span className="truncate text-sm font-semibold text-gray-900">
+                          {implant.brandName}
                         </span>
-                      ) : null}
+                        <DeviceClassLabel value={implant.deviceClass} />
+                        {implant.status === 'verified' ? (
+                          <span className="text-[10px] font-semibold uppercase tracking-wide text-blue-700">
+                            Verified
+                          </span>
+                        ) : null}
+                      </div>
+                      <p className="mt-0.5 truncate text-xs text-gray-500">
+                        {[
+                          implant.company,
+                          implant.anatomy,
+                          specialtyLabel(implant.specialty),
+                        ]
+                          .filter(Boolean)
+                          .join(' · ')}
+                      </p>
                     </div>
-                    <p className="mt-0.5 truncate text-xs text-gray-500">
-                      {[
-                        implant.company,
-                        implant.anatomy,
-                        specialtyLabel(implant.specialty),
-                      ]
-                        .filter(Boolean)
-                        .join(' · ')}
-                    </p>
-                  </div>
+                  </Link>
+                  {implant.techniqueGuideUrl ? (
+                    <TechniqueGuideLink
+                      url={implant.techniqueGuideUrl}
+                      title={implant.techniqueGuideTitle}
+                      compact
+                    />
+                  ) : null}
                   <div className="flex shrink-0 flex-col items-end gap-0.5">
                     <AiRatingBadge rating={implant.aiRating} />
                     <div className="text-right text-[10px] text-gray-400">
                       {implant.memberRatingAvg != null ? (
                         <span>★ {implant.memberRatingAvg.toFixed(1)}</span>
                       ) : (
-                        <span>{implant.reviewCount} rev</span>
+                        <span>{implant.commentCount ?? implant.reviewCount} comments</span>
                       )}
                     </div>
                   </div>
-                </Link>
+                </div>
               </li>
             ))}
           </ul>

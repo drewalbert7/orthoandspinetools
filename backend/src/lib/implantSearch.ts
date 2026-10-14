@@ -269,7 +269,7 @@ export async function searchImplantIds(params: {
         ? [{ brandName: 'asc' as const }]
         : sort === 'reviews'
           ? [
-              { reviews: { _count: 'desc' as const } },
+              { comments: { _count: 'desc' as const } },
               { brandName: 'asc' as const },
             ]
           : [
@@ -429,6 +429,8 @@ export function buildImplantMarkdown(params: {
     indications: string | null;
     contraindications: string | null;
     maudeBrandKey: string | null;
+    techniqueGuideUrl?: string | null;
+    techniqueGuideTitle?: string | null;
     aiRating?: number | null;
     aiSummary?: string | null;
     aliases: string[];
@@ -465,6 +467,11 @@ export function buildImplantMarkdown(params: {
     lines.push(`- MAUDE brand key: ${implant.maudeBrandKey}`);
     lines.push(
       `- MAUDE trends: ${origin}/maude?brand=${encodeURIComponent(implant.maudeBrandKey)}&specialty=${encodeURIComponent(implant.specialty)}`
+    );
+  }
+  if (implant.techniqueGuideUrl) {
+    lines.push(
+      `- ${implant.techniqueGuideTitle || 'Surgical technique guide'}: ${implant.techniqueGuideUrl}`
     );
   }
 

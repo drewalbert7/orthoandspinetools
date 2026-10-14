@@ -189,18 +189,16 @@ const Header: React.FC<HeaderProps> = ({ isMobileSidebarOpen, onMobileSidebarTog
                   <span className="hidden sm:inline">Create</span>
                 </Link>
 
-                {user.isAdmin && (
-                  <Link
-                    to="/admin?tab=analytics"
-                    className={`touch-target hidden sm:inline-flex items-center rounded-md px-2.5 py-1.5 text-sm font-medium transition-colors ${
-                      location.pathname === '/admin' && location.search.includes('tab=analytics')
-                        ? 'bg-blue-50 text-blue-800'
-                        : 'text-gray-700 hover:bg-gray-100 dark:text-slate-200 dark:hover:bg-slate-800'
-                    }`}
-                  >
-                    Stats
-                  </Link>
-                )}
+                <Link
+                  to="/stats"
+                  className={`touch-target hidden sm:inline-flex items-center rounded-md px-2.5 py-1.5 text-sm font-medium transition-colors ${
+                    location.pathname === '/stats'
+                      ? 'bg-blue-50 text-blue-800 dark:bg-slate-800 dark:text-blue-300'
+                      : 'text-gray-700 hover:bg-gray-100 dark:text-slate-200 dark:hover:bg-slate-800'
+                  }`}
+                >
+                  Stats
+                </Link>
 
                 {/* Notification Bell */}
                 <div className="relative">
@@ -345,18 +343,18 @@ const Header: React.FC<HeaderProps> = ({ isMobileSidebarOpen, onMobileSidebarTog
                           </svg>
                           Settings
                         </Link>
+                        <Link
+                          to="/stats"
+                          className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
+                          onClick={() => setIsMenuOpen(false)}
+                        >
+                          <svg className="w-4 h-4 mr-3 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                          </svg>
+                          Stats
+                        </Link>
                         {user.isAdmin && (
                           <>
-                            <Link
-                              to="/admin?tab=analytics"
-                              className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
-                              onClick={() => setIsMenuOpen(false)}
-                            >
-                              <svg className="w-4 h-4 mr-3 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-                              </svg>
-                              Stats
-                            </Link>
                             <Link
                               to="/admin"
                               className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
@@ -386,6 +384,16 @@ const Header: React.FC<HeaderProps> = ({ isMobileSidebarOpen, onMobileSidebarTog
               </>
             ) : (
               <>
+                <Link
+                  to="/stats"
+                  className={`touch-target hidden sm:inline-flex items-center rounded-md px-2.5 py-1.5 text-sm font-medium transition-colors ${
+                    location.pathname === '/stats'
+                      ? 'bg-blue-50 text-blue-800 dark:bg-slate-800 dark:text-blue-300'
+                      : 'text-gray-700 hover:bg-gray-100 dark:text-slate-200 dark:hover:bg-slate-800'
+                  }`}
+                >
+                  Stats
+                </Link>
                 <Link
                   to="/login"
                   className="touch-target text-reddit hover:text-reddit-text px-2 sm:px-3 py-2 rounded-md text-sm font-medium"

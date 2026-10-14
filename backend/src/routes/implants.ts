@@ -18,6 +18,7 @@ import {
   isKnownImplantSpecialty,
   normalizeImplantSpecialty,
 } from '../lib/implantSpecialties';
+import { recomputeImplantDirectoryScore } from '../lib/implantDirectoryScore';
 import { logger } from '../utils/logger';
 
 const router = Router();
@@ -44,6 +45,22 @@ const reviewLimiter = rateLimit({
   standardHeaders: true,
   legacyHeaders: false,
   message: { success: false, message: 'Too many review submissions. Try again later.' },
+});
+
+const commentLimiter = rateLimit({
+  windowMs: 60 * 60_000,
+  max: 60,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { success: false, message: 'Too many implant comments. Try again later.' },
+});
+
+const commentVoteLimiter = rateLimit({
+  windowMs: 60_000,
+  max: 90,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { success: false, message: 'Too many votes. Slow down.' },
 });
 
 const ingestLimiter = rateLimit({
@@ -99,18 +116,26 @@ function publicImplantCard(implant: {
   seoDescription?: string | null;
   status: string;
   maudeBrandKey: string | null;
+  techniqueGuideUrl?: string | null;
+  techniqueGuideTitle?: string | null;
   aiRating?: number | null;
   aiSummary?: string | null;
   aiRatedAt?: Date | null;
+  catalogScore?: number | null;
+  communityScore?: number | null;
+  ratingSampleN?: number | null;
+  ratingVersion?: string | null;
+  aiRatingLocked?: boolean;
   memberRatingAvg?: number | null;
   images: Array<{ kind: string; url: string; alt: string | null; sortOrder: number }>;
-  _count: { reviews: number };
+  _count: { reviews: number; comments?: number };
 }) {
   const sortedImages = [...implant.images].sort((a, b) => a.sortOrder - b.sortOrder);
   const product =
     sortedImages.find((i) => i.kind === 'product') || sortedImages[0] || null;
   const xrayCount = sortedImages.filter((i) => i.kind === 'xray').length;
   const otherCount = sortedImages.filter((i) => i.kind !== 'product').length;
+  const commentCount = implant._count.comments ?? 0;
   return {
     id: implant.id,
     slug: implant.slug,
@@ -125,16 +150,81 @@ function publicImplantCard(implant: {
     seoDescription: implant.seoDescription ?? null,
     status: implant.status,
     maudeBrandKey: implant.maudeBrandKey,
+    techniqueGuideUrl: implant.techniqueGuideUrl ?? null,
+    techniqueGuideTitle: implant.techniqueGuideTitle ?? null,
     aiRating: implant.aiRating ?? null,
     aiSummary: implant.aiSummary ?? null,
     aiRatedAt: implant.aiRatedAt ? implant.aiRatedAt.toISOString() : null,
+    catalogScore: implant.catalogScore ?? null,
+    communityScore: implant.communityScore ?? null,
+    ratingSampleN: implant.ratingSampleN ?? null,
+    ratingVersion: implant.ratingVersion ?? null,
+    aiRatingLocked: Boolean(implant.aiRatingLocked),
     memberRatingAvg: implant.memberRatingAvg ?? null,
     reviewCount: implant._count.reviews,
+    commentCount,
     imageCount: sortedImages.length,
     xrayCount,
     galleryExtraCount: Math.max(0, otherCount),
     productImage: product ? { url: product.url, alt: product.alt, kind: product.kind } : null,
     markdownPath: `/implants/${implant.slug}.md`,
+  };
+}
+
+type ImplantCommentDto = {
+  id: string;
+  body: string;
+  parentId: string | null;
+  isDeleted: boolean;
+  createdAt: string;
+  updatedAt: string;
+  author: { id: string; username: string; firstName: string; lastName: string; specialty: string | null };
+  voteScore: number;
+  upvotes: number;
+  downvotes: number;
+  userVote: 'upvote' | 'downvote' | null;
+  replies: ImplantCommentDto[];
+};
+
+function mapImplantComment(
+  c: {
+    id: string;
+    body: string;
+    parentId: string | null;
+    createdAt: Date;
+    updatedAt: Date;
+    isDeleted: boolean;
+    user: { id: string; username: string; firstName: string; lastName: string; specialty: string | null };
+    votes: Array<{ userId: string; value: number }>;
+    replies?: Array<{
+      id: string;
+      body: string;
+      parentId: string | null;
+      createdAt: Date;
+      updatedAt: Date;
+      isDeleted: boolean;
+      user: { id: string; username: string; firstName: string; lastName: string; specialty: string | null };
+      votes: Array<{ userId: string; value: number }>;
+    }>;
+  },
+  viewerId?: string | null
+): ImplantCommentDto {
+  const upvotes = c.votes.filter((v) => v.value === 1).length;
+  const downvotes = c.votes.filter((v) => v.value === -1).length;
+  const mine = viewerId ? c.votes.find((v) => v.userId === viewerId) : undefined;
+  return {
+    id: c.id,
+    body: c.isDeleted ? '[deleted]' : c.body,
+    parentId: c.parentId,
+    isDeleted: c.isDeleted,
+    createdAt: c.createdAt.toISOString(),
+    updatedAt: c.updatedAt.toISOString(),
+    author: c.user,
+    voteScore: upvotes - downvotes,
+    upvotes,
+    downvotes,
+    userVote: mine ? (mine.value === 1 ? 'upvote' : 'downvote') : null,
+    replies: (c.replies || []).map((r) => mapImplantComment({ ...r, replies: [] }, viewerId)),
   };
 }
 
@@ -234,12 +324,21 @@ router.get(
             where: { id: { in: ids } },
             include: {
               images: { orderBy: { sortOrder: 'asc' } },
-              _count: { select: { reviews: true } },
+              _count: {
+                select: {
+                  reviews: true,
+                  comments: { where: { isDeleted: false } },
+                },
+              },
             },
           });
 
     const byId = new Map(implants.map((i) => [i.id, i]));
     const ordered = ids.map((id) => byId.get(id)).filter(Boolean) as typeof implants;
+
+    const verifiedCount = await prisma.implant.count({
+      where: { status: 'verified' },
+    });
 
     res.json({
       success: true,
@@ -251,6 +350,7 @@ router.get(
         count: ordered.length,
         specialty: specialty || 'all',
         inferredSpecialty: inferredSpecialty || null,
+        verifiedCount,
         implants: ordered.map(publicImplantCard),
       },
     });
@@ -294,6 +394,8 @@ router.post(
     body('seoTitle').optional({ nullable: true }).isString().isLength({ max: 120 }),
     body('seoDescription').optional({ nullable: true }).isString().isLength({ max: 200 }),
     body('maudeBrandKey').optional({ nullable: true }).isString().isLength({ max: 200 }),
+    body('techniqueGuideUrl').optional({ nullable: true }).isString().isLength({ max: 2000 }),
+    body('techniqueGuideTitle').optional({ nullable: true }).isString().isLength({ max: 120 }),
     body('aiRating').optional({ nullable: true }).isFloat({ min: 0, max: 10 }),
     body('aiSummary').optional({ nullable: true }).isString().isLength({ max: 500 }),
     body('status').optional().isIn(['draft', 'published', 'verified']),
@@ -377,6 +479,8 @@ router.post(
         req.body.seoDescription?.trim() ||
         (req.body.description || `${brandName} orthopedic implant profile`).slice(0, 160),
       maudeBrandKey: req.body.maudeBrandKey?.trim() || null,
+      techniqueGuideUrl: req.body.techniqueGuideUrl?.trim() || null,
+      techniqueGuideTitle: req.body.techniqueGuideTitle?.trim() || null,
       status,
       searchText,
       publishedAt:
@@ -487,6 +591,8 @@ router.get(
         indications: implant.indications,
         contraindications: implant.contraindications,
         maudeBrandKey: implant.maudeBrandKey,
+        techniqueGuideUrl: implant.techniqueGuideUrl,
+        techniqueGuideTitle: implant.techniqueGuideTitle,
         aiRating: implant.aiRating,
         aiSummary: implant.aiSummary,
         aliases: implant.aliases.map((a) => a.alias),
@@ -517,7 +623,12 @@ router.get(
       include: {
         images: { orderBy: { sortOrder: 'asc' } },
         aliases: true,
-        _count: { select: { reviews: true } },
+        _count: {
+          select: {
+            reviews: true,
+            comments: { where: { isDeleted: false } },
+          },
+        },
       },
     });
 
@@ -526,22 +637,59 @@ router.get(
     }
 
     const card = publicImplantCard(implant);
-    const rows = await prisma.implantReview.findMany({
-      where: { implantId: implant.id },
-      orderBy: { createdAt: 'desc' },
-      take: 50,
+    const commentRows = await prisma.implantComment.findMany({
+      where: { implantId: implant.id, parentId: null },
+      orderBy: { createdAt: 'asc' },
+      take: 100,
       include: {
-        user: { select: { username: true, firstName: true, lastName: true } },
+        user: {
+          select: { id: true, username: true, firstName: true, lastName: true, specialty: true },
+        },
+        votes: { select: { userId: true, value: true } },
+        replies: {
+          orderBy: { createdAt: 'asc' },
+          take: 50,
+          include: {
+            user: {
+              select: { id: true, username: true, firstName: true, lastName: true, specialty: true },
+            },
+            votes: { select: { userId: true, value: true } },
+          },
+        },
       },
     });
-    const reviews = rows.map((r) => ({
-      id: r.id,
-      rating: r.rating,
-      title: r.title,
-      body: r.body,
-      createdAt: r.createdAt.toISOString(),
-      author: r.user,
-    }));
+    const comments = commentRows.map((c) => mapImplantComment(c, req.user?.id));
+
+    const relatedRows = await prisma.implant.findMany({
+      where: {
+        status: { in: [...PUBLIC_IMPLANT_STATUSES] },
+        id: { not: implant.id },
+        OR: [
+          { specialty: implant.specialty },
+          { deviceClass: implant.deviceClass },
+          ...(implant.company ? [{ company: implant.company }] : []),
+        ],
+      },
+      include: {
+        images: { orderBy: { sortOrder: 'asc' } },
+        _count: {
+          select: {
+            reviews: true,
+            comments: { where: { isDeleted: false } },
+          },
+        },
+      },
+      orderBy: [{ aiRating: { sort: 'desc', nulls: 'last' } }, { brandName: 'asc' }],
+      take: 8,
+    });
+
+    // Prefer same specialty, then fill with class/company matches
+    const relatedSorted = [...relatedRows].sort((a, b) => {
+      const as = a.specialty === implant.specialty ? 0 : 1;
+      const bs = b.specialty === implant.specialty ? 0 : 1;
+      if (as !== bs) return as - bs;
+      return (b.aiRating ?? 0) - (a.aiRating ?? 0);
+    });
 
     res.json({
       success: true,
@@ -558,10 +706,14 @@ router.get(
           attribution: i.attribution,
           licenseNote: i.licenseNote,
         })),
-        reviews,
-        /** Write form locked for guests; reviews themselves are public */
-        reviewsLocked: !req.user,
-        canWriteReview: Boolean(req.user),
+        comments,
+        commentsLocked: !req.user,
+        canComment: Boolean(req.user),
+        related: relatedSorted.slice(0, 6).map((r) => publicImplantCard(r)),
+        /** Legacy empty array — UI uses comments */
+        reviews: [] as unknown[],
+        reviewsLocked: true,
+        canWriteReview: false,
         canonicalPath: `/implants/${implant.slug}`,
         markdownPath: `/implants/${implant.slug}.md`,
       },
@@ -627,6 +779,7 @@ router.post(
     });
 
     await refreshMemberRatingAvg(implant.id);
+    await recomputeImplantDirectoryScore(implant.id).catch(() => {});
 
     res.status(201).json({
       success: true,
@@ -639,6 +792,179 @@ router.post(
         author: review.user,
       },
     });
+  })
+);
+
+/** Create implant comment (or reply). Auth required. */
+router.post(
+  '/:slug/comments',
+  commentLimiter,
+  authenticate,
+  [
+    param('slug').isString().isLength({ min: 1, max: 120 }),
+    body('body').isString().isLength({ min: 1, max: 5000 }),
+    body('parentId').optional({ nullable: true }).isString().isLength({ max: 40 }),
+  ],
+  asyncHandler(async (req: AuthRequest, res: Response) => {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      throw new AppError('Invalid comment payload', 400);
+    }
+    if (!req.user) throw new AppError('Authentication required', 401);
+
+    const slug = String(req.params.slug || '');
+    const implant = await prisma.implant.findFirst({
+      where: { slug, status: { in: [...PUBLIC_IMPLANT_STATUSES] } },
+      select: { id: true },
+    });
+    if (!implant) throw new AppError('Implant not found', 404);
+
+    const bodyText = String(req.body.body || '').trim();
+    if (!bodyText) throw new AppError('Comment cannot be empty', 400);
+
+    let parentId: string | null = null;
+    if (req.body.parentId) {
+      const parent = await prisma.implantComment.findFirst({
+        where: { id: String(req.body.parentId), implantId: implant.id, isDeleted: false },
+        select: { id: true, parentId: true },
+      });
+      if (!parent) throw new AppError('Parent comment not found', 404);
+      // Flatten to one reply level under the top-level ancestor
+      parentId = parent.parentId ?? parent.id;
+    }
+
+    const created = await prisma.implantComment.create({
+      data: {
+        implantId: implant.id,
+        userId: req.user.id,
+        parentId,
+        body: bodyText,
+      },
+      include: {
+        user: {
+          select: { id: true, username: true, firstName: true, lastName: true, specialty: true },
+        },
+        votes: { select: { userId: true, value: true } },
+      },
+    });
+
+    await recomputeImplantDirectoryScore(implant.id).catch((err) =>
+      logger.warn('Implant score recompute failed after comment', { err })
+    );
+
+    res.status(201).json({
+      success: true,
+      data: mapImplantComment({ ...created, replies: [] }, req.user.id),
+    });
+  })
+);
+
+/** Upvote / downvote an implant comment (toggle like post comments). */
+router.post(
+  '/:slug/comments/:commentId/vote',
+  commentVoteLimiter,
+  authenticate,
+  [
+    param('slug').isString().isLength({ min: 1, max: 120 }),
+    param('commentId').isString().isLength({ min: 1, max: 40 }),
+    body('type').isIn(['upvote', 'downvote']),
+  ],
+  asyncHandler(async (req: AuthRequest, res: Response) => {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) throw new AppError('Invalid vote', 400);
+    if (!req.user) throw new AppError('Authentication required', 401);
+
+    const slug = String(req.params.slug || '');
+    const commentId = String(req.params.commentId || '');
+    const value = req.body.type === 'upvote' ? 1 : -1;
+
+    const implant = await prisma.implant.findFirst({
+      where: { slug, status: { in: [...PUBLIC_IMPLANT_STATUSES] } },
+      select: { id: true },
+    });
+    if (!implant) throw new AppError('Implant not found', 404);
+
+    const comment = await prisma.implantComment.findFirst({
+      where: { id: commentId, implantId: implant.id, isDeleted: false },
+      select: { id: true },
+    });
+    if (!comment) throw new AppError('Comment not found', 404);
+
+    const existing = await prisma.implantCommentVote.findUnique({
+      where: { commentId_userId: { commentId, userId: req.user.id } },
+    });
+
+    if (existing && existing.value === value) {
+      await prisma.implantCommentVote.delete({ where: { id: existing.id } });
+    } else if (existing) {
+      await prisma.implantCommentVote.update({
+        where: { id: existing.id },
+        data: { value },
+      });
+    } else {
+      await prisma.implantCommentVote.create({
+        data: { commentId, userId: req.user.id, value },
+      });
+    }
+
+    const votes = await prisma.implantCommentVote.findMany({
+      where: { commentId },
+      select: { value: true, userId: true },
+    });
+    const upvotes = votes.filter((v) => v.value === 1).length;
+    const downvotes = votes.filter((v) => v.value === -1).length;
+    const mine = votes.find((v) => v.userId === req.user!.id);
+
+    await recomputeImplantDirectoryScore(implant.id).catch(() => {});
+
+    res.json({
+      success: true,
+      data: {
+        commentId,
+        voteScore: upvotes - downvotes,
+        upvotes,
+        downvotes,
+        userVote: mine ? (mine.value === 1 ? 'upvote' : 'downvote') : null,
+      },
+    });
+  })
+);
+
+/** Soft-delete own implant comment (or admin). */
+router.delete(
+  '/:slug/comments/:commentId',
+  commentLimiter,
+  authenticate,
+  [
+    param('slug').isString().isLength({ min: 1, max: 120 }),
+    param('commentId').isString().isLength({ min: 1, max: 40 }),
+  ],
+  asyncHandler(async (req: AuthRequest, res: Response) => {
+    if (!req.user) throw new AppError('Authentication required', 401);
+    const slug = String(req.params.slug || '');
+    const commentId = String(req.params.commentId || '');
+
+    const implant = await prisma.implant.findFirst({
+      where: { slug, status: { in: [...PUBLIC_IMPLANT_STATUSES] } },
+      select: { id: true },
+    });
+    if (!implant) throw new AppError('Implant not found', 404);
+
+    const comment = await prisma.implantComment.findFirst({
+      where: { id: commentId, implantId: implant.id },
+    });
+    if (!comment) throw new AppError('Comment not found', 404);
+    if (comment.userId !== req.user.id && !req.user.isAdmin) {
+      throw new AppError('Not allowed to delete this comment', 403);
+    }
+
+    await prisma.implantComment.update({
+      where: { id: commentId },
+      data: { isDeleted: true, body: '' },
+    });
+    await recomputeImplantDirectoryScore(implant.id).catch(() => {});
+
+    res.json({ success: true, data: { id: commentId, deleted: true } });
   })
 );
 
@@ -711,6 +1037,8 @@ router.patch(
     body('seoTitle').optional({ nullable: true }).isString().isLength({ max: 120 }),
     body('seoDescription').optional({ nullable: true }).isString().isLength({ max: 200 }),
     body('maudeBrandKey').optional({ nullable: true }).isString().isLength({ max: 200 }),
+    body('techniqueGuideUrl').optional({ nullable: true }).isString().isLength({ max: 2000 }),
+    body('techniqueGuideTitle').optional({ nullable: true }).isString().isLength({ max: 120 }),
     body('aiRating').optional({ nullable: true }).isFloat({ min: 0, max: 10 }),
     body('aiSummary').optional({ nullable: true }).isString().isLength({ max: 500 }),
     body('status').optional().isIn(['draft', 'published', 'verified']),
@@ -788,6 +1116,14 @@ router.patch(
         req.body.maudeBrandKey !== undefined
           ? req.body.maudeBrandKey?.trim() || null
           : existing.maudeBrandKey,
+      techniqueGuideUrl:
+        req.body.techniqueGuideUrl !== undefined
+          ? req.body.techniqueGuideUrl?.trim() || null
+          : existing.techniqueGuideUrl,
+      techniqueGuideTitle:
+        req.body.techniqueGuideTitle !== undefined
+          ? req.body.techniqueGuideTitle?.trim() || null
+          : existing.techniqueGuideTitle,
       status,
       publishedAt:
         status === 'draft'
@@ -807,6 +1143,13 @@ router.patch(
         req.body.aiRating !== undefined || req.body.aiSummary !== undefined
           ? new Date()
           : existing.aiRatedAt,
+      // Manual AI rating from admin locks auto-recompute until unlocked
+      aiRatingLocked:
+        req.body.aiRatingLocked !== undefined
+          ? Boolean(req.body.aiRatingLocked)
+          : req.body.aiRating !== undefined
+            ? true
+            : existing.aiRatingLocked,
     };
 
     const aliasList =
@@ -843,6 +1186,11 @@ router.patch(
 
     logger.info('Implant admin patch', { slug: updated.slug, admin: req.user!.id });
 
+    // Refresh catalog/community components; respects aiRatingLocked for final score
+    const breakdown = await recomputeImplantDirectoryScore(updated.id).catch(
+      (): null => null
+    );
+
     res.json({
       success: true,
       data: {
@@ -851,6 +1199,7 @@ router.patch(
         status: updated.status,
         htmlPath: `/implants/${updated.slug}`,
         markdownPath: `/implants/${updated.slug}.md`,
+        rating: breakdown,
       },
     });
   })

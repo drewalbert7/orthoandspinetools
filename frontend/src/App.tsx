@@ -27,6 +27,7 @@ import Community from './pages/Community';
 import CommunitySettings from './pages/CommunitySettings';
 import CreateCommunity from './pages/CreateCommunity';
 import AdminDashboard from './pages/AdminDashboard';
+import Stats from './pages/Stats';
 import Search from './pages/Search';
 import ForgotPassword from './pages/ForgotPassword';
 import ResetPassword from './pages/ResetPassword';
@@ -125,6 +126,7 @@ function App() {
                     <Route path="/implants" element={<ImplantDirectory />} />
                     <Route path="/implants/:slug" element={<ImplantDetail />} />
                     <Route path="/maude" element={<MaudeTrends />} />
+                    <Route path="/stats" element={<Stats />} />
                     <Route path="/search" element={<Search />} />
                     <Route path="/login" element={<LoginForm />} />
                     <Route path="/forgot-password" element={<ForgotPassword />} />

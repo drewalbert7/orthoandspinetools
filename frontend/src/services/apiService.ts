@@ -378,11 +378,19 @@ export interface ImplantDirectoryItem {
   seoDescription?: string | null;
   status?: string;
   maudeBrandKey?: string | null;
+  /** Direct surgical technique / instructional sheet URL (prefer PDF) */
+  techniqueGuideUrl?: string | null;
+  techniqueGuideTitle?: string | null;
   aiRating?: number | null;
   aiSummary?: string | null;
   aiRatedAt?: string | null;
   memberRatingAvg?: number | null;
   reviewCount: number;
+  commentCount?: number;
+  catalogScore?: number | null;
+  communityScore?: number | null;
+  ratingSampleN?: number | null;
+  ratingVersion?: string | null;
   imageCount?: number;
   xrayCount?: number;
   galleryExtraCount?: number;
@@ -399,6 +407,27 @@ export interface ImplantReview {
   author: { username: string; firstName: string; lastName: string };
 }
 
+export interface ImplantComment {
+  id: string;
+  body: string;
+  parentId: string | null;
+  isDeleted: boolean;
+  createdAt: string;
+  updatedAt: string;
+  author: {
+    id: string;
+    username: string;
+    firstName: string;
+    lastName: string;
+    specialty: string | null;
+  };
+  voteScore: number;
+  upvotes: number;
+  downvotes: number;
+  userVote: 'upvote' | 'downvote' | null;
+  replies?: ImplantComment[];
+}
+
 export interface ImplantDetail extends ImplantDirectoryItem {
   longDescription?: string | null;
   indications?: string | null;
@@ -411,8 +440,12 @@ export interface ImplantDetail extends ImplantDirectoryItem {
     attribution?: string | null;
     licenseNote?: string | null;
   }>;
+  comments?: ImplantComment[];
+  commentsLocked?: boolean;
+  canComment?: boolean;
+  related?: ImplantDirectoryItem[];
   reviews: ImplantReview[] | null;
-  /** True for guests — write form locked; reviews remain public */
+  /** Legacy — discussion uses comments */
   reviewsLocked: boolean;
   canWriteReview?: boolean;
   canonicalPath?: string;
@@ -426,6 +459,7 @@ export interface ImplantListResponse {
   count: number;
   specialty?: string;
   inferredSpecialty?: string | null;
+  verifiedCount?: number;
   implants: ImplantDirectoryItem[];
 }
 
@@ -1350,6 +1384,7 @@ class ApiService {
         count: data.count ?? data.implants?.length ?? 0,
         specialty: data.specialty,
         inferredSpecialty: data.inferredSpecialty ?? null,
+        verifiedCount: typeof data.verifiedCount === 'number' ? data.verifiedCount : 0,
         implants: data.implants || [],
       };
     } catch (error: unknown) {
@@ -1378,6 +1413,50 @@ class ApiService {
     }
   }
 
+  async createImplantComment(
+    slug: string,
+    payload: { body: string; parentId?: string }
+  ): Promise<ImplantComment> {
+    try {
+      const response = await api.post(`/implants/${encodeURIComponent(slug)}/comments`, payload);
+      return response.data.data;
+    } catch (error: unknown) {
+      throw new Error(apiErrorMessage(error, 'Failed to post comment'));
+    }
+  }
+
+  async voteImplantComment(
+    slug: string,
+    commentId: string,
+    type: 'upvote' | 'downvote'
+  ): Promise<{
+    commentId: string;
+    voteScore: number;
+    upvotes: number;
+    downvotes: number;
+    userVote: 'upvote' | 'downvote' | null;
+  }> {
+    try {
+      const response = await api.post(
+        `/implants/${encodeURIComponent(slug)}/comments/${encodeURIComponent(commentId)}/vote`,
+        { type }
+      );
+      return response.data.data;
+    } catch (error: unknown) {
+      throw new Error(apiErrorMessage(error, 'Failed to vote on comment'));
+    }
+  }
+
+  async deleteImplantComment(slug: string, commentId: string): Promise<void> {
+    try {
+      await api.delete(
+        `/implants/${encodeURIComponent(slug)}/comments/${encodeURIComponent(commentId)}`
+      );
+    } catch (error: unknown) {
+      throw new Error(apiErrorMessage(error, 'Failed to delete comment'));
+    }
+  }
+
   async updateImplantAdmin(
     slug: string,
     payload: Partial<{
@@ -1394,6 +1473,8 @@ class ApiService {
       seoTitle: string | null;
       seoDescription: string | null;
       maudeBrandKey: string | null;
+      techniqueGuideUrl: string | null;
+      techniqueGuideTitle: string | null;
       aiRating: number | null;
       aiSummary: string | null;
       status: string;
@@ -1511,6 +1592,16 @@ class ApiService {
     );
   }
 
+  async getPublicStats(): Promise<PublicSiteStats> {
+    try {
+      const response = await api.get('/analytics/stats');
+      // Prefer nested data; also accept OC-style flat JSON.
+      return (response.data?.data || response.data) as PublicSiteStats;
+    } catch (error: any) {
+      throw new Error(error.response?.data?.message || 'Failed to fetch site stats');
+    }
+  }
+
   async getAdminStats(): Promise<{
     totalUsers: number;
     totalPosts: number;
@@ -1523,13 +1614,18 @@ class ApiService {
       pageViewsToday: number;
       pageViewsWeek: number;
       pageViewsMonth: number;
+      pageViewsAllTime: number;
       uniqueVisitorsToday: number;
       uniqueVisitorsWeek: number;
       uniqueVisitorsMonth: number;
+      uniqueVisitorsAllTime: number;
       startupsPageViewsWeek: number;
       loggedInViewsWeek: number;
       topPagesWeek: Array<{ path: string; views: number }>;
       dailyPageViews: Array<{ date: string; views: number }>;
+      peakDay: { date: string; views: number } | null;
+      daysOnAir: number;
+      avgViewsPerDay: number;
       trackingSince?: string;
       bots: {
         hits: number;
@@ -1653,6 +1749,60 @@ class ApiService {
     }
   }
 }
+
+export type PublicSiteStats = {
+  pageViews: number;
+  visitors: number;
+  viewsToday: number;
+  views7d: number;
+  views30d: number;
+  visitors7d: number;
+  visitors30d: number;
+  peakDay: number;
+  peakDayDate: string | null;
+  daysOnAir: number;
+  avgViewsPerDay: number;
+  countries: number;
+  regions: number;
+  pathCount: number;
+  launchedAt: string;
+  series: Array<{ date: string; views: number; visitors: number }>;
+  topPaths: Array<{ path: string; views: number }>;
+  topCountries: Array<{ c: string; n: number }>;
+  live: Array<{ path: string; ago: string; c: string; country?: string }>;
+  liveNow: number;
+  geo: boolean;
+  geoDetail: string;
+  updatedAt: string;
+  llm?: {
+    windows: Record<
+      string,
+      { label: string; humans: number; byProduct: Array<{ id: string; label: string; n: number }> }
+    >;
+    series: Array<{ date: string; aiBots: number; humanFromLlm: number; humans: number }>;
+    productSeries: Array<Record<string, number | string>>;
+    products: Array<{ id: string; label: string }>;
+    note: string;
+    aiBotsAllTime: number;
+    humansFromChatAllTime: number;
+  };
+  bots?: {
+    hits: number;
+    hitsAll?: number;
+    hitsToday: number;
+    hits7d: number;
+    aiAgent7d: number;
+    aiCrawl7d: number;
+    aiAgentAll?: number;
+    aiCrawlAll?: number;
+    byCategory: Array<{ category: string; views: number }>;
+    topFamilies: Array<{ family: string; category: string; views: number }>;
+    topPaths: Array<{ path: string; views: number }>;
+    aiFamilies7d: Array<{ family: string; category: string; views: number }>;
+    recent: Array<{ family: string; category: string; path: string; at: string; ago?: string }>;
+    source: string;
+  };
+};
 
 // Export singleton instance
 export const apiService = new ApiService();

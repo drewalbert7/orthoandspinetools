@@ -1,0 +1,287 @@
+/* Public /stats — layout inspired by orthoconditioning.com/analytics */
+
+.ost-stats {
+  --ost-accent: #0a7ea4;
+  --ost-ink: #111111;
+  --ost-muted: rgba(17, 17, 17, 0.45);
+  --ost-line: rgba(10, 126, 164, 0.18);
+  --ost-panel: rgba(10, 126, 164, 0.04);
+  --ost-gold: #0a7ea4;
+  --ost-bone: #111111;
+  color: var(--ost-ink);
+}
+
+.dark .ost-stats {
+  --ost-ink: #f4efe6;
+  --ost-muted: rgba(244, 239, 230, 0.42);
+  --ost-line: rgba(10, 126, 164, 0.28);
+  --ost-panel: rgba(244, 239, 230, 0.03);
+  --ost-bone: #f4efe6;
+  --ost-gold: #3db8d8;
+}
+
+.ost-stats .font-stats-serif {
+  font-family: 'Newsreader', Georgia, 'Times New Roman', serif;
+}
+
+.ost-stats .font-stats-mono {
+  font-family: 'IBM Plex Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+
+.ost-stats-range {
+  display: inline-flex;
+  border: 1px solid var(--ost-line);
+  overflow: hidden;
+}
+
+.ost-stats-range button {
+  font-family: 'IBM Plex Mono', ui-monospace, monospace;
+  font-size: 0.62rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  padding: 0.55rem 0.75rem;
+  color: var(--ost-muted);
+  background: transparent;
+  border: 0;
+  cursor: pointer;
+}
+
+.ost-stats-range button.on {
+  background: var(--ost-accent);
+  color: #fff;
+}
+
+.ost-stats-kpi {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1rem 1.25rem;
+}
+
+@media (min-width: 768px) {
+  .ost-stats-kpi {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+
+.ost-stats-kpi .label {
+  font-family: 'IBM Plex Mono', ui-monospace, monospace;
+  font-size: 0.58rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--ost-muted);
+}
+
+.ost-stats-kpi .value {
+  font-family: 'Newsreader', Georgia, serif;
+  font-size: clamp(1.75rem, 4vw, 2.35rem);
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  line-height: 1.05;
+  color: var(--ost-accent);
+  margin-top: 0.2rem;
+}
+
+.ost-stats-kpi .hint {
+  font-size: 0.72rem;
+  color: var(--ost-muted);
+  margin-top: 0.2rem;
+}
+
+.ost-stats-panel {
+  border: 1px solid var(--ost-line);
+  background: var(--ost-panel);
+  padding: 1rem;
+}
+
+.ost-stats-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.ost-stats-list li {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.4rem 0;
+  border-bottom: 1px solid var(--ost-line);
+  font-size: 0.875rem;
+}
+
+.ost-stats-list li:last-child {
+  border-bottom: 0;
+}
+
+.ost-bar {
+  height: 0.35rem;
+  border-radius: 999px;
+  background: rgba(10, 126, 164, 0.12);
+  overflow: hidden;
+  margin-top: 0.25rem;
+}
+
+.ost-bar > i {
+  display: block;
+  height: 100%;
+  background: var(--ost-accent);
+}
+
+.globe-grid {
+  display: grid;
+  grid-template-columns: minmax(240px, 440px) 1fr;
+  align-items: start;
+  gap: 1.1rem 1.5rem;
+}
+
+@media (max-width: 900px) {
+  .globe-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.globe-wrap {
+  aspect-ratio: 1;
+  width: 100%;
+  max-width: min(100%, 440px);
+  margin: 0 auto;
+}
+
+.globe-canvas {
+  cursor: grab;
+  touch-action: pan-y;
+  width: 100%;
+  height: auto;
+  display: block;
+}
+
+.g-count {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+.g-num {
+  letter-spacing: -0.022em;
+  font-size: clamp(2.1rem, 7vw, 3.2rem);
+  font-weight: 600;
+  line-height: 1;
+  font-family: 'Newsreader', Georgia, serif;
+}
+
+.g-lab {
+  font-size: 0.78rem;
+  color: var(--ost-muted);
+}
+
+.g-sub {
+  margin: 0.55rem 0 0.85rem;
+  font-size: 0.72rem;
+  color: var(--ost-muted);
+}
+
+.g-legend {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.55rem 0.85rem;
+  margin: 0 0 0.85rem;
+  font-size: 0.7rem;
+  color: var(--ost-muted);
+}
+
+.g-legend > span {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.g-swatch {
+  box-sizing: border-box;
+  border-radius: 50%;
+  width: 0.55rem;
+  height: 0.55rem;
+  display: inline-block;
+}
+
+.g-swatch.live {
+  background: var(--ost-gold);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--ost-gold) 28%, transparent);
+}
+
+.g-swatch.place {
+  background: color-mix(in srgb, var(--ost-gold) 55%, var(--ost-bone));
+}
+
+.g-feed {
+  gap: 0.5rem;
+  max-height: 14rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  overflow: auto;
+}
+
+.g-feed li {
+  color: color-mix(in srgb, var(--ost-bone) 55%, transparent);
+  grid-template-columns: 8px 1fr auto;
+  align-items: start;
+  gap: 0.55rem;
+  display: grid;
+  font-size: 0.74rem;
+}
+
+.g-feed li.fresh .g-line {
+  color: color-mix(in srgb, var(--ost-bone) 88%, transparent);
+}
+
+.g-dot {
+  background: var(--ost-gold);
+  border-radius: 50%;
+  width: 6px;
+  height: 6px;
+  margin-top: 0.35rem;
+}
+
+.g-ago {
+  white-space: nowrap;
+  color: color-mix(in srgb, var(--ost-bone) 35%, transparent);
+  font-size: 0.68rem;
+}
+
+.g-chips {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem;
+  margin-top: 0.75rem;
+}
+
+.g-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  border: 1px solid var(--ost-line);
+  padding: 0.25rem 0.5rem;
+  font-size: 0.7rem;
+  font-family: 'IBM Plex Mono', ui-monospace, monospace;
+}
+
+.globe-tip {
+  z-index: 80;
+  pointer-events: none;
+  position: fixed;
+  background: #0b1220;
+  color: #f4efe6;
+  border: 1px solid rgba(244, 239, 230, 0.2);
+  border-radius: 8px;
+  max-width: min(240px, 70vw);
+  padding: 0.5rem 0.65rem;
+  font-size: 0.72rem;
+  box-shadow: 0 12px 40px #0003;
+}
+
+.globe-tip b {
+  color: #3db8d8;
+}
