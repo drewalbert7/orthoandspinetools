@@ -93,6 +93,30 @@ export function preferredCloudinaryOgDeliveryUrl(url: string): string {
   return `${cloudBase}/image/upload/c_fill,w_1200,h_630,q_auto,f_auto/${publicId}`;
 }
 
+/** Prefer 1200×630 delivery for Cloudflare Images URLs (iMessage / Slack / X cards). */
+export function preferredCloudflareOgDeliveryUrl(url: string): string {
+  const u = url.trim().split('?')[0];
+  if (!/imagedelivery\.net/i.test(u)) return url.trim();
+
+  const parts = u.split('/');
+  if (parts.length >= 6 && parts[2] === 'imagedelivery.net') {
+    return `${parts[0]}//${parts[2]}/${parts[3]}/${parts[4]}/w=1200,h=630,fit=cover,f=auto`;
+  }
+  return url.trim();
+}
+
+/** Normalize media URLs for Open Graph (Cloudinary transforms or Cloudflare flex variants). */
+export function preferredOgDeliveryUrl(url: string): string {
+  const u = url.trim();
+  if (/\/image\/upload\//i.test(u)) return preferredCloudinaryOgDeliveryUrl(u);
+  if (/imagedelivery\.net/i.test(u)) return preferredCloudflareOgDeliveryUrl(u);
+  return u;
+}
+
+export function isOgSizedShareImage(url: string): boolean {
+  return /c_fill,w_1200,h_630/i.test(url) || /w=1200,h=630/i.test(url);
+}
+
 function urlLooksLikeRasterImage(url: string): boolean {
   const lower = url.toLowerCase();
   if (/\/image\/upload\//i.test(lower)) return true;

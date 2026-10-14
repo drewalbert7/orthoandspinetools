@@ -10,6 +10,11 @@ import { TechniqueGuideLink } from '../components/implant/TechniqueGuideLink';
 import { useAuth } from '../contexts/AuthContext';
 import { isMeaningfulDirectoryNote } from '../lib/implantNotes';
 import { IMPLANT_SPECIALTIES, specialtyLabel } from '../lib/implantSpecialties';
+import {
+  absoluteUrl,
+  isOgSizedShareImage,
+  preferredOgDeliveryUrl,
+} from '../lib/seo';
 import { apiService } from '../services/apiService';
 
 const ImplantDetail: React.FC = () => {
@@ -99,7 +104,12 @@ const ImplantDetail: React.FC = () => {
       data.productImage ||
       data.images?.[0] ||
       null;
-    return product?.url || null;
+    const raw = product?.url?.trim();
+    if (!raw) return null;
+    const absolute = /^https?:\/\//i.test(raw)
+      ? raw
+      : absoluteUrl(raw.startsWith('/') ? raw : `/${raw}`);
+    return preferredOgDeliveryUrl(absolute);
   }, [data]);
 
   const { data: maudeSnap } = useQuery({
@@ -193,14 +203,22 @@ const ImplantDetail: React.FC = () => {
   }
 
   const pageTitle = data.seoTitle || `${data.brandName} · Implant Directory`;
-  const pageDescription =
+  const pageDescriptionRaw =
     data.seoDescription ||
     data.description ||
     `${data.brandName}${data.company ? ` by ${data.company}` : ''} — implant profile on OrthoAndSpineTools.`;
+  const pageDescription =
+    pageDescriptionRaw.length > 155
+      ? `${pageDescriptionRaw.slice(0, 152).trimEnd()}…`
+      : pageDescriptionRaw;
   const showIndications = isMeaningfulDirectoryNote(data.indications);
   const showCaveats = isMeaningfulDirectoryNote(data.contraindications);
   const imageCount = data.images?.length || 0;
   const commentCount = data.commentCount ?? data.comments?.length ?? 0;
+  const shareDims =
+    shareImage && isOgSizedShareImage(shareImage)
+      ? { width: 1200, height: 630 }
+      : null;
 
   return (
     <div className="mx-auto min-w-0 max-w-4xl px-3 sm:px-4">
@@ -210,6 +228,9 @@ const ImplantDetail: React.FC = () => {
         canonicalPath={`/implants/${data.slug}`}
         ogImage={shareImage || undefined}
         ogImageAlt={shareImage ? `${data.brandName} product image` : undefined}
+        ogImageWidth={shareDims?.width}
+        ogImageHeight={shareDims?.height}
+        twitterCard={shareImage ? 'summary_large_image' : 'summary'}
         jsonLd={jsonLd}
       />
 

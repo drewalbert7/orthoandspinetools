@@ -5,6 +5,8 @@ import { prisma } from '../lib/prisma';
 import {
   buildCommunityNotFoundShareHtml,
   buildCommunityShareHtml,
+  buildImplantNotFoundShareHtml,
+  buildImplantShareHtml,
   buildNotFoundShareHtml,
   buildPageShareHtml,
   buildPostShareHtml,
@@ -15,6 +17,8 @@ import {
   type OgPostPayload,
   SHARE_PAGES,
 } from '../lib/postOgPreviewHtml';
+import { PUBLIC_IMPLANT_STATUSES } from '../lib/implantSearch';
+import { specialtyLabel } from '../lib/implantSpecialties';
 
 const router = Router();
 
@@ -198,6 +202,79 @@ router.get(
         profileImage: user.profileImage,
         postsCount: user._count.posts,
         commentsCount: user._count.comments,
+      },
+      origin
+    );
+    res.status(200).type('html').set('Cache-Control', shareCache).send(html);
+  })
+);
+
+router.get(
+  '/implant/:slug',
+  [param('slug').trim().isLength({ min: 1, max: 120 }).withMessage('Invalid slug')],
+  asyncHandler(async (req: Request, res: Response) => {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      res.status(400).type('text/plain').send('Bad request');
+      return;
+    }
+
+    const slug = String(req.params.slug || '')
+      .trim()
+      .replace(/\.md$/i, '');
+    const origin = siteOriginFromRequest(req);
+
+    const implant = await prisma.implant.findFirst({
+      where: {
+        slug,
+        status: { in: [...PUBLIC_IMPLANT_STATUSES] },
+      },
+      select: {
+        slug: true,
+        brandName: true,
+        systemName: true,
+        company: true,
+        specialty: true,
+        anatomy: true,
+        deviceClass: true,
+        description: true,
+        seoTitle: true,
+        seoDescription: true,
+        aiRating: true,
+        status: true,
+        images: {
+          select: { kind: true, url: true, alt: true, sortOrder: true },
+          orderBy: { sortOrder: 'asc' },
+        },
+      },
+    });
+
+    if (!implant) {
+      const html = buildImplantNotFoundShareHtml(origin, slug);
+      res.status(404).type('html').set('Cache-Control', 'public, max-age=60').send(html);
+      return;
+    }
+
+    const product =
+      implant.images.find((i) => i.kind === 'product') || implant.images[0] || null;
+
+    const html = buildImplantShareHtml(
+      {
+        slug: implant.slug,
+        brandName: implant.brandName,
+        systemName: implant.systemName,
+        company: implant.company,
+        specialty: implant.specialty,
+        specialtyLabel: specialtyLabel(implant.specialty),
+        anatomy: implant.anatomy,
+        deviceClass: implant.deviceClass,
+        description: implant.description,
+        seoTitle: implant.seoTitle,
+        seoDescription: implant.seoDescription,
+        aiRating: implant.aiRating,
+        status: implant.status,
+        productImageUrl: product?.url ?? null,
+        productImageAlt: product?.alt ?? null,
       },
       origin
     );

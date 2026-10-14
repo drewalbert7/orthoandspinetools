@@ -57,7 +57,7 @@ Full agent copy: **`AGENTS.md`**. Cursor rule: `.cursor/rules/analytics-durabili
 | Step | Task | Status |
 |------|------|--------|
 | **1** | **Disk / backups** | ✅ Hetzner volume `106016238` (20G) · cron → `/mnt/HC_Volume_106016238/orthoandspinetools-backups` · Docker log limits |
-| **2** | **Link preview images** | ✅ Post OG images fixed (Cloudinary URL); Discord/iMessage/X show post images |
+| **2** | **Link preview images** | ✅ Posts + hubs + **implant profiles** (`/api/og/implant/:slug`, 1200×630 product image) for iMessage/SMS/X |
 | **3** | **Edit post tags** | ✅ `/post/:id/edit` — add/remove community topic tags (e.g. remove mistaken **Case** tag) |
 | **4** | **Physician NPI verification** | ✅ U.S. NPI via CMS registry; intl. manual review; admin pending filter |
 | **5** | **Legal pages** | ✅ Privacy + Terms with NPI wording |
@@ -74,7 +74,7 @@ Full agent copy: **`AGENTS.md`**. Cursor rule: `.cursor/rules/analytics-durabili
 
 ### **Goals**
 - [x] **Brand copy** — Tagline **"Ortho and Spine Tools - Hunt for the Best"** across SEO, `index.html`, register, `llms.txt`.
-- [x] **Link previews** — Server-side OG for `/post/:id`, `/community/:slug`, `/user/:username`, `/`, `/cases`, `/startups`, `/popular`; nginx `serve_og_preview` map (bots + iMessage); `index.html` default OG/Twitter meta.
+- [x] **Link previews** — Server-side OG for `/post/:id`, `/community/:slug`, `/user/:username`, `/implants/:slug`, `/`, `/cases`, `/implants`, `/maude`, `/startups`, `/popular`; nginx `serve_og_preview` map (bots + iMessage); `index.html` default OG/Twitter meta.
 - [x] **Cases** — `/cases`, `tagName=Case`, backfill script.
 - [x] **Dynamic sitemap** — posts, communities, public user profiles.
 - [x] **LLM citing** — `llms.txt`, dynamic `llms-full.txt`, expanded `robots.txt`.
@@ -141,6 +141,7 @@ Full agent copy: **`AGENTS.md`**. Cursor rule: `.cursor/rules/analytics-durabili
 - [x] **Latest deploy (Oct 14b)** — All-specialty directory seeds; public review read; admin post+implant edit; analytics→R2 off-site
 - [x] **Latest deploy (Oct 14c)** — Public `/stats` + globe; implant comments + Directory Score; page finish; technique PDF guides on list/detail
 - [x] **Latest deploy (Oct 14d)** — STG-only technique PDFs; MAUDE Rising/Top color stability; globe idle spin from North America; production QA **31/31**; analytics volume + backups intact (`viewsToday`/`views7d`/`bots.hits7d` via durability report)
+- [x] **Latest deploy (Oct 14e)** — Implant share cards: `/api/og/implant/:slug` + nginx bot rewrite; Cloudflare/Cloudinary 1200×630 OG delivery; DocumentMeta `og:image:secure_url` + dims; hub implant OG copy polish
 - [x] **Ops rule (hard)** — After **every** `backend`/`frontend` recreate, always: `docker compose -f docker-compose.prod.yml up -d --force-recreate nginx` (cached Docker DNS → 502 Connection refused on old IPs)
 - [x] **Analytics backup cron** — `15 2 * * *` → `scripts/analytics-backup.sh` → `/mnt/HC_Volume_106016238/orthoandspinetools-backups/analytics/`
 
@@ -322,8 +323,8 @@ docker compose -f docker-compose.prod.yml exec backend npm run backfill-case-pos
 
 | Done | Detail |
 |------|--------|
-| Link previews | Server-side OG for posts, communities, users, home + hubs; Sec-Fetch + bot detection (iMessage, X, SMS) |
-| OG polish | 1200×630 Cloudinary crops, shorter card descriptions, `index.html` default meta |
+| Link previews | Server-side OG for posts, communities, users, implants, home + hubs; Sec-Fetch + bot detection (iMessage, X, SMS) |
+| OG polish | 1200×630 Cloudinary/Cloudflare crops, shorter card descriptions, `index.html` default meta; implant product-image cards |
 | GSC DNS | Google verification TXT on Namecheap `@` — awaiting propagation |
 | GSC live | Domain verified; sitemap submitted |
 | Scaling prep | Daily DB backup cron; feed query indexes migration |

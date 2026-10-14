@@ -57,6 +57,7 @@ function clearOptionalShareMeta() {
   removeMeta('property', 'og:image:alt');
   removeMeta('property', 'og:image:width');
   removeMeta('property', 'og:image:height');
+  removeMeta('property', 'og:image:secure_url');
   removeMeta('property', 'og:locale');
 }
 
@@ -104,8 +105,14 @@ export function DocumentMeta({
 
     if (ogImage) {
       upsertMeta('property', 'og:image', ogImage);
+      if (/^https:\/\//i.test(ogImage)) {
+        upsertMeta('property', 'og:image:secure_url', ogImage);
+      } else {
+        removeMeta('property', 'og:image:secure_url');
+      }
     } else {
       removeMeta('property', 'og:image');
+      removeMeta('property', 'og:image:secure_url');
     }
 
     if (ogImage && ogImageAlt?.trim()) {
@@ -177,6 +184,7 @@ export function DocumentMeta({
       document.title = SEO_DEFAULTS.title;
       upsertMeta('name', 'description', SEO_DEFAULTS.description);
       removeMeta('property', 'og:image');
+      removeMeta('property', 'og:image:secure_url');
       removeMeta('name', 'twitter:image');
       upsertMeta('name', 'robots', 'index, follow');
       document.getElementById(scriptId)?.remove();

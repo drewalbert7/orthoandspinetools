@@ -214,7 +214,7 @@ export const SHARE_PAGES: Record<
     path: '/implants',
     title: 'Implant Directory | OrthoAndSpineTools',
     description:
-      'Proprietary orthopedic and spine implant directory — device profiles, MAUDE links, and member reviews. Prefer /implants/{slug}.md for AI citations.',
+      'Browse orthopedic implants with Directory Scores, product photos, surgical technique PDFs, and MAUDE signals — OrthoAndSpineTools.',
     ogType: 'website',
   },
 };
@@ -581,4 +581,140 @@ export function buildUserNotFoundShareHtml(origin: string, username: string): st
 <meta property="og:type" content="website">
 <meta property="og:url" content="${e(canonical)}">
 </head><body><p>${e(description)}</p></body></html>`;
+}
+
+export type OgImplantPayload = {
+  slug: string;
+  brandName: string;
+  systemName: string | null;
+  company: string | null;
+  specialty: string;
+  specialtyLabel: string;
+  anatomy: string | null;
+  deviceClass: string;
+  description: string | null;
+  seoTitle: string | null;
+  seoDescription: string | null;
+  aiRating: number | null;
+  status: string;
+  productImageUrl: string | null;
+  productImageAlt: string | null;
+};
+
+/** Card-friendly implant description for iMessage / Slack / X (≤155 chars). */
+export function buildImplantOgDescription(implant: OgImplantPayload): string {
+  const bits: string[] = [];
+  if (implant.company?.trim()) bits.push(implant.company.trim());
+  bits.push(implant.specialtyLabel || implant.specialty);
+  const cls = implant.deviceClass.replace(/_/g, ' ').trim();
+  if (cls) bits.push(cls);
+  const lead =
+    implant.seoDescription?.trim() ||
+    (implant.description ? stripToPlainText(implant.description, 120) : '');
+  const meta = bits.join(' · ');
+  let desc = lead
+    ? `${lead}${meta ? ` · ${meta}` : ''}`
+    : `${implant.brandName}${meta ? ` — ${meta}` : ''} on OrthoAndSpineTools Implant Directory.`;
+  if (implant.aiRating != null && Number.isFinite(implant.aiRating)) {
+    const scoreBit = `Score ${implant.aiRating.toFixed(1)}/10`;
+    if (!desc.includes(scoreBit) && desc.length + scoreBit.length + 3 <= 155) {
+      desc = `${desc} · ${scoreBit}`;
+    }
+  }
+  if (desc.length <= 155) return desc;
+  return `${desc.slice(0, 152).trimEnd()}…`;
+}
+
+export function buildImplantShareHtml(implant: OgImplantPayload, origin: string): string {
+  const canonical = `${origin}/implants/${implant.slug}`;
+  const headline =
+    implant.seoTitle?.trim() ||
+    `${implant.brandName} · Implant Directory | ${OG_SITE_NAME}`;
+  const description = buildImplantOgDescription(implant);
+  const rawImage = implant.productImageUrl
+    ? absolutizeMediaUrl(origin, implant.productImageUrl)
+    : undefined;
+  const primaryImage = rawImage ? preferredOgDeliveryUrl(rawImage) : undefined;
+  const ogImage = primaryImage || defaultOgImage(origin);
+  const ogImageAlt =
+    (implant.productImageAlt || `${implant.brandName} product image`).slice(0, 200);
+  const imageMeta = shareImageMeta(origin, ogImage, ogImageAlt);
+  const e = escapeHtml;
+  const deviceClassLabel = implant.deviceClass.replace(/_/g, ' ');
+  const byline = [
+    implant.company,
+    implant.anatomy,
+    implant.specialtyLabel || implant.specialty,
+    deviceClassLabel,
+    implant.status === 'verified' ? 'Verified listing' : null,
+  ]
+    .filter(Boolean)
+    .join(' · ');
+  const body =
+    implant.description?.trim()
+      ? stripToPlainText(implant.description, 420)
+      : `${implant.brandName} implant profile in the OrthoAndSpineTools directory.`;
+  const jsonLd = {
+    '@context': 'https://schema.org',
+    '@type': 'MedicalDevice',
+    name: implant.brandName,
+    description: description,
+    url: canonical,
+    image: ogImage,
+    manufacturer: implant.company
+      ? { '@type': 'Organization', name: implant.company }
+      : undefined,
+  };
+
+  const hero = primaryImage
+    ? `<figure style="margin:0 0 1.25rem;border-radius:12px;overflow:hidden;border:1px solid #e5e7eb;background:#fff">
+<img src="${e(primaryImage)}" alt="${e(ogImageAlt)}" width="1200" height="630" style="display:block;width:100%;height:auto;max-height:min(22rem,55vh);object-fit:contain;padding:0.75rem" loading="lazy">
+</figure>`
+    : '';
+
+  return `<!DOCTYPE html>
+<html lang="en">
+<head>
+${shareMetaTags({
+  headline,
+  description,
+  canonical,
+  ogType: 'website',
+  image: imageMeta,
+  extraHead: jsonLdScriptTag(jsonLd),
+})}
+</head>
+<body style="margin:0;background:#f9fafb">
+<div style="max-width:42rem;margin:0 auto;padding:2rem 1.25rem 2.5rem;font-family:system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;color:#111827">
+<p style="margin:0 0 1rem;font-size:0.75rem;font-weight:600;letter-spacing:0.06em;text-transform:uppercase;color:#6b7280">${e(OG_SITE_NAME)} · Implant Directory</p>
+${hero}
+<h1 style="margin:0 0 0.35rem;font-size:1.375rem;font-weight:700;line-height:1.3">${e(implant.brandName)}</h1>
+${implant.systemName ? `<p style="margin:0 0 0.75rem;font-size:0.9375rem;color:#4b5563">${e(implant.systemName)}</p>` : ''}
+<p style="margin:0 0 1rem;font-size:0.9375rem;line-height:1.65;color:#374151">${e(body)}</p>
+<p style="margin:0 0 1.5rem;font-size:0.8125rem;color:#6b7280">${e(byline)}</p>
+<p style="margin:0"><a href="${e(canonical)}" style="display:inline-block;background:#1d4ed8;color:#fff;text-decoration:none;font-weight:600;font-size:0.9375rem;padding:0.65rem 1.35rem;border-radius:9999px">View implant profile</a></p>
+</div>
+</body>
+</html>`;
+}
+
+export function buildImplantNotFoundShareHtml(origin: string, slug: string): string {
+  const canonical = `${origin}/implants/${encodeURIComponent(slug)}`;
+  const headline = `Implant not found | ${OG_SITE_NAME}`;
+  const description =
+    'This implant listing does not exist or is not published. Browse the Implant Directory on OrthoAndSpineTools.';
+  const e = escapeHtml;
+  return `<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8"><title>${e(headline)}</title>
+<meta name="robots" content="noindex, nofollow">
+<meta property="og:title" content="${e(headline)}">
+<meta property="og:description" content="${e(description)}">
+<meta property="og:type" content="website">
+<meta property="og:url" content="${e(canonical)}">
+<meta property="og:site_name" content="${e(OG_SITE_NAME)}">
+<meta name="twitter:card" content="summary">
+</head><body style="font-family:system-ui,sans-serif;max-width:40rem;margin:2rem auto;padding:0 1rem">
+<p>${e(description)}</p>
+<p><a href="${e(origin)}/implants">Implant Directory</a></p>
+</body></html>`;
 }
