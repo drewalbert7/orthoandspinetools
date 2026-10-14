@@ -187,6 +187,8 @@ router.get(
     query('q').optional().isString().isLength({ max: 120 }),
     query('specialty').optional().isString().isLength({ max: 64 }),
     query('deviceClass').optional().isString().isLength({ max: 64 }),
+    query('verified').optional().isIn(['1', 'true', '0', 'false']),
+    query('sort').optional().isIn(['ai', 'name', 'reviews']),
     query('page').optional().isInt({ min: 1, max: 1000 }),
     query('pageSize').optional().isInt({ min: 1, max: 100 }),
     query('limit').optional().isInt({ min: 1, max: 100 }),
@@ -200,6 +202,11 @@ router.get(
     const q = String(req.query.q || '').trim();
     const specialty = normalizeImplantSpecialty(String(req.query.specialty || ''));
     const deviceClass = String(req.query.deviceClass || '').trim();
+    const verifiedOnly =
+      req.query.verified === '1' || req.query.verified === 'true';
+    const sortRaw = String(req.query.sort || 'ai');
+    const sort =
+      sortRaw === 'name' || sortRaw === 'reviews' ? sortRaw : ('ai' as const);
     const page = Math.max(1, parseInt(String(req.query.page || '1'), 10) || 1);
     const pageSize = Math.min(
       100,
@@ -214,7 +221,8 @@ router.get(
       q,
       specialty,
       deviceClass,
-      statusIn: [...PUBLIC_IMPLANT_STATUSES],
+      statusIn: verifiedOnly ? ['verified'] : [...PUBLIC_IMPLANT_STATUSES],
+      sort,
       limit: pageSize,
       offset,
     });

@@ -236,11 +236,14 @@ function buildOrIlikePattern(tokens: string[]): string {
   return tokens.filter(Boolean).join('|');
 }
 
+export type ImplantSort = 'ai' | 'name' | 'reviews';
+
 export async function searchImplantIds(params: {
   q?: string;
   specialty?: string;
   deviceClass?: string;
   statusIn: string[];
+  sort?: ImplantSort;
   limit: number;
   offset: number;
 }): Promise<{ ids: string[]; total: number; inferredSpecialty?: string }> {
@@ -249,6 +252,8 @@ export async function searchImplantIds(params: {
   const specialty = normalizeImplantSpecialty(params.specialty);
   const deviceClass = (params.deviceClass || '').trim();
   const statuses = params.statusIn;
+  const sort: ImplantSort =
+    params.sort === 'name' || params.sort === 'reviews' ? params.sort : 'ai';
   const concepts = q ? resolveConcepts(q) : [];
   const inferredSpecialty =
     !specialty && q ? inferSpecialtyFromQuery(q) : '';
@@ -259,13 +264,24 @@ export async function searchImplantIds(params: {
       ...(specialty ? { specialty } : {}),
       ...(deviceClass ? { deviceClass } : {}),
     };
+    const orderBy =
+      sort === 'name'
+        ? [{ brandName: 'asc' as const }]
+        : sort === 'reviews'
+          ? [
+              { reviews: { _count: 'desc' as const } },
+              { brandName: 'asc' as const },
+            ]
+          : [
+              { aiRating: { sort: 'desc' as const, nulls: 'last' as const } },
+              { brandName: 'asc' as const },
+            ];
     const [total, rows] = await Promise.all([
       prisma.implant.count({ where }),
       prisma.implant.findMany({
         where,
         select: { id: true },
-        // Hunt-style: highest AI score first when browsing
-        orderBy: [{ aiRating: { sort: 'desc', nulls: 'last' } }, { brandName: 'asc' }],
+        orderBy,
         take: params.limit,
         skip: params.offset,
       }),

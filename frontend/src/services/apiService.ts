@@ -1323,6 +1323,8 @@ class ApiService {
     q?: string;
     specialty?: string;
     deviceClass?: string;
+    verified?: boolean;
+    sort?: 'ai' | 'name' | 'reviews';
     page?: number;
     pageSize?: number;
     limit?: number;
@@ -1332,6 +1334,8 @@ class ApiService {
       if (params.q) search.set('q', params.q);
       if (params.specialty) search.set('specialty', params.specialty);
       if (params.deviceClass) search.set('deviceClass', params.deviceClass);
+      if (params.verified) search.set('verified', '1');
+      if (params.sort && params.sort !== 'ai') search.set('sort', params.sort);
       if (params.page) search.set('page', String(params.page));
       if (params.pageSize) search.set('pageSize', String(params.pageSize));
       else if (params.limit) search.set('pageSize', String(params.limit));
