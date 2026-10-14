@@ -4,6 +4,7 @@ import { useQuery } from '@tanstack/react-query';
 import { Bone, Search } from 'lucide-react';
 import { DocumentMeta } from '../components/DocumentMeta';
 import { buildHubCollectionJsonLd } from '../lib/seo';
+import { IMPLANT_SPECIALTIES } from '../lib/implantSpecialties';
 import { apiService, type ImplantDirectoryItem } from '../services/apiService';
 
 function DeviceClassLabel({ value }: { value: string }) {
@@ -46,7 +47,7 @@ const PAGE_SIZE = 24;
 const ImplantDirectory: React.FC = () => {
   const [qInput, setQInput] = useState('');
   const [q, setQ] = useState('');
-  const [specialty, setSpecialty] = useState('spine');
+  const [specialty, setSpecialty] = useState('');
   const [deviceClass, setDeviceClass] = useState('');
   const [page, setPage] = useState(1);
 
@@ -106,9 +107,9 @@ const ImplantDirectory: React.FC = () => {
           <div>
             <h1 className="text-lg font-semibold text-gray-900 sm:text-xl">Implant Directory</h1>
             <p className="mt-1 text-sm text-gray-600">
-              Proprietary catalog optimized for clinical search and AI citation. Public browse;{' '}
-              <span className="font-medium text-gray-800">reviews are members-only</span>. Each implant has an
-              HTML profile and a <span className="font-mono text-xs">.md</span> twin.
+              Proprietary catalog across all ortho subspecialties — optimized for clinical search and AI
+              citation. Reviews are public to read; log in to write. Each implant has an HTML profile and a{' '}
+              <span className="font-mono text-xs">.md</span> twin.
             </p>
           </div>
           <Link to="/maude" className="shrink-0 text-sm font-medium text-blue-600 hover:text-blue-800">
@@ -132,8 +133,12 @@ const ImplantDirectory: React.FC = () => {
             onChange={(e) => setSpecialty(e.target.value)}
             className="rounded-md border border-gray-200 bg-white px-3 py-2 text-sm text-gray-800"
           >
-            <option value="spine">Spine</option>
             <option value="">All specialties</option>
+            {IMPLANT_SPECIALTIES.map((s) => (
+              <option key={s.id} value={s.id}>
+                {s.label}
+              </option>
+            ))}
           </select>
           <select
             value={deviceClass}
@@ -144,6 +149,16 @@ const ImplantDirectory: React.FC = () => {
             <option value="cervical_disc">Cervical disc</option>
             <option value="pedicle_screw">Pedicle screw</option>
             <option value="biologic">Biologic</option>
+            <option value="cellular_allograft">Cellular allograft</option>
+            <option value="tka">TKA</option>
+            <option value="tha">THA</option>
+            <option value="shoulder_arthroplasty">Shoulder arthroplasty</option>
+            <option value="suture_anchor">Suture anchor</option>
+            <option value="intramedullary_nail">IM nail</option>
+            <option value="total_ankle">Total ankle</option>
+            <option value="druj_prosthesis">DRUJ prosthesis</option>
+            <option value="pediatric_plate">Pediatric plate</option>
+            <option value="megaprosthesis">Megaprosthesis</option>
           </select>
         </div>
       </div>

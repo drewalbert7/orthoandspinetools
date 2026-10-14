@@ -29,8 +29,11 @@ function formatTimeAgo(date: Date): string {
 const FeedPostCard: React.FC<{ post: Post }> = ({ post }) => {
   const navigate = useNavigate();
   const { user } = useAuth();
-  const canEdit =
-    Boolean(user && post.authorId === user.id && !post.isLocked && !post.isDeleted);
+  const canEdit = Boolean(
+    user &&
+      !post.isDeleted &&
+      (user.isAdmin || (!post.isLocked && post.authorId === user.id))
+  );
   const comm = post.community;
   const communitySlug = comm?.slug || comm?.id || '';
   const startup = isStartupPost(post);

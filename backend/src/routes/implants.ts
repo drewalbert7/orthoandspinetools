@@ -3,6 +3,7 @@ import { body, param, query, validationResult } from 'express-validator';
 import rateLimit from 'express-rate-limit';
 import { AppError, asyncHandler } from '../middleware/errorHandler';
 import { authenticate, optionalAuth, type AuthRequest } from '../middleware/auth';
+import { requireAdmin } from '../middleware/authorization';
 import { prisma } from '../lib/prisma';
 import { getPublicSiteUrl } from '../lib/sesConfig';
 import {
@@ -12,6 +13,7 @@ import {
   searchImplantIds,
   slugifyImplant,
 } from '../lib/implantSearch';
+import { IMPLANT_SPECIALTIES, isKnownImplantSpecialty } from '../lib/implantSpecialties';
 import { logger } from '../utils/logger';
 
 const router = Router();
@@ -57,16 +59,26 @@ function resolveIngestSecret(): string | null {
   );
 }
 
-function requireIngestAuth(req: AuthRequest): string {
+/** Grokbot secret header, or logged-in platform admin (JWT). */
+async function requireIngestOrAdmin(req: AuthRequest): Promise<string> {
+  const provided = req.get('x-implant-ingest-secret')?.trim();
   const configured = resolveIngestSecret();
+  if (provided && configured && provided === configured) {
+    return 'ingest:grokbot';
+  }
+
+  if (req.user?.isAdmin) {
+    return `admin:${req.user.id}`;
+  }
+
+  if (req.user) {
+    throw new AppError('Admin privileges required to edit implants', 403);
+  }
+
   if (!configured) {
     throw new AppError('Implant ingest secret is not configured', 503);
   }
-  const provided = req.get('x-implant-ingest-secret')?.trim();
-  if (!provided || provided !== configured) {
-    throw new AppError('Invalid implant ingest secret', 403);
-  }
-  return 'ingest:grokbot';
+  throw new AppError('Invalid implant ingest secret or admin auth required', 403);
 }
 
 function publicImplantCard(implant: {
@@ -203,10 +215,25 @@ router.get(
   })
 );
 
+/** Specialty catalog for directory filters (aligned with communities / MAUDE) */
+router.get(
+  '/meta/specialties',
+  listLimiter,
+  asyncHandler(async (_req: AuthRequest, res: Response) => {
+    res.json({
+      success: true,
+      data: {
+        specialties: IMPLANT_SPECIALTIES.map((s) => ({ id: s.id, label: s.label })),
+      },
+    });
+  })
+);
+
 /** Grokbot / admin ingest upsert — registered before /:slug */
 router.post(
   '/ingest',
   ingestLimiter,
+  optionalAuth,
   [
     body('slug').optional().isString().isLength({ min: 1, max: 120 }),
     body('brandName').isString().isLength({ min: 1, max: 200 }),
@@ -231,7 +258,7 @@ router.post(
     if (!errors.isEmpty()) {
       throw new AppError('Invalid ingest payload', 400);
     }
-    const actor = requireIngestAuth(req);
+    const actor = await requireIngestOrAdmin(req);
 
     const brandName = String(req.body.brandName).trim();
     const slug =
@@ -240,6 +267,13 @@ router.post(
         : slugifyImplant(brandName)) || slugifyImplant(`implant-${Date.now()}`);
 
     const status = (req.body.status as string) || 'draft';
+    const specialtyRaw = String(req.body.specialty || 'spine').trim();
+    if (specialtyRaw && !isKnownImplantSpecialty(specialtyRaw)) {
+      throw new AppError(
+        `Unknown specialty. Use one of: ${IMPLANT_SPECIALTIES.map((s) => s.id).join(', ')}`,
+        400
+      );
+    }
     const aliases: string[] = Array.isArray(req.body.aliases)
       ? req.body.aliases.map((a: unknown) => String(a).trim()).filter(Boolean).slice(0, 40)
       : [];
@@ -269,7 +303,7 @@ router.post(
       brandName,
       systemName: req.body.systemName,
       company: req.body.company,
-      specialty: req.body.specialty || 'spine',
+      specialty: specialtyRaw || 'spine',
       anatomy: req.body.anatomy,
       deviceClass: req.body.deviceClass,
       description: req.body.description,
@@ -282,7 +316,7 @@ router.post(
       brandName,
       systemName: req.body.systemName?.trim() || null,
       company: req.body.company?.trim() || null,
-      specialty: (req.body.specialty || 'spine').trim(),
+      specialty: specialtyRaw || 'spine',
       anatomy: req.body.anatomy?.trim() || null,
       deviceClass: String(req.body.deviceClass).trim(),
       description: req.body.description?.trim() || null,
@@ -406,7 +440,7 @@ router.get(
   })
 );
 
-/** Public profile; reviews only when authenticated */
+/** Public profile + public review read; write requires auth */
 router.get(
   '/:slug',
   detailLimiter,
@@ -431,33 +465,22 @@ router.get(
     }
 
     const card = publicImplantCard(implant);
-    let reviews: Array<{
-      id: string;
-      rating: number;
-      title: string | null;
-      body: string;
-      createdAt: string;
-      author: { username: string; firstName: string; lastName: string };
-    }> | null = null;
-
-    if (req.user) {
-      const rows = await prisma.implantReview.findMany({
-        where: { implantId: implant.id },
-        orderBy: { createdAt: 'desc' },
-        take: 50,
-        include: {
-          user: { select: { username: true, firstName: true, lastName: true } },
-        },
-      });
-      reviews = rows.map((r) => ({
-        id: r.id,
-        rating: r.rating,
-        title: r.title,
-        body: r.body,
-        createdAt: r.createdAt.toISOString(),
-        author: r.user,
-      }));
-    }
+    const rows = await prisma.implantReview.findMany({
+      where: { implantId: implant.id },
+      orderBy: { createdAt: 'desc' },
+      take: 50,
+      include: {
+        user: { select: { username: true, firstName: true, lastName: true } },
+      },
+    });
+    const reviews = rows.map((r) => ({
+      id: r.id,
+      rating: r.rating,
+      title: r.title,
+      body: r.body,
+      createdAt: r.createdAt.toISOString(),
+      author: r.user,
+    }));
 
     res.json({
       success: true,
@@ -475,7 +498,9 @@ router.get(
           licenseNote: i.licenseNote,
         })),
         reviews,
+        /** Write form locked for guests; reviews themselves are public */
         reviewsLocked: !req.user,
+        canWriteReview: Boolean(req.user),
         canonicalPath: `/implants/${implant.slug}`,
         markdownPath: `/implants/${implant.slug}.md`,
       },
@@ -554,16 +579,17 @@ router.post(
   })
 );
 
-/** Promote draft → published|verified (ingest secret) */
+/** Promote draft → published|verified (ingest secret or admin JWT) */
 router.post(
   '/:slug/publish',
   ingestLimiter,
+  optionalAuth,
   [
     param('slug').isString().isLength({ min: 1, max: 120 }),
     body('status').optional().isIn(['published', 'verified']),
   ],
   asyncHandler(async (req: AuthRequest, res: Response) => {
-    const actor = requireIngestAuth(req);
+    const actor = await requireIngestOrAdmin(req);
     const slug = String(req.params.slug || '');
     const nextStatus = (req.body.status as string) || 'published';
 
@@ -592,6 +618,156 @@ router.post(
     res.json({
       success: true,
       data: {
+        slug: updated.slug,
+        status: updated.status,
+        htmlPath: `/implants/${updated.slug}`,
+        markdownPath: `/implants/${updated.slug}.md`,
+      },
+    });
+  })
+);
+
+/** Platform admin: partial update of a listing (JWT) */
+router.patch(
+  '/:slug',
+  ingestLimiter,
+  authenticate,
+  requireAdmin,
+  [
+    param('slug').isString().isLength({ min: 1, max: 120 }),
+    body('brandName').optional().isString().isLength({ min: 1, max: 200 }),
+    body('systemName').optional({ nullable: true }).isString().isLength({ max: 300 }),
+    body('company').optional({ nullable: true }).isString().isLength({ max: 200 }),
+    body('specialty').optional().isString().isLength({ max: 64 }),
+    body('anatomy').optional({ nullable: true }).isString().isLength({ max: 64 }),
+    body('deviceClass').optional().isString().isLength({ min: 1, max: 64 }),
+    body('description').optional({ nullable: true }).isString().isLength({ max: 2000 }),
+    body('longDescription').optional({ nullable: true }).isString().isLength({ max: 20000 }),
+    body('indications').optional({ nullable: true }).isString().isLength({ max: 10000 }),
+    body('contraindications').optional({ nullable: true }).isString().isLength({ max: 10000 }),
+    body('seoTitle').optional({ nullable: true }).isString().isLength({ max: 120 }),
+    body('seoDescription').optional({ nullable: true }).isString().isLength({ max: 200 }),
+    body('maudeBrandKey').optional({ nullable: true }).isString().isLength({ max: 200 }),
+    body('status').optional().isIn(['draft', 'published', 'verified']),
+    body('aliases').optional().isArray({ max: 40 }),
+  ],
+  asyncHandler(async (req: AuthRequest, res: Response) => {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      throw new AppError('Invalid implant update', 400);
+    }
+
+    const slug = String(req.params.slug || '');
+    const existing = await prisma.implant.findUnique({
+      where: { slug },
+      include: { aliases: true },
+    });
+    if (!existing) {
+      throw new AppError('Implant not found', 404);
+    }
+
+    if (req.body.specialty && !isKnownImplantSpecialty(String(req.body.specialty))) {
+      throw new AppError(
+        `Unknown specialty. Use one of: ${IMPLANT_SPECIALTIES.map((s) => s.id).join(', ')}`,
+        400
+      );
+    }
+
+    const brandName =
+      typeof req.body.brandName === 'string' ? req.body.brandName.trim() : existing.brandName;
+    const specialty =
+      typeof req.body.specialty === 'string' ? req.body.specialty.trim() : existing.specialty;
+    const deviceClass =
+      typeof req.body.deviceClass === 'string' ? req.body.deviceClass.trim() : existing.deviceClass;
+    const status =
+      typeof req.body.status === 'string' ? req.body.status : existing.status;
+    const aliases: string[] | undefined = Array.isArray(req.body.aliases)
+      ? req.body.aliases.map((a: unknown) => String(a).trim()).filter(Boolean).slice(0, 40)
+      : undefined;
+
+    const next = {
+      brandName,
+      systemName:
+        req.body.systemName !== undefined
+          ? req.body.systemName?.trim() || null
+          : existing.systemName,
+      company:
+        req.body.company !== undefined ? req.body.company?.trim() || null : existing.company,
+      specialty,
+      anatomy:
+        req.body.anatomy !== undefined ? req.body.anatomy?.trim() || null : existing.anatomy,
+      deviceClass,
+      description:
+        req.body.description !== undefined
+          ? req.body.description?.trim() || null
+          : existing.description,
+      longDescription:
+        req.body.longDescription !== undefined
+          ? req.body.longDescription?.trim() || null
+          : existing.longDescription,
+      indications:
+        req.body.indications !== undefined
+          ? req.body.indications?.trim() || null
+          : existing.indications,
+      contraindications:
+        req.body.contraindications !== undefined
+          ? req.body.contraindications?.trim() || null
+          : existing.contraindications,
+      seoTitle:
+        req.body.seoTitle !== undefined ? req.body.seoTitle?.trim() || null : existing.seoTitle,
+      seoDescription:
+        req.body.seoDescription !== undefined
+          ? req.body.seoDescription?.trim() || null
+          : existing.seoDescription,
+      maudeBrandKey:
+        req.body.maudeBrandKey !== undefined
+          ? req.body.maudeBrandKey?.trim() || null
+          : existing.maudeBrandKey,
+      status,
+      publishedAt:
+        status === 'draft'
+          ? existing.publishedAt
+          : existing.publishedAt ?? new Date(),
+    };
+
+    const aliasList =
+      aliases ?? existing.aliases.map((a) => a.alias);
+    const searchText = buildImplantSearchText({
+      ...next,
+      aliases: aliasList,
+    });
+
+    const updated = await prisma.$transaction(async (tx) => {
+      const row = await tx.implant.update({
+        where: { slug },
+        data: { ...next, searchText },
+      });
+      if (aliases) {
+        await tx.implantAlias.deleteMany({ where: { implantId: row.id } });
+        if (aliases.length) {
+          await tx.implantAlias.createMany({
+            data: aliases.map((alias) => ({ implantId: row.id, alias })),
+            skipDuplicates: true,
+          });
+        }
+      }
+      await tx.implantEditLog.create({
+        data: {
+          implantId: row.id,
+          actor: `admin:${req.user!.id}`,
+          action: 'admin_patch',
+          detail: JSON.stringify({ fields: Object.keys(req.body || {}) }),
+        },
+      });
+      return row;
+    });
+
+    logger.info('Implant admin patch', { slug: updated.slug, admin: req.user!.id });
+
+    res.json({
+      success: true,
+      data: {
+        id: updated.id,
         slug: updated.slug,
         status: updated.status,
         htmlPath: `/implants/${updated.slug}`,

@@ -53,13 +53,17 @@ const EditPost: React.FC = () => {
     staleTime: 5 * 60 * 1000,
   });
 
+  const canEdit = Boolean(
+    user && post && (user.isAdmin || post.authorId === user.id)
+  );
+
   useEffect(() => {
     if (authLoading || !post || !user) return;
-    if (post.authorId !== user.id) {
+    if (!canEdit) {
       toast.error('You can only edit your own posts');
       navigate(`/post/${id}`, { replace: true });
     }
-  }, [authLoading, post, user, id, navigate]);
+  }, [authLoading, post, user, id, navigate, canEdit]);
 
   const updateMutation = useMutation({
     mutationFn: (payload: { title: string; content: string; tagIds: string[] }) =>
@@ -131,13 +135,13 @@ const EditPost: React.FC = () => {
     );
   }
 
-  if (post.authorId !== user.id) {
+  if (!canEdit) {
     return (
       <div className="max-w-3xl mx-auto py-12 text-center text-gray-600">Redirecting…</div>
     );
   }
 
-  if (post.isLocked) {
+  if (post.isLocked && !user.isAdmin) {
     return (
       <div className="max-w-3xl mx-auto py-12">
         <p className="text-gray-700">This post is locked and cannot be edited.</p>

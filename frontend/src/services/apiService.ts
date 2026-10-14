@@ -406,7 +406,9 @@ export interface ImplantDetail extends ImplantDirectoryItem {
     licenseNote?: string | null;
   }>;
   reviews: ImplantReview[] | null;
+  /** True for guests — write form locked; reviews remain public */
   reviewsLocked: boolean;
+  canWriteReview?: boolean;
   canonicalPath?: string;
 }
 
@@ -1359,6 +1361,34 @@ class ApiService {
       return response.data.data;
     } catch (error: unknown) {
       throw new Error(apiErrorMessage(error, 'Failed to save review'));
+    }
+  }
+
+  async updateImplantAdmin(
+    slug: string,
+    payload: Partial<{
+      brandName: string;
+      systemName: string | null;
+      company: string | null;
+      specialty: string;
+      anatomy: string | null;
+      deviceClass: string;
+      description: string | null;
+      longDescription: string | null;
+      indications: string | null;
+      contraindications: string | null;
+      seoTitle: string | null;
+      seoDescription: string | null;
+      maudeBrandKey: string | null;
+      status: string;
+      aliases: string[];
+    }>
+  ): Promise<{ slug: string; status: string }> {
+    try {
+      const response = await api.patch(`/implants/${encodeURIComponent(slug)}`, payload);
+      return response.data.data;
+    } catch (error: unknown) {
+      throw new Error(apiErrorMessage(error, 'Failed to update implant'));
     }
   }
 

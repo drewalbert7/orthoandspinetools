@@ -50,7 +50,13 @@ const PostDetail: React.FC = () => {
   });
 
   const canEditPost = useMemo(
-    () => Boolean(user && post && !post.isLocked && !post.isDeleted && post.authorId === user.id),
+    () =>
+      Boolean(
+        user &&
+          post &&
+          !post.isDeleted &&
+          (user.isAdmin || (!post.isLocked && post.authorId === user.id))
+      ),
     [user, post]
   );
 

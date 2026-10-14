@@ -1,20 +1,35 @@
-import React, { useEffect, useState } from 'react';
-import { Link, useNavigate, useSearchParams } from 'react-router-dom';
+import React, { useEffect, useMemo, useState } from 'react';
+import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { LoginCredentials, authService } from '../services/authService';
 import BrandLogo from './BrandLogo';
 import { DocumentMeta } from './DocumentMeta';
 
+function safeReturnPath(raw: unknown): string | null {
+  if (typeof raw !== 'string') return null;
+  const path = raw.trim();
+  if (!path.startsWith('/') || path.startsWith('//')) return null;
+  return path;
+}
+
 const LoginForm: React.FC = () => {
   const { login, user } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
   const [searchParams] = useSearchParams();
-  // If already authenticated, redirect to profile immediately
+  const returnTo = useMemo(
+    () =>
+      safeReturnPath(searchParams.get('redirect')) ||
+      safeReturnPath((location.state as { from?: string } | null)?.from) ||
+      '/profile',
+    [searchParams, location.state]
+  );
+  // If already authenticated, continue to return path
   useEffect(() => {
     if (user) {
-      navigate('/profile');
+      navigate(returnTo, { replace: true });
     }
-  }, [user, navigate]);
+  }, [user, navigate, returnTo]);
 
   const [formData, setFormData] = useState<LoginCredentials>({
     email: '',
@@ -56,12 +71,12 @@ const LoginForm: React.FC = () => {
     try {
       console.log('Calling login function...');
       await login(formData);
-      console.log('Login successful, navigating to profile...');
-      navigate('/profile');
+      console.log('Login successful, navigating to', returnTo);
+      navigate(returnTo, { replace: true });
       // Hard redirect fallback to ensure navigation in all browsers
       setTimeout(() => {
-        if (window.location.pathname !== '/profile') {
-          window.location.assign('/profile');
+        if (window.location.pathname !== returnTo.split('?')[0]) {
+          window.location.assign(returnTo);
         }
       }, 0);
     } catch (err: any) {

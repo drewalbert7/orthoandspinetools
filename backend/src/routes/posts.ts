@@ -1149,7 +1149,9 @@ router.put('/:id', authenticate, [
     throw new AppError('Post not found', 404);
   }
 
-  if (post.authorId !== req.user!.id) {
+  const isAuthor = post.authorId === req.user!.id;
+  const isAdmin = Boolean(req.user!.isAdmin);
+  if (!isAuthor && !isAdmin) {
     throw new AppError('Not authorized to edit this post', 403);
   }
 
