@@ -378,9 +378,15 @@ export interface ImplantDirectoryItem {
   seoDescription?: string | null;
   status?: string;
   maudeBrandKey?: string | null;
+  aiRating?: number | null;
+  aiSummary?: string | null;
+  aiRatedAt?: string | null;
+  memberRatingAvg?: number | null;
   reviewCount: number;
-  productImage?: { url: string; alt?: string | null } | null;
-  xrayImage?: { url: string; alt?: string | null } | null;
+  imageCount?: number;
+  xrayCount?: number;
+  galleryExtraCount?: number;
+  productImage?: { url: string; alt?: string | null; kind?: string } | null;
   markdownPath?: string;
 }
 
@@ -1384,6 +1390,8 @@ class ApiService {
       seoTitle: string | null;
       seoDescription: string | null;
       maudeBrandKey: string | null;
+      aiRating: number | null;
+      aiSummary: string | null;
       status: string;
       aliases: string[];
     }>

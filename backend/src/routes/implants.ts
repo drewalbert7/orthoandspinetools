@@ -99,13 +99,18 @@ function publicImplantCard(implant: {
   seoDescription?: string | null;
   status: string;
   maudeBrandKey: string | null;
+  aiRating?: number | null;
+  aiSummary?: string | null;
+  aiRatedAt?: Date | null;
+  memberRatingAvg?: number | null;
   images: Array<{ kind: string; url: string; alt: string | null; sortOrder: number }>;
   _count: { reviews: number };
 }) {
   const sortedImages = [...implant.images].sort((a, b) => a.sortOrder - b.sortOrder);
   const product =
     sortedImages.find((i) => i.kind === 'product') || sortedImages[0] || null;
-  const xray = sortedImages.find((i) => i.kind === 'xray') || null;
+  const xrayCount = sortedImages.filter((i) => i.kind === 'xray').length;
+  const otherCount = sortedImages.filter((i) => i.kind !== 'product').length;
   return {
     id: implant.id,
     slug: implant.slug,
@@ -120,11 +125,34 @@ function publicImplantCard(implant: {
     seoDescription: implant.seoDescription ?? null,
     status: implant.status,
     maudeBrandKey: implant.maudeBrandKey,
+    aiRating: implant.aiRating ?? null,
+    aiSummary: implant.aiSummary ?? null,
+    aiRatedAt: implant.aiRatedAt ? implant.aiRatedAt.toISOString() : null,
+    memberRatingAvg: implant.memberRatingAvg ?? null,
     reviewCount: implant._count.reviews,
-    productImage: product ? { url: product.url, alt: product.alt } : null,
-    xrayImage: xray ? { url: xray.url, alt: xray.alt } : null,
+    imageCount: sortedImages.length,
+    xrayCount,
+    galleryExtraCount: Math.max(0, otherCount),
+    productImage: product ? { url: product.url, alt: product.alt, kind: product.kind } : null,
     markdownPath: `/implants/${implant.slug}.md`,
   };
+}
+
+async function refreshMemberRatingAvg(implantId: string) {
+  const agg = await prisma.implantReview.aggregate({
+    where: { implantId },
+    _avg: { rating: true },
+    _count: { _all: true },
+  });
+  await prisma.implant.update({
+    where: { id: implantId },
+    data: {
+      memberRatingAvg:
+        agg._count._all > 0 && agg._avg.rating != null
+          ? Math.round(agg._avg.rating * 10) / 10
+          : null,
+    },
+  });
 }
 
 async function refreshSearchText(implantId: string) {
@@ -258,6 +286,8 @@ router.post(
     body('seoTitle').optional({ nullable: true }).isString().isLength({ max: 120 }),
     body('seoDescription').optional({ nullable: true }).isString().isLength({ max: 200 }),
     body('maudeBrandKey').optional({ nullable: true }).isString().isLength({ max: 200 }),
+    body('aiRating').optional({ nullable: true }).isFloat({ min: 0, max: 10 }),
+    body('aiSummary').optional({ nullable: true }).isString().isLength({ max: 500 }),
     body('status').optional().isIn(['draft', 'published', 'verified']),
     body('aliases').optional().isArray({ max: 40 }),
     body('images').optional().isArray({ max: 20 }),
@@ -345,6 +375,18 @@ router.post(
         status === 'draft'
           ? existing?.publishedAt ?? null
           : existing?.publishedAt ?? new Date(),
+      ...(req.body.aiRating !== undefined
+        ? {
+            aiRating:
+              req.body.aiRating === null || req.body.aiRating === ''
+                ? null
+                : Math.round(Number(req.body.aiRating) * 10) / 10,
+            aiRatedAt: new Date(),
+          }
+        : {}),
+      ...(req.body.aiSummary !== undefined
+        ? { aiSummary: req.body.aiSummary?.trim() || null }
+        : {}),
     };
 
     const implant = await prisma.$transaction(async (tx) => {
@@ -437,6 +479,8 @@ router.get(
         indications: implant.indications,
         contraindications: implant.contraindications,
         maudeBrandKey: implant.maudeBrandKey,
+        aiRating: implant.aiRating,
+        aiSummary: implant.aiSummary,
         aliases: implant.aliases.map((a) => a.alias),
         updatedAt: implant.updatedAt,
       },
@@ -574,6 +618,8 @@ router.post(
       },
     });
 
+    await refreshMemberRatingAvg(implant.id);
+
     res.status(201).json({
       success: true,
       data: {
@@ -657,6 +703,8 @@ router.patch(
     body('seoTitle').optional({ nullable: true }).isString().isLength({ max: 120 }),
     body('seoDescription').optional({ nullable: true }).isString().isLength({ max: 200 }),
     body('maudeBrandKey').optional({ nullable: true }).isString().isLength({ max: 200 }),
+    body('aiRating').optional({ nullable: true }).isFloat({ min: 0, max: 10 }),
+    body('aiSummary').optional({ nullable: true }).isString().isLength({ max: 500 }),
     body('status').optional().isIn(['draft', 'published', 'verified']),
     body('aliases').optional().isArray({ max: 40 }),
   ],
@@ -737,6 +785,20 @@ router.patch(
         status === 'draft'
           ? existing.publishedAt
           : existing.publishedAt ?? new Date(),
+      aiRating:
+        req.body.aiRating !== undefined
+          ? req.body.aiRating === null || req.body.aiRating === ''
+            ? null
+            : Math.round(Number(req.body.aiRating) * 10) / 10
+          : existing.aiRating,
+      aiSummary:
+        req.body.aiSummary !== undefined
+          ? req.body.aiSummary?.trim() || null
+          : existing.aiSummary,
+      aiRatedAt:
+        req.body.aiRating !== undefined || req.body.aiSummary !== undefined
+          ? new Date()
+          : existing.aiRatedAt,
     };
 
     const aliasList =

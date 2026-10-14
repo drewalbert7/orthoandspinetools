@@ -637,6 +637,12 @@ model Implant {
   seoDescription  String?  @map("seo_description")
   status          String   @default("published") // draft | published | verified
   maudeBrandKey   String?  @map("maude_brand_key")
+  /// Directory AI score 0–10 (preliminary / editorial — not clinical advice)
+  aiRating        Float?   @map("ai_rating")
+  aiSummary       String?  @map("ai_summary") @db.Text
+  aiRatedAt       DateTime? @map("ai_rated_at")
+  /// Cached mean of member review ratings (1–5); null if no reviews
+  memberRatingAvg Float?   @map("member_rating_avg")
   /// Denormalized search blob (brand, aliases, company, class, anatomy…)
   searchText      String   @default("") @map("search_text") @db.Text
   createdAt       DateTime @default(now()) @map("created_at")
@@ -652,6 +658,7 @@ model Implant {
   @@index([deviceClass])
   @@index([company])
   @@index([status, publishedAt])
+  @@index([aiRating])
   @@map("implants")
 }
 

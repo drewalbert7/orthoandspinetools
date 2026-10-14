@@ -68,7 +68,7 @@ Full agent copy: **`AGENTS.md`**. Cursor rule: `.cursor/rules/analytics-durabili
 | **10** | **MAUDE coverage gaps** | ✅ Device—Company titles; Unknown-specialty implants (discs, Superion, INFUSE, mobile-bearing knees) |
 | **11** | **MAUDE smart search** | ✅ Clinical phrases → implant brands (cervical/lumbar disc arthroplasty, SI, INFUSE, …) |
 | **12** | **Bot / LLM analytics** | ✅ Nginx log tailer + admin **Bots & agents**; header **Stats**; humans stay on JS beacon |
-| **13** | **Implant Directory** | ✅ All subspecialties + public reviews + admin edit; images fill-out next; **MCP later** |
+| **13** | **Implant Directory** | ✅ AI scores + gallery UI + all specialties; images fill-out next; **MCP later** |
 
 **Ongoing disk habit:** `./scripts/docker-disk-check.sh report` before `--no-cache` builds.
 
@@ -123,8 +123,9 @@ Full agent copy: **`AGENTS.md`**. Cursor rule: `.cursor/rules/analytics-durabili
 - [x] **Implant Directory — smart search** — Clinical phrases (cervical TDR, TKA, pedicle screw, INFUSE…), FTS/trgm/alias ranking, specialty synonym `search_text`, inferred-specialty boost when All.
 - [x] **Admin edit** — `drewalbertmd` (`isAdmin`): edit any post; PATCH implant listings + ingest/publish via JWT; audit in `implant_edit_logs`.
 - [x] **DB durability (Cloudflare)** — Daily full Postgres → Hetzner volume + **R2** (`scripts/database-backup-production.sh` + `backup-to-r2.js`); analytics dumps also → R2 `…/analytics/`.
+- [x] **Implant Directory — AI scores + media UI** — `ai_rating` 0–10 + summary on every listing; single product thumb; detail gallery for product/X-ray/diagram; browse sorted by AI score.
 - [ ] **Implant Directory — images fill-out** — Rights-cleared product/XR via CF Images; attach via ingest `images[]`. **← next**
-- [ ] **Implant Directory — catalog growth** — More systems via Grokbot ingest (draft → verify); AI assessments.
+- [ ] **Implant Directory — catalog growth** — More systems via Grokbot ingest (draft → verify); refine AI assessments.
 - [ ] **Implant Directory — MAUDE snapshot card** — Cached 12mo count / rising on detail (not only deep-link).
 - [ ] **Implant Directory — MCP / paid data** — Licensed API + MCP connector (Nomads-style); optional SQLite/JSON export. **Blocked until images + data quality are solid.**
 

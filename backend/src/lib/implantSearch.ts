@@ -264,7 +264,8 @@ export async function searchImplantIds(params: {
       prisma.implant.findMany({
         where,
         select: { id: true },
-        orderBy: [{ brandName: 'asc' }],
+        // Hunt-style: highest AI score first when browsing
+        orderBy: [{ aiRating: { sort: 'desc', nulls: 'last' } }, { brandName: 'asc' }],
         take: params.limit,
         skip: params.offset,
       }),
@@ -412,6 +413,8 @@ export function buildImplantMarkdown(params: {
     indications: string | null;
     contraindications: string | null;
     maudeBrandKey: string | null;
+    aiRating?: number | null;
+    aiSummary?: string | null;
     aliases: string[];
     updatedAt: Date;
   };
@@ -437,6 +440,10 @@ export function buildImplantMarkdown(params: {
   lines.push(`- Specialty: ${implant.specialty}`);
   if (implant.anatomy) lines.push(`- Anatomy: ${implant.anatomy}`);
   lines.push(`- Device class: ${implant.deviceClass.replace(/_/g, ' ')}`);
+  if (implant.aiRating != null) {
+    lines.push(`- Directory AI score: ${implant.aiRating.toFixed(1)} / 10 (editorial; not medical advice)`);
+  }
+  if (implant.aiSummary) lines.push(`- AI summary: ${implant.aiSummary}`);
   if (implant.aliases.length) lines.push(`- Aliases: ${implant.aliases.join(', ')}`);
   if (implant.maudeBrandKey) {
     lines.push(`- MAUDE brand key: ${implant.maudeBrandKey}`);

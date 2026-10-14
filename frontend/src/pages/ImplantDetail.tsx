@@ -2,10 +2,11 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
-import { Bone } from 'lucide-react';
 import { DocumentMeta } from '../components/DocumentMeta';
+import { AiRatingBadge } from '../components/implant/AiRatingBadge';
+import { ImplantMediaGallery } from '../components/implant/ImplantMediaGallery';
 import { useAuth } from '../contexts/AuthContext';
-import { IMPLANT_SPECIALTIES } from '../lib/implantSpecialties';
+import { IMPLANT_SPECIALTIES, specialtyLabel } from '../lib/implantSpecialties';
 import { apiService } from '../services/apiService';
 
 const ImplantDetail: React.FC = () => {
@@ -26,6 +27,8 @@ const ImplantDetail: React.FC = () => {
     description: '',
     longDescription: '',
     maudeBrandKey: '',
+    aiRating: '',
+    aiSummary: '',
     status: 'published',
     aliases: '',
   });
@@ -48,6 +51,8 @@ const ImplantDetail: React.FC = () => {
       description: data.description || '',
       longDescription: data.longDescription || '',
       maudeBrandKey: data.maudeBrandKey || '',
+      aiRating: data.aiRating != null ? String(data.aiRating) : '',
+      aiSummary: data.aiSummary || '',
       status: data.status || 'published',
       aliases: (data.aliases || []).join(', '),
     });
@@ -82,6 +87,8 @@ const ImplantDetail: React.FC = () => {
         description: adminForm.description.trim() || null,
         longDescription: adminForm.longDescription.trim() || null,
         maudeBrandKey: adminForm.maudeBrandKey.trim() || null,
+        aiRating: adminForm.aiRating.trim() === '' ? null : Number(adminForm.aiRating),
+        aiSummary: adminForm.aiSummary.trim() || null,
         status: adminForm.status,
         aliases: adminForm.aliases
           .split(',')
@@ -188,41 +195,38 @@ const ImplantDetail: React.FC = () => {
       </div>
 
       <div className="mb-4 border border-gray-200 bg-white p-3 sm:p-5">
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-start">
-          <div className="flex gap-2">
-            {[data.productImage, data.xrayImage].map((img, idx) =>
-              img?.url ? (
-                <figure key={idx} className="m-0">
-                  <img
-                    src={img.url}
-                    alt={img.alt || data.brandName}
-                    className="h-28 w-28 rounded-md border border-gray-200 object-cover bg-white"
-                  />
-                  <figcaption className="mt-1 text-center text-[10px] text-gray-400">
-                    {idx === 0 ? 'Product' : 'X-ray'}
-                  </figcaption>
-                </figure>
-              ) : (
-                <div
-                  key={idx}
-                  className="flex h-28 w-28 flex-col items-center justify-center gap-1 rounded-md border border-dashed border-gray-200 bg-gray-50 text-gray-400"
-                >
-                  <Bone className="h-6 w-6" />
-                  <span className="text-[10px]">{idx === 0 ? 'Product' : 'X-ray'}</span>
-                </div>
-              )
-            )}
-          </div>
+        <div className="flex flex-col gap-5 sm:flex-row sm:items-start">
+          <ImplantMediaGallery
+            brandName={data.brandName}
+            images={data.images || []}
+            className="mx-auto sm:mx-0"
+          />
           <div className="min-w-0 flex-1">
-            <h1 className="text-xl font-semibold text-gray-900">{data.brandName}</h1>
-            {data.systemName ? (
-              <p className="mt-0.5 text-sm text-gray-600">{data.systemName}</p>
-            ) : null}
+            <div className="flex flex-wrap items-start justify-between gap-2">
+              <div className="min-w-0">
+                <h1 className="text-xl font-semibold text-gray-900">{data.brandName}</h1>
+                {data.systemName ? (
+                  <p className="mt-0.5 text-sm text-gray-600">{data.systemName}</p>
+                ) : null}
+              </div>
+              <AiRatingBadge rating={data.aiRating} size="md" />
+            </div>
             <p className="mt-2 text-sm text-gray-500">
-              {[data.company, data.anatomy, data.specialty, data.deviceClass.replace(/_/g, ' ')]
+              {[
+                data.company,
+                data.anatomy,
+                specialtyLabel(data.specialty),
+                data.deviceClass.replace(/_/g, ' '),
+              ]
                 .filter(Boolean)
                 .join(' · ')}
             </p>
+            {data.aiSummary ? (
+              <p className="mt-3 rounded-md border border-blue-100 bg-blue-50/50 px-3 py-2 text-sm leading-relaxed text-gray-800">
+                <span className="font-semibold text-blue-800">AI take: </span>
+                {data.aiSummary}
+              </p>
+            ) : null}
             {(data.longDescription || data.description) && (
               <p className="mt-3 text-sm leading-relaxed text-gray-700">
                 {data.longDescription || data.description}
@@ -231,10 +235,10 @@ const ImplantDetail: React.FC = () => {
             {data.aliases?.length ? (
               <p className="mt-2 text-xs text-gray-500">Also known as: {data.aliases.join(', ')}</p>
             ) : null}
-            <div className="mt-4 flex flex-wrap gap-3 text-sm">
+            <div className="mt-4 flex flex-wrap items-center gap-3 text-sm">
               {data.maudeBrandKey ? (
                 <Link
-                  to={`/maude?brand=${encodeURIComponent(data.maudeBrandKey)}&specialty=spine`}
+                  to={`/maude?brand=${encodeURIComponent(data.maudeBrandKey)}&specialty=${encodeURIComponent(data.specialty || 'all')}`}
                   className="font-medium text-blue-600 hover:text-blue-800"
                 >
                   View MAUDE trends →
@@ -242,8 +246,17 @@ const ImplantDetail: React.FC = () => {
               ) : null}
               <span className="text-gray-500">
                 {data.reviewCount} member review{data.reviewCount === 1 ? '' : 's'}
+                {data.memberRatingAvg != null ? ` · ★ ${data.memberRatingAvg.toFixed(1)}` : ''}
               </span>
+              {(data.images?.length || 0) > 1 ? (
+                <a href="#gallery" className="font-medium text-gray-600 hover:text-gray-900">
+                  View {data.images!.length} images →
+                </a>
+              ) : null}
             </div>
+            <p className="mt-2 text-[11px] text-gray-400">
+              AI score is an editorial directory rating (0–10), not medical advice.
+            </p>
           </div>
         </div>
 
@@ -267,16 +280,6 @@ const ImplantDetail: React.FC = () => {
             ) : null}
           </div>
         )}
-
-        {data.images?.some((i) => i.attribution || i.licenseNote) ? (
-          <p className="mt-4 text-[11px] text-gray-400">
-            Image rights:{' '}
-            {data.images
-              .filter((i) => i.attribution || i.licenseNote)
-              .map((i) => [i.kind, i.attribution, i.licenseNote].filter(Boolean).join(' · '))
-              .join(' · ')}
-          </p>
-        ) : null}
       </div>
 
       {user?.isAdmin ? (
@@ -347,6 +350,28 @@ const ImplantDetail: React.FC = () => {
                   <option value="published">published</option>
                   <option value="verified">verified</option>
                 </select>
+              </label>
+              <label className="text-xs text-gray-600">
+                AI rating (0–10)
+                <input
+                  type="number"
+                  min={0}
+                  max={10}
+                  step={0.1}
+                  value={adminForm.aiRating}
+                  onChange={(e) => setAdminForm((f) => ({ ...f, aiRating: e.target.value }))}
+                  className="mt-0.5 w-full rounded border border-gray-200 px-2 py-1.5 text-sm text-gray-900"
+                />
+              </label>
+              <label className="text-xs text-gray-600 sm:col-span-2">
+                AI summary
+                <textarea
+                  value={adminForm.aiSummary}
+                  onChange={(e) => setAdminForm((f) => ({ ...f, aiSummary: e.target.value }))}
+                  rows={2}
+                  maxLength={500}
+                  className="mt-0.5 w-full rounded border border-gray-200 px-2 py-1.5 text-sm"
+                />
               </label>
               <label className="text-xs text-gray-600 sm:col-span-2">
                 Aliases (comma-separated)
