@@ -129,7 +129,7 @@ Full agent copy: **`AGENTS.md`**. Cursor rule: `.cursor/rules/analytics-durabili
 - [x] **Implant Directory — images fill-out** — Seed listings have manufacturer product (and where available XR/diagram) on Cloudflare Images with attribution + `licenseNote`; list/detail `productImage` / gallery live for all 15 seeds.
 - [x] **Public Stats** — Header **Stats** → `/stats` + live globe (human pageviews / geo); bots stay separate.
 - [x] **Implant Directory — page finish** — Hide IFU placeholders; product `ogImage` + JSON-LD; gallery thumbs link; related strip; MAUDE 12‑mo card; loading skeleton; XR lightbox; Verified disabled until count > 0; directory copy softened (X-ray not promised on every profile).
-- [x] **Implant Directory — technique guides** — Surgeon instructional / surgical technique PDF as primary guide: list icon left of score + detail CTA; direct PDF when available (7 seeds seeded); admin/ingest fields.
+- [x] **Implant Directory — technique guides** — Surgical/operative technique PDF only (not brochures): list icon left of score + detail CTA; direct `.pdf` validated on ingest/admin; 6 STG seeds (INFUSE cleared — FDA URL 403).
 - [ ] **Implant Directory — catalog growth** — More systems via Grokbot ingest (draft → verify); refine AI assessments; more XR/diagram where rights clear; more technique PDFs; swap Solera JP chart for English catalog shot when available. **← next**
 - [ ] **Implant Directory — MCP / paid data** — Licensed API + MCP connector (Nomads-style); optional SQLite/JSON export. **Blocked until images + data quality are solid.**
 

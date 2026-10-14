@@ -19,6 +19,7 @@ import {
   normalizeImplantSpecialty,
 } from '../lib/implantSpecialties';
 import { recomputeImplantDirectoryScore } from '../lib/implantDirectoryScore';
+import { normalizeTechniqueGuideFields } from '../lib/techniqueGuide';
 import { logger } from '../utils/logger';
 
 const router = Router();
@@ -479,8 +480,25 @@ router.post(
         req.body.seoDescription?.trim() ||
         (req.body.description || `${brandName} orthopedic implant profile`).slice(0, 160),
       maudeBrandKey: req.body.maudeBrandKey?.trim() || null,
-      techniqueGuideUrl: req.body.techniqueGuideUrl?.trim() || null,
-      techniqueGuideTitle: req.body.techniqueGuideTitle?.trim() || null,
+      ...(() => {
+        if (
+          req.body.techniqueGuideUrl === undefined &&
+          req.body.techniqueGuideTitle === undefined
+        ) {
+          return {
+            techniqueGuideUrl: existing?.techniqueGuideUrl ?? null,
+            techniqueGuideTitle: existing?.techniqueGuideTitle ?? null,
+          };
+        }
+        try {
+          return normalizeTechniqueGuideFields({
+            url: req.body.techniqueGuideUrl,
+            title: req.body.techniqueGuideTitle,
+          });
+        } catch (e) {
+          throw new AppError((e as Error).message, 400);
+        }
+      })(),
       status,
       searchText,
       publishedAt:
@@ -1116,14 +1134,28 @@ router.patch(
         req.body.maudeBrandKey !== undefined
           ? req.body.maudeBrandKey?.trim() || null
           : existing.maudeBrandKey,
-      techniqueGuideUrl:
-        req.body.techniqueGuideUrl !== undefined
-          ? req.body.techniqueGuideUrl?.trim() || null
-          : existing.techniqueGuideUrl,
-      techniqueGuideTitle:
-        req.body.techniqueGuideTitle !== undefined
-          ? req.body.techniqueGuideTitle?.trim() || null
-          : existing.techniqueGuideTitle,
+      ...(() => {
+        if (req.body.techniqueGuideUrl === undefined && req.body.techniqueGuideTitle === undefined) {
+          return {
+            techniqueGuideUrl: existing.techniqueGuideUrl,
+            techniqueGuideTitle: existing.techniqueGuideTitle,
+          };
+        }
+        try {
+          return normalizeTechniqueGuideFields({
+            url:
+              req.body.techniqueGuideUrl !== undefined
+                ? req.body.techniqueGuideUrl
+                : existing.techniqueGuideUrl,
+            title:
+              req.body.techniqueGuideTitle !== undefined
+                ? req.body.techniqueGuideTitle
+                : existing.techniqueGuideTitle,
+          });
+        } catch (e) {
+          throw new AppError((e as Error).message, 400);
+        }
+      })(),
       status,
       publishedAt:
         status === 'draft'

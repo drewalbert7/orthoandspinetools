@@ -5,6 +5,7 @@ import { Bone, ChevronsUpDown, Image as ImageIcon, Search } from 'lucide-react';
 import { DocumentMeta } from '../components/DocumentMeta';
 import { AiRatingBadge } from '../components/implant/AiRatingBadge';
 import { TechniqueGuideLink } from '../components/implant/TechniqueGuideLink';
+import { isTechniqueGuidePdfUrl } from '../lib/techniqueGuide';
 import { buildHubCollectionJsonLd } from '../lib/seo';
 import {
   IMPLANT_SPECIALTY_FILTERS,
@@ -231,8 +232,8 @@ const ImplantDirectory: React.FC = () => {
           </Link>
         </div>
         <p className="mt-1 text-sm text-gray-500">
-          Directory Score on every listing · technique PDF when linked · product photo · X-ray / diagram
-          when we have them ·{' '}
+          Directory Score on every listing · surgical technique PDF when linked · product photo · X-ray /
+          diagram when we have them ·{' '}
           <Link to="/maude" className="text-gray-600 underline-offset-2 hover:underline">
             openFDA trends
           </Link>
@@ -424,9 +425,9 @@ const ImplantDirectory: React.FC = () => {
                       </p>
                     </div>
                   </Link>
-                  {implant.techniqueGuideUrl ? (
+                  {isTechniqueGuidePdfUrl(implant.techniqueGuideUrl) ? (
                     <TechniqueGuideLink
-                      url={implant.techniqueGuideUrl}
+                      url={implant.techniqueGuideUrl!}
                       title={implant.techniqueGuideTitle}
                       compact
                     />

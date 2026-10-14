@@ -244,7 +244,7 @@ const ImplantDetail: React.FC = () => {
                 {data.techniqueGuideUrl ? (
                   <TechniqueGuideLink
                     url={data.techniqueGuideUrl}
-                    title={data.techniqueGuideTitle || 'Surgical technique guide'}
+                    title={data.techniqueGuideTitle}
                   />
                 ) : null}
                 <AiRatingBadge rating={data.aiRating} size="md" />
@@ -397,8 +397,8 @@ const ImplantDetail: React.FC = () => {
                   ['anatomy', 'Anatomy'],
                   ['deviceClass', 'Device class'],
                   ['maudeBrandKey', 'MAUDE brand key'],
-                  ['techniqueGuideTitle', 'Technique guide label'],
-                  ['techniqueGuideUrl', 'Technique guide URL (PDF preferred)'],
+                  ['techniqueGuideTitle', 'STG label (Surgical technique guide)'],
+                  ['techniqueGuideUrl', 'Surgical technique PDF URL (direct .pdf only)'],
                 ] as const
               ).map(([key, label]) => (
                 <label
@@ -413,7 +413,11 @@ const ImplantDetail: React.FC = () => {
                     onChange={(e) => setAdminForm((f) => ({ ...f, [key]: e.target.value }))}
                     className="mt-0.5 w-full rounded border border-gray-200 px-2 py-1.5 text-sm text-gray-900"
                     placeholder={
-                      key === 'techniqueGuideUrl' ? 'https://…/surgical-technique.pdf' : undefined
+                      key === 'techniqueGuideUrl'
+                        ? 'https://…/…-surgical-technique.pdf — not brochure/catalog'
+                        : key === 'techniqueGuideTitle'
+                          ? 'Surgical technique guide'
+                          : undefined
                     }
                   />
                 </label>
