@@ -391,6 +391,28 @@ export interface ImplantDirectoryItem {
   communityScore?: number | null;
   ratingSampleN?: number | null;
   ratingVersion?: string | null;
+  utilityScore?: number | null;
+  maudeScore?: number | null;
+  maudeHazard?: number | null;
+  maudeSignal?: string | null;
+  scoreBreakdown?: {
+    version?: string;
+    finalScore?: number;
+    utilityScore?: number;
+    catalogScore?: number;
+    communityScore?: number | null;
+    maudeScore?: number | null;
+    maudeHazard?: number | null;
+    maudeSignal?: string;
+    summary?: string;
+    facets?: Array<{
+      id: string;
+      label: string;
+      score: number | null;
+      status?: string;
+      detail: string;
+    }>;
+  } | null;
   imageCount?: number;
   xrayCount?: number;
   galleryExtraCount?: number;

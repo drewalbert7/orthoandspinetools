@@ -7,6 +7,7 @@ import { AiRatingBadge } from '../components/implant/AiRatingBadge';
 import ImplantCommentSection from '../components/implant/ImplantCommentSection';
 import { ImplantMediaGallery } from '../components/implant/ImplantMediaGallery';
 import { TechniqueGuideLink } from '../components/implant/TechniqueGuideLink';
+import { ImplantScoreBreakdown } from '../components/implant/ImplantScoreBreakdown';
 import { useAuth } from '../contexts/AuthContext';
 import { isMeaningfulDirectoryNote } from '../lib/implantNotes';
 import { IMPLANT_SPECIALTIES, specialtyLabel } from '../lib/implantSpecialties';
@@ -290,12 +291,6 @@ const ImplantDetail: React.FC = () => {
                 .filter(Boolean)
                 .join(' · ')}
             </p>
-            {data.aiSummary ? (
-              <p className="mt-3 rounded-md border border-blue-100 bg-blue-50 px-3 py-2 text-sm leading-relaxed text-gray-800">
-                <span className="font-semibold text-blue-800">AI take: </span>
-                {data.aiSummary}
-              </p>
-            ) : null}
             {(data.longDescription || data.description) && (
               <p className="mt-3 text-sm leading-relaxed text-gray-700 [overflow-wrap:anywhere]">
                 {data.longDescription || data.description}
@@ -312,6 +307,9 @@ const ImplantDetail: React.FC = () => {
                   MAUDE snapshot →
                 </a>
               ) : null}
+              <a href="#directory-score" className="font-medium text-gray-600 hover:text-gray-900">
+                Score breakdown →
+              </a>
               <span className="text-gray-500">
                 {commentCount} comment{commentCount === 1 ? '' : 's'}
                 {data.status === 'verified' ? ' · verified' : ''}
@@ -322,21 +320,19 @@ const ImplantDetail: React.FC = () => {
                 </a>
               ) : null}
             </div>
-            <p className="mt-2 text-[11px] leading-snug text-gray-400">
-              Directory Score (0–10): catalog + discussion evidence. Not medical advice.
-            </p>
-            {(data.catalogScore != null || data.communityScore != null) && (
-              <p className="mt-1 text-[11px] tabular-nums text-gray-400">
-                {data.catalogScore != null ? `Catalog ${data.catalogScore.toFixed(1)}` : null}
-                {data.catalogScore != null && data.communityScore != null ? ' · ' : null}
-                {data.communityScore != null
-                  ? `Community ${data.communityScore.toFixed(1)}${
-                      data.ratingSampleN != null ? ` (n≈${data.ratingSampleN})` : ''
-                    }`
-                  : null}
-                {data.ratingVersion ? ` · ${data.ratingVersion}` : null}
-              </p>
-            )}
+
+            <ImplantScoreBreakdown
+              rating={data.aiRating}
+              breakdown={data.scoreBreakdown}
+              catalogScore={data.catalogScore}
+              communityScore={data.communityScore}
+              utilityScore={data.utilityScore}
+              maudeScore={data.maudeScore}
+              maudeSignal={data.maudeSignal}
+              ratingSampleN={data.ratingSampleN}
+              ratingVersion={data.ratingVersion}
+              summary={data.aiSummary}
+            />
           </div>
         </div>
 

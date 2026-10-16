@@ -37,6 +37,11 @@ export type ImplantCardSource = {
   ratingSampleN?: number | null;
   ratingVersion?: string | null;
   aiRatingLocked?: boolean;
+  utilityScore?: number | null;
+  maudeScore?: number | null;
+  maudeHazard?: number | null;
+  maudeSignal?: string | null;
+  scoreBreakdown?: unknown;
   memberRatingAvg?: number | null;
   images: ImplantImageRow[];
   _count: { reviews: number; comments?: number; images?: number };
@@ -109,6 +114,11 @@ export function toImplantDetailBase(implant: ImplantCardSource) {
     ratingSampleN: implant.ratingSampleN ?? null,
     ratingVersion: implant.ratingVersion ?? null,
     aiRatingLocked: Boolean(implant.aiRatingLocked),
+    utilityScore: implant.utilityScore ?? null,
+    maudeScore: implant.maudeScore ?? null,
+    maudeHazard: implant.maudeHazard ?? null,
+    maudeSignal: implant.maudeSignal ?? null,
+    scoreBreakdown: implant.scoreBreakdown ?? null,
     memberRatingAvg: implant.memberRatingAvg ?? null,
     reviewCount: implant._count.reviews,
     commentCount,

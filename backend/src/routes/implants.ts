@@ -18,7 +18,10 @@ import {
   isKnownImplantSpecialty,
   normalizeImplantSpecialty,
 } from '../lib/implantSpecialties';
-import { recomputeImplantDirectoryScore } from '../lib/implantDirectoryScore';
+import {
+  recomputeAllImplantDirectoryScores,
+  recomputeImplantDirectoryScore,
+} from '../lib/implantDirectoryScore';
 import {
   listCountSelect,
   productImageInclude,
@@ -254,6 +257,19 @@ router.get(
           ],
         },
       });
+  })
+);
+
+/** Admin: recompute all Directory Scores (ost-dir-v2 + MAUDE facets). */
+router.post(
+  '/admin/recompute-scores',
+  ingestLimiter,
+  authenticate,
+  requireAdmin,
+  asyncHandler(async (_req: AuthRequest, res: Response) => {
+    const n = await recomputeAllImplantDirectoryScores();
+    logger.info('Admin recomputed implant directory scores', { count: n });
+    res.json({ success: true, data: { recomputed: n, version: 'ost-dir-v2' } });
   })
 );
 
