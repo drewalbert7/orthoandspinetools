@@ -19,6 +19,21 @@ import {
   normalizeImplantSpecialty,
 } from '../lib/implantSpecialties';
 import { recomputeImplantDirectoryScore } from '../lib/implantDirectoryScore';
+import {
+  listCountSelect,
+  productImageInclude,
+  toImplantDetailBase,
+  toImplantListCard,
+} from '../lib/implantApiCards';
+import {
+  loadImplantCommentThread,
+  mapNewImplantComment,
+  talliesForOneComment,
+} from '../lib/implantComments';
+import {
+  getVerifiedImplantCount,
+  invalidateVerifiedImplantCountCache,
+} from '../lib/implantVerifiedCount';
 import { normalizeTechniqueGuideFields } from '../lib/techniqueGuide';
 import { logger } from '../utils/logger';
 
@@ -72,13 +87,10 @@ const ingestLimiter = rateLimit({
   message: { success: false, message: 'Ingest rate limit exceeded' },
 });
 
+/** Dedicated ingest secret only — do not share MAUDE/digest cron secrets. */
 function resolveIngestSecret(): string | null {
-  return (
-    process.env.IMPLANT_INGEST_SECRET?.trim() ||
-    process.env.MAUDE_CRON_SECRET?.trim() ||
-    process.env.EMAIL_DIGEST_CRON_SECRET?.trim() ||
-    null
-  );
+  const dedicated = process.env.IMPLANT_INGEST_SECRET?.trim();
+  return dedicated || null;
 }
 
 /** Grokbot secret header, or logged-in platform admin (JWT). */
@@ -101,132 +113,6 @@ async function requireIngestOrAdmin(req: AuthRequest): Promise<string> {
     throw new AppError('Implant ingest secret is not configured', 503);
   }
   throw new AppError('Invalid implant ingest secret or admin auth required', 403);
-}
-
-function publicImplantCard(implant: {
-  id: string;
-  slug: string;
-  brandName: string;
-  systemName: string | null;
-  company: string | null;
-  specialty: string;
-  anatomy: string | null;
-  deviceClass: string;
-  description: string | null;
-  seoTitle?: string | null;
-  seoDescription?: string | null;
-  status: string;
-  maudeBrandKey: string | null;
-  techniqueGuideUrl?: string | null;
-  techniqueGuideTitle?: string | null;
-  aiRating?: number | null;
-  aiSummary?: string | null;
-  aiRatedAt?: Date | null;
-  catalogScore?: number | null;
-  communityScore?: number | null;
-  ratingSampleN?: number | null;
-  ratingVersion?: string | null;
-  aiRatingLocked?: boolean;
-  memberRatingAvg?: number | null;
-  images: Array<{ kind: string; url: string; alt: string | null; sortOrder: number }>;
-  _count: { reviews: number; comments?: number };
-}) {
-  const sortedImages = [...implant.images].sort((a, b) => a.sortOrder - b.sortOrder);
-  const product =
-    sortedImages.find((i) => i.kind === 'product') || sortedImages[0] || null;
-  const xrayCount = sortedImages.filter((i) => i.kind === 'xray').length;
-  const otherCount = sortedImages.filter((i) => i.kind !== 'product').length;
-  const commentCount = implant._count.comments ?? 0;
-  return {
-    id: implant.id,
-    slug: implant.slug,
-    brandName: implant.brandName,
-    systemName: implant.systemName,
-    company: implant.company,
-    specialty: implant.specialty,
-    anatomy: implant.anatomy,
-    deviceClass: implant.deviceClass,
-    description: implant.description,
-    seoTitle: implant.seoTitle ?? null,
-    seoDescription: implant.seoDescription ?? null,
-    status: implant.status,
-    maudeBrandKey: implant.maudeBrandKey,
-    techniqueGuideUrl: implant.techniqueGuideUrl ?? null,
-    techniqueGuideTitle: implant.techniqueGuideTitle ?? null,
-    aiRating: implant.aiRating ?? null,
-    aiSummary: implant.aiSummary ?? null,
-    aiRatedAt: implant.aiRatedAt ? implant.aiRatedAt.toISOString() : null,
-    catalogScore: implant.catalogScore ?? null,
-    communityScore: implant.communityScore ?? null,
-    ratingSampleN: implant.ratingSampleN ?? null,
-    ratingVersion: implant.ratingVersion ?? null,
-    aiRatingLocked: Boolean(implant.aiRatingLocked),
-    memberRatingAvg: implant.memberRatingAvg ?? null,
-    reviewCount: implant._count.reviews,
-    commentCount,
-    imageCount: sortedImages.length,
-    xrayCount,
-    galleryExtraCount: Math.max(0, otherCount),
-    productImage: product ? { url: product.url, alt: product.alt, kind: product.kind } : null,
-    markdownPath: `/implants/${implant.slug}.md`,
-  };
-}
-
-type ImplantCommentDto = {
-  id: string;
-  body: string;
-  parentId: string | null;
-  isDeleted: boolean;
-  createdAt: string;
-  updatedAt: string;
-  author: { id: string; username: string; firstName: string; lastName: string; specialty: string | null };
-  voteScore: number;
-  upvotes: number;
-  downvotes: number;
-  userVote: 'upvote' | 'downvote' | null;
-  replies: ImplantCommentDto[];
-};
-
-function mapImplantComment(
-  c: {
-    id: string;
-    body: string;
-    parentId: string | null;
-    createdAt: Date;
-    updatedAt: Date;
-    isDeleted: boolean;
-    user: { id: string; username: string; firstName: string; lastName: string; specialty: string | null };
-    votes: Array<{ userId: string; value: number }>;
-    replies?: Array<{
-      id: string;
-      body: string;
-      parentId: string | null;
-      createdAt: Date;
-      updatedAt: Date;
-      isDeleted: boolean;
-      user: { id: string; username: string; firstName: string; lastName: string; specialty: string | null };
-      votes: Array<{ userId: string; value: number }>;
-    }>;
-  },
-  viewerId?: string | null
-): ImplantCommentDto {
-  const upvotes = c.votes.filter((v) => v.value === 1).length;
-  const downvotes = c.votes.filter((v) => v.value === -1).length;
-  const mine = viewerId ? c.votes.find((v) => v.userId === viewerId) : undefined;
-  return {
-    id: c.id,
-    body: c.isDeleted ? '[deleted]' : c.body,
-    parentId: c.parentId,
-    isDeleted: c.isDeleted,
-    createdAt: c.createdAt.toISOString(),
-    updatedAt: c.updatedAt.toISOString(),
-    author: c.user,
-    voteScore: upvotes - downvotes,
-    upvotes,
-    downvotes,
-    userVote: mine ? (mine.value === 1 ? 'upvote' : 'downvote') : null,
-    replies: (c.replies || []).map((r) => mapImplantComment({ ...r, replies: [] }, viewerId)),
-  };
 }
 
 async function refreshMemberRatingAvg(implantId: string) {
@@ -324,37 +210,31 @@ router.get(
         : await prisma.implant.findMany({
             where: { id: { in: ids } },
             include: {
-              images: { orderBy: { sortOrder: 'asc' } },
-              _count: {
-                select: {
-                  reviews: true,
-                  comments: { where: { isDeleted: false } },
-                },
-              },
+              images: productImageInclude,
+              _count: { select: listCountSelect },
             },
           });
 
     const byId = new Map(implants.map((i) => [i.id, i]));
     const ordered = ids.map((id) => byId.get(id)).filter(Boolean) as typeof implants;
+    const verifiedCount = await getVerifiedImplantCount();
 
-    const verifiedCount = await prisma.implant.count({
-      where: { status: 'verified' },
-    });
-
-    res.json({
-      success: true,
-      data: {
-        total,
-        page,
-        pageSize,
-        totalPages: Math.max(1, Math.ceil(total / pageSize)),
-        count: ordered.length,
-        specialty: specialty || 'all',
-        inferredSpecialty: inferredSpecialty || null,
-        verifiedCount,
-        implants: ordered.map(publicImplantCard),
-      },
-    });
+    res
+      .set('Cache-Control', 'public, max-age=30, stale-while-revalidate=120')
+      .json({
+        success: true,
+        data: {
+          total,
+          page,
+          pageSize,
+          totalPages: Math.max(1, Math.ceil(total / pageSize)),
+          count: ordered.length,
+          specialty: specialty || 'all',
+          inferredSpecialty: inferredSpecialty || null,
+          verifiedCount,
+          implants: ordered.map(toImplantListCard),
+        },
+      });
   })
 );
 
@@ -363,15 +243,66 @@ router.get(
   '/meta/specialties',
   listLimiter,
   asyncHandler(async (_req: AuthRequest, res: Response) => {
-    res.json({
-      success: true,
-      data: {
-        specialties: [
-          { id: 'all', label: 'All specialties' },
-          ...IMPLANT_SPECIALTIES.map((s) => ({ id: s.id, label: s.label })),
-        ],
-      },
-    });
+    res
+      .set('Cache-Control', 'public, max-age=3600, stale-while-revalidate=86400')
+      .json({
+        success: true,
+        data: {
+          specialties: [
+            { id: 'all', label: 'All specialties' },
+            ...IMPLANT_SPECIALTIES.map((s) => ({ id: s.id, label: s.label })),
+          ],
+        },
+      });
+  })
+);
+
+/** Admin: draft / unpublished queue (before /:slug). */
+router.get(
+  '/admin/drafts',
+  listLimiter,
+  authenticate,
+  requireAdmin,
+  [
+    query('page').optional().isInt({ min: 1, max: 1000 }),
+    query('pageSize').optional().isInt({ min: 1, max: 100 }),
+  ],
+  asyncHandler(async (req: AuthRequest, res: Response) => {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) throw new AppError('Invalid query', 400);
+
+    const page = Math.max(1, parseInt(String(req.query.page || '1'), 10) || 1);
+    const pageSize = Math.min(
+      100,
+      Math.max(1, parseInt(String(req.query.pageSize || '24'), 10) || 24)
+    );
+    const where = { status: 'draft' as const };
+    const [total, rows] = await Promise.all([
+      prisma.implant.count({ where }),
+      prisma.implant.findMany({
+        where,
+        include: {
+          images: productImageInclude,
+          _count: { select: listCountSelect },
+        },
+        orderBy: [{ updatedAt: 'desc' }, { brandName: 'asc' }],
+        take: pageSize,
+        skip: (page - 1) * pageSize,
+      }),
+    ]);
+
+    res
+      .set('Cache-Control', 'private, no-store')
+      .json({
+        success: true,
+        data: {
+          total,
+          page,
+          pageSize,
+          totalPages: Math.max(1, Math.ceil(total / pageSize)),
+          implants: rows.map(toImplantListCard),
+        },
+      });
   })
 );
 
@@ -564,6 +495,7 @@ router.post(
     });
 
     await refreshSearchText(implant.id);
+    invalidateVerifiedImplantCountCache();
     logger.info('Implant ingest upsert', { slug: implant.slug, status: implant.status, actor });
 
     res.status(existing ? 200 : 201).json({
@@ -654,52 +586,27 @@ router.get(
       throw new AppError('Implant not found', 404);
     }
 
-    const card = publicImplantCard(implant);
-    const commentRows = await prisma.implantComment.findMany({
-      where: { implantId: implant.id, parentId: null },
-      orderBy: { createdAt: 'asc' },
-      take: 100,
-      include: {
-        user: {
-          select: { id: true, username: true, firstName: true, lastName: true, specialty: true },
+    const card = toImplantDetailBase(implant);
+    const [comments, relatedRows] = await Promise.all([
+      loadImplantCommentThread(implant.id, req.user?.id),
+      prisma.implant.findMany({
+        where: {
+          status: { in: [...PUBLIC_IMPLANT_STATUSES] },
+          id: { not: implant.id },
+          OR: [
+            { specialty: implant.specialty },
+            { deviceClass: implant.deviceClass },
+            ...(implant.company ? [{ company: implant.company }] : []),
+          ],
         },
-        votes: { select: { userId: true, value: true } },
-        replies: {
-          orderBy: { createdAt: 'asc' },
-          take: 50,
-          include: {
-            user: {
-              select: { id: true, username: true, firstName: true, lastName: true, specialty: true },
-            },
-            votes: { select: { userId: true, value: true } },
-          },
+        include: {
+          images: productImageInclude,
+          _count: { select: listCountSelect },
         },
-      },
-    });
-    const comments = commentRows.map((c) => mapImplantComment(c, req.user?.id));
-
-    const relatedRows = await prisma.implant.findMany({
-      where: {
-        status: { in: [...PUBLIC_IMPLANT_STATUSES] },
-        id: { not: implant.id },
-        OR: [
-          { specialty: implant.specialty },
-          { deviceClass: implant.deviceClass },
-          ...(implant.company ? [{ company: implant.company }] : []),
-        ],
-      },
-      include: {
-        images: { orderBy: { sortOrder: 'asc' } },
-        _count: {
-          select: {
-            reviews: true,
-            comments: { where: { isDeleted: false } },
-          },
-        },
-      },
-      orderBy: [{ aiRating: { sort: 'desc', nulls: 'last' } }, { brandName: 'asc' }],
-      take: 8,
-    });
+        orderBy: [{ aiRating: { sort: 'desc', nulls: 'last' } }, { brandName: 'asc' }],
+        take: 8,
+      }),
+    ]);
 
     // Prefer same specialty, then fill with class/company matches
     const relatedSorted = [...relatedRows].sort((a, b) => {
@@ -708,6 +615,12 @@ router.get(
       if (as !== bs) return as - bs;
       return (b.aiRating ?? 0) - (a.aiRating ?? 0);
     });
+
+    if (req.user) {
+      res.set('Cache-Control', 'private, no-store');
+    } else {
+      res.set('Cache-Control', 'public, max-age=60, stale-while-revalidate=300');
+    }
 
     res.json({
       success: true,
@@ -727,7 +640,7 @@ router.get(
         comments,
         commentsLocked: !req.user,
         canComment: Boolean(req.user),
-        related: relatedSorted.slice(0, 6).map((r) => publicImplantCard(r)),
+        related: relatedSorted.slice(0, 6).map((r) => toImplantListCard(r)),
         /** Legacy empty array — UI uses comments */
         reviews: [] as unknown[],
         reviewsLocked: true,
@@ -872,7 +785,7 @@ router.post(
 
     res.status(201).json({
       success: true,
-      data: mapImplantComment({ ...created, replies: [] }, req.user.id),
+      data: mapNewImplantComment(created, req.user.id),
     });
   })
 );
@@ -925,24 +838,17 @@ router.post(
       });
     }
 
-    const votes = await prisma.implantCommentVote.findMany({
-      where: { commentId },
-      select: { value: true, userId: true },
-    });
-    const upvotes = votes.filter((v) => v.value === 1).length;
-    const downvotes = votes.filter((v) => v.value === -1).length;
-    const mine = votes.find((v) => v.userId === req.user!.id);
-
+    const tallies = await talliesForOneComment(commentId, req.user.id);
     await recomputeImplantDirectoryScore(implant.id).catch(() => {});
 
     res.json({
       success: true,
       data: {
         commentId,
-        voteScore: upvotes - downvotes,
-        upvotes,
-        downvotes,
-        userVote: mine ? (mine.value === 1 ? 'upvote' : 'downvote') : null,
+        voteScore: tallies.voteScore,
+        upvotes: tallies.upvotes,
+        downvotes: tallies.downvotes,
+        userVote: tallies.userVote,
       },
     });
   })
@@ -1021,6 +927,7 @@ router.post(
         detail: JSON.stringify({ from: implant.status, to: nextStatus }),
       },
     });
+    invalidateVerifiedImplantCountCache();
 
     res.json({
       success: true,
@@ -1217,6 +1124,9 @@ router.patch(
     });
 
     logger.info('Implant admin patch', { slug: updated.slug, admin: req.user!.id });
+    if (req.body.status !== undefined && req.body.status !== existing.status) {
+      invalidateVerifiedImplantCountCache();
+    }
 
     // Refresh catalog/community components; respects aiRatingLocked for final score
     const breakdown = await recomputeImplantDirectoryScore(updated.id).catch(

@@ -131,6 +131,7 @@ Full agent copy: **`AGENTS.md`**. Cursor rule: `.cursor/rules/analytics-durabili
 - [x] **Implant Directory — page finish** — Hide IFU placeholders; product `ogImage` + JSON-LD; gallery thumbs link; related strip; MAUDE 12‑mo card; loading skeleton; XR lightbox; Verified disabled until count > 0; directory copy softened (X-ray not promised on every profile).
 - [x] **Implant Directory — technique guides** — Surgical/operative technique PDF only (not brochures): list icon left of score + detail CTA; direct `.pdf` validated on ingest/admin; 6 STG seeds (INFUSE cleared — FDA URL 403).
 - [x] **MAUDE Rising/Top stable colors** — Brand colors/stroke weight keyed by name so Rising ↔ Top reorder does not jump the chart.
+- [x] **Implant Directory — pre-growth hardening** — Slim list/related payloads (product thumb only); vote tallies via `groupBy`; verified-count TTL cache; browse indexes `(status,specialty,ai_rating)` + company + verified partial; anonymous `Cache-Control` on list/detail; dedicated `IMPLANT_INGEST_SECRET` only; admin `GET /api/implants/admin/drafts`.
 - [ ] **Implant Directory — catalog growth** — More systems via Grokbot ingest (draft → verify); refine AI assessments; more XR/diagram where rights clear; more technique PDFs; swap Solera JP chart for English catalog shot when available. **← next**
 - [ ] **Implant Directory — MCP / paid data** — Licensed API + MCP connector (Nomads-style); optional SQLite/JSON export. **Blocked until images + data quality are solid.**
 
@@ -143,6 +144,7 @@ Full agent copy: **`AGENTS.md`**. Cursor rule: `.cursor/rules/analytics-durabili
 - [x] **Latest deploy (Oct 14d)** — STG-only technique PDFs; MAUDE Rising/Top color stability; globe idle spin from North America; production QA **31/31**; analytics volume + backups intact (`viewsToday`/`views7d`/`bots.hits7d` via durability report)
 - [x] **Latest deploy (Oct 14e)** — Implant share cards: `/api/og/implant/:slug` + nginx bot rewrite; Cloudflare/Cloudinary 1200×630 OG delivery; DocumentMeta `og:image:secure_url` + dims; hub implant OG copy polish
 - [x] **Latest deploy (Oct 14f)** — Implant Directory + detail mobile layout (2-col filters, full-width gallery, touch targets); dark-mode remaps for slate/score badges/blue panels; STG + discussion polish
+- [x] **Latest deploy (Oct 15)** — Implant Directory scale hardening: slim list cards, vote aggregation, verified-count cache, browse indexes, Cache-Control, ingest-secret harden, admin drafts queue
 - [x] **Ops rule (hard)** — After **every** `backend`/`frontend` recreate, always: `docker compose -f docker-compose.prod.yml up -d --force-recreate nginx` (cached Docker DNS → 502 Connection refused on old IPs)
 - [x] **Analytics backup cron** — `15 2 * * *` → `scripts/analytics-backup.sh` → `/mnt/HC_Volume_106016238/orthoandspinetools-backups/analytics/`
 
@@ -206,7 +208,7 @@ Never run `docker compose down -v` (deletes production DB volume).
 
 ## 📋 **NEXT PRIORITIES (summary)**
 
-1. **Implant Directory catalog growth** — More systems via Grokbot ingest; extra XR/diagram; more technique PDFs; refine AI assessments
+1. **Implant Directory catalog growth** — Pre-growth API/index hardening ✅; next: more systems via Grokbot ingest; extra XR/diagram; more technique PDFs; refine AI assessments
 2. **Manual QA** — Create post with image/video; physician NPI / intl. pending / email verify
 3. **Implant MCP / paid API** — After data quality is solid (license + export + connector)
 4. **R2 custom domain** — Prefer `media.orthoandspinetools.com` over `r2.dev` if needed

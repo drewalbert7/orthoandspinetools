@@ -1401,6 +1401,28 @@ class ApiService {
     }
   }
 
+  /** Admin-only draft queue (ingest staging). */
+  async getImplantDrafts(params: { page?: number; pageSize?: number } = {}): Promise<ImplantListResponse> {
+    try {
+      const search = new URLSearchParams();
+      if (params.page) search.set('page', String(params.page));
+      if (params.pageSize) search.set('pageSize', String(params.pageSize));
+      const qs = search.toString();
+      const response = await api.get(`/implants/admin/drafts${qs ? `?${qs}` : ''}`);
+      const data = response.data.data;
+      return {
+        total: data.total ?? 0,
+        page: data.page ?? 1,
+        pageSize: data.pageSize ?? 24,
+        totalPages: data.totalPages ?? 1,
+        count: data.implants?.length ?? 0,
+        implants: data.implants || [],
+      };
+    } catch (error: unknown) {
+      throw new Error(apiErrorMessage(error, 'Failed to load implant drafts'));
+    }
+  }
+
   async upsertImplantReview(
     slug: string,
     payload: { rating: number; title?: string; body: string }

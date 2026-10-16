@@ -679,6 +679,8 @@ model Implant {
   @@index([company])
   @@index([status, publishedAt])
   @@index([aiRating])
+  @@index([status, specialty, aiRating(sort: Desc)])
+  @@index([status, company])
   @@map("implants")
 }
 
