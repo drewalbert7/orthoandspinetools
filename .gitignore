@@ -32,6 +32,7 @@ yarn-error.log*
 
 # Docker
 .dockerignore
+docker-compose
 
 # Backups (but keep .backup files in version control for critical files)
 *.backup
