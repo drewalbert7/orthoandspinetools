@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { Bone, ChevronsUpDown, Image as ImageIcon, Search } from 'lucide-react';
+import { BadgeCheck, Bone, ChevronsUpDown, Image as ImageIcon, Search } from 'lucide-react';
 import { DocumentMeta } from '../components/DocumentMeta';
 import { AiRatingBadge } from '../components/implant/AiRatingBadge';
 import { TechniqueGuideLink } from '../components/implant/TechniqueGuideLink';
@@ -50,7 +50,7 @@ function FilterSelect({
 
 function DeviceClassLabel({ value }: { value: string }) {
   return (
-    <span className="rounded bg-gray-100 px-1.5 py-0.5 text-[11px] font-medium text-gray-700">
+    <span className="rounded px-1.5 py-0.5 text-[11px] font-medium text-gray-600 bg-gray-100">
       {value.replace(/_/g, ' ')}
     </span>
   );
@@ -60,16 +60,19 @@ function ProductThumb({ implant }: { implant: ImplantDirectoryItem }) {
   const extra = implant.galleryExtraCount || 0;
   if (implant.productImage?.url) {
     return (
-      <div className="relative h-11 w-11 shrink-0 sm:h-14 sm:w-14">
+      <div className="relative h-12 w-12 shrink-0 overflow-hidden rounded-md border border-gray-200 bg-gray-50 sm:h-[3.25rem] sm:w-[3.25rem]">
         <img
           src={implant.productImage.url}
           alt={implant.productImage.alt || implant.brandName}
-          className="h-full w-full rounded border border-gray-200 object-cover bg-white"
+          className="h-full w-full object-contain p-0.5"
           loading="lazy"
         />
         {extra > 0 ? (
-          <span className="absolute -bottom-1 -right-1 inline-flex items-center gap-0.5 rounded-full bg-gray-900 px-1 py-0.5 text-[9px] font-semibold text-white">
-            <ImageIcon className="h-2.5 w-2.5" />
+          <span
+            className="absolute bottom-0.5 right-0.5 inline-flex items-center gap-0.5 rounded bg-gray-900/85 px-1 py-px text-[9px] font-semibold tabular-nums text-white"
+            title={`${extra + 1} images`}
+          >
+            <ImageIcon className="h-2.5 w-2.5" aria-hidden />
             {extra + 1}
           </span>
         ) : null}
@@ -78,7 +81,7 @@ function ProductThumb({ implant }: { implant: ImplantDirectoryItem }) {
   }
   return (
     <div
-      className="flex h-11 w-11 shrink-0 items-center justify-center rounded border border-dashed border-gray-200 bg-gray-50 text-gray-400 sm:h-14 sm:w-14"
+      className="flex h-12 w-12 shrink-0 items-center justify-center rounded-md border border-dashed border-gray-200 bg-gray-50 text-gray-400 sm:h-[3.25rem] sm:w-[3.25rem]"
       title="Product image coming soon"
     >
       <Bone className="h-5 w-5" />
@@ -368,9 +371,11 @@ const ImplantDirectory: React.FC = () => {
             {q ? ` matching “${q}”` : ''}
             {verified ? ' · verified only' : ''}
           </p>
-          <p className="shrink-0 text-xs tabular-nums text-gray-400">
-            {page} / {totalPages}
-          </p>
+          {totalPages > 1 ? (
+            <p className="shrink-0 text-xs tabular-nums text-gray-400">
+              {page} / {totalPages}
+            </p>
+          ) : null}
         </div>
         {inferredSpecialty && specialty === 'all' && q ? (
           <p className="border-b border-gray-100 px-3 py-1.5 text-[11px] text-gray-500">
@@ -405,59 +410,74 @@ const ImplantDirectory: React.FC = () => {
           </p>
         ) : (
           <ul className="divide-y divide-gray-100">
-            {implants.map((implant: ImplantDirectoryItem) => (
-              <li key={implant.id}>
-                <div className="flex items-center gap-2 px-2.5 py-2.5 transition-colors hover:bg-gray-50 sm:gap-3 sm:px-3">
-                  <Link
-                    to={`/implants/${implant.slug}`}
-                    className="flex min-w-0 flex-1 items-center gap-2.5 sm:gap-3"
-                  >
-                    <ProductThumb implant={implant} />
-                    <div className="min-w-0 flex-1">
-                      <div className="flex flex-wrap items-center gap-1.5">
-                        <span className="truncate text-sm font-semibold text-gray-900">
-                          {implant.brandName}
-                        </span>
-                        <span className="hidden sm:inline">
-                          <DeviceClassLabel value={implant.deviceClass} />
-                        </span>
-                        {implant.status === 'verified' ? (
-                          <span className="text-[10px] font-semibold uppercase tracking-wide text-blue-700">
-                            Verified
+            {implants.map((implant: ImplantDirectoryItem) => {
+              const commentCount = implant.commentCount ?? implant.reviewCount ?? 0;
+              const hasStg = isTechniqueGuidePdfUrl(implant.techniqueGuideUrl);
+              const subtitle = [
+                implant.company,
+                specialtyLabel(implant.specialty),
+                // Device class only in subtitle on small screens (badge shows it on sm+)
+                implant.deviceClass.replace(/_/g, ' '),
+              ].filter(Boolean);
+
+              return (
+                <li key={implant.id}>
+                  <div className="group flex items-center gap-2 px-2.5 transition-colors hover:bg-gray-50 sm:gap-3 sm:px-3">
+                    <Link
+                      to={`/implants/${implant.slug}`}
+                      className="flex min-w-0 flex-1 items-center gap-2.5 py-2.5 sm:gap-3"
+                    >
+                      <ProductThumb implant={implant} />
+                      <div className="min-w-0 flex-1">
+                        <div className="flex min-w-0 items-center gap-1.5">
+                          <span className="truncate text-sm font-semibold text-gray-900 group-hover:text-blue-800">
+                            {implant.brandName}
+                          </span>
+                          {implant.status === 'verified' ? (
+                            <BadgeCheck
+                              className="h-3.5 w-3.5 shrink-0 text-blue-600"
+                              aria-label="Verified listing"
+                            />
+                          ) : null}
+                          <span className="hidden min-w-0 sm:inline">
+                            <DeviceClassLabel value={implant.deviceClass} />
+                          </span>
+                        </div>
+                        <p className="mt-0.5 truncate text-xs text-gray-500">
+                          <span className="sm:hidden">{subtitle.join(' · ')}</span>
+                          <span className="hidden sm:inline">
+                            {[implant.company, specialtyLabel(implant.specialty)]
+                              .filter(Boolean)
+                              .join(' · ')}
+                          </span>
+                        </p>
+                      </div>
+                    </Link>
+                    <div className="flex shrink-0 items-center gap-1.5 self-center py-2 sm:gap-2">
+                      {hasStg ? (
+                        <TechniqueGuideLink
+                          url={implant.techniqueGuideUrl!}
+                          title={implant.techniqueGuideTitle}
+                          compact
+                        />
+                      ) : null}
+                      <div className="flex min-w-[2.75rem] flex-col items-end gap-0.5">
+                        <AiRatingBadge rating={implant.aiRating} showLabel={false} />
+                        {implant.memberRatingAvg != null ? (
+                          <span className="hidden text-[10px] tabular-nums text-gray-400 sm:inline">
+                            ★ {implant.memberRatingAvg.toFixed(1)}
+                          </span>
+                        ) : commentCount > 0 ? (
+                          <span className="hidden text-[10px] tabular-nums text-gray-400 sm:inline">
+                            {commentCount} comment{commentCount === 1 ? '' : 's'}
                           </span>
                         ) : null}
                       </div>
-                      <p className="mt-0.5 truncate text-xs text-gray-500">
-                        {[
-                          implant.company,
-                          specialtyLabel(implant.specialty),
-                          implant.deviceClass.replace(/_/g, ' '),
-                        ]
-                          .filter(Boolean)
-                          .join(' · ')}
-                      </p>
-                    </div>
-                  </Link>
-                  <div className="flex shrink-0 flex-col items-end gap-1 self-center">
-                    {isTechniqueGuidePdfUrl(implant.techniqueGuideUrl) ? (
-                      <TechniqueGuideLink
-                        url={implant.techniqueGuideUrl!}
-                        title={implant.techniqueGuideTitle}
-                        compact
-                      />
-                    ) : null}
-                    <AiRatingBadge rating={implant.aiRating} />
-                    <div className="hidden text-right text-[10px] text-gray-400 sm:block">
-                      {implant.memberRatingAvg != null ? (
-                        <span>★ {implant.memberRatingAvg.toFixed(1)}</span>
-                      ) : (
-                        <span>{implant.commentCount ?? implant.reviewCount} comments</span>
-                      )}
                     </div>
                   </div>
-                </div>
-              </li>
-            ))}
+                </li>
+              );
+            })}
           </ul>
         )}
 

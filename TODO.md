@@ -146,6 +146,7 @@ Full agent copy: **`AGENTS.md`**. Cursor rule: `.cursor/rules/analytics-durabili
 - [x] **Latest deploy (Oct 14f)** — Implant Directory + detail mobile layout (2-col filters, full-width gallery, touch targets); dark-mode remaps for slate/score badges/blue panels; STG + discussion polish
 - [x] **Latest deploy (Oct 15)** — Implant Directory scale hardening: slim list cards, vote aggregation, verified-count cache, browse indexes, Cache-Control, ingest-secret harden, admin drafts queue
 - [x] **Latest deploy (Oct 15b)** — Remove Stats from sidebar (keep header link to `/stats`)
+- [x] **Latest deploy (Oct 15c)** — Implant Directory list polish: one-line STG+score, quieter verified check, less meta duplication, contain thumbs, hide empty comment/page chrome
 - [x] **Ops rule (hard)** — After **every** `backend`/`frontend` recreate, always: `docker compose -f docker-compose.prod.yml up -d --force-recreate nginx` (cached Docker DNS → 502 Connection refused on old IPs)
 - [x] **Analytics backup cron** — `15 2 * * *` → `scripts/analytics-backup.sh` → `/mnt/HC_Volume_106016238/orthoandspinetools-backups/analytics/`
 
