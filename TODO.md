@@ -68,7 +68,7 @@ Full agent copy: **`AGENTS.md`**. Cursor rule: `.cursor/rules/analytics-durabili
 | **10** | **MAUDE coverage gaps** | ✅ Device—Company titles; Unknown-specialty implants (discs, Superion, INFUSE, mobile-bearing knees) |
 | **11** | **MAUDE smart search** | ✅ Clinical phrases → implant brands (cervical/lumbar disc arthroplasty, SI, INFUSE, …) |
 | **12** | **Bot / LLM analytics** | ✅ Nginx log tailer + admin **Bots & agents**; header **Stats**; humans stay on JS beacon |
-| **13** | **Implant Directory** | ✅ Page finish + STG PDFs; Directory Score + comments; public `/stats` (spinning NA globe); catalog growth next; **MCP later** |
+| **13** | **Implant Directory** | ✅ Page finish + STG PDFs; Directory Score + comments; public `/stats`; **pre-growth API/index hardening** ✅; catalog growth next; **MCP later** |
 
 **Ongoing disk habit:** `./scripts/docker-disk-check.sh report` before `--no-cache` builds.
 
