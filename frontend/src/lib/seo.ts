@@ -160,9 +160,9 @@ export function postOgImage(post: Post): string | undefined {
   return undefined;
 }
 
-/** Absolute URL for default share image (square logo; use with summary card, not large_image). */
+/** Absolute URL for default share image (1200x630 OG image). */
 export function defaultShareOgImageUrl(): string {
-  return absoluteUrl('/brand-logo.png');
+  return absoluteUrl('/og-image.png');
 }
 
 export function buildPostJsonLd(post: Post): Record<string, unknown> {

@@ -165,11 +165,11 @@ export function pickOgImage(origin: string, attachments: OgPostPayload['attachme
 }
 
 export function defaultOgImage(origin: string): string {
-  return `${origin}/brand-logo.png`;
+  return `${origin}/og-image.png`;
 }
 
-export const DEFAULT_OG_IMAGE_WIDTH = 400;
-export const DEFAULT_OG_IMAGE_HEIGHT = 400;
+export const DEFAULT_OG_IMAGE_WIDTH = 1200;
+export const DEFAULT_OG_IMAGE_HEIGHT = 630;
 
 export type OgPageKey = 'home' | 'cases' | 'startups' | 'popular' | 'maude' | 'implants';
 
@@ -229,17 +229,19 @@ type ShareImageMeta = {
 
 function shareImageMeta(origin: string, imageUrl: string | undefined, alt: string): ShareImageMeta {
   const url = imageUrl || defaultOgImage(origin);
-  const isDefault = url.includes('/brand-logo');
+  const isDefault = url.includes('/og-image.png') || url.includes('/brand-logo');
   const isOgSized =
+    isDefault ||
     /c_fill,w_1200,h_630/i.test(url) ||
     /w=1200,h=630/i.test(url) ||
-    (!isDefault && (/\/image\/upload\//i.test(url) || /imagedelivery\.net/i.test(url)));
+    /\/image\/upload\//i.test(url) ||
+    /imagedelivery\.net/i.test(url);
   return {
     url,
-    width: isOgSized ? 1200 : isDefault ? DEFAULT_OG_IMAGE_WIDTH : undefined,
-    height: isOgSized ? 630 : isDefault ? DEFAULT_OG_IMAGE_HEIGHT : undefined,
+    width: isOgSized ? 1200 : undefined,
+    height: isOgSized ? 630 : undefined,
     alt,
-    twitterCard: isDefault ? 'summary' : 'summary_large_image',
+    twitterCard: isOgSized ? 'summary_large_image' : 'summary',
   };
 }
 

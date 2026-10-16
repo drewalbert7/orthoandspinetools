@@ -43,12 +43,6 @@ router.get(
         changefreq: 'weekly',
         priority: '0.8',
       })),
-      ...implants.map((i) => ({
-        path: `/implants/${i.slug}.md`,
-        lastmod: i.updatedAt,
-        changefreq: 'weekly',
-        priority: '0.75',
-      })),
       ...communities.map((c) => ({
         path: `/community/${c.slug}`,
         lastmod: c.updatedAt,

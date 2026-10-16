@@ -34,6 +34,7 @@ import ResetPassword from './pages/ResetPassword';
 import VerifyEmail from './pages/VerifyEmail';
 import PrivacyPolicy from './pages/PrivacyPolicy';
 import TermsOfService from './pages/TermsOfService';
+import NotFound from './pages/NotFound';
 import GoogleAnalytics from './components/GoogleAnalytics';
 import SiteAnalytics from './components/SiteAnalytics';
 import SitePolicyBanner from './components/SitePolicyBanner';
@@ -146,6 +147,7 @@ function App() {
                     <Route path="/admin" element={<AdminDashboard />} />
                     <Route path="/community/:slug" element={<Community />} />
                     <Route path="/community/:slug/settings" element={<CommunitySettings />} />
+                    <Route path="*" element={<NotFound />} />
                   </Routes>
                 </main>
               </div>
