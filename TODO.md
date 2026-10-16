@@ -108,7 +108,7 @@ Full agent copy: **`AGENTS.md`**. Cursor rule: `.cursor/rules/analytics-durabili
 - [x] **Google Search Console** — Domain verified; sitemap submitted (`/sitemap.xml`).
 - [ ] **Optional** — Rich Results Test on home + `/post/:id`; dedicated 1200×630 `og-share.png` for richer homepage/hub cards.
 - [x] **First-party bot + LLM agent traffic** — Postgres `analytics_bot*` tables; UA classification (ai_agent / ai_crawl / search / …); `bot-analytics` compose service tails `nginx/logs/access.log` (14d backfill + cursor); `/pageview` bot UAs never inflate human counts; Admin Analytics **Bots & agents**; public **`/stats`** (OC-style humans + globe + bots) in header for everyone. Unit: `scripts/orthoandspinetools-bot-analytics.service` (`sudo` enable if not yet installed).
-- [x] **Public Stats page** — `GET /api/analytics/stats` + `/globe`; GeoIP country on new pageviews; Stats link in public header/sidebar.
+- [x] **Public Stats page** — `GET /api/analytics/stats` + `/globe`; GeoIP country on new pageviews; Stats link in **header only** (removed from sidebar).
 - [x] **Analytics durability** — Rules in `AGENTS.md` + `.cursor/rules/analytics-durability.mdc` + TODO; live data on Postgres volume (not git/deploy); daily `analytics-backup.sh` → Hetzner `…/backups/analytics/` (≥30d); backfill gated by `backfilled_at`.
 - [x] **Implant Directory shell** — Nav under Cases → `/implants` + `/implants/:slug`; Postgres `implants` / `implant_images` / `implant_reviews`; 5 spine seeds; directory public.
 - [x] **Implant Directory — harden + AI SEO search** (before MCP / big ingest):
@@ -127,7 +127,7 @@ Full agent copy: **`AGENTS.md`**. Cursor rule: `.cursor/rules/analytics-durabili
 - [x] **Implant Directory — AI scores + media UI** — `ai_rating` 0–10 + summary on every listing; single product thumb; detail gallery for product/X-ray/diagram; browse sorted by AI score.
 - [x] **Implant Directory — compact filters** — Direct-Care-style row (specialty / class / Verified / sort) on `/implants` only; no chip sprawl.
 - [x] **Implant Directory — images fill-out** — Seed listings have manufacturer product (and where available XR/diagram) on Cloudflare Images with attribution + `licenseNote`; list/detail `productImage` / gallery live for all 15 seeds.
-- [x] **Public Stats** — Header **Stats** → `/stats` + live globe (starts on North America, idle spin); human pageviews / geo; bots stay separate.
+- [x] **Public Stats** — Header **Stats** → `/stats` + live globe (starts on North America, idle spin); human pageviews / geo; bots stay separate; not duplicated in sidebar.
 - [x] **Implant Directory — page finish** — Hide IFU placeholders; product `ogImage` + JSON-LD; gallery thumbs link; related strip; MAUDE 12‑mo card; loading skeleton; XR lightbox; Verified disabled until count > 0; directory copy softened (X-ray not promised on every profile).
 - [x] **Implant Directory — technique guides** — Surgical/operative technique PDF only (not brochures): list icon left of score + detail CTA; direct `.pdf` validated on ingest/admin; 6 STG seeds (INFUSE cleared — FDA URL 403).
 - [x] **MAUDE Rising/Top stable colors** — Brand colors/stroke weight keyed by name so Rising ↔ Top reorder does not jump the chart.
@@ -145,6 +145,7 @@ Full agent copy: **`AGENTS.md`**. Cursor rule: `.cursor/rules/analytics-durabili
 - [x] **Latest deploy (Oct 14e)** — Implant share cards: `/api/og/implant/:slug` + nginx bot rewrite; Cloudflare/Cloudinary 1200×630 OG delivery; DocumentMeta `og:image:secure_url` + dims; hub implant OG copy polish
 - [x] **Latest deploy (Oct 14f)** — Implant Directory + detail mobile layout (2-col filters, full-width gallery, touch targets); dark-mode remaps for slate/score badges/blue panels; STG + discussion polish
 - [x] **Latest deploy (Oct 15)** — Implant Directory scale hardening: slim list cards, vote aggregation, verified-count cache, browse indexes, Cache-Control, ingest-secret harden, admin drafts queue
+- [x] **Latest deploy (Oct 15b)** — Remove Stats from sidebar (keep header link to `/stats`)
 - [x] **Ops rule (hard)** — After **every** `backend`/`frontend` recreate, always: `docker compose -f docker-compose.prod.yml up -d --force-recreate nginx` (cached Docker DNS → 502 Connection refused on old IPs)
 - [x] **Analytics backup cron** — `15 2 * * *` → `scripts/analytics-backup.sh` → `/mnt/HC_Volume_106016238/orthoandspinetools-backups/analytics/`
 
