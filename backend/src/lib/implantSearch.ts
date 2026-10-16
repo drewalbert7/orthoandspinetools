@@ -483,9 +483,9 @@ export function buildImplantMarkdown(params: {
   if (implant.anatomy) lines.push(`- Anatomy: ${implant.anatomy}`);
   lines.push(`- Device class: ${implant.deviceClass.replace(/_/g, ' ')}`);
   if (implant.aiRating != null) {
-    lines.push(`- Directory AI score: ${implant.aiRating.toFixed(1)} / 10 (editorial; not medical advice)`);
+    lines.push(`- Directory Score: ${implant.aiRating.toFixed(1)} / 10 (editorial; not medical advice; [methodology](${origin}/implants/methodology))`);
   }
-  if (implant.aiSummary) lines.push(`- AI summary: ${implant.aiSummary}`);
+  if (implant.aiSummary) lines.push(`- Score summary: ${implant.aiSummary}`);
   if (implant.aliases.length) lines.push(`- Aliases: ${implant.aliases.join(', ')}`);
   if (implant.maudeBrandKey) {
     lines.push(`- MAUDE brand key: ${implant.maudeBrandKey}`);

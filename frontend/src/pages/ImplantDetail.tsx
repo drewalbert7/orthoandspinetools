@@ -481,7 +481,7 @@ const ImplantDetail: React.FC = () => {
                 </select>
               </label>
               <label className="text-xs text-gray-600">
-                Manual score override (0–10, locks auto)
+                Manual Directory Score override (0–10, locks auto)
                 <input
                   type="number"
                   min={0}
@@ -494,7 +494,7 @@ const ImplantDetail: React.FC = () => {
                 />
               </label>
               <label className="text-xs text-gray-600 sm:col-span-2">
-                Score summary (optional override text)
+                Directory Score summary (optional override text)
                 <textarea
                   value={adminForm.aiSummary}
                   onChange={(e) => setAdminForm((f) => ({ ...f, aiSummary: e.target.value }))}
@@ -521,7 +521,7 @@ const ImplantDetail: React.FC = () => {
                 />
               </label>
               <label className="text-xs text-gray-600 sm:col-span-2">
-                Long description (AI SEO body)
+                Long description (SEO body)
                 <textarea
                   value={adminForm.longDescription}
                   onChange={(e) => setAdminForm((f) => ({ ...f, longDescription: e.target.value }))}

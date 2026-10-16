@@ -109,7 +109,7 @@ const DEVICE_CLASS_OPTIONS = [
 ];
 
 const SORT_OPTIONS = [
-  { id: 'ai', label: 'sort: AI score' },
+  { id: 'ai', label: 'sort: Directory Score' },
   { id: 'name', label: 'sort: name' },
   { id: 'reviews', label: 'sort: discussion' },
 ] as const;
@@ -504,7 +504,10 @@ const ImplantDirectory: React.FC = () => {
       </div>
 
       <p className="mt-2 px-0.5 text-[11px] leading-snug text-gray-400">
-        AI scores are editorial (0–10), not medical advice or FDA endorsement.
+        Directory Scores are editorial (0–10), not medical advice or FDA endorsement.{' '}
+        <Link to="/implants/methodology" className="underline hover:text-gray-600">
+          How it works →
+        </Link>
       </p>
     </div>
   );
