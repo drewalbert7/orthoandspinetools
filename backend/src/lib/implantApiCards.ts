@@ -62,6 +62,7 @@ export function toImplantListCard(implant: ImplantCardSource) {
   const product = pickProduct(implant.images);
   const imageCount = implant._count.images ?? implant.images.length;
   const commentCount = implant._count.comments ?? 0;
+  const score = implant.aiRating ?? null;
   return {
     id: implant.id,
     slug: implant.slug,
@@ -74,7 +75,8 @@ export function toImplantListCard(implant: ImplantCardSource) {
     status: implant.status,
     techniqueGuideUrl: implant.techniqueGuideUrl ?? null,
     techniqueGuideTitle: implant.techniqueGuideTitle ?? null,
-    aiRating: implant.aiRating ?? null,
+    aiRating: score, // Backward-compatible alias
+    directoryScore: score, // New canonical name
     memberRatingAvg: implant.memberRatingAvg ?? null,
     reviewCount: implant._count.reviews,
     commentCount,
@@ -95,6 +97,9 @@ export function toImplantDetailBase(implant: ImplantCardSource) {
   const xrayCount = sortedImages.filter((i) => i.kind === 'xray').length;
   const otherCount = sortedImages.filter((i) => i.kind !== 'product').length;
   const commentCount = implant._count.comments ?? 0;
+  const score = implant.aiRating ?? null;
+  const summary = implant.aiSummary ?? null;
+  const ratedAt = implant.aiRatedAt ? implant.aiRatedAt.toISOString() : null;
   return {
     id: implant.id,
     slug: implant.slug,
@@ -118,9 +123,14 @@ export function toImplantDetailBase(implant: ImplantCardSource) {
     fdaApplicant: implant.fdaApplicant ?? null,
     fdaMaterials: implant.fdaMaterials ?? null,
     fdaSourceUrl: implant.fdaSourceUrl ?? null,
-    aiRating: implant.aiRating ?? null,
-    aiSummary: implant.aiSummary ?? null,
-    aiRatedAt: implant.aiRatedAt ? implant.aiRatedAt.toISOString() : null,
+    // Backward-compatible aliases
+    aiRating: score,
+    aiSummary: summary,
+    aiRatedAt: ratedAt,
+    // New canonical names
+    directoryScore: score,
+    scoreSummary: summary,
+    scoreUpdatedAt: ratedAt,
     catalogScore: implant.catalogScore ?? null,
     communityScore: implant.communityScore ?? null,
     ratingSampleN: implant.ratingSampleN ?? null,
@@ -141,6 +151,7 @@ export function toImplantDetailBase(implant: ImplantCardSource) {
       ? { url: product.url, alt: product.alt, kind: product.kind }
       : null,
     markdownPath: `/implants/${implant.slug}.md`,
+    methodologyPath: '/implants/methodology',
   };
 }
 

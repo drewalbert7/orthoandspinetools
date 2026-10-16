@@ -189,6 +189,15 @@ export function ImplantScoreBreakdown({
           judgment.
         </p>
       )}
+
+      <p className="mt-2 text-[11px]">
+        <a
+          href="/implants/methodology"
+          className="text-blue-600 hover:text-blue-800 underline-offset-2 hover:underline"
+        >
+          How the Directory Score works →
+        </a>
+      </p>
     </section>
   );
 }
