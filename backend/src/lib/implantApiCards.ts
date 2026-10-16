@@ -29,6 +29,11 @@ export type ImplantCardSource = {
   maudeBrandKey: string | null;
   techniqueGuideUrl?: string | null;
   techniqueGuideTitle?: string | null;
+  fdaNumber?: string | null;
+  fdaDecisionDate?: Date | null;
+  fdaApplicant?: string | null;
+  fdaMaterials?: string | null;
+  fdaSourceUrl?: string | null;
   aiRating?: number | null;
   aiSummary?: string | null;
   aiRatedAt?: Date | null;
@@ -106,6 +111,13 @@ export function toImplantDetailBase(implant: ImplantCardSource) {
     maudeBrandKey: implant.maudeBrandKey,
     techniqueGuideUrl: implant.techniqueGuideUrl ?? null,
     techniqueGuideTitle: implant.techniqueGuideTitle ?? null,
+    fdaNumber: implant.fdaNumber ?? null,
+    fdaDecisionDate: implant.fdaDecisionDate
+      ? implant.fdaDecisionDate.toISOString().slice(0, 10)
+      : null,
+    fdaApplicant: implant.fdaApplicant ?? null,
+    fdaMaterials: implant.fdaMaterials ?? null,
+    fdaSourceUrl: implant.fdaSourceUrl ?? null,
     aiRating: implant.aiRating ?? null,
     aiSummary: implant.aiSummary ?? null,
     aiRatedAt: implant.aiRatedAt ? implant.aiRatedAt.toISOString() : null,

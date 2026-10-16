@@ -180,7 +180,15 @@ router.get(
     }
 
     const q = String(req.query.q || '').trim();
-    const specialty = normalizeImplantSpecialty(String(req.query.specialty || ''));
+    const specialtyRaw = String(req.query.specialty || '').trim();
+    // Return 400 for unknown specialty (not empty or 'all')
+    if (specialtyRaw && specialtyRaw !== 'all' && !isKnownImplantSpecialty(specialtyRaw)) {
+      throw new AppError(
+        `Unknown specialty "${specialtyRaw}". Use one of: all, ${IMPLANT_SPECIALTIES.map((s) => s.id).join(', ')}`,
+        400
+      );
+    }
+    const specialty = normalizeImplantSpecialty(specialtyRaw);
     const deviceClass = String(req.query.deviceClass || '').trim();
     const verifiedOnly =
       req.query.verified === '1' || req.query.verified === 'true';
@@ -559,6 +567,11 @@ router.get(
         maudeBrandKey: implant.maudeBrandKey,
         techniqueGuideUrl: implant.techniqueGuideUrl,
         techniqueGuideTitle: implant.techniqueGuideTitle,
+        fdaNumber: implant.fdaNumber,
+        fdaDecisionDate: implant.fdaDecisionDate,
+        fdaApplicant: implant.fdaApplicant,
+        fdaMaterials: implant.fdaMaterials,
+        fdaSourceUrl: implant.fdaSourceUrl,
         aiRating: implant.aiRating,
         aiSummary: implant.aiSummary,
         aliases: implant.aliases.map((a) => a.alias),

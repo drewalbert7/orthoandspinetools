@@ -4,7 +4,7 @@ import {
   computeUtilityScore,
   scoreFromParts,
 } from './implantDirectoryScore';
-import { hazardFromPeerStats } from './implantMaudeSignal';
+import { hazardFromPeerStats, MAUDE_MIN_REPORTS_FOR_HAZARD } from './implantMaudeSignal';
 
 function assert(cond: boolean, msg: string) {
   if (!cond) throw new Error(msg);
@@ -14,7 +14,7 @@ function nearly(a: number, b: number, eps = 0.15) {
   return Math.abs(a - b) <= eps;
 }
 
-/** Lightweight assertions — run with: npx ts-node --transpile-only src/lib/implantDirectoryScore.v2.test.ts */
+/** Lightweight assertions — run with: npx ts-node --transpile-only src/lib/implantDirectoryScore.v2.check.ts */
 function main() {
   // Rich listing alone must not look "great" without discussion
   const richListing = computeCatalogScore({
@@ -51,7 +51,7 @@ function main() {
   // Quiet / declining
   const quiet = hazardFromPeerStats({
     risingScore: -20,
-    recentTotal: 5,
+    recentTotal: 8,
     priorTotal: 12,
     peerRisingPercentile: 0.15,
     peerVolumePercentile: 0.2,
@@ -80,13 +80,24 @@ function main() {
   });
   assert(declining.label === 'quiet', `declining must be quiet, got ${declining.label}`);
 
-  // Real rising outlier (Solera-like) stays elevated
-  const risingOutlier = hazardFromPeerStats({
+  // Below minimum threshold: must be 'insufficient' with 0 hazard
+  const lowN = hazardFromPeerStats({
     risingScore: 287,
-    recentTotal: 7,
-    priorTotal: 3,
+    recentTotal: 2,
+    priorTotal: 2,
     peerRisingPercentile: 0.97,
     peerVolumePercentile: 0.28,
+  });
+  assert(lowN.label === 'insufficient', `low n must be insufficient, got ${lowN.label}`);
+  assert(lowN.hazard === 0, `low n hazard must be 0, got ${lowN.hazard}`);
+
+  // Real rising outlier with sufficient reports stays elevated
+  const risingOutlier = hazardFromPeerStats({
+    risingScore: 287,
+    recentTotal: 15,
+    priorTotal: 5,
+    peerRisingPercentile: 0.97,
+    peerVolumePercentile: 0.35,
   });
   assert(risingOutlier.label === 'elevated', `rising outlier ${risingOutlier.label}`);
   assert(risingOutlier.hazard >= 0.55, `rising outlier H ${risingOutlier.hazard}`);
@@ -137,14 +148,20 @@ function main() {
   assert(breakdown.facets.length >= 4, 'facets present');
   assert(breakdown.version === 'ost-dir-v2', breakdown.version);
 
+  // Verify minimum threshold constant
+  assert(MAUDE_MIN_REPORTS_FOR_HAZARD >= 5, `threshold ${MAUDE_MIN_REPORTS_FOR_HAZARD}`);
+
   console.log('ost-dir-v2 math checks OK', {
     richListing,
     utilityNoDiscuss,
     hot: hot.hazard,
     quiet: quiet.hazard,
+    lowN: lowN.hazard,
+    risingOutlier: risingOutlier.hazard,
     clean,
     dirty,
     problemFinal: breakdown.finalScore,
+    minThreshold: MAUDE_MIN_REPORTS_FOR_HAZARD,
   });
 }
 

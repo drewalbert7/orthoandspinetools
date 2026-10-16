@@ -646,6 +646,16 @@ model Implant {
   techniqueGuideUrl   String?  @map("technique_guide_url") @db.Text
   /// Short label for the guide link (e.g. "Surgical technique guide")
   techniqueGuideTitle String?  @map("technique_guide_title")
+  /// FDA 510(k) or PMA number (e.g. "K123456" or "P110009")
+  fdaNumber       String?  @map("fda_number")
+  /// FDA decision date (approval/clearance)
+  fdaDecisionDate DateTime? @map("fda_decision_date") @db.Date
+  /// FDA applicant name at time of approval (from openFDA/AccessGUDID)
+  fdaApplicant    String?  @map("fda_applicant")
+  /// Device materials (from FDA labeling/AccessGUDID)
+  fdaMaterials    String?  @map("fda_materials")
+  /// Source URL for FDA data (openFDA or AccessGUDID link)
+  fdaSourceUrl    String?  @map("fda_source_url") @db.Text
   /// Proprietary OST Directory Score 0–10 (catalog + community evidence — not clinical advice)
   aiRating        Float?   @map("ai_rating")
   aiSummary       String?  @map("ai_summary") @db.Text

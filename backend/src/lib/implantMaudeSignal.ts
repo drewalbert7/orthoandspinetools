@@ -28,6 +28,12 @@ export type MaudeSignalSnapshot = {
   windowLabel: string | null;
 };
 
+/**
+ * Minimum total report count (recent + prior) before MAUDE signal can lower a score.
+ * Below this threshold, hazard is not applied (label = 'insufficient').
+ */
+export const MAUDE_MIN_REPORTS_FOR_HAZARD = 5;
+
 function normBrand(s: string): string {
   return s
     .toLowerCase()
@@ -36,17 +42,70 @@ function normBrand(s: string): string {
     .replace(/\s+/g, ' ');
 }
 
+/**
+ * Generic family tokens that should NOT be used alone for matching compound brand names.
+ * E.g. "CD Horizon Solera" should NOT match "CD Horizon Legacy" based only on "cd" + "horizon".
+ */
+const GENERIC_FAMILY_TOKENS = new Set([
+  'cd', 'horizon', 'system', 'spinal', 'spine', 'cervical', 'lumbar',
+  'total', 'disc', 'arthroplasty', 'prosthesis', 'implant', 'plate',
+  'screw', 'rod', 'cage', 'anchor', 'nail', 'hip', 'knee', 'shoulder',
+  'ankle', 'joint', 'replacement', 'fixation', 'fusion',
+]);
+
+/**
+ * Check if a brand key is a compound name with a specific sub-product identifier.
+ * E.g. "CD Horizon Solera 5.5/6.0" has "solera" as the specific identifier.
+ */
+function getSpecificTokens(normalized: string): string[] {
+  const tokens = normalized.split(' ').filter((t) => t.length > 1);
+  return tokens.filter((t) => !GENERIC_FAMILY_TOKENS.has(t));
+}
+
 function brandsMatch(a: string, b: string): boolean {
   const na = normBrand(a);
   const nb = normBrand(b);
   if (!na || !nb) return false;
   if (na === nb) return true;
-  if (na.length >= 4 && nb.length >= 4 && (na.includes(nb) || nb.includes(na))) return true;
+
+  const tokensA = na.split(' ').filter((t) => t.length > 1);
+  const tokensB = nb.split(' ').filter((t) => t.length > 1);
+  const specificA = getSpecificTokens(na);
+  const specificB = getSpecificTokens(nb);
+
+  // If the key has specific tokens (like "solera" in "CD Horizon Solera"),
+  // require ALL specific tokens to match — don't just match on family tokens
+  if (specificA.length > 0 && specificB.length > 0) {
+    const specificSetA = new Set(specificA);
+    const specificSetB = new Set(specificB);
+    // All specific tokens from the shorter list must appear in the other
+    const shorter = specificA.length <= specificB.length ? specificA : specificB;
+    const longerSet = specificA.length <= specificB.length ? specificSetB : specificSetA;
+    const specificMatch = shorter.every((t) => longerSet.has(t));
+    if (!specificMatch) return false;
+  } else if (specificA.length > 0 || specificB.length > 0) {
+    // One has specific tokens, the other doesn't — only match if one is a subset
+    // E.g. "Solera" key can match "CD Horizon Solera" MAUDE entry
+    const withSpecific = specificA.length > 0 ? na : nb;
+    const withoutSpecific = specificA.length > 0 ? nb : na;
+    if (!withSpecific.includes(withoutSpecific) && !withoutSpecific.includes(withSpecific)) {
+      return false;
+    }
+  }
+
+  // Simple cases: exact substring match for short names
+  if (na.length >= 4 && nb.length >= 4) {
+    if (na === nb) return true;
+    // Only allow substring match if one fully contains the other
+    if (na.includes(nb) || nb.includes(na)) return true;
+  }
+
   // Token overlap (e.g. "prodisc c" vs "prodisc-c cervical…")
-  const ta = new Set(na.split(' ').filter((t) => t.length > 1));
-  const tb = nb.split(' ').filter((t) => t.length > 1);
+  const ta = new Set(tokensA);
+  const tb = tokensB;
   if (ta.size === 0 || tb.length === 0) return false;
   const hit = tb.filter((t) => ta.has(t)).length;
+  // Require strong overlap: at least 2 tokens or exact single-token match
   return hit >= Math.min(2, ta.size) || (hit === 1 && (ta.has(nb) || tb.includes(na)));
 }
 
@@ -70,6 +129,9 @@ function percentileRank(value: number, population: number[]): number {
  * when peer rising-percentile looks mid/high (peers declining faster ≠ problem).
  * Elevated requires actual positive rising + peer outlier rank.
  * Low report counts are damped — don't panic on n≈1–2.
+ *
+ * CRITICAL: Below MAUDE_MIN_REPORTS_FOR_HAZARD, hazard cannot lower a score.
+ * This prevents a device with 2 reports from being penalized vs. one with 7.
  */
 export function hazardFromPeerStats(input: {
   risingScore: number;
@@ -82,6 +144,15 @@ export function hazardFromPeerStats(input: {
   const risingP = clamp01(input.peerRisingPercentile);
   const volumeP = clamp01(input.peerVolumePercentile);
   const rs = input.risingScore;
+
+  // Below minimum threshold: no hazard applied (label = 'insufficient')
+  if (n < MAUDE_MIN_REPORTS_FOR_HAZARD) {
+    return {
+      hazard: 0,
+      label: 'insufficient',
+      quietScore: 10,
+    };
+  }
 
   let hazard: number;
 
@@ -101,17 +172,17 @@ export function hazardFromPeerStats(input: {
     if (risingP >= 0.9 && rs >= 120) hazard = Math.min(1, hazard + 0.08);
   }
 
-  // Small-n damping
-  if (n < 2) hazard *= 0.2;
-  else if (n < 5) hazard *= 0.45;
-  else if (n < 10) hazard *= 0.7;
+  // Gradual ramp for reports between threshold and 10
+  if (n < 10) {
+    const ramp = (n - MAUDE_MIN_REPORTS_FOR_HAZARD) / (10 - MAUDE_MIN_REPORTS_FOR_HAZARD);
+    hazard *= 0.5 + 0.5 * ramp;
+  }
 
   hazard = clamp01(hazard);
 
   const quietScore = round1(10 * (1 - hazard));
   let label: MaudeSignalLabel;
-  if (n < 3 && hazard < 0.35) label = 'insufficient';
-  else if (rs > 0 && hazard >= 0.55) label = 'elevated';
+  if (rs > 0 && hazard >= 0.55) label = 'elevated';
   else if (rs > 0 && hazard >= 0.32) label = 'watch';
   else label = 'quiet';
 

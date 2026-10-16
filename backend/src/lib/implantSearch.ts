@@ -59,9 +59,19 @@ const SEARCH_CONCEPTS: ImplantSearchConcept[] = [
     id: 'disc-arthroplasty',
     label: 'Disc arthroplasty',
     test: /\b((total\s+)?disc\s+(replacement|arthroplasty)|artificial\s+disc|tdr\b|adr\b)\b/i,
-    prefer: /\bmobi|prodisc|simplify|m6|activ|charit|disc/i,
+    prefer: /\bmobi|prodisc|simplify|m6|activ|charit|cervical|lumbar|spine|spinal/i,
+    demote: /\bdruj|aptis|shoulder|equinoxe|gmrs|limb\s*salvage|oncol|peds|pediatric|trauma|anchor|suture/i,
     specialtyHint: 'spine',
     expandTokens: ['cervical disc', 'disc replacement', 'tdr'],
+  },
+  {
+    id: 'disc-generic',
+    label: 'Disc (spine)',
+    test: /^disc$/i,
+    prefer: /\bmobi|prodisc|simplify|m6|activ|charit|cervical|lumbar|spine|spinal|disc/i,
+    demote: /\bdruj|aptis|shoulder|equinoxe|gmrs|limb\s*salvage|oncol|peds|pediatric|trauma|anchor|suture|wrist|hand|ankle|hip|knee/i,
+    specialtyHint: 'spine',
+    expandTokens: ['cervical disc', 'lumbar disc', 'disc arthroplasty'],
   },
   {
     id: 'pedicle-fixation',
@@ -169,7 +179,16 @@ function resolveConcepts(q: string): ImplantSearchConcept[] {
   const hasRegionalDisc = matched.some(
     (c) => c.id === 'cervical-disc-arthroplasty' || c.id === 'lumbar-disc-arthroplasty'
   );
-  return matched.filter((c) => !(hasRegionalDisc && c.id === 'disc-arthroplasty'));
+  const hasSpecificDisc = matched.some(
+    (c) => c.id === 'cervical-disc-arthroplasty' || c.id === 'lumbar-disc-arthroplasty' || c.id === 'disc-arthroplasty'
+  );
+  return matched.filter((c) => {
+    // Prefer regional disc concepts over generic
+    if (hasRegionalDisc && c.id === 'disc-arthroplasty') return false;
+    // Prefer specific disc concepts over generic "disc" catch-all
+    if (hasSpecificDisc && c.id === 'disc-generic') return false;
+    return true;
+  });
 }
 
 /** Infer specialty from free-text when filter is All */
@@ -431,6 +450,11 @@ export function buildImplantMarkdown(params: {
     maudeBrandKey: string | null;
     techniqueGuideUrl?: string | null;
     techniqueGuideTitle?: string | null;
+    fdaNumber?: string | null;
+    fdaDecisionDate?: Date | null;
+    fdaApplicant?: string | null;
+    fdaMaterials?: string | null;
+    fdaSourceUrl?: string | null;
     aiRating?: number | null;
     aiSummary?: string | null;
     aliases: string[];
@@ -473,6 +497,27 @@ export function buildImplantMarkdown(params: {
     lines.push(
       `- ${implant.techniqueGuideTitle || 'Surgical technique guide'}: ${implant.techniqueGuideUrl}`
     );
+  }
+
+  // FDA regulatory data (each fact cites openFDA/AccessGUDID source)
+  if (implant.fdaNumber || implant.fdaApplicant || implant.fdaMaterials) {
+    lines.push('', '## FDA regulatory data', '');
+    if (implant.fdaNumber) {
+      const fdaType = implant.fdaNumber.startsWith('P') ? 'PMA' : '510(k)';
+      lines.push(`- ${fdaType}: ${implant.fdaNumber}`);
+    }
+    if (implant.fdaDecisionDate) {
+      lines.push(`- Decision date: ${implant.fdaDecisionDate.toISOString().slice(0, 10)}`);
+    }
+    if (implant.fdaApplicant) {
+      lines.push(`- Applicant: ${implant.fdaApplicant}`);
+    }
+    if (implant.fdaMaterials) {
+      lines.push(`- Materials: ${implant.fdaMaterials}`);
+    }
+    if (implant.fdaSourceUrl) {
+      lines.push(`- Source: ${implant.fdaSourceUrl}`);
+    }
   }
 
   lines.push('', '## Summary', '');
