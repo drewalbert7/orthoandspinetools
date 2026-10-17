@@ -5,7 +5,7 @@ alwaysApply: true
 
 # Analytics data durability (CRITICAL)
 
-Read before changing analytics, deploy, nginx, systemd, or storage. Full detail: `AGENTS.md` + `TODO.md`.
+Read before changing analytics, deploy, nginx, systemd, or storage. Full detail: `AGENTS.md` + `todo.md`.
 
 ## This site’s store
 

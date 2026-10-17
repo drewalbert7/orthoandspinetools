@@ -97,3 +97,14 @@ jobs:
           else
             echo "✅ No code changes requiring todo.md update"
           fi
+
+  check-todo-preserved:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Verify no todo lines were deleted
+        run: python3 scripts/check-todo-preserved.py "origin/${{ github.base_ref }}"

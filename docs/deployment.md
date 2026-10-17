@@ -98,7 +98,7 @@ Nginx must serve `/.well-known/acme-challenge/` from `/var/www/certbot` (see `do
 2. Home feed, create post, login
 3. `docker compose -f docker-compose.prod.yml ps` — all healthy
 
-Full QA checklist: **`TODO.md`** → **Production QA**.
+Full QA checklist: **`todo.md`** → **Production QA**.
 
 ## Safe vs dangerous commands
 
@@ -111,4 +111,4 @@ Full QA checklist: **`TODO.md`** → **Production QA**.
 
 - [WHAT_TO_DO.md](WHAT_TO_DO.md) — day-to-day ops
 - [PRODUCTION_SCALING.md](PRODUCTION_SCALING.md) — pooling and scaling
-- [TODO.md](../TODO.md) — current priorities and deploy facts
+- [todo.md](../todo.md) — current priorities and deploy facts
