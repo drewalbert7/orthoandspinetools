@@ -1,4 +1,4 @@
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { useState } from 'react';
 import { Toaster } from 'react-hot-toast';
@@ -127,6 +127,7 @@ function App() {
                     <Route path="/cases" element={<Cases />} />
                     <Route path="/implants" element={<ImplantDirectory />} />
                     <Route path="/implants/methodology" element={<ImplantMethodology />} />
+                    <Route path="/methodology" element={<Navigate to="/implants/methodology" replace />} />
                     <Route path="/implants/:slug" element={<ImplantDetail />} />
                     <Route path="/maude" element={<MaudeTrends />} />
                     <Route path="/stats" element={<Stats />} />
