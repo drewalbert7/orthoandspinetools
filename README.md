@@ -153,15 +153,33 @@ cd backend && npx prisma migrate dev
 - **Monitoring**: Health checks and logging
 - **Security**: Firewall and intrusion detection
 
+### Deploy Script
+
+The deploy script (`./deploy.sh`) provides check-gated deployment with automatic rollback:
+
+**Flow:**
+1. Records current image SHAs for rollback
+2. Builds new images WITHOUT taking site down
+3. Brings up new stack (minimal downtime), waits for health
+4. Runs Playwright checks against http://localhost
+5. On failure: automatically rolls back to previous images and exits non-zero
+
+**Usage:**
+```bash
+./deploy.sh              # Full deploy with checks (recommended)
+./deploy.sh --dry-run    # Show what would happen, don't deploy
+./deploy.sh --skip-checks # Emergency deploy (logs loudly, no rollback)
+```
+
 ### Pre-deploy Checks
 
-Automated Playwright checks run before deployment completes to catch common issues:
+Automated Playwright checks catch common issues before deployment completes:
 
 1. **Horizontal Overflow** - Verifies no horizontal scrolling at 390px mobile viewport
 2. **Image Validation** - Confirms all `<img>`, `srcset`, and OG/Twitter meta images return HTTP 200
 3. **Page Status & Titles** - Checks key pages return expected HTTP status and title substrings
 
-**Run locally:**
+**Run checks locally:**
 ```bash
 cd e2e
 npm ci
@@ -172,12 +190,16 @@ BASE_URL=http://localhost npm run predeploy:check
 BASE_URL=https://orthoandspinetools.com npm run predeploy:check
 ```
 
-**Configuration:** Edit `e2e/pages.config.json` to add or modify pages to check.
-
-**Deploy script integration:** The deploy script runs checks automatically after services start. To skip (not recommended):
+**Server setup (one-time):**
 ```bash
-./deploy.sh --skip-checks
+# Playwright needs Node 20+. If system Node is older, install to ~/.local/node20/bin
+# The deploy script will auto-detect and use it.
+
+# Chromium system deps require root:
+sudo npx playwright install-deps chromium
 ```
+
+**Configuration:** Edit `e2e/pages.config.json` to add or modify pages to check.
 
 **CI:** GitHub Actions runs checks on PRs and pushes to main.
 

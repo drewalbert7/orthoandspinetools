@@ -77,4 +77,4 @@ Run one analytics backup **immediately before** risky migrations.
 ## Ops reminders
 
 - After every `backend`/`frontend` recreate: `docker compose -f docker-compose.prod.yml up -d --force-recreate nginx`
-- Canonical checklist: `TODO.md`
+- Canonical checklist: `todo.md`
