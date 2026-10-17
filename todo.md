@@ -73,6 +73,7 @@ See `AGENTS.md` and `.cursor/rules/analytics-durability.mdc` for full details. K
 |----|-------------|--------|
 | [#7](https://github.com/drewalbert7/orthoandspinetools/pull/7) | Implant catalog staging tables and openFDA importer | Draft, awaiting review |
 | [#9](https://github.com/drewalbert7/orthoandspinetools/pull/9) | Restructure todo.md + check-gated deploy with rollback | In progress |
+| [#11](https://github.com/drewalbert7/orthoandspinetools/pull/11) | Rate limiter fix (separate read/write buckets, trust proxy env) + pre-deploy checks target the local stack and fail on empty feed/implants or API 429/5xx + /methodology 301 | Open, not merged, not deployed |
 
 ---
 
@@ -117,6 +118,8 @@ See `AGENTS.md` and `.cursor/rules/analytics-durability.mdc` for full details. K
 | Implant MCP / paid API | After data quality is solid (license + export + connector) |
 | R2 custom domain | Prefer `media.orthoandspinetools.com` over `r2.dev` if needed |
 | SES SNS webhook | Deferred - not launch blocker; revisit when digest volume grows |
+| IPv6 client IP collapse (infra, root cause of 2026-10-17 429s) | Awaiting Drew approval. All IPv6 visitors and host-local traffic reach nginx as 172.18.0.1 via docker-proxy, so they share one rate-limit bucket. Options: enable IPv6 on the compose network (`enable_ipv6: true` + ULA subnet) so Docker NATs IPv6 with the real source address, or run nginx with `network_mode: host`. Needs a maintenance window (network recreate). |
+| Prod backend/.env sets RATE_LIMIT_MAX_REQUESTS=100 | Untracked file baked into the backend image. After PR #11 it only limits writes (reads have their own 600/min bucket). Decide whether to keep 100 or move limits to root `.env` (env_file) so they change without a rebuild. |
 
 ---
 
@@ -136,6 +139,10 @@ See `AGENTS.md` and `.cursor/rules/analytics-durability.mdc` for full details. K
 | **Playwright needs Node 20+** | Server system Node may be 18; install Node 20 to `~/.local/node20/bin` (deploy.sh auto-detects) |
 | **Playwright Chromium system deps need root** | Run `sudo npx playwright install-deps chromium` once on server |
 | **Old deploy.sh ran checks after deploy** | Now fixed: checks gate deploy, auto-rollback on failure |
+| **http://localhost on the server is a 301 to the public site** | `curl -sf` treats 301 as success and Playwright followed the redirect, so deploy checks were testing production. deploy.sh now uses `--resolve orthoandspinetools.com:443:127.0.0.1` and Chromium `--host-resolver-rules` (PR #11) |
+| **IPv6 visitors share one rate-limit bucket** | docker-proxy rewrites IPv6 sources to 172.18.0.1. Never set a low global limit on read GETs; never point Playwright at the public domain from the server (its traffic lands in the same bucket as real IPv6 users) |
+| **Migration history not replayable from an empty DB** | `prisma migrate deploy` fails at add-community migration (users.is_admin missing). CI uses `prisma db push` + `e2e/fixtures/ci-seed.sql` instead |
+| **Backend 301s HTTP API calls in production mode** | `security.ts` redirects when X-Forwarded-Proto is not https, so CI nginx must serve HTTPS (self-signed) for the browser to load /api data |
 
 ---
 

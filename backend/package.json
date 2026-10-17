@@ -17,9 +17,10 @@
     "backfill-case-post-tags": "tsx scripts/backfillCasePostTags.ts",
     "bot-log-tailer": "node dist/jobs/botLogTailer.js",
     "bot-log-tailer:dev": "tsx src/jobs/botLogTailer.ts",
-    "test": "jest --passWithNoTests",
+    "test": "tsx --test src/middleware/*.test.ts",
     "lint": "eslint \"src/**/*.ts\"",
-    "lint:fix": "eslint \"src/**/*.ts\" --fix"
+    "lint:fix": "eslint \"src/**/*.ts\" --fix",
+    "test:ratelimit": "tsx --test src/middleware/rateLimits.test.ts"
   },
   "keywords": [
     "medical",

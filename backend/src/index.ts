@@ -3,7 +3,6 @@ import cors from 'cors';
 import helmet from 'helmet';
 import compression from 'compression';
 import morgan from 'morgan';
-import rateLimit from 'express-rate-limit';
 import dotenv from 'dotenv';
 import { createServer } from 'http';
 
@@ -28,6 +27,7 @@ import analyticsRoutes from './routes/analytics';
 
 // Import middleware
 import { errorHandler } from './middleware/errorHandler';
+import { createApiLimiters, parseTrustProxy } from './middleware/rateLimits';
 import { securityHeaders, sanitizeInput, validateUploadSecurity } from './middleware/security';
 import { logger } from './utils/logger';
 import { prisma } from './lib/prisma';
@@ -40,8 +40,9 @@ dotenv.config();
 const app = express();
 const server = createServer(app);
 
-// Trust proxy for rate limiting behind nginx (only trust nginx)
-app.set('trust proxy', 1);
+// Trust proxy for rate limiting behind nginx (only trust nginx).
+// Default 1 hop; override with TRUST_PROXY (number, true/false, or a subnet list).
+app.set('trust proxy', parseTrustProxy(process.env.TRUST_PROXY));
 
 // Security middleware
 app.use(helmet({
@@ -83,25 +84,11 @@ app.use(cors({
   credentials: true,
 }));
 
-// Rate limiting (single global limiter; a second in-memory limiter was removed — it doubled effective pressure)
-const limiter = rateLimit({
-  windowMs: parseInt(process.env.RATE_LIMIT_WINDOW_MS || '900000', 10),
-  max: parseInt(process.env.RATE_LIMIT_MAX_REQUESTS || '2000', 10),
-  message: 'Too many requests from this IP, please try again later.',
-  standardHeaders: true,
-  legacyHeaders: false,
-  skip: (req) => {
-    return (
-      req.path === '/api/health' ||
-      req.path === '/health' ||
-      req.path.startsWith('/api/og/') ||
-      req.path.startsWith('/api/ses/events') ||
-      req.path === '/sitemap.xml' ||
-      req.path === '/llms-full.txt'
-    );
-  },
-});
-app.use(limiter);
+// Rate limiting: separate buckets for safe reads and for writes (see middleware/rateLimits.ts).
+// Auth, analytics, implant and MAUDE routes keep their own dedicated limiters as well.
+const { readLimiter, writeLimiter, config: rateLimitConfig } = createApiLimiters();
+app.use(readLimiter);
+app.use(writeLimiter);
 
 // SNS posts SES notifications as text/plain JSON; parse this route before global json middleware.
 app.use('/api/ses/events', express.text({ type: 'text/plain', limit: '1mb' }));
@@ -217,6 +204,7 @@ async function startServer() {
       logger.info(`📊 Environment: ${process.env.NODE_ENV || 'development'}`);
       logger.info(`🔗 CORS Origins: ${(process.env.CORS_ORIGINS || allowedOrigins.join(', '))}`);
       logger.info(`🔒 Trust Proxy: ${app.get('trust proxy')}`);
+      logger.info(`🚦 Rate limits: reads ${rateLimitConfig.readMax}/${rateLimitConfig.readWindowMs}ms, writes ${rateLimitConfig.writeMax}/${rateLimitConfig.writeWindowMs}ms per client IP`);
     });
   } catch (error: any) {
     logger.error({

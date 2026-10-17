@@ -7,7 +7,7 @@
 #   1. Record current running image SHAs for rollback
 #   2. Build new images WITHOUT taking site down
 #   3. Bring new stack up (minimal downtime), wait for health
-#   4. Run Playwright checks against http://localhost
+#   4. Run Playwright checks against the LOCAL stack (public hostname resolved to 127.0.0.1)
 #   5. On failure: rollback to previous images, re-verify, exit non-zero
 #
 # Usage:
@@ -33,6 +33,22 @@ for arg in "$@"; do
       ;;
   esac
 done
+
+# Local check target.
+# http://localhost on this box only returns a 301 to https://orthoandspinetools.com, so
+# "curl -sf http://localhost/..." passed on the redirect and Playwright ended up testing
+# the PUBLIC site (old containers, shared rate-limit bucket). Instead, pin the real
+# hostname to the local nginx so TLS, server_name and routing match production exactly.
+CHECK_HOST="${CHECK_HOST:-orthoandspinetools.com}"
+CHECK_IP="${CHECK_IP:-127.0.0.1}"
+CHECK_BASE_URL="${CHECK_BASE_URL:-https://$CHECK_HOST}"
+
+local_curl() {
+    curl -sf --max-time 10 \
+        --resolve "$CHECK_HOST:443:$CHECK_IP" \
+        --resolve "$CHECK_HOST:80:$CHECK_IP" \
+        "$CHECK_BASE_URL$1"
+}
 
 # Prefer Node 20 from ~/.local/node20/bin if present (Playwright needs Node 20+)
 if [ -d "$HOME/.local/node20/bin" ]; then
@@ -149,7 +165,7 @@ HEALTH_INTERVAL=5
 ELAPSED=0
 
 while [ $ELAPSED -lt $HEALTH_TIMEOUT ]; do
-    if curl -sf http://localhost/health > /dev/null 2>&1; then
+    if local_curl /health > /dev/null 2>&1; then
         echo "✅ Site is responding"
         break
     fi
@@ -168,14 +184,14 @@ echo ""
 echo "🔍 Verifying service health..."
 HEALTH_OK=true
 
-if curl -sf http://localhost/health > /dev/null 2>&1; then
+if local_curl /health > /dev/null 2>&1; then
     echo "   ✅ Nginx responding"
 else
     echo "   ❌ Nginx not responding"
     HEALTH_OK=false
 fi
 
-if curl -sf http://localhost/api/health > /dev/null 2>&1; then
+if local_curl /api/health > /dev/null 2>&1; then
     echo "   ✅ Backend API responding"
 else
     echo "   ❌ Backend API not responding"
@@ -211,7 +227,7 @@ rollback() {
     
     # Wait and verify
     sleep 15
-    if curl -sf http://localhost/health > /dev/null 2>&1; then
+    if local_curl /health > /dev/null 2>&1; then
         echo "   ✅ Rollback successful - site responding"
         return 0
     else
@@ -254,8 +270,8 @@ if [ "$SKIP_CHECKS" = false ]; then
             # Run the checks
             if [ -d "node_modules" ]; then
                 echo ""
-                echo "🔍 Running Playwright checks against http://localhost..."
-                if BASE_URL=http://localhost npm run predeploy:check; then
+                echo "🔍 Running Playwright checks against $CHECK_BASE_URL (resolved to $CHECK_IP, local stack)..."
+                if BASE_URL="$CHECK_BASE_URL" CHECK_RESOLVE_TO="$CHECK_IP" CHECK_EXPECT_SERVER_IP="$CHECK_IP" npm run predeploy:check; then
                     echo ""
                     echo "✅ All pre-deploy checks passed!"
                     cd ..

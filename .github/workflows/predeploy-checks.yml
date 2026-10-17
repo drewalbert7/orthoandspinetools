@@ -12,6 +12,26 @@ env:
   JWT_SECRET: test_jwt_secret_ci_only_not_for_production
 
 jobs:
+  backend-unit-tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install backend dependencies
+        working-directory: ./backend
+        run: npm ci --include=dev
+
+      - name: Rate limiter tests
+        working-directory: ./backend
+        run: npm test
+
   predeploy-checks:
     runs-on: ubuntu-latest
     timeout-minutes: 15
@@ -81,8 +101,14 @@ jobs:
               }
 
               server {
+                  # HTTPS like production: the backend 301s any request whose
+                  # X-Forwarded-Proto is not https when NODE_ENV=production, so an
+                  # HTTP-only CI stack can never load /api data in the browser.
                   listen 80;
+                  listen 443 ssl;
                   server_name localhost;
+                  ssl_certificate /etc/nginx/ssl/cert.pem;
+                  ssl_certificate_key /etc/nginx/ssl/key.pem;
 
                   location /api/ {
                       proxy_pass http://backend/api/;
@@ -131,6 +157,17 @@ jobs:
           echo "Testing HTTP endpoint..."
           curl -v http://localhost/ || true
 
+      - name: Create schema and seed fixture data
+        run: |
+          # CI starts with an empty database. The checks now FAIL on an empty home feed or
+          # implant directory, so create the schema and load minimal fixture rows.
+          # (Migration history is not replayable from zero, so use db push in CI only.)
+          docker compose -f docker-compose.prod.yml exec -T backend npx prisma db push --skip-generate --accept-data-loss
+          docker compose -f docker-compose.prod.yml exec -T postgres \
+            psql -v ON_ERROR_STOP=1 -U postgres -d orthoandspinetools < e2e/fixtures/ci-seed.sql
+          curl -sfk "https://localhost/api/posts?limit=5" | head -c 300; echo
+          curl -sfk "https://localhost/api/implants" | head -c 300; echo
+
       - name: Install Playwright
         working-directory: ./e2e
         run: |
@@ -140,7 +177,8 @@ jobs:
       - name: Run pre-deploy checks
         working-directory: ./e2e
         env:
-          BASE_URL: http://localhost
+          BASE_URL: https://localhost
+          CHECK_IGNORE_HTTPS_ERRORS: '1'
           CI: true
         run: npm run predeploy:check
 

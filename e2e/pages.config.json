@@ -6,7 +6,8 @@
       "expectedStatus": 200,
       "expectedTitleSubstring": "OrthoAndSpineTools",
       "checkImages": true,
-      "checkOverflow": true
+      "checkOverflow": true,
+      "requirePosts": true
     },
     {
       "path": "/login",
@@ -21,7 +22,9 @@
       "expectedTitleSubstring": "Implant",
       "checkImages": true,
       "checkOverflow": true,
-      "discoverDetailPage": true
+      "discoverDetailPage": true,
+      "requireImplants": true,
+      "requireDetailPage": true
     },
     {
       "path": "/implants/methodology",
@@ -29,6 +32,15 @@
       "expectedTitleSubstring": "Methodology",
       "checkImages": true,
       "checkOverflow": true
+    },
+    {
+      "path": "/methodology",
+      "expectedStatus": 200,
+      "expectedFinalPath": "/implants/methodology",
+      "expectedTitleSubstring": "Methodology",
+      "checkImages": false,
+      "checkOverflow": false,
+      "_comment": "Legacy URL: nginx 301 (prod) or SPA redirect (CI) to /implants/methodology"
     },
     {
       "path": "/sitemap.xml",
@@ -51,5 +63,6 @@
     "width": 390,
     "height": 844
   },
-  "overflowTolerancePx": 1
+  "overflowTolerancePx": 1,
+  "dataWaitTimeoutMs": 20000
 }
