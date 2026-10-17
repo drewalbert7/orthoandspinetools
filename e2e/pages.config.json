@@ -1,0 +1,55 @@
+{
+  "_comment": "Pre-deploy check page configurations. Add new pages here to extend checks.",
+  "pages": [
+    {
+      "path": "/",
+      "expectedStatus": 200,
+      "expectedTitleSubstring": "OrthoAndSpineTools",
+      "checkImages": true,
+      "checkOverflow": true
+    },
+    {
+      "path": "/login",
+      "expectedStatus": 200,
+      "expectedTitleSubstring": "Sign In",
+      "checkImages": true,
+      "checkOverflow": true
+    },
+    {
+      "path": "/implants",
+      "expectedStatus": 200,
+      "expectedTitleSubstring": "Implant",
+      "checkImages": true,
+      "checkOverflow": true,
+      "discoverDetailPage": true
+    },
+    {
+      "path": "/implants/methodology",
+      "expectedStatus": 200,
+      "expectedTitleSubstring": "Methodology",
+      "checkImages": true,
+      "checkOverflow": true
+    },
+    {
+      "path": "/sitemap.xml",
+      "expectedStatus": 200,
+      "expectedContentType": "xml",
+      "checkImages": false,
+      "checkOverflow": false,
+      "skipInCI": true,
+      "_comment": "Requires populated database; skip in CI, test against production"
+    },
+    {
+      "path": "/robots.txt",
+      "expectedStatus": 200,
+      "expectedContentType": "text",
+      "checkImages": false,
+      "checkOverflow": false
+    }
+  ],
+  "mobileViewport": {
+    "width": 390,
+    "height": 844
+  },
+  "overflowTolerancePx": 1
+}

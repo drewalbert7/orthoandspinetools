@@ -67,3 +67,8 @@ backups/
 
 # Migration temp files
 backend/prisma/migrations/\$\(date*/
+
+# Playwright
+e2e/test-results/
+e2e/playwright-report/
+e2e/.playwright/
