@@ -4,21 +4,32 @@
 # Check-gated deployment with automatic rollback on failure
 #
 # Flow:
-#   1. Record current running image SHAs for rollback
+#   1. Record current running image IDs and tag them <compose-name>:pre-deploy-<ts>
 #   2. Build new images WITHOUT taking site down
 #   3. Bring new stack up (minimal downtime), wait for health
 #   4. Run Playwright checks against the LOCAL stack (public hostname resolved to 127.0.0.1)
-#   5. On failure: rollback to previous images, re-verify, exit non-zero
+#   5. On failure: retag pre-deploy images back to the compose names, recreate
+#      app containers with --no-build --no-deps, verify image IDs, exit non-zero
+#      (rollback logic lives in scripts/lib/deploy-rollback.sh)
 #
 # Usage:
 #   ./deploy.sh              # Full deploy with checks
 #   ./deploy.sh --skip-checks # Emergency deploy (logs loudly)
 #   ./deploy.sh --dry-run    # Show what would happen, don't deploy
+#
+# Test/drill hooks (used by scripts/tests/deploy-rollback.test.sh):
+#   DEPLOY_COMPOSE_FILE  compose file (default docker-compose.prod.yml)
+#   DEPLOY_CHECK_CMD     run this instead of the Playwright checks
+#   DEPLOY_HEALTH_CMD    run this instead of the local curl health checks
+#   FORCE_CHECK_FAIL=1   treat the pre-deploy checks as failed (rollback drill)
 
 set -e
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-COMPOSE_FILE="docker-compose.prod.yml"
+COMPOSE_FILE="${DEPLOY_COMPOSE_FILE:-docker-compose.prod.yml}"
+
+# shellcheck source=scripts/lib/deploy-rollback.sh
+source "$SCRIPT_DIR/scripts/lib/deploy-rollback.sh"
 
 # Parse arguments
 SKIP_CHECKS=false
@@ -48,6 +59,15 @@ local_curl() {
         --resolve "$CHECK_HOST:443:$CHECK_IP" \
         --resolve "$CHECK_HOST:80:$CHECK_IP" \
         "$CHECK_BASE_URL$1"
+}
+
+# Health check used after deploy and after rollback.
+dr_health_check() {
+    if [ -n "${DEPLOY_HEALTH_CMD:-}" ]; then
+        bash -c "$DEPLOY_HEALTH_CMD"
+        return
+    fi
+    local_curl /health > /dev/null && local_curl /api/health > /dev/null
 }
 
 # Prefer Node 20 from ~/.local/node20/bin if present (Playwright needs Node 20+)
@@ -113,30 +133,37 @@ else
     exit 1
 fi
 
-# Record current running image SHAs for rollback
+# Record current running images and tag them <compose-name>:pre-deploy-<ts> for rollback.
+# These tags are kept (not auto-deleted) so a manual rollback is always possible.
 echo ""
-echo "📸 Recording current image SHAs for rollback..."
-BACKEND_OLD_IMAGE=$(docker inspect --format='{{.Image}}' orthoandspinetools-backend 2>/dev/null || echo "")
-FRONTEND_OLD_IMAGE=$(docker inspect --format='{{.Image}}' orthoandspinetools-frontend 2>/dev/null || echo "")
-
-if [ -n "$BACKEND_OLD_IMAGE" ]; then
-    echo "   Backend:  ${BACKEND_OLD_IMAGE:0:12}"
+echo "📸 Recording current images for rollback..."
+if [ "$DRY_RUN" = true ]; then
+    for svc in $DEPLOY_APP_SERVICES; do
+        if DRY_NAME="$(dr_resolve_image_name "$svc" 2>/dev/null)"; then
+            echo "   $svc: $DRY_NAME running $(dr_running_id "$svc" | cut -c8-19)"
+        else
+            echo "   $svc: (not running or not resolvable)"
+        fi
+    done
 else
-    echo "   Backend:  (not running)"
-fi
-if [ -n "$FRONTEND_OLD_IMAGE" ]; then
-    echo "   Frontend: ${FRONTEND_OLD_IMAGE:0:12}"
-else
-    echo "   Frontend: (not running)"
+    RECORD_RC=0
+    dr_record || RECORD_RC=$?
+    if [ "$RECORD_RC" -eq 2 ]; then
+        echo "❌ Could not resolve/tag the running images. Aborting before build."
+        exit 1
+    elif [ "$RECORD_RC" -eq 1 ]; then
+        echo "⚠️  Not all app services are running; automatic rollback will not be possible."
+    fi
 fi
 
 if [ "$DRY_RUN" = true ]; then
     echo ""
+    echo "🔍 DRY RUN: Would tag running images as <compose-name>:pre-deploy-<ts>"
     echo "🔍 DRY RUN: Would build new images (without taking site down)"
     echo "🔍 DRY RUN: Would bring up new stack and wait for health"
     if [ "$SKIP_CHECKS" = false ]; then
         echo "🔍 DRY RUN: Would run Playwright checks"
-        echo "🔍 DRY RUN: On failure, would rollback to previous images"
+        echo "🔍 DRY RUN: On failure, would retag pre-deploy images to the compose names and recreate with --no-build"
     fi
     echo ""
     echo "✅ Dry run complete. No changes made."
@@ -165,7 +192,7 @@ HEALTH_INTERVAL=5
 ELAPSED=0
 
 while [ $ELAPSED -lt $HEALTH_TIMEOUT ]; do
-    if local_curl /health > /dev/null 2>&1; then
+    if dr_health_check > /dev/null 2>&1; then
         echo "✅ Site is responding"
         break
     fi
@@ -184,56 +211,49 @@ echo ""
 echo "🔍 Verifying service health..."
 HEALTH_OK=true
 
-if local_curl /health > /dev/null 2>&1; then
-    echo "   ✅ Nginx responding"
-else
-    echo "   ❌ Nginx not responding"
-    HEALTH_OK=false
-fi
-
-if local_curl /api/health > /dev/null 2>&1; then
-    echo "   ✅ Backend API responding"
-else
-    echo "   ❌ Backend API not responding"
-    HEALTH_OK=false
-fi
-
-# Rollback function
-rollback() {
-    echo ""
-    echo "🔙 ROLLING BACK to previous images..."
-    
-    if [ -z "$BACKEND_OLD_IMAGE" ] || [ -z "$FRONTEND_OLD_IMAGE" ]; then
-        echo "❌ No previous images recorded. Cannot rollback."
-        echo "   Manual intervention required!"
-        return 1
-    fi
-    
-    # Tag old images for restore
-    docker tag "$BACKEND_OLD_IMAGE" orthoandspinetools-backend:rollback 2>/dev/null || true
-    docker tag "$FRONTEND_OLD_IMAGE" orthoandspinetools-frontend:rollback 2>/dev/null || true
-    
-    # Stop current containers
-    docker compose -f "$COMPOSE_FILE" stop backend frontend
-    
-    # Remove current containers (keeps volumes)
-    docker compose -f "$COMPOSE_FILE" rm -f backend frontend
-    
-    # Recreate from old images by rebuilding compose (images are cached)
-    # Since we can't easily swap images in compose, we restart with the old state
-    echo "   Restarting previous containers..."
-    docker compose -f "$COMPOSE_FILE" up -d backend frontend
-    docker compose -f "$COMPOSE_FILE" up -d --force-recreate nginx
-    
-    # Wait and verify
-    sleep 15
-    if local_curl /health > /dev/null 2>&1; then
-        echo "   ✅ Rollback successful - site responding"
-        return 0
+if [ -n "${DEPLOY_HEALTH_CMD:-}" ]; then
+    if dr_health_check > /dev/null 2>&1; then
+        echo "   ✅ Health command passed"
     else
-        echo "   ❌ Rollback may have failed - site not responding"
-        return 1
+        echo "   ❌ Health command failed"
+        HEALTH_OK=false
     fi
+else
+    if local_curl /health > /dev/null 2>&1; then
+        echo "   ✅ Nginx responding"
+    else
+        echo "   ❌ Nginx not responding"
+        HEALTH_OK=false
+    fi
+
+    if local_curl /api/health > /dev/null 2>&1; then
+        echo "   ✅ Backend API responding"
+    else
+        echo "   ❌ Backend API not responding"
+        HEALTH_OK=false
+    fi
+fi
+
+# Rollback: see scripts/lib/deploy-rollback.sh (dr_rollback)
+rollback() {
+    dr_rollback
+}
+
+checks_failed() {
+    echo ""
+    echo "❌ =============================================="
+    echo "❌ PRE-DEPLOY CHECKS FAILED!"
+    echo "❌ =============================================="
+    echo ""
+    if rollback; then
+        echo ""
+        echo "🔙 Rolled back to previous version."
+        echo "   Fix the issues and redeploy."
+    else
+        echo ""
+        echo "❌ Rollback failed! Manual intervention required."
+    fi
+    exit 1
 }
 
 # Run pre-deploy checks unless --skip-checks
@@ -241,7 +261,17 @@ if [ "$SKIP_CHECKS" = false ]; then
     echo ""
     echo "🧪 Running pre-deploy checks..."
     
-    if [ ! -d "e2e" ] || [ ! -f "e2e/package.json" ]; then
+    if [ "${FORCE_CHECK_FAIL:-0}" = "1" ]; then
+        echo "⚠️  FORCE_CHECK_FAIL=1: treating checks as failed (rollback drill)"
+        checks_failed
+    elif [ -n "${DEPLOY_CHECK_CMD:-}" ]; then
+        echo "🔍 Running DEPLOY_CHECK_CMD..."
+        if bash -c "$DEPLOY_CHECK_CMD"; then
+            echo "✅ All pre-deploy checks passed!"
+        else
+            checks_failed
+        fi
+    elif [ ! -d "e2e" ] || [ ! -f "e2e/package.json" ]; then
         echo "⚠️  Pre-deploy checks not configured (e2e/ directory missing)"
         echo "   Skipping checks for this deploy."
     else
@@ -276,23 +306,8 @@ if [ "$SKIP_CHECKS" = false ]; then
                     echo "✅ All pre-deploy checks passed!"
                     cd ..
                 else
-                    echo ""
-                    echo "❌ =============================================="
-                    echo "❌ PRE-DEPLOY CHECKS FAILED!"
-                    echo "❌ =============================================="
-                    echo ""
                     cd ..
-                    
-                    # Attempt rollback
-                    if rollback; then
-                        echo ""
-                        echo "🔙 Rolled back to previous version."
-                        echo "   Fix the issues and redeploy."
-                    else
-                        echo ""
-                        echo "❌ Rollback failed! Manual intervention required."
-                    fi
-                    exit 1
+                    checks_failed
                 fi
             else
                 cd ..
@@ -314,6 +329,8 @@ if [ "$HEALTH_OK" = false ]; then
     if [ "$SKIP_CHECKS" = false ]; then
         if rollback; then
             echo "🔙 Rolled back to previous version."
+        else
+            echo "❌ Rollback failed! Manual intervention required."
         fi
         exit 1
     else

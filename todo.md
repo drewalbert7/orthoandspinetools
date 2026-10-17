@@ -74,6 +74,7 @@ See `AGENTS.md` and `.cursor/rules/analytics-durability.mdc` for full details. K
 | [#7](https://github.com/drewalbert7/orthoandspinetools/pull/7) | Implant catalog staging tables and openFDA importer | Draft, awaiting review |
 | [#9](https://github.com/drewalbert7/orthoandspinetools/pull/9) | Restructure todo.md + check-gated deploy with rollback | In progress |
 | [#11](https://github.com/drewalbert7/orthoandspinetools/pull/11) | Rate limiter fix (separate read/write buckets, trust proxy env) + pre-deploy checks target the local stack and fail on empty feed/implants or API 429/5xx + /methodology 301 | Open, not merged, not deployed |
+| deploy-rollback PR | Fix deploy.sh auto-rollback: tag running images `<compose-name>:pre-deploy-<ts>` before build, retag back to the exact compose names on failed checks, `up -d --no-build --no-deps --force-recreate`, verify image IDs; real-docker test `scripts/tests/deploy-rollback.test.sh` in CI | Open, not merged, not deployed |
 
 ---
 
@@ -143,6 +144,8 @@ See `AGENTS.md` and `.cursor/rules/analytics-durability.mdc` for full details. K
 | **IPv6 visitors share one rate-limit bucket** | docker-proxy rewrites IPv6 sources to 172.18.0.1. Never set a low global limit on read GETs; never point Playwright at the public domain from the server (its traffic lands in the same bucket as real IPv6 users) |
 | **Migration history not replayable from an empty DB** | `prisma migrate deploy` fails at add-community migration (users.is_admin missing). CI uses `prisma db push` + `e2e/fixtures/ci-seed.sql` instead |
 | **Backend 301s HTTP API calls in production mode** | `security.ts` redirects when X-Forwarded-Proto is not https, so CI nginx must serve HTTPS (self-signed) for the browser to load /api data |
+| **deploy.sh rollback came back up on the NEW build** | Old rollback tagged previous images as `orthoandspinetools-{backend,frontend}:rollback` (names compose never uses) then ran `compose up` on `orthoandspinetools-main-{backend,frontend}`, which already pointed at the new images. Fixed in `scripts/lib/deploy-rollback.sh`: rollback retags `<name>:pre-deploy-<ts>` to the compose names and never uses `--build`. Prod compose names are `orthoandspinetools-main-{backend,frontend}:latest` (project dir `orthoandspinetools-main`) |
+| **Manual pre-deploy tags on prod** | `orthoandspinetools-main-{backend,frontend}:pre-deploy-20261017-190412` were made by hand as a safety net. Remove only after the rollback fix ships, and only with Drew's approval. deploy.sh now creates `pre-deploy-<ts>` tags on every deploy and never deletes them; prune old ones manually |
 
 ---
 
