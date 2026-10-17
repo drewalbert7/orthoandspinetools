@@ -12,7 +12,26 @@ env:
   JWT_SECRET: test_jwt_secret_ci_only_not_for_production
 
 jobs:
+  # PHI leak gate. Runs first; every other job needs it. Prints file:line + rule only (values masked).
+  phi-guard:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: phi-guard scan (all tracked files)
+        run: sh scripts/phi-guard/phi-scan.sh --all
+
   backend-unit-tests:
+    needs: phi-guard
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
@@ -33,6 +52,7 @@ jobs:
         run: npm test
 
   deploy-rollback-test:
+    needs: phi-guard
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
@@ -51,6 +71,7 @@ jobs:
   predeploy-checks:
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    needs: phi-guard
 
     steps:
       - name: Checkout code

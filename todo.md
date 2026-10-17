@@ -73,8 +73,6 @@ See `AGENTS.md` and `.cursor/rules/analytics-durability.mdc` for full details. K
 |----|-------------|--------|
 | [#7](https://github.com/drewalbert7/orthoandspinetools/pull/7) | Implant catalog staging tables and openFDA importer | Draft, awaiting review |
 | [#9](https://github.com/drewalbert7/orthoandspinetools/pull/9) | Restructure todo.md + check-gated deploy with rollback | In progress |
-| [#11](https://github.com/drewalbert7/orthoandspinetools/pull/11) | Rate limiter fix (separate read/write buckets, trust proxy env) + pre-deploy checks target the local stack and fail on empty feed/implants or API 429/5xx + /methodology 301 | Open, not merged, not deployed |
-| deploy-rollback PR | Fix deploy.sh auto-rollback: tag running images `<compose-name>:pre-deploy-<ts>` before build, retag back to the exact compose names on failed checks, `up -d --no-build --no-deps --force-recreate`, verify image IDs; real-docker test `scripts/tests/deploy-rollback.test.sh` in CI | Open, not merged, not deployed |
 
 ---
 
@@ -153,6 +151,9 @@ See `AGENTS.md` and `.cursor/rules/analytics-durability.mdc` for full details. K
 
 | PR | Title |
 |----|-------|
+| [#13](https://github.com/drewalbert7/orthoandspinetools/pull/13) | Security: phi-guard PHI leak gate (deploy, CI, pre-commit); every predeploy-checks job needs phi-guard |
+| [#12](https://github.com/drewalbert7/orthoandspinetools/pull/12) | Fix deploy.sh auto-rollback to restore the exact compose images. Merged 1515bb1, deployed Oct 17 2026 7:49 to 7:52 PM EDT via ./deploy.sh, checks 19/19, rollback tags `pre-deploy-20261017-234920`, DB backup `.deploy-backups/db-20261017-234919.sql.gz` |
+| [#11](https://github.com/drewalbert7/orthoandspinetools/pull/11) | Rate limiter fix (read/write buckets) + pre-deploy checks against the local stack. Merged cb71370 |
 | [#8](https://github.com/drewalbert7/orthoandspinetools/pull/8) | Add automated pre-deploy checks using Playwright |
 | [#6](https://github.com/drewalbert7/orthoandspinetools/pull/6) | Remove tracked docker-compose binary |
 | [#5](https://github.com/drewalbert7/orthoandspinetools/pull/5) | Add disk usage alert script with webhook support |
@@ -166,6 +167,15 @@ See `AGENTS.md` and `.cursor/rules/analytics-durability.mdc` for full details. K
 ## 8. History
 
 This section preserves all historical content from previous todo.md versions. Nothing is deleted.
+
+### In Progress Archive
+
+Rows moved out of section 3 once merged (verbatim).
+
+| PR | Description | Status |
+|----|-------------|--------|
+| [#11](https://github.com/drewalbert7/orthoandspinetools/pull/11) | Rate limiter fix (separate read/write buckets, trust proxy env) + pre-deploy checks target the local stack and fail on empty feed/implants or API 429/5xx + /methodology 301 | Open, not merged, not deployed |
+| deploy-rollback PR | Fix deploy.sh auto-rollback: tag running images `<compose-name>:pre-deploy-<ts>` before build, retag back to the exact compose names on failed checks, `up -d --no-build --no-deps --force-recreate`, verify image IDs; real-docker test `scripts/tests/deploy-rollback.test.sh` in CI | Open, not merged, not deployed |
 
 ### Deploy Status Archive
 
@@ -720,3 +730,16 @@ docker compose -f docker-compose.prod.yml exec backend npm run backfill-case-pos
 **Last Updated:** Aug 31, 2026  
 **Status:** 🚀 Live — Mobile UX; MAUDE ACDF + SES brand-request alerts; Cloudflare Images+Stream; R2 backups  
 **You are here:** Optional endoscopic/nav spine coverage gaps; optional R2 custom media domain; content/tag cleanup
+
+### **Session log (Oct 17, 2026): phi-guard PHI leak gate (branch `security/phi-guard`)**
+
+| Done | Detail |
+|------|--------|
+| Scanner | `scripts/phi-guard/phi-scan.{mjs,sh}` (Security Officer kit, Node >= 18, values always masked, fails closed) |
+| Deploy gate | Root `deploy.sh` runs `phi-scan.sh --all` before the docker build, outside the `--skip-checks` branch (runs even with `--skip-checks`); `scripts/deploy.sh` is a thin wrapper, so it is covered |
+| CI gate | New first job `phi-guard` in `predeploy-checks.yml`; `backend-unit-tests` and `predeploy-checks` now `needs: phi-guard` |
+| Pre-commit | `.githooks/pre-commit` scans staged files; each clone runs `git config core.hooksPath .githooks` once |
+| Allowlist | `.phi-allowlist`: `e2e/fixtures/ci-seed.sql  data-file:database` (CI seed fixture, synthetic data only) |
+| Open | After PR #12 rebase: add `needs: phi-guard` to its new `deploy-rollback-test` job. Do not merge without Drew OK via CEO Bot |
+| Rebased | Oct 17, 2026 onto main after #12 (1515bb1). `deploy-rollback-test` now `needs: phi-guard`; all four predeploy-checks jobs gate on phi-guard. Merge approved by Drew via CEO Bot. todo-check.yml jobs live in a separate workflow and cannot `needs:` across workflows |
+| Disk | After the #12 deploy prod root disk is at 90% (about 1 GB below the 92% stop line); each deploy adds about 2 GB (new images + build cache). Old `pre-deploy-*` tags and build cache need a Drew-approved cleanup before the next deploy |

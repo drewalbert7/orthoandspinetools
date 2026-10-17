@@ -107,6 +107,10 @@ if [ "$SKIP_CHECKS" = true ]; then
     echo ""
 fi
 
+# PHI leak gate (phi-guard). Runs before any docker build and is NOT skipped by --skip-checks.
+echo "🔒 Running phi-guard PHI scan..."
+sh "$SCRIPT_DIR/scripts/phi-guard/phi-scan.sh" --all --root "$SCRIPT_DIR" || { echo "deploy: PHI gate failed; report to the Security Officer" >&2; exit 1; }
+
 # Check if running as root
 if [[ $EUID -eq 0 ]]; then
    echo "❌ This script should not be run as root for security reasons"
