@@ -32,6 +32,22 @@ jobs:
         working-directory: ./backend
         run: npm test
 
+  deploy-rollback-test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Docker versions
+        run: docker version && docker compose version
+
+      - name: Shellcheck deploy scripts
+        run: shellcheck -S warning deploy.sh scripts/lib/deploy-rollback.sh scripts/tests/deploy-rollback.test.sh
+
+      - name: deploy.sh rollback simulation (failed check -> previous image IDs; passing check -> new build)
+        run: bash scripts/tests/deploy-rollback.test.sh
+
   predeploy-checks:
     runs-on: ubuntu-latest
     timeout-minutes: 15
