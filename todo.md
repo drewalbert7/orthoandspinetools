@@ -98,6 +98,10 @@ See `AGENTS.md` and `.cursor/rules/analytics-durability.mdc` for full details. K
 - **Design-only until Drew and an attorney approve**
 - Do not implement without explicit approval
 
+### Practice Efficiency
+
+- New site section: Practice Efficiency, structured like the existing Biologics and Tech sections. Topics include business tactics, contract negotiations (employment, call pay, RVU/comp, non-competes), OR efficiency (turnover, block time, case sequencing, team/tray standardization), and related practice management. (Requested by Drew 2026-10-17; not started, do not build until approved.)
+
 ---
 
 ## 5. Open Decisions
