@@ -1,0 +1,9 @@
+# .phi-allowlist: reviewed phi-guard false positives. Keep it short and specific.
+# One entry per line:   <glob> [<rule>[,<rule>...]]   # reason, reviewer, date   (reason REQUIRED)
+#   glob:  path from repo root; ** = any dirs, * = any chars except /, trailing / = whole dir;
+#          a glob without / matches that file name anywhere.
+#   rules: optional; omit to allow every rule for the path. "data-file:*" allows all data-file rules.
+# Examples:
+#   tests/fixtures/fake-patients.json  phi-field,ssn   # synthetic SSNs in 000-xx range; reviewed J.Doe 2026-10-17
+#   public/data/cpt-codes.json         data-file:export # public CPT reference table, no patient rows; reviewed 2026-10-17
+e2e/fixtures/ci-seed.sql  data-file:database  # CI seed fixture, synthetic data only
