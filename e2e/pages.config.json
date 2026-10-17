@@ -35,7 +35,9 @@
       "expectedStatus": 200,
       "expectedContentType": "xml",
       "checkImages": false,
-      "checkOverflow": false
+      "checkOverflow": false,
+      "skipInCI": true,
+      "_comment": "Requires populated database; skip in CI, test against production"
     },
     {
       "path": "/robots.txt",

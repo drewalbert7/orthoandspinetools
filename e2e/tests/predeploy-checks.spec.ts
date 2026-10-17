@@ -10,6 +10,7 @@ interface PageConfig {
   checkImages: boolean;
   checkOverflow: boolean;
   discoverDetailPage?: boolean;
+  skipInCI?: boolean;
 }
 
 interface Config {
@@ -159,9 +160,14 @@ async function discoverImplantDetailPage(page: Page): Promise<string | null> {
   return href;
 }
 
+const isCI = !!process.env.CI;
+
 test.describe('Pre-deploy checks', () => {
   for (const pageConfig of config.pages) {
+    const shouldSkip = isCI && pageConfig.skipInCI;
+    
     test.describe(`Page: ${pageConfig.path}`, () => {
+      test.skip(shouldSkip, 'Skipped in CI (requires populated database)');
       
       test('returns expected status and content', async ({ page, context }) => {
         const response = await page.goto(pageConfig.path, {
