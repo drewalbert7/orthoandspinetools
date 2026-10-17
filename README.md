@@ -153,6 +153,34 @@ cd backend && npx prisma migrate dev
 - **Monitoring**: Health checks and logging
 - **Security**: Firewall and intrusion detection
 
+### Pre-deploy Checks
+
+Automated Playwright checks run before deployment completes to catch common issues:
+
+1. **Horizontal Overflow** - Verifies no horizontal scrolling at 390px mobile viewport
+2. **Image Validation** - Confirms all `<img>`, `srcset`, and OG/Twitter meta images return HTTP 200
+3. **Page Status & Titles** - Checks key pages return expected HTTP status and title substrings
+
+**Run locally:**
+```bash
+cd e2e
+npm ci
+npx playwright install chromium --with-deps
+BASE_URL=http://localhost npm run predeploy:check
+
+# Or against production:
+BASE_URL=https://orthoandspinetools.com npm run predeploy:check
+```
+
+**Configuration:** Edit `e2e/pages.config.json` to add or modify pages to check.
+
+**Deploy script integration:** The deploy script runs checks automatically after services start. To skip (not recommended):
+```bash
+./deploy.sh --skip-checks
+```
+
+**CI:** GitHub Actions runs checks on PRs and pushes to main.
+
 ## 📚 Documentation
 
 - [API Documentation](docs/api.md)

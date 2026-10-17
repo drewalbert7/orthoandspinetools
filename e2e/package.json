@@ -1,0 +1,13 @@
+{
+  "name": "orthoandspinetools-e2e",
+  "version": "1.0.0",
+  "description": "Pre-deploy checks using Playwright",
+  "scripts": {
+    "test": "playwright test",
+    "test:headed": "playwright test --headed",
+    "predeploy:check": "playwright test --reporter=list"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.48.0"
+  }
+}

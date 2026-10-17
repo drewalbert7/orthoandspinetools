@@ -1,0 +1,162 @@
+name: Pre-deploy Checks
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+env:
+  NODE_ENV: production
+  POSTGRES_PASSWORD: test_password_ci_only
+  JWT_SECRET: test_jwt_secret_ci_only_not_for_production
+
+jobs:
+  predeploy-checks:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+
+      - name: Create required env files
+        run: |
+          cat > .env << EOF
+          NODE_ENV=production
+          POSTGRES_PASSWORD=${{ env.POSTGRES_PASSWORD }}
+          JWT_SECRET=${{ env.JWT_SECRET }}
+          DOMAIN=localhost
+          VITE_API_URL=/api
+          VITE_SITE_URL=http://localhost
+          EOF
+          touch .env.cloudinary
+
+      - name: Create SSL certificates for nginx
+        run: |
+          mkdir -p nginx/ssl
+          openssl req -x509 -nodes -days 1 -newkey rsa:2048 \
+            -keyout nginx/ssl/key.pem \
+            -out nginx/ssl/cert.pem \
+            -subj "/C=US/ST=CI/L=CI/O=CI/CN=localhost"
+
+      - name: Create nginx logs directory
+        run: mkdir -p nginx/logs
+
+      - name: Copy HTTP-only nginx config for CI
+        run: |
+          # Use a simpler HTTP-only config for CI
+          cat > nginx/nginx.conf << 'NGINX_CONF'
+          worker_processes auto;
+          error_log /var/log/nginx/error.log warn;
+          pid /var/run/nginx.pid;
+
+          events {
+              worker_connections 1024;
+          }
+
+          http {
+              include /etc/nginx/mime.types;
+              default_type application/octet-stream;
+
+              log_format main '$remote_addr - $remote_user [$time_local] "$request" '
+                              '$status $body_bytes_sent "$http_referer" '
+                              '"$http_user_agent" "$http_x_forwarded_for"';
+
+              access_log /var/log/nginx/access.log main;
+              sendfile on;
+              keepalive_timeout 65;
+
+              upstream frontend {
+                  server frontend:3000;
+              }
+
+              upstream backend {
+                  server backend:3001;
+              }
+
+              server {
+                  listen 80;
+                  server_name localhost;
+
+                  location /api/ {
+                      proxy_pass http://backend/api/;
+                      proxy_http_version 1.1;
+                      proxy_set_header Host $host;
+                      proxy_set_header X-Real-IP $remote_addr;
+                      proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+                      proxy_set_header X-Forwarded-Proto $scheme;
+                  }
+
+                  location /sitemap.xml {
+                      proxy_pass http://backend/api/sitemap.xml;
+                      proxy_http_version 1.1;
+                      proxy_set_header Host $host;
+                  }
+
+                  location /robots.txt {
+                      proxy_pass http://backend/api/robots.txt;
+                      proxy_http_version 1.1;
+                      proxy_set_header Host $host;
+                  }
+
+                  location / {
+                      proxy_pass http://frontend;
+                      proxy_http_version 1.1;
+                      proxy_set_header Host $host;
+                      proxy_set_header X-Real-IP $remote_addr;
+                      proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+                      proxy_set_header X-Forwarded-Proto $scheme;
+                  }
+              }
+          }
+          NGINX_CONF
+
+      - name: Build and start services
+        run: |
+          docker compose -f docker-compose.prod.yml up -d --build
+          echo "Waiting for services to be healthy..."
+          sleep 45
+
+      - name: Check service health
+        run: |
+          echo "Checking postgres..."
+          docker compose -f docker-compose.prod.yml exec -T postgres pg_isready -U postgres -d orthoandspinetools || true
+          echo "Checking backend..."
+          docker compose -f docker-compose.prod.yml logs backend | tail -20
+          echo "Checking frontend..."
+          docker compose -f docker-compose.prod.yml logs frontend | tail -20
+          echo "Checking nginx..."
+          docker compose -f docker-compose.prod.yml logs nginx | tail -20
+          echo "Testing HTTP endpoint..."
+          curl -v http://localhost/ || true
+
+      - name: Install Playwright
+        working-directory: ./e2e
+        run: |
+          npm ci
+          npx playwright install chromium --with-deps
+
+      - name: Run pre-deploy checks
+        working-directory: ./e2e
+        env:
+          BASE_URL: http://localhost
+          CI: true
+        run: npm run predeploy:check
+
+      - name: Upload test artifacts
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: e2e/test-results/
+          retention-days: 7
+
+      - name: Stop services
+        if: always()
+        run: docker compose -f docker-compose.prod.yml down

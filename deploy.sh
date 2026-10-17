@@ -5,6 +5,19 @@
 
 set -e
 
+# Parse arguments
+SKIP_CHECKS=false
+for arg in "$@"; do
+  case $arg in
+    --skip-checks)
+      SKIP_CHECKS=true
+      echo "⚠️  WARNING: Pre-deploy checks SKIPPED (--skip-checks flag provided)"
+      echo "⚠️  This is NOT recommended for production deployments!"
+      shift
+      ;;
+  esac
+done
+
 echo "🏥 OrthoAndSpineTools Production Deployment"
 echo "=========================================="
 
@@ -82,6 +95,47 @@ if curl -f http://localhost/api/auth/me > /dev/null 2>&1; then
     echo "✅ Backend API is running"
 else
     echo "❌ Backend API is not responding"
+fi
+
+# Run pre-deploy checks unless --skip-checks was provided
+if [ "$SKIP_CHECKS" = false ]; then
+    echo ""
+    echo "🔍 Running pre-deploy checks..."
+    
+    # Check if e2e directory and dependencies exist
+    if [ -d "e2e" ] && [ -f "e2e/package.json" ]; then
+        cd e2e
+        
+        # Install dependencies if needed
+        if [ ! -d "node_modules" ]; then
+            echo "📦 Installing pre-deploy check dependencies..."
+            npm ci
+            npx playwright install chromium --with-deps
+        fi
+        
+        # Run the checks
+        echo "🧪 Running Playwright checks against http://localhost..."
+        if BASE_URL=http://localhost npm run predeploy:check; then
+            echo "✅ All pre-deploy checks passed!"
+        else
+            echo ""
+            echo "❌ PRE-DEPLOY CHECKS FAILED!"
+            echo "   The deployment has been completed but checks found issues."
+            echo "   Review the errors above and fix them."
+            echo ""
+            echo "   To skip checks (NOT RECOMMENDED): ./deploy.sh --skip-checks"
+            cd ..
+            exit 1
+        fi
+        cd ..
+    else
+        echo "⚠️  Pre-deploy checks not configured (e2e/ directory missing)"
+        echo "   Run 'cd e2e && npm ci && npx playwright install chromium' to set up"
+    fi
+else
+    echo ""
+    echo "⚠️  SKIPPING PRE-DEPLOY CHECKS (--skip-checks flag)"
+    echo "   This deployment was NOT validated. Proceed with caution!"
 fi
 
 echo ""
