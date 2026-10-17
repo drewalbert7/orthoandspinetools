@@ -1,0 +1,38 @@
+---
+description: Read todo.md first, update last in every PR; nothing deleted, only moved to History
+alwaysApply: true
+---
+
+# Todo.md Protocol
+
+## Before Starting Any Work
+
+1. **Read `todo.md` first** - understand current state, in-progress work, pitfalls, and rules
+2. Check the "In Progress" section for active work
+3. Review "Pitfalls" before making changes that could trigger known issues
+
+## Before Every PR
+
+1. **Update `todo.md` last** - after all other changes are complete
+2. Move completed items to "Recently Done" (keep ~10 max)
+3. Overflow from "Recently Done" goes to "History" section
+4. Add new pitfalls discovered during work
+5. Update "In Progress" section as needed
+
+## Critical Rule
+
+**Nothing in todo.md is ever deleted, only moved to History.**
+
+- Completed items: Recently Done (max ~10) then History
+- Outdated info: Move to History with date note
+- Superseded decisions: Move to History
+
+## Enforcement
+
+A GitHub Actions workflow fails PRs that change code files but not `todo.md`.
+- Label a PR `no-todo` to skip this check (e.g., docs-only changes)
+- The workflow auto-passes for docs-only PRs
+
+## File Location
+
+`todo.md` lives at the repository root. A new agent can resume from this file alone.

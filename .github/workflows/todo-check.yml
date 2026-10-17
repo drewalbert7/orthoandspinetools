@@ -1,0 +1,99 @@
+name: Todo.md Check
+
+on:
+  pull_request:
+    branches: [main]
+
+jobs:
+  check-todo-updated:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Check if PR has no-todo label
+        id: check-label
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const labels = context.payload.pull_request.labels.map(l => l.name);
+            const hasNoTodo = labels.includes('no-todo');
+            core.setOutput('skip', hasNoTodo ? 'true' : 'false');
+            if (hasNoTodo) {
+              console.log('PR has no-todo label, skipping check');
+            }
+
+      - name: Get changed files
+        if: steps.check-label.outputs.skip != 'true'
+        id: changed-files
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const { data: files } = await github.rest.pulls.listFiles({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              pull_number: context.payload.pull_request.number,
+              per_page: 100
+            });
+            
+            const changedFiles = files.map(f => f.filename);
+            
+            // Check if todo.md was changed
+            const todoChanged = changedFiles.includes('todo.md') || changedFiles.includes('TODO.md');
+            
+            // Check if any code files were changed (not just docs)
+            const codeExtensions = ['.ts', '.tsx', '.js', '.jsx', '.py', '.sh', '.yml', '.yaml', '.json', '.prisma', '.sql', '.css', '.html'];
+            const docExtensions = ['.md', '.txt', '.rst'];
+            const configFiles = ['package.json', 'tsconfig.json', 'playwright.config.ts'];
+            
+            const hasCodeChanges = changedFiles.some(f => {
+              // Docs-only files
+              if (docExtensions.some(ext => f.endsWith(ext)) && !configFiles.includes(f.split('/').pop())) {
+                return false;
+              }
+              // Check for code extensions
+              return codeExtensions.some(ext => f.endsWith(ext));
+            });
+            
+            // Also check for changes in key directories
+            const codeDirs = ['backend/', 'frontend/', 'e2e/', 'scripts/', 'nginx/', '.github/workflows/'];
+            const hasCodeDirChanges = changedFiles.some(f => 
+              codeDirs.some(dir => f.startsWith(dir)) && 
+              !f.endsWith('.md')
+            );
+            
+            const needsTodoUpdate = (hasCodeChanges || hasCodeDirChanges) && !todoChanged;
+            
+            console.log('Changed files:', changedFiles.join(', '));
+            console.log('Todo changed:', todoChanged);
+            console.log('Has code changes:', hasCodeChanges || hasCodeDirChanges);
+            console.log('Needs todo update:', needsTodoUpdate);
+            
+            core.setOutput('needs-todo', needsTodoUpdate ? 'true' : 'false');
+            core.setOutput('todo-changed', todoChanged ? 'true' : 'false');
+
+      - name: Fail if code changed but todo.md not updated
+        if: steps.check-label.outputs.skip != 'true' && steps.changed-files.outputs.needs-todo == 'true'
+        run: |
+          echo "❌ This PR changes code files but does not update todo.md"
+          echo ""
+          echo "Please update todo.md with:"
+          echo "  - Move completed items to 'Recently Done'"
+          echo "  - Add new pitfalls if discovered"
+          echo "  - Update 'In Progress' if applicable"
+          echo ""
+          echo "If this is intentionally a docs-only change, add the 'no-todo' label to skip this check."
+          exit 1
+
+      - name: Success
+        if: steps.check-label.outputs.skip == 'true' || steps.changed-files.outputs.needs-todo != 'true'
+        run: |
+          if [ "${{ steps.check-label.outputs.skip }}" = "true" ]; then
+            echo "✅ Skipped (no-todo label)"
+          elif [ "${{ steps.changed-files.outputs.todo-changed }}" = "true" ]; then
+            echo "✅ todo.md was updated"
+          else
+            echo "✅ No code changes requiring todo.md update"
+          fi
