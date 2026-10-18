@@ -5,8 +5,8 @@
 [ost-r2]
 type = s3
 provider = Cloudflare
-access_key_id = <bucket-scoped key id — fill on the server, never commit>
-secret_access_key = <bucket-scoped secret — fill on the server, never commit>
+access_key_id = <bucket-scoped key id: fill on the server, never commit>
+secret_access_key = <bucket-scoped secret: fill on the server, never commit>
 endpoint = https://<cloudflare-account-id>.r2.cloudflarestorage.com
 acl = private
 no_check_bucket = true
