@@ -88,7 +88,7 @@ tag_id() { docker image inspect --format '{{.Id}}' "$1" 2>/dev/null || echo none
 version_in() { dc exec -T "$1" cat /version; }
 
 export DEPLOY_COMPOSE_FILE=compose.yml
-export DEPLOY_DB_SNAPSHOT_CMD=true
+export DEPLOY_DB_SNAPSHOT_CMD=true DEPLOY_MIGRATE_CMD=true
 export DEPLOY_HEALTH_CMD="docker compose -f compose.yml exec -T backend cat /version && docker compose -f compose.yml exec -T frontend cat /version"
 export ROLLBACK_HEALTH_TIMEOUT=10 ROLLBACK_HEALTH_INTERVAL=1
 

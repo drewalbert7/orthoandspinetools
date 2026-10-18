@@ -24,8 +24,14 @@ run_prisma() { # value passed by name (-e DATABASE_URL), never on the command li
 	DATABASE_URL="$MIGRATOR_DATABASE_URL" docker compose -f "$COMPOSE_FILE" run --rm --no-deps -T \
 		-e DATABASE_URL backend npx prisma "$@"
 }
+# As root (via sudo), never execute a dstrad-editable script: prefer the root-owned installed copy.
+SNAPSHOT="${OST_SNAPSHOT_BIN:-/usr/local/sbin/ost-predeploy-db-snapshot}"
+if [[ ! -x "$SNAPSHOT" ]]; then
+	[[ $EUID -ne 0 ]] || { echo "db-migrate: $SNAPSHOT missing; refusing to run the repo copy as root" >&2; exit 1; }
+	SNAPSHOT="$ROOT/scripts/predeploy-db-snapshot.sh"
+fi
 run_prisma migrate status || true
 [[ "${1:-}" == "--status" ]] && exit 0
-"$ROOT/scripts/predeploy-db-snapshot.sh" pre-migrate
+"$SNAPSHOT" pre-migrate
 run_prisma migrate deploy
 run_prisma migrate status
