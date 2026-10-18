@@ -1,0 +1,18 @@
+[Unit]
+Description=OST Postgres encrypted base backup (PITR) to R2
+Wants=network-online.target docker.service
+After=network-online.target docker.service
+
+[Service]
+Type=oneshot
+User=root
+EnvironmentFile=-/etc/ost-backup/ost-db-backup.env
+ExecStart=/usr/local/sbin/ost-basebackup.sh
+UMask=0077
+Nice=10
+PrivateTmp=true
+ProtectHome=read-only
+ProtectSystem=full
+ReadWritePaths=/mnt/HC_Volume_106016238 /var/log /run
+NoNewPrivileges=true
+TimeoutStartSec=1h

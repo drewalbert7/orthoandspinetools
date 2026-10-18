@@ -1,0 +1,27 @@
+# Destructive DB / volume / backup operation gate (audit item 3). Blocks the PR on a hit.
+# Make it a REQUIRED status check on main (branch protection), or the gate is advisory only.
+name: db-guard
+on:
+  pull_request:
+    branches: [main]
+    types: [opened, synchronize, reopened, labeled, unlabeled]
+permissions:
+  contents: read
+jobs:
+  db-guard:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0          # need the base commit for base...head
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      # Override needs BOTH the DESTRUCTIVE-OK marker in the change AND this label (Drew / CEO only).
+      - name: db-guard (lines added by this PR)
+        env:
+          DB_GUARD_APPROVED: ${{ contains(github.event.pull_request.labels.*.name, 'destructive-ok') }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: sh scripts/db-guard/db-guard.sh --diff "$BASE_SHA" "$HEAD_SHA"

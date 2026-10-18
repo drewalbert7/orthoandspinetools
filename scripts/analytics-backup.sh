@@ -9,6 +9,7 @@
 # Retention: ≥30 days. Also writes *-latest.sql.gz.
 
 set -euo pipefail
+umask 077
 
 ROOT="/home/dstrad/orthoandspinetools-main"
 CONTAINER_NAME="orthoandspinetools-postgres"
@@ -100,7 +101,7 @@ find "$BACKUP_DIR" -maxdepth 1 -type f -name 'analytics_*.sql.gz' -mtime "+$RETE
 
 # Off-site copy to Cloudflare R2 (same pattern as full DB backups)
 R2_UPLOAD_SCRIPT="$ROOT/scripts/backup-to-r2.js"
-SKIP_R2_BACKUP="${SKIP_R2_BACKUP:-0}"
+SKIP_R2_BACKUP="${SKIP_R2_BACKUP:-1}"  # analytics tables are in the encrypted full-DB offsite backup
 if [[ "$SKIP_R2_BACKUP" != "1" && -f "$R2_UPLOAD_SCRIPT" && -f "$OUT" ]]; then
   R2_PREFIX="${R2_BACKUP_PREFIX:-backups/}"
   R2_PREFIX="${R2_PREFIX%/}/"

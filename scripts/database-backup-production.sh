@@ -46,8 +46,12 @@ YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
 NC='\033[0m' # No Color
 
+# Plaintext dumps: owner-only (were 664 = world-readable)
+umask 077
+
 # Create necessary directories
 mkdir -p "$BACKUP_DIR"
+chmod 700 "$BACKUP_DIR" 2>/dev/null || true
 mkdir -p "$(dirname "$LOG_FILE")"
 
 # Logging function

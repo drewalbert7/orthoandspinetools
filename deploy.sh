@@ -188,6 +188,16 @@ if [ "$DRY_RUN" = true ]; then
     exit 0
 fi
 
+# Pre-deploy DB snapshot (audit item 4). NOT skipped by --skip-checks: no snapshot, no deploy.
+# DEPLOY_DB_SNAPSHOT_CMD is a test hook (scripts/tests/deploy-rollback.test.sh sets it to `true`).
+echo ""
+echo "🗄️  Pre-deploy database snapshot..."
+if [ -n "${DEPLOY_DB_SNAPSHOT_CMD:-}" ]; then
+    bash -c "$DEPLOY_DB_SNAPSHOT_CMD" || { echo "❌ Pre-deploy DB snapshot failed. Aborting before build." >&2; exit 1; }
+else
+    "$SCRIPT_DIR/scripts/predeploy-db-snapshot.sh" deploy || { echo "❌ Pre-deploy DB snapshot failed. Aborting before build." >&2; exit 1; }
+fi
+
 # Build new images WITHOUT taking site down
 echo ""
 echo "🔨 Building new images (site stays up)..."

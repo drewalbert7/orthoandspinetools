@@ -78,3 +78,13 @@ Run one analytics backup **immediately before** risky migrations.
 
 - After every `backend`/`frontend` recreate: `docker compose -f docker-compose.prod.yml up -d --force-recreate nginx`
 - Canonical checklist: `todo.md`
+
+## Database safety (Security Officer, 2026-10)
+- Agents never DROP/TRUNCATE/reset/delete a database, DB file or docker volume, never run
+  `down -v` / `volume rm|prune` / `system prune --volumes` / `migrate reset` / `migrate dev` / `db push`
+  on production, and never delete or overwrite backups, without Drew's explicit OK relayed by CEO.
+  Take and verify a backup first (`scripts/predeploy-db-snapshot.sh`).
+- Migrations: only `sudo scripts/db-migrate.sh` (ost_migrator). App runs as ost_app (DML only).
+- Applied migrations are immutable. Destructive migrations need the `DESTRUCTIVE-OK:` marker,
+  `SET LOCAL ost.allow_destructive`, and the `destructive-ok` label from Drew/CEO.
+- db-guard / phi-guard / ost_guard blocks are stop-and-report, never bypass.

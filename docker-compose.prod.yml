@@ -11,9 +11,24 @@ services:
     environment:
       POSTGRES_DB: orthoandspinetools
       POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-secure_password_123}
+      # No weak fallback: compose refuses to start if .env lacks it.
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set in .env}
+    # WAL archiving for PITR (audit item 9). Off unless .env sets PG_ARCHIVE_MODE=on (prod only), so CI
+    # and local stacks are unaffected. archive_mode changes need a postgres container restart.
+    command:
+      - postgres
+      - -c
+      - archive_mode=${PG_ARCHIVE_MODE:-off}
+      - -c
+      - archive_command=/usr/local/bin/ost-archive-wal.sh %p %f
+      - -c
+      - archive_timeout=${PG_ARCHIVE_TIMEOUT:-300}
     volumes:
       - postgres_data:/var/lib/postgresql/data
+      # Host spool (prod: /mnt/HC_Volume_106016238/ost-wal-spool, owned 70:70, mode 700). Encryption and
+      # R2 shipping happen on the host (ost-wal-ship.sh); no key or token inside this container.
+      - ${OST_WAL_SPOOL_HOST:-./.wal-spool}:/wal-spool
+      - ./scripts/db/ost-archive-wal.sh:/usr/local/bin/ost-archive-wal.sh:ro
     networks:
       - orthoandspinetools-network
     restart: unless-stopped
@@ -43,7 +58,11 @@ services:
       NODE_ENV: production
       PORT: 3001
       # Pool limits per instance — lower connection_limit when running multiple backend replicas
-      DATABASE_URL: postgresql://postgres:${POSTGRES_PASSWORD:-secure_password_123}@postgres:5432/orthoandspinetools?connection_limit=10&pool_timeout=20
+      # Least-privilege runtime role (audit item 1): DML only, no DDL/TRUNCATE/DROP. Migrations use
+      # ost_migrator via scripts/db-migrate.sh. Password must be URL-safe (hex).
+      DATABASE_URL: postgresql://ost_app:${OST_APP_DB_PASSWORD:?OST_APP_DB_PASSWORD must be set in .env}@postgres:5432/orthoandspinetools?connection_limit=10&pool_timeout=20
+      # env_file .env also injects the superuser password; blank it inside the app container.
+      POSTGRES_PASSWORD: ""
       JWT_SECRET: ${JWT_SECRET:-your-super-secret-jwt-key-change-this-in-production}
       JWT_EXPIRES_IN: 7d
       # Backend reads CORS_ORIGINS (plural); comma-separated. Defaults in code if unset.
@@ -147,7 +166,8 @@ services:
       - .env
     environment:
       NODE_ENV: production
-      DATABASE_URL: postgresql://postgres:${POSTGRES_PASSWORD:-secure_password_123}@postgres:5432/orthoandspinetools?connection_limit=5&pool_timeout=20
+      DATABASE_URL: postgresql://ost_app:${OST_APP_DB_PASSWORD:?OST_APP_DB_PASSWORD must be set in .env}@postgres:5432/orthoandspinetools?connection_limit=5&pool_timeout=20
+      POSTGRES_PASSWORD: ""
       SITE_ACCESS_LOG: /var/log/nginx/access.log
       BOT_IGNORE_IPS: ${BOT_IGNORE_IPS:-127.0.0.1,::1,5.161.98.234,2a01:4ff:f0:6907::1,172.17.0.1,172.18.0.1}
       BOT_BACKFILL_DAYS: ${BOT_BACKFILL_DAYS:-14}
@@ -195,7 +215,11 @@ services:
     restart: unless-stopped
 
 volumes:
+  # External (audit item 2): compose never creates or deletes it, so `down -v` cannot remove prod data.
+  # Fresh hosts / CI must run `docker volume create orthoandspinetools-main_postgres_data` first.
   postgres_data:
+    external: true
+    name: orthoandspinetools-main_postgres_data
 
 networks:
   orthoandspinetools-network:
