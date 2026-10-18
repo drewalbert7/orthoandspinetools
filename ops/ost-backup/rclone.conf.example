@@ -1,7 +1,7 @@
 # /etc/ost-backup/rclone.conf  (root:root 600)
 # Use a NEW R2 API token scoped to the backup bucket ONLY ("Object Read & Write", one bucket).
 # Do NOT reuse the backend's R2_ACCESS_KEY_ID / R2_SECRET_ACCESS_KEY (media token; lives in an
-# internet-facing container) and do NOT point this at the public `orthoandspinetools` bucket.
+# internet-facing container) and do NOT point this at the site media bucket.
 [ost-r2]
 type = s3
 provider = Cloudflare

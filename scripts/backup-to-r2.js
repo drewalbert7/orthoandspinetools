@@ -3,7 +3,7 @@
  * Upload a local DB dump to Cloudflare R2 (off-site).
  * Usage: backup-to-r2.js <local-file> [object-key]
  * Credentials from repo .env (R2_*). Prefix defaults to backups/
- * DEPRECATED for DB dumps (Security Officer, 2026-10): plaintext uploads to the public media bucket.
+ * DEPRECATED for DB dumps (Security Officer, 2026-10): use scripts/backup/ost-db-backup.sh (encrypted, private bucket).
  * Only .gpg files are accepted; nothing is ever deleted remotely.
  */
 const fs = require('fs');

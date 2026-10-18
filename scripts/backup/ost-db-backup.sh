@@ -4,7 +4,7 @@
 # Audit items 0 (immutable/copy-only, no deletes), 5 (encryption), 6 (daily + checkable status).
 #
 # Runs on the OST host as root (systemd ost-db-backup.timer). Replaces the R2 leg of
-# scripts/database-backup-production.sh + scripts/backup-to-r2.js (plaintext, public bucket, deletes).
+# scripts/database-backup-production.sh + scripts/backup-to-r2.js (unencrypted, and it pruned old copies).
 #
 # The server holds ONLY the fleet PUBLIC key: it can encrypt but never decrypt.
 # Nothing on the remote is ever deleted or overwritten by this script (rclone copy --immutable into

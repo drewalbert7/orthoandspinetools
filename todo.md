@@ -768,3 +768,15 @@ docker compose -f docker-compose.prod.yml exec backend npm run backfill-case-pos
 | Open | After PR #12 rebase: add `needs: phi-guard` to its new `deploy-rollback-test` job. Do not merge without Drew OK via CEO Bot |
 | Rebased | Oct 17, 2026 onto main after #12 (1515bb1). `deploy-rollback-test` now `needs: phi-guard`; all four predeploy-checks jobs gate on phi-guard. Merge approved by Drew via CEO Bot. todo-check.yml jobs live in a separate workflow and cannot `needs:` across workflows |
 | Disk | After the #12 deploy prod root disk is at 90% (about 1 GB below the 92% stop line); each deploy adds about 2 GB (new images + build cache). Old `pre-deploy-*` tags and build cache need a Drew-approved cleanup before the next deploy |
+
+### **Session log (Oct 17, 2026): DB safety PR from the Security Officer kit (branch `security/ost-db-hardening`)**
+
+**Rule (standing):** never DROP/TRUNCATE/reset a database, never prune or remove a docker volume, never delete a backup or a `pre-deploy-*` tag, never run `migrate reset` / `migrate dev` / `db push` on production, without Drew's explicit OK via CEO. Migrations only through `deploy.sh` (or `sudo /usr/local/sbin/ost-db-migrate`) as `ost_migrator`. db-guard, phi-guard and ost_guard blocks are stop-and-report. See `.cursor/rules/db-safety.mdc`.
+
+| Done | Detail |
+|------|--------|
+| Kit | Security Officer kit applied onto main 330456d: roles (ost_app/ost_migrator/ost_backup + ost_guard), encrypted immutable backups, PITR, db-guard CI + pre-commit, external `postgres_data`, no volume prune |
+| deploy.sh | Verified snapshot before build; `prisma migrate deploy` as ost_migrator before the switch; disk guard 5G free AND below 90% used |
+| Restore test | `scripts/db/restore-test.sh` (throwaway postgres 15.14, tmpfs); runs in CI on the seeded DB |
+| Docs | `docs/db-safety/` (RUNBOOK, R2 rules, docker group + cron inventory) |
+| Open | Nothing applied to prod. Needs: `destructive-ok` label (Drew/CEO) for the CI db push line, R2 bucket + tokens, pinned rclone, root-owned `/usr/local/sbin/ost-*` copies + sudoers line, roles.sql window, postgres recreate [RESTART] |
