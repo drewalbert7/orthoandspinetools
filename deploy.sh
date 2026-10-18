@@ -11,6 +11,10 @@
 #   5. On failure: retag pre-deploy images back to the compose names, recreate
 #      app containers with --no-build --no-deps, verify image IDs, exit non-zero
 #      (rollback logic lives in scripts/lib/deploy-rollback.sh)
+#   6. On success with passing health checks only: docker builder prune -f
+#      (build cache only; scripts/lib/deploy-disk-prune.sh)
+#
+# Before any build, the deploy stops with a non-zero exit when / has less than 5G free.
 #
 # Usage:
 #   ./deploy.sh              # Full deploy with checks
@@ -30,6 +34,8 @@ COMPOSE_FILE="${DEPLOY_COMPOSE_FILE:-docker-compose.prod.yml}"
 
 # shellcheck source=scripts/lib/deploy-rollback.sh
 source "$SCRIPT_DIR/scripts/lib/deploy-rollback.sh"
+# shellcheck source=scripts/lib/deploy-disk-prune.sh
+source "$SCRIPT_DIR/scripts/lib/deploy-disk-prune.sh"
 
 # Parse arguments
 SKIP_CHECKS=false
@@ -129,6 +135,13 @@ if [ ! -f "$COMPOSE_FILE" ]; then
     exit 1
 fi
 
+# Disk guard: stop before tagging or building when / has less than 5G free.
+echo ""
+if ! dd_disk_check; then
+    echo "❌ Deploy stopped: not enough free disk space on /." >&2
+    exit 1
+fi
+
 # Load environment variables
 if [ -f .env ]; then
     source .env
@@ -169,6 +182,7 @@ if [ "$DRY_RUN" = true ]; then
         echo "🔍 DRY RUN: Would run Playwright checks"
         echo "🔍 DRY RUN: On failure, would retag pre-deploy images to the compose names and recreate with --no-build"
     fi
+    dd_prune_build_cache false "$SKIP_CHECKS" true
     echo ""
     echo "✅ Dry run complete. No changes made."
     exit 0
@@ -346,6 +360,10 @@ echo ""
 echo "🎉 =============================================="
 echo "🎉 Deployment completed successfully!"
 echo "🎉 =============================================="
+echo ""
+
+# Build cache prune: only here, after checks passed and health is OK (re-checked inside).
+dd_prune_build_cache "$HEALTH_OK" "$SKIP_CHECKS" false
 echo ""
 echo "📋 Post-deploy checklist:"
 echo "   1. Run ./scripts/production-qa-smoke.sh"
