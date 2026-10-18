@@ -30,6 +30,9 @@ jobs:
       - name: phi-guard scan (all tracked files)
         run: sh scripts/phi-guard/phi-scan.sh --all
 
+      - name: check-no-em-dash (no U+2014/U+2013 in frontend/src, frontend/public, index.html, backend/src, backend/scripts, backend/prisma)
+        run: python3 scripts/check-no-em-dash.py
+
   backend-unit-tests:
     needs: phi-guard
     runs-on: ubuntu-latest
