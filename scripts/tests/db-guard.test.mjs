@@ -3,11 +3,11 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { execFileSync, spawnSync } from 'node:child_process';
-import { mkdtempSync, mkdirSync, writeFileSync, rmSync, readFileSync, symlinkSync } from 'node:fs';
+import { mkdtempSync, mkdirSync, writeFileSync, rmSync, readFileSync, symlinkSync, chmodSync, renameSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { labelApproval, guardChangeFindings, decide, parseNameStatusZ } from '../db-guard/db-guard.mjs';
+import { labelApproval, guardChangeFindings, decide, parseRawZ, emptyDiffFinding } from '../db-guard/db-guard.mjs';
 
 const GUARD = resolve(dirname(fileURLToPath(import.meta.url)), '../db-guard/db-guard.mjs');
 const HEAD_DATE = '2026-01-01T12:00:00Z';
@@ -52,8 +52,31 @@ test('.gitattributes anywhere, any status: finding approvable only with the labe
   assert.deepEqual(f.map((x) => x.rule), ['gitattributes-changed', 'gitattributes-changed']);
   assert.equal(decide(f, false).blocking, 2); assert.equal(decide(f, true).blocking, 0);
 });
-test('parseNameStatusZ keeps non-ASCII paths verbatim and pairs renames', () => {
-  assert.deepEqual(parseNameStatusZ('A\0scripts/db-guard/\u00e9.sh\0R100\0a.sql\0b.sql\0'), [['A', 'scripts/db-guard/\u00e9.sh'], ['R100', 'a.sql', 'b.sql']]);
+test('parseRawZ keeps non-ASCII paths verbatim, pairs renames and returns blob ids', () => {
+  const z = '0'.repeat(40), x = 'a'.repeat(40);
+  const r = parseRawZ(`:000000 100644 ${z} ${x} A\0scripts/db-guard/\u00e9.sh\0:100644 100644 ${x} ${x} R100\0a.sql\0b.sql\0`);
+  assert.deepEqual(r.map((e) => e.entry), [['A', 'scripts/db-guard/\u00e9.sh'], ['R100', 'a.sql', 'b.sql']]);
+  assert.equal(r[1].oldSha, x); assert.equal(r[0].newSha, x);
+});
+test('.db-guard-ignore: true A adds no hard block; M/D/R/T or A-existing is a hard block', () => {
+  assert.deepEqual(guardChangeFindings([['A', '.db-guard-ignore']]), []);
+  for (const e of [['M', '.db-guard-ignore'], ['D', '.db-guard-ignore'], ['T', '.db-guard-ignore'], ['R100', 'x', '.db-guard-ignore']]) {
+    const f = guardChangeFindings([e]);
+    assert.equal(f[0].rule, 'ignore-list-changed'); assert.equal(decide(f, true).blocking, 1);
+  }
+  assert.equal(decide(guardChangeFindings([['A', '.db-guard-ignore']], () => true), true).blocking, 1);
+});
+test('emptyDiffFinding: explainable no-add changes pass, anything else is a hard block', () => {
+  const E = 'e69de29bb2d1d6434b8b29ae775ad8c2e48c5391', x = 'a'.repeat(40), y = 'b'.repeat(40), z = '0'.repeat(40);
+  const base = { file: 'f', added: 0, removed: 0 };
+  assert.equal(emptyDiffFinding({ ...base, status: 'A', oldSha: z, newSha: E }), null);        // empty new file
+  assert.equal(emptyDiffFinding({ ...base, status: 'R100', oldSha: x, newSha: x }), null);     // pure rename
+  assert.equal(emptyDiffFinding({ ...base, status: 'M', oldSha: x, newSha: x }), null);        // mode only
+  assert.equal(emptyDiffFinding({ ...base, status: 'M', oldSha: x, newSha: y, removed: 3 }), null); // removals only
+  assert.equal(emptyDiffFinding({ ...base, status: 'D', oldSha: x, newSha: z }), null);
+  assert.equal(emptyDiffFinding({ ...base, status: 'A', oldSha: z, newSha: x }).rule, 'empty-diff');
+  assert.equal(emptyDiffFinding({ ...base, status: 'M', oldSha: x, newSha: y }).markerable, false);
+  assert.equal(emptyDiffFinding({ ...base, status: 'A', oldSha: z, newSha: x, added: 1 }), null);
 });
 test('guard files: A is approvable, M/D/R block even when approved', () => {
   const f = guardChangeFindings([
@@ -83,7 +106,7 @@ function put(dir, file, body) {
   else writeFileSync(join(dir, file), body);
 }
 // baseFiles / headFiles: {path: content}. Returns {dir, base, head}.
-function repo(baseFiles, headFiles) {
+function repo(baseFiles, headFiles, headFn) {
   const dir = mkdtempSync(join(tmpdir(), 'db-guard-test-'));
   sh(dir, 'init', '-q', '-b', 'main');
   put(dir, 'README.md', 'x\n');
@@ -91,6 +114,7 @@ function repo(baseFiles, headFiles) {
   sh(dir, 'add', '-A'); sh(dir, 'commit', '-q', '-m', 'base');
   const base = sh(dir, 'rev-parse', 'HEAD').trim();
   for (const [f, b] of Object.entries(headFiles)) put(dir, f, b);
+  if (headFn) headFn(dir);
   sh(dir, 'add', '-A'); sh(dir, 'commit', '-q', '-m', 'head');
   return { dir, base, head: sh(dir, 'rev-parse', 'HEAD').trim() };
 }
@@ -160,6 +184,39 @@ test('cli (10): non-ASCII paths are matched unquoted (guard dir, migration, plai
 test('cli (11): .db-guard-ignore is read from the base, not the PR', () => {
   const r = run(repo({}, { '.db-guard-ignore': 'db/**\n', ...DROP_SQL }));
   assert.equal(r.code, 1, r.out); assert.match(r.out, /\[sql-drop-object\]/); assert.match(r.out, /\[ignore-list-changed\]/);
+});
+test('cli (12): pathspec-magic file names cannot hide a DROP-TABLE file', () => {
+  for (const name of [':(exclude)*', ':(attr:nope)x.sql', ':(icase)z.sql']) {
+    const r = run(repo({}, { [name]: DROP_SQL['db/cleanup.sql'] }));
+    assert.equal(r.code, 1, `${name}: ${r.out}`); assert.match(r.out, /\[sql-drop-object\]/, name);
+  }
+});
+test('cli (13): no false empty-diff on empty new file, pure rename, mode-only and removal-only changes', () => {
+  const r = run(repo({ 'a.txt': 'one\ntwo\n', 'b.sh': 'echo hi\n', 'c.txt': 'keep\n' }, { 'empty.txt': '', 'a.txt': 'one\n' }, (d) => {
+    renameSync(join(d, 'c.txt'), join(d, 'c2.txt')); chmodSync(join(d, 'b.sh'), 0o755);
+  }));
+  assert.equal(r.code, 0, r.out); assert.doesNotMatch(r.out, /empty-diff/);
+});
+test('cli (14): branch adds a guard file that the base tip already has (add/add) + valid label => fail', () => {
+  const dir = mkdtempSync(join(tmpdir(), 'db-guard-test-'));
+  sh(dir, 'init', '-q', '-b', 'main'); put(dir, 'README.md', 'x\n'); sh(dir, 'add', '-A'); sh(dir, 'commit', '-q', '-m', 'root');
+  sh(dir, 'checkout', '-q', '-b', 'pr'); put(dir, 'scripts/db/roles.sql', 'SELECT 9;\n'); sh(dir, 'add', '-A'); sh(dir, 'commit', '-q', '-m', 'pr');
+  sh(dir, 'checkout', '-q', 'main'); put(dir, 'scripts/db/roles.sql', 'SELECT 1;\n'); sh(dir, 'add', '-A'); sh(dir, 'commit', '-q', '-m', 'main gains it');
+  const r = run({ dir, base: sh(dir, 'rev-parse', 'main').trim(), head: sh(dir, 'rev-parse', 'pr').trim() }, { label: true });
+  assert.equal(r.code, 1, r.out); assert.match(r.out, /scripts\/db\/roles\.sql:0 .*\[guard-changed\].*hard block/);
+});
+test('cli (15): existing .db-guard-ignore changed + valid label => fail; first addition with marker + label => pass', () => {
+  const m = run(repo({ '.db-guard-ignore': '# none\n' }, { '.db-guard-ignore': '# none\n# still none\n' }), { label: true });
+  assert.equal(m.code, 1, m.out); assert.match(m.out, /\[ignore-list-changed\].*hard block/);
+  const add = { '.db-guard-ignore': 'docs/generated/** # DESTRUCTIVE-OK: CEO-2026-02\n' };
+  assert.equal(run(repo({}, add), { label: true }).code, 0);
+  assert.equal(run(repo({}, add)).code, 1);
+});
+test('cli (16): existing .gitattributes changed stays label-clearable', () => {
+  const g = repo({ '.gitattributes': '*.png binary\n' }, { '.gitattributes': '*.png binary\n*.jpg binary\n' });
+  const g2 = repo({ '.gitattributes': '*.png binary\n' }, { '.gitattributes': '*.png binary\n*.jpg binary\n' });
+  assert.equal(run(g, { label: true }).code, 0);
+  const r = run(g2); assert.equal(r.code, 1, r.out); assert.match(r.out, /\[gitattributes-changed\].*approvable/);
 });
 
 // ---- workflow layer (static) ----
