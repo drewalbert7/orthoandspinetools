@@ -73,7 +73,7 @@ See `AGENTS.md` and `.cursor/rules/analytics-durability.mdc` for full details. K
 |----|-------------|--------|
 | [#7](https://github.com/drewalbert7/orthoandspinetools/pull/7) | Implant catalog staging tables and openFDA importer | Draft, awaiting review |
 | [#9](https://github.com/drewalbert7/orthoandspinetools/pull/9) | Restructure todo.md + check-gated deploy with rollback | In progress |
-| PR_PLACEHOLDER | Implant detail FDA record panel (openFDA-verified only), MAUDE score fix (Insufficient data instead of 10.0; same brand key and 12-month window as the snapshot), case-insensitive name sort, title and 390px sort label fixes. Data migration `20261017210000_implant_fda_verified_and_title_fixes` must be applied by hand, then recompute scores | Open, not merged or deployed |
+| [#14](https://github.com/drewalbert7/orthoandspinetools/pull/14) | Implant detail FDA record panel (openFDA-verified only), MAUDE score fix (Insufficient data instead of 10.0; same brand key and 12-month window as the snapshot), case-insensitive name sort, title and 390px sort label fixes. Data migration `20261017210000_implant_fda_verified_and_title_fixes` must be applied by hand, then recompute scores | Open, not merged or deployed |
 
 ---
 
