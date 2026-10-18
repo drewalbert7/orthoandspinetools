@@ -91,6 +91,7 @@ See `AGENTS.md` and `.cursor/rules/analytics-durability.mdc` for full details. K
 - Indications for use and contraindications on every listing, taken from the cited FDA summary (SSED/510(k) summary) or IFU, with the source URL per field. Blank when not verified (review 2026-10-17 item 3; 15/15 listings blank today)
 - Finish PR #7 catalog: review UI, promotion from staging into `implants`, `product_code` column, per-field citations; then openFDA 510k/PMA + GUDID + maker pages (review 2026-10-17 item 4)
 - FDA numbers still blank after the 2026-10-17 openFDA check (ambiguous, several clearances each): Equinoxe, Exeter, Osteocel, Aptis DRUJ, PediLoc, Persona, SwiveLock, TFN-ADVANCED, CD Horizon Solera, INFINITY. Editorial call needed on Mobi-C (P110009 two-level shown; P110002 one-level also exists)
+- Mobi-C resolved in PR #14 (2026-10-17): openFDA device/pma and accessdata confirm P110002 = one-level (decision 2013-08-07) and P110009 = two-level (2013-08-23), applicant Highridge Medical, LLC on both; the FDA panel now shows both records (fda_records, migration 20261018010000_implant_fda_records)
 
 ### Openly Licensed X-ray Corpus
 
