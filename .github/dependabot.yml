@@ -16,6 +16,7 @@ updates:
     open-pull-requests-limit: 1
     labels:
       - "dependencies"
+      - "no-todo"
     groups:
       npm-all:
         patterns:
@@ -32,6 +33,7 @@ updates:
     open-pull-requests-limit: 1
     labels:
       - "dependencies"
+      - "no-todo"
     groups:
       docker-all:
         patterns:
@@ -46,6 +48,7 @@ updates:
     open-pull-requests-limit: 1
     labels:
       - "dependencies"
+      - "no-todo"
     groups:
       github-actions-all:
         patterns:
