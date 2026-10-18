@@ -1,0 +1,1474 @@
+[
+ {
+  "slug": "aptis-druj",
+  "brand": "Aptis DRUJ",
+  "score": null,
+  "signal": "insufficient",
+  "directory": 5.5,
+  "confidence": "insufficient",
+  "notes": [
+   "Fewer than 5 MAUDE reports in the window."
+  ],
+  "error": null,
+  "counts": {
+   "death": 0,
+   "other": 0,
+   "total": 3,
+   "breaks": 0,
+   "injury": 3,
+   "malfunction": 0
+  },
+  "codes": [
+   {
+    "code": "KXE",
+    "name": "Prosthesis, Wrist, Hemi-, Ulnar",
+    "share": 1,
+    "reports": 3,
+    "brandCount": 2
+   }
+  ],
+  "recalls": [],
+  "trend": [
+   1,
+   2
+  ],
+  "relative": null,
+  "breakCap": null,
+  "recallFactor": 1,
+  "pulledAt": "2026-10-18T00:46:37.772Z",
+  "window": [
+   "2025-10-18",
+   "2026-10-17"
+  ],
+  "sources": [
+   {
+    "url": "https://api.fda.gov/device/event.json?search=device.openfda.medical_specialty_description%3A%22Orthopedic%22+AND+%28device.openfda.device_name%3Ahand+OR+device.openfda.device_name%3Awrist+OR+device.openfda.device_name%3Acarpal+OR+device.openfda.device_name%3Afinger+OR+device.openfda.device_name%3Aphalanx%29+AND+device.brand_name%3A%22Aptis%22+AND+date_received%3A%5B20251018+TO+20261017%5D&count=event_type.exact&limit=8",
+    "label": "Device: reports by event type (same search as the MAUDE snapshot)"
+   },
+   {
+    "url": "https://api.fda.gov/device/event.json?search=device.openfda.medical_specialty_description%3A%22Orthopedic%22+AND+%28device.openfda.device_name%3Ahand+OR+device.openfda.device_name%3Awrist+OR+device.openfda.device_name%3Acarpal+OR+device.openfda.device_name%3Afinger+OR+device.openfda.device_name%3Aphalanx%29+AND+device.brand_name%3A%22Aptis%22+AND+date_received%3A%5B20251018+TO+20261017%5D+AND+%28product_problems%3A%22Break%22+OR+product_problems%3A%22Fracture%22%29&limit=1",
+    "label": "Device: reports naming a break or fracture"
+   },
+   {
+    "url": "https://api.fda.gov/device/event.json?search=device.openfda.medical_specialty_description%3A%22Orthopedic%22+AND+%28device.openfda.device_name%3Ahand+OR+device.openfda.device_name%3Awrist+OR+device.openfda.device_name%3Acarpal+OR+device.openfda.device_name%3Afinger+OR+device.openfda.device_name%3Aphalanx%29+AND+device.brand_name%3A%22Aptis%22+AND+date_received%3A%5B20251018+TO+20261017%5D&count=date_received",
+    "label": "Device: reports by date received (12-month trend)"
+   },
+   {
+    "url": "https://api.fda.gov/device/event.json?search=device.openfda.medical_specialty_description%3A%22Orthopedic%22+AND+%28device.openfda.device_name%3Ahand+OR+device.openfda.device_name%3Awrist+OR+device.openfda.device_name%3Acarpal+OR+device.openfda.device_name%3Afinger+OR+device.openfda.device_name%3Aphalanx%29+AND+device.brand_name%3A%22Aptis%22+AND+date_received%3A%5B20251018+TO+20261017%5D&count=device.device_report_product_code.exact&limit=20",
+    "label": "Device: reports by FDA product code"
+   },
+   {
+    "url": "https://api.fda.gov/device/event.json?search=device.device_report_product_code%3A%22KXE%22+AND+date_received%3A%5B20251018+TO+20261017%5D&count=event_type.exact&limit=8",
+    "label": "Category KXE: reports by event type"
+   },
+   {
+    "url": "https://api.fda.gov/device/event.json?search=device.device_report_product_code%3A%22KXE%22+AND+date_received%3A%5B20251018+TO+20261017%5D+AND+%28product_problems%3A%22Break%22+OR+product_problems%3A%22Fracture%22%29&limit=1",
+    "label": "Category KXE: reports naming a break or fracture"
+   },
+   {
+    "url": "https://api.fda.gov/device/event.json?search=device.device_report_product_code%3A%22KXE%22+AND+date_received%3A%5B20251018+TO+20261017%5D&count=device.brand_name.exact&limit=999",
+    "label": "Category KXE: brands reported"
+   },
+   {
+    "url": "https://api.fda.gov/device/event.json?search=device.device_report_product_code%3A%22KXE%22+AND+date_received%3A%5B20251018+TO+20261017%5D&count=device.openfda.device_name.exact&limit=1",
+    "label": "Category KXE: FDA device name"
+   },
+   {
+    "url": "https://api.fda.gov/device/event.json?search=device.openfda.medical_specialty_description%3A%22Orthopedic%22+AND+%28device.openfda.device_name%3Ahand+OR+device.openfda.device_name%3Awrist+OR+device.openfda.device_name%3Acarpal+OR+device.openfda.device_name%3Afinger+OR+device.openfda.device_name%3Aphalanx%29+AND+device.brand_name%3A%22Aptis%22+AND+date_received%3A%5B20251018+TO+20261017%5D&count=device.manufacturer_d_name.exact&limit=5",
+    "label": "Device: manufacturers filing the reports"
+   },
+   {
+    "url": "https://api.fda.gov/device/enforcement.json?search=product_description%3A%22Aptis%22+AND+recall_initiation_date%3A%5B20211018+TO+20261018%5D&limit=100",
+    "label": "Recalls: enforcement reports naming \"Aptis\""
+   }
+  ]
+ },
+ {
+  "slug": "cd-horizon-solera",
+  "brand": "CD Horizon Solera",
+  "score": 4,
+  "signal": "watch",
+  "directory": 3.4,
+  "confidence": "high",
+  "notes": [],
+  "error": null,
+  "counts": {
+   "death": 0,
+   "other": 0,
+   "total": 369,
+   "breaks": 149,
+   "injury": 58,
+   "malfunction": 311
+  },
+  "codes": [
+   {
+    "code": "NKB",
+    "name": "Thoracolumbosacral Pedicle Screw System",
+    "share": 0.504,
+    "reports": 1293,
+    "brandCount": 305
+   },
+   {
+    "code": "HXX",
+    "name": "Screwdriver",
+    "share": 0.371,
+    "reports": 1797,
+    "brandCount": 395
+   }
+  ],
+  "recalls": [
+   {
+    "id": "92749",
+    "url": "https://api.fda.gov/device/enforcement.json?search=recall_number%3A%22Z-2363-2023%22",
+    "date": "2023-07-12",
+    "firm": "Medtronic Sofamor Danek USA, Inc",
+    "reason": "Incorrect Laser Marking - Solera Awl Tip Tap",
+    "product": "CD HORIZON Spinal System Solera Awl Tip Tap, REF NAV2006K",
+    "classification": "Class II"
+   }
+  ],
+  "trend": [
+   172,
+   197
+  ],
+  "relative": 0.939,
+  "breakCap": 6,
+  "recallFactor": 0.75,
+  "pulledAt": "2026-10-18T00:43:05.590Z",
+  "window": [
+   "2025-10-18",
+   "2026-10-17"
+  ],
+  "sources": [
+   {
+    "url": "https://api.fda.gov/device/event.json?search=%28%28device.openfda.medical_specialty_description%3A%22Orthopedic%22+AND+%28device.openfda.device_name%3Aspinal+OR+device.openfda.device_name%3Aintervertebral+OR+device.openfda.device_name%3Apedicle+OR+device.openfda.device_name%3Avertebral+OR+device.openfda.device_name%3Acervical+OR+device.openfda.device_name%3Asacro+OR+device.openfda.device_name%3Aspinous+OR+device.openfda.device_name%3Akypho+OR+device.openfda.device_name%3Avertebro+OR+device.brand_name%3AHORIZON+OR+device.brand_name%3AINFUSE+OR+device.brand_name%3AIFUSE+OR+device.brand_name%3AiFuse%29%29+OR+device.openfda.device_name%3A%22Prosthesis%2C+Intervertebral+Disc%22+OR+device.openfda.device_name%3A%22Prosthesis%2C+Spinous+Process+Spacer%2FPlate%22+OR+device.openfda.device_name%3A%22Filler%2C+Recombinant+Human+Bone+Morphogenetic+Protein%2C+Collagen+Scaffold+With+Metal+Prosthesis%2C+Osteoinduction%22+OR+device.openfda.device_name%3A%22Filler%2C+Recombinant+Human+Bone+Morphogenetic+Protein%2C+Collagen+Scaffold%2C+Osteoinduction%22+OR+%28device.openfda.device_name%3A%28cervical+AND+%28plate+OR+interbody+OR+cage+OR+%22stand-alone%22+OR+standalone+OR+%22stand+alone%22+OR+%22anterior+cervical%22%29%29+OR+device.brand_name%3A%28ATLANTIS+OR+ZEVO+OR+SKYLINE+OR+%22ZERO-P%22+OR+%22ZERO+P%22+OR+%22SLIM+LOC%22+OR+SLIMLOC+OR+ACIS+OR+COROENT+OR+TRESTLE+OR+REFLEX+OR+FIDJI+OR+LINEUM+OR+PREVAIL+OR+%22TRITANIUM+C%22+OR+PRECEPT+OR+EVEREST+OR+SILHOUETTE%29%29%29+AND+device.brand_name%3A%22Solera%22+AND+date_received%3A%5B20251018+TO+20261017%5D&count=event_type.exact&limit=8",
+    "label": "Device: reports by event type (same search as the MAUDE snapshot)"
+   },
+   {
+    "url": "https://api.fda.gov/device/event.json?search=%28%28device.openfda.medical_specialty_description%3A%22Orthopedic%22+AND+%28device.openfda.device_name%3Aspinal+OR+device.openfda.device_name%3Aintervertebral+OR+device.openfda.device_name%3Apedicle+OR+device.openfda.device_name%3Avertebral+OR+device.openfda.device_name%3Acervical+OR+device.openfda.device_name%3Asacro+OR+device.openfda.device_name%3Aspinous+OR+device.openfda.device_name%3Akypho+OR+device.openfda.device_name%3Avertebro+OR+device.brand_name%3AHORIZON+OR+device.brand_name%3AINFUSE+OR+device.brand_name%3AIFUSE+OR+device.brand_name%3AiFuse%29%29+OR+device.openfda.device_name%3A%22Prosthesis%2C+Intervertebral+Disc%22+OR+device.openfda.device_name%3A%22Prosthesis%2C+Spinous+Process+Spacer%2FPlate%22+OR+device.openfda.device_name%3A%22Filler%2C+Recombinant+Human+Bone+Morphogenetic+Protein%2C+Collagen+Scaffold+With+Metal+Prosthesis%2C+Osteoinduction%22+OR+device.openfda.device_name%3A%22Filler%2C+Recombinant+Human+Bone+Morphogenetic+Protein%2C+Collagen+Scaffold%2C+Osteoinduction%22+OR+%28device.openfda.device_name%3A%28cervical+AND+%28plate+OR+interbody+OR+cage+OR+%22stand-alone%22+OR+standalone+OR+%22stand+alone%22+OR+%22anterior+cervical%22%29%29+OR+device.brand_name%3A%28ATLANTIS+OR+ZEVO+OR+SKYLINE+OR+%22ZERO-P%22+OR+%22ZERO+P%22+OR+%22SLIM+LOC%22+OR+SLIMLOC+OR+ACIS+OR+COROENT+OR+TRESTLE+OR+REFLEX+OR+FIDJI+OR+LINEUM+OR+PREVAIL+OR+%22TRITANIUM+C%22+OR+PRECEPT+OR+EVEREST+OR+SILHOUETTE%29%29%29+AND+device.brand_name%3A%22Solera%22+AND+date_received%3A%5B20251018+TO+20261017%5D+AND+%28product_problems%3A%22Break%22+OR+product_problems%3A%22Fracture%22%29&limit=1",
+    "label": "Device: reports naming a break or fracture"
+   },
+   {
+    "url": "https://api.fda.gov/device/event.json?search=%28%28device.openfda.medical_specialty_description%3A%22Orthopedic%22+AND+%28device.openfda.device_name%3Aspinal+OR+device.openfda.device_name%3Aintervertebral+OR+device.openfda.device_name%3Apedicle+OR+device.openfda.device_name%3Avertebral+OR+device.openfda.device_name%3Acervical+OR+device.openfda.device_name%3Asacro+OR+device.openfda.device_name%3Aspinous+OR+device.openfda.device_name%3Akypho+OR+device.openfda.device_name%3Avertebro+OR+device.brand_name%3AHORIZON+OR+device.brand_name%3AINFUSE+OR+device.brand_name%3AIFUSE+OR+device.brand_name%3AiFuse%29%29+OR+device.openfda.device_name%3A%22Prosthesis%2C+Intervertebral+Disc%22+OR+device.openfda.device_name%3A%22Prosthesis%2C+Spinous+Process+Spacer%2FPlate%22+OR+device.openfda.device_name%3A%22Filler%2C+Recombinant+Human+Bone+Morphogenetic+Protein%2C+Collagen+Scaffold+With+Metal+Prosthesis%2C+Osteoinduction%22+OR+device.openfda.device_name%3A%22Filler%2C+Recombinant+Human+Bone+Morphogenetic+Protein%2C+Collagen+Scaffold%2C+Osteoinduction%22+OR+%28device.openfda.device_name%3A%28cervical+AND+%28plate+OR+interbody+OR+cage+OR+%22stand-alone%22+OR+standalone+OR+%22stand+alone%22+OR+%22anterior+cervical%22%29%29+OR+device.brand_name%3A%28ATLANTIS+OR+ZEVO+OR+SKYLINE+OR+%22ZERO-P%22+OR+%22ZERO+P%22+OR+%22SLIM+LOC%22+OR+SLIMLOC+OR+ACIS+OR+COROENT+OR+TRESTLE+OR+REFLEX+OR+FIDJI+OR+LINEUM+OR+PREVAIL+OR+%22TRITANIUM+C%22+OR+PRECEPT+OR+EVEREST+OR+SILHOUETTE%29%29%29+AND+device.brand_name%3A%22Solera%22+AND+date_received%3A%5B20251018+TO+20261017%5D&count=date_received",
+    "label": "Device: reports by date received (12-month trend)"
+   },
+   {
+    "url": "https://api.fda.gov/device/event.json?search=%28%28device.openfda.medical_specialty_description%3A%22Orthopedic%22+AND+%28device.openfda.device_name%3Aspinal+OR+device.openfda.device_name%3Aintervertebral+OR+device.openfda.device_name%3Apedicle+OR+device.openfda.device_name%3Avertebral+OR+device.openfda.device_name%3Acervical+OR+device.openfda.device_name%3Asacro+OR+device.openfda.device_name%3Aspinous+OR+device.openfda.device_name%3Akypho+OR+device.openfda.device_name%3Avertebro+OR+device.brand_name%3AHORIZON+OR+device.brand_name%3AINFUSE+OR+device.brand_name%3AIFUSE+OR+device.brand_name%3AiFuse%29%29+OR+device.openfda.device_name%3A%22Prosthesis%2C+Intervertebral+Disc%22+OR+device.openfda.device_name%3A%22Prosthesis%2C+Spinous+Process+Spacer%2FPlate%22+OR+device.openfda.device_name%3A%22Filler%2C+Recombinant+Human+Bone+Morphogenetic+Protein%2C+Collagen+Scaffold+With+Metal+Prosthesis%2C+Osteoinduction%22+OR+device.openfda.device_name%3A%22Filler%2C+Recombinant+Human+Bone+Morphogenetic+Protein%2C+Collagen+Scaffold%2C+Osteoinduction%22+OR+%28device.openfda.device_name%3A%28cervical+AND+%28plate+OR+interbody+OR+cage+OR+%22stand-alone%22+OR+standalone+OR+%22stand+alone%22+OR+%22anterior+cervical%22%29%29+OR+device.brand_name%3A%28ATLANTIS+OR+ZEVO+OR+SKYLINE+OR+%22ZERO-P%22+OR+%22ZERO+P%22+OR+%22SLIM+LOC%22+OR+SLIMLOC+OR+ACIS+OR+COROENT+OR+TRESTLE+OR+REFLEX+OR+FIDJI+OR+LINEUM+OR+PREVAIL+OR+%22TRITANIUM+C%22+OR+PRECEPT+OR+EVEREST+OR+SILHOUETTE%29%29%29+AND+device.brand_name%3A%22Solera%22+AND+date_received%3A%5B20251018+TO+20261017%5D&count=device.device_report_product_code.exact&limit=20",
+    "label": "Device: reports by FDA product code"
+   },
+   {
+    "url": "https://api.fda.gov/device/event.json?search=device.device_report_product_code%3A%22NKB%22+AND+date_received%3A%5B20251018+TO+20261017%5D&count=event_type.exact&limit=8",
+    "label": "Category NKB: reports by event type"
+   },
+   {
+    "url": "https://api.fda.gov/device/event.json?search=device.device_report_product_code%3A%22NKB%22+AND+date_received%3A%5B20251018+TO+20261017%5D+AND+%28product_problems%3A%22Break%22+OR+product_problems%3A%22Fracture%22%29&limit=1",
+    "label": "Category NKB: reports naming a break or fracture"
+   },
+   {
+    "url": "https://api.fda.gov/device/event.json?search=device.device_report_product_code%3A%22NKB%22+AND+date_received%3A%5B20251018+TO+20261017%5D&count=device.brand_name.exact&limit=999",
+    "label": "Category NKB: brands reported"
+   },
+   {
+    "url": "https://api.fda.gov/device/event.json?search=device.device_report_product_code%3A%22NKB%22+AND+date_received%3A%5B20251018+TO+20261017%5D&count=device.openfda.device_name.exact&limit=1",
+    "label": "Category NKB: FDA device name"
+   },
+   {
+    "url": "https://api.fda.gov/device/event.json?search=device.device_report_product_code%3A%22HXX%22+AND+date_received%3A%5B20251018+TO+20261017%5D&count=event_type.exact&limit=8",
+    "label": "Category HXX: reports by event type"
+   },
+   {
+    "url": "https://api.fda.gov/device/event.json?search=device.device_report_product_code%3A%22HXX%22+AND+date_received%3A%5B20251018+TO+20261017%5D+AND+%28product_problems%3A%22Break%22+OR+product_problems%3A%22Fracture%22%29&limit=1",
+    "label": "Category HXX: reports naming a break or fracture"
+   },
+   {
+    "url": "https://api.fda.gov/device/event.json?search=device.device_report_product_code%3A%22HXX%22+AND+date_received%3A%5B20251018+TO+20261017%5D&count=device.brand_name.exact&limit=999",
+    "label": "Category HXX: brands reported"
+   },
+   {
+    "url": "https://api.fda.gov/device/event.json?search=device.device_report_product_code%3A%22HXX%22+AND+date_received%3A%5B20251018+TO+20261017%5D&count=device.openfda.device_name.exact&limit=1",
+    "label": "Category HXX: FDA device name"
+   },
+   {
+    "url": "https://api.fda.gov/device/event.json?search=%28%28device.openfda.medical_specialty_description%3A%22Orthopedic%22+AND+%28device.openfda.device_name%3Aspinal+OR+device.openfda.device_name%3Aintervertebral+OR+device.openfda.device_name%3Apedicle+OR+device.openfda.device_name%3Avertebral+OR+device.openfda.device_name%3Acervical+OR+device.openfda.device_name%3Asacro+OR+device.openfda.device_name%3Aspinous+OR+device.openfda.device_name%3Akypho+OR+device.openfda.device_name%3Avertebro+OR+device.brand_name%3AHORIZON+OR+device.brand_name%3AINFUSE+OR+device.brand_name%3AIFUSE+OR+device.brand_name%3AiFuse%29%29+OR+device.openfda.device_name%3A%22Prosthesis%2C+Intervertebral+Disc%22+OR+device.openfda.device_name%3A%22Prosthesis%2C+Spinous+Process+Spacer%2FPlate%22+OR+device.openfda.device_name%3A%22Filler%2C+Recombinant+Human+Bone+Morphogenetic+Protein%2C+Collagen+Scaffold+With+Metal+Prosthesis%2C+Osteoinduction%22+OR+device.openfda.device_name%3A%22Filler%2C+Recombinant+Human+Bone+Morphogenetic+Protein%2C+Collagen+Scaffold%2C+Osteoinduction%22+OR+%28device.openfda.device_name%3A%28cervical+AND+%28plate+OR+interbody+OR+cage+OR+%22stand-alone%22+OR+standalone+OR+%22stand+alone%22+OR+%22anterior+cervical%22%29%29+OR+device.brand_name%3A%28ATLANTIS+OR+ZEVO+OR+SKYLINE+OR+%22ZERO-P%22+OR+%22ZERO+P%22+OR+%22SLIM+LOC%22+OR+SLIMLOC+OR+ACIS+OR+COROENT+OR+TRESTLE+OR+REFLEX+OR+FIDJI+OR+LINEUM+OR+PREVAIL+OR+%22TRITANIUM+C%22+OR+PRECEPT+OR+EVEREST+OR+SILHOUETTE%29%29%29+AND+device.brand_name%3A%22Solera%22+AND+date_received%3A%5B20251018+TO+20261017%5D&count=device.manufacturer_d_name.exact&limit=5",
+    "label": "Device: manufacturers filing the reports"
+   },
+   {
+    "url": "https://api.fda.gov/device/enforcement.json?search=product_description%3A%22Solera%22+AND+recall_initiation_date%3A%5B20211018+TO+20261018%5D&limit=100",
+    "label": "Recalls: enforcement reports naming \"Solera\""
+   }
+  ]
+ },
+ {
+  "slug": "equinoxe-shoulder",
+  "brand": "Equinoxe",
+  "score": 1.2,
+  "signal": "elevated",
+  "directory": 0,
+  "confidence": "high",
+  "notes": [],
+  "error": null,
+  "counts": {
+   "death": 0,
+   "other": 0,
+   "total": 628,
+   "breaks": 29,
+   "injury": 622,
+   "malfunction": 6
+  },
+  "codes": [
+   {
+    "code": "KWT",
+    "name": "Prosthesis, Shoulder, Non-Constrained, Metal/Polymer Cemented",
+    "share": 0.521,
+    "reports": 617,
+    "brandCount": 188
+   },
+   {
+    "code": "KWS",
+    "name": "Prosthesis, Shoulder, Semi-Constrained, Metal/Polymer Cemented",
+    "share": 0.261,
+    "reports": 2537,
+    "brandCount": 729
+   },
+   {
+    "code": "PHX",
+    "name": "Shoulder Prosthesis, Reverse Configuration",
+    "share": 0.177,
+    "reports": 2872,
+    "brandCount": 751
+   }
+  ],
+  "recalls": [
+   {
+    "id": "98376",
+    "url": "https://api.fda.gov/device/enforcement.json?search=recall_number%3A%22Z-1509-2026%22",
+    "date": "2026-02-03",
+    "firm": "Exactech, Inc.",
+    "reason": "Impactor handle may be missing cross-pin",
+    "product": "Brand Name: Equinoxe Ergo Product Name: Ergo Modular Impactor Handle Model/Catalog Number: 321-09-05",
+    "classification": "Class II"
+   },
+   {
+    "id": "97588",
+    "url": "https://api.fda.gov/device/enforcement.json?search=recall_number%3A%22Z-0536-2026%22",
+    "date": "2025-09-05",
+    "firm": "Exactech, Inc.",
+    "reason": "Due to products that have not completed design updates and performance testing being released/distributed. Products may not conform to design and performance criteria.",
+    "product": "Brand Name: Equinoxe Ergo Product Name: Adjustable Angle rTSA Reamer, 46mm Model/Catalog Number: 321-59-46 Software Version: N/A Product Description: rTSA Reamer, 46mm Component: Not a component",
+    "classification": "Class II"
+   },
+   {
+    "id": "97459",
+    "url": "https://api.fda.gov/device/enforcement.json?search=recall_number%3A%22Z-2562-2025%22",
+    "date": "2025-08-15",
+    "firm": "Exactech, Inc.",
+    "reason": "Reverse Shoulder humeral liners have an articular surface position outside of the dimensional specification within the labeling.",
+    "product": "Exactech Equinoxe, Reverse Shoulder Humeral Liners, 322-38-00 (145-DEG PE 38MM HUM LINER +0), REF: 322-38-03 (145-DEG PE 38MM HUM LINER +2.5), REF:322-42-00 (145-DEG PE 42MM HUM LINER +0), REF: 322-42",
+    "classification": "Class II"
+   },
+   {
+    "id": "94092",
+    "url": "https://api.fda.gov/device/enforcement.json?search=recall_number%3A%22Z-1409-2024%22",
+    "date": "2024-03-06",
+    "firm": "Exactech, Inc.",
+    "reason": "The packaging of these affected UHMWPE humeral liners and glenoids are nonconforming as they do not meet the established packaging specification. They were packaged in vacuum bags that did not contain",
+    "product": "Exactech Equinoxe GLENOID,POSTERIOR AUGMENT, PEGGED, 12o, RIGHT, FOR CEMENTED USE ONLY, Mates with: a) 38, 41, 44, 47 head, Small, Item Number 314-04-32, b) 41, 44, 47, 50 head, Medium, Item Number 31",
+    "classification": "Class II"
+   },
+   {
+    "id": "93507",
+    "url": "https://api.fda.gov/device/enforcement.json?search=recall_number%3A%22Z-0580-2024%22",
+    "date": "2023-11-21",
+    "firm": "Exactech, Inc.",
+    "reason": "Exactech has received 3 complaints for 4 devices related to a loss of vacuum in the inner-most vacuum bag.",
+    "product": "Exactech Equinoxe Shoulder System, Catalog Numbers: a) 314-23-02, b) 314-23-03, c) 314-23-13, d) 314-23-14, e) 314-23-15, f) 314-24-22, g) 314-24-23, h) 314-24-24, i) 314-24-32, j) 314-24-33, k) 314-2",
+    "classification": "Class II"
+   }
+  ],
+  "trend": [
+   277,
+   351
+  ],
+  "relative": 1.019,
+  "breakCap": 9.53,
+  "recallFactor": 0.237,
+  "pulledAt": "2026-10-18T00:46:55.869Z",
+  "window": [
+   "2025-10-18",
+   "2026-10-17"
+  ],
+  "sources": [
+   {
+    "url": "https://api.fda.gov/device/event.json?search=device.openfda.medical_specialty_description%3A%22Orthopedic%22+AND+%28device.openfda.device_name%3Ashoulder+OR+device.openfda.device_name%3Aelbow+OR+device.openfda.device_name%3Ahumeral+OR+device.openfda.device_name%3Aulnar%29+AND+device.brand_name%3A%22Equinoxe%22+AND+date_received%3A%5B20251018+TO+20261017%5D&count=event_type.exact&limit=8",
+    "label": "Device: reports by event type (same search as the MAUDE snapshot)"
+   },
+   {
+    "url": "https://api.fda.gov/device/event.json?search=device.openfda.medical_specialty_description%3A%22Orthopedic%22+AND+%28device.openfda.device_name%3Ashoulder+OR+device.openfda.device_name%3Aelbow+OR+device.openfda.device_name%3Ahumeral+OR+device.openfda.device_name%3Aulnar%29+AND+device.brand_name%3A%22Equinoxe%22+AND+date_received%3A%5B20251018+TO+20261017%5D+AND+%28product_problems%3A%22Break%22+OR+product_problems%3A%22Fracture%22%29&limit=1",
+    "label": "Device: reports naming a break or fracture"
+   },
+   {
+    "url": "https://api.fda.gov/device/event.json?search=device.openfda.medical_specialty_description%3A%22Orthopedic%22+AND+%28device.openfda.device_name%3Ashoulder+OR+device.openfda.device_name%3Aelbow+OR+device.openfda.device_name%3Ahumeral+OR+device.openfda.device_name%3Aulnar%29+AND+device.brand_name%3A%22Equinoxe%22+AND+date_received%3A%5B20251018+TO+20261017%5D&count=date_received",
+    "label": "Device: reports by date received (12-month trend)"
+   },
+   {
+    "url": "https://api.fda.gov/device/event.json?search=device.openfda.medical_specialty_description%3A%22Orthopedic%22+AND+%28device.openfda.device_name%3Ashoulder+OR+device.openfda.device_name%3Aelbow+OR+device.openfda.device_name%3Ahumeral+OR+device.openfda.device_name%3Aulnar%29+AND+device.brand_name%3A%22Equinoxe%22+AND+date_received%3A%5B20251018+TO+20261017%5D&count=device.device_report_product_code.exact&limit=20",
+    "label": "Device: reports by FDA product code"
+   },
+   {
+    "url": "https://api.fda.gov/device/event.json?search=device.device_report_product_code%3A%22KWT%22+AND+date_received%3A%5B20251018+TO+20261017%5D&count=event_type.exact&limit=8",
+    "label": "Category KWT: reports by event type"
+   },
+   {
+    "url": "https://api.fda.gov/device/event.json?search=device.device_report_product_code%3A%22KWT%22+AND+date_received%3A%5B20251018+TO+20261017%5D+AND+%28product_problems%3A%22Break%22+OR+product_problems%3A%22Fracture%22%29&limit=1",
+    "label": "Category KWT: reports naming a break or fracture"
+   },
+   {
+    "url": "https://api.fda.gov/device/event.json?search=device.device_report_product_code%3A%22KWT%22+AND+date_received%3A%5B20251018+TO+20261017%5D&count=device.brand_name.exact&limit=999",
+    "label": "Category KWT: brands reported"
+   },
+   {
+    "url": "https://api.fda.gov/device/event.json?search=device.device_report_product_code%3A%22KWT%22+AND+date_received%3A%5B20251018+TO+20261017%5D&count=device.openfda.device_name.exact&limit=1",
+    "label": "Category KWT: FDA device name"
+   },
+   {
+    "url": "https://api.fda.gov/device/event.json?search=device.device_report_product_code%3A%22KWS%22+AND+date_received%3A%5B20251018+TO+20261017%5D&count=event_type.exact&limit=8",
+    "label": "Category KWS: reports by event type"
+   },
+   {
+    "url": "https://api.fda.gov/device/event.json?search=device.device_report_product_code%3A%22KWS%22+AND+date_received%3A%5B20251018+TO+20261017%5D+AND+%28product_problems%3A%22Break%22+OR+product_problems%3A%22Fracture%22%29&limit=1",
+    "label": "Category KWS: reports naming a break or fracture"
+   },
+   {
+    "url": "https://api.fda.gov/device/event.json?search=device.device_report_product_code%3A%22KWS%22+AND+date_received%3A%5B20251018+TO+20261017%5D&count=device.brand_name.exact&limit=999",
+    "label": "Category KWS: brands reported"
+   },
+   {
+    "url": "https://api.fda.gov/device/event.json?search=device.device_report_product_code%3A%22KWS%22+AND+date_received%3A%5B20251018+TO+20261017%5D&count=device.openfda.device_name.exact&limit=1",
+    "label": "Category KWS: FDA device name"
+   },
+   {
+    "url": "https://api.fda.gov/device/event.json?search=device.device_report_product_code%3A%22PHX%22+AND+date_received%3A%5B20251018+TO+20261017%5D&count=event_type.exact&limit=8",
+    "label": "Category PHX: reports by event type"
+   },
+   {
+    "url": "https://api.fda.gov/device/event.json?search=device.device_report_product_code%3A%22PHX%22+AND+date_received%3A%5B20251018+TO+20261017%5D+AND+%28product_problems%3A%22Break%22+OR+product_problems%3A%22Fracture%22%29&limit=1",
+    "label": "Category PHX: reports naming a break or fracture"
+   },
+   {
+    "url": "https://api.fda.gov/device/event.json?search=device.device_report_product_code%3A%22PHX%22+AND+date_received%3A%5B20251018+TO+20261017%5D&count=device.brand_name.exact&limit=999",
+    "label": "Category PHX: brands reported"
+   },
+   {
+    "url": "https://api.fda.gov/device/event.json?search=device.device_report_product_code%3A%22PHX%22+AND+date_received%3A%5B20251018+TO+20261017%5D&count=device.openfda.device_name.exact&limit=1",
+    "label": "Category PHX: FDA device name"
+   },
+   {
+    "url": "https://api.fda.gov/device/event.json?search=device.openfda.medical_specialty_description%3A%22Orthopedic%22+AND+%28device.openfda.device_name%3Ashoulder+OR+device.openfda.device_name%3Aelbow+OR+device.openfda.device_name%3Ahumeral+OR+device.openfda.device_name%3Aulnar%29+AND+device.brand_name%3A%22Equinoxe%22+AND+date_received%3A%5B20251018+TO+20261017%5D&count=device.manufacturer_d_name.exact&limit=5",
+    "label": "Device: manufacturers filing the reports"
+   },
+   {
+    "url": "https://api.fda.gov/device/enforcement.json?search=product_description%3A%22Equinoxe%22+AND+recall_initiation_date%3A%5B20211018+TO+20261018%5D&limit=100",
+    "label": "Recalls: enforcement reports naming \"Equinoxe\""
+   }
+  ]
+ },
+ {
+  "slug": "exeter-hip",
+  "brand": "Exeter",
+  "score": 4,
+  "signal": "watch",
+  "directory": 3.3,
+  "confidence": "medium",
+  "notes": [],
+  "error": null,
+  "counts": {
+   "death": 0,
+   "other": 0,
+   "total": 50,
+   "breaks": 24,
+   "injury": 46,
+   "malfunction": 4
+  },
+  "codes": [
+   {
+    "code": "JDI",
+    "name": "Prosthesis, Hip, Semi-Constrained, Metal/Polymer, Cemented",
+    "share": 0.56,
+    "reports": 1606,
+    "brandCount": 688
+   },
+   {
+    "code": "LPH",
+    "name": "Prosthesis, Hip, Semi-Constrained, Metal/Polymer, Porous Uncemented",
+    "share": 0.4,
+    "reports": 5385,
+    "brandCount": 998
+   }
+  ],
+  "recalls": [],
+  "trend": [
+   19,
+   31
+  ],
+  "relative": 1.221,
+  "breakCap": 6.59,
+  "recallFactor": 1,
+  "pulledAt": "2026-10-18T00:46:41.135Z",
+  "window": [
+   "2025-10-18",
+   "2026-10-17"
+  ],
+  "sources": [
+   {
+    "url": "https://api.fda.gov/device/event.json?search=%28%28device.openfda.medical_specialty_description%3A%22Orthopedic%22+AND+%28device.openfda.device_name%3Ahip+OR+device.openfda.device_name%3Aknee+OR+device.openfda.device_name%3Apatellofemorotibial+OR+device.openfda.device_name%3Aacetabular+OR+device.openfda.device_name%3Afemoral+OR+device.openfda.device_name%3Aunicompartmental%29%29+OR+device.openfda.device_name%3A%22Prosthesis%2C+Knee%2C+Patellofemorotibial%2C+Semi-Constrained%2C+Metal%2FPolymer%2C+Mobile+Bearing%22+OR+device.openfda.device_name%3A%22Prosthesis%2C+Knee%2C+Femorotibial%2C+Unicompartmental%2C+Semi-Constrained%2C+Metal%2FPolymer%2C+Mobile+Bearing%22%29+AND+device.brand_name%3A%22Exeter%22+AND+date_received%3A%5B20251018+TO+20261017%5D&count=event_type.exact&limit=8",
+    "label": "Device: reports by event type (same search as the MAUDE snapshot)"
+   },
+   {
+    "url": "https://api.fda.gov/device/event.json?search=%28%28device.openfda.medical_specialty_description%3A%22Orthopedic%22+AND+%28device.openfda.device_name%3Ahip+OR+device.openfda.device_name%3Aknee+OR+device.openfda.device_name%3Apatellofemorotibial+OR+device.openfda.device_name%3Aacetabular+OR+device.openfda.device_name%3Afemoral+OR+device.openfda.device_name%3Aunicompartmental%29%29+OR+device.openfda.device_name%3A%22Prosthesis%2C+Knee%2C+Patellofemorotibial%2C+Semi-Constrained%2C+Metal%2FPolymer%2C+Mobile+Bearing%22+OR+device.openfda.device_name%3A%22Prosthesis%2C+Knee%2C+Femorotibial%2C+Unicompartmental%2C+Semi-Constrained%2C+Metal%2FPolymer%2C+Mobile+Bearing%22%29+AND+device.brand_name%3A%22Exeter%22+AND+date_received%3A%5B20251018+TO+20261017%5D+AND+%28product_problems%3A%22Break%22+OR+product_problems%3A%22Fracture%22%29&limit=1",
+    "label": "Device: reports naming a break or fracture"
+   },
+   {
+    "url": "https://api.fda.gov/device/event.json?search=%28%28device.openfda.medical_specialty_description%3A%22Orthopedic%22+AND+%28device.openfda.device_name%3Ahip+OR+device.openfda.device_name%3Aknee+OR+device.openfda.device_name%3Apatellofemorotibial+OR+device.openfda.device_name%3Aacetabular+OR+device.openfda.device_name%3Afemoral+OR+device.openfda.device_name%3Aunicompartmental%29%29+OR+device.openfda.device_name%3A%22Prosthesis%2C+Knee%2C+Patellofemorotibial%2C+Semi-Constrained%2C+Metal%2FPolymer%2C+Mobile+Bearing%22+OR+device.openfda.device_name%3A%22Prosthesis%2C+Knee%2C+Femorotibial%2C+Unicompartmental%2C+Semi-Constrained%2C+Metal%2FPolymer%2C+Mobile+Bearing%22%29+AND+device.brand_name%3A%22Exeter%22+AND+date_received%3A%5B20251018+TO+20261017%5D&count=date_received",
+    "label": "Device: reports by date received (12-month trend)"
+   },
+   {
+    "url": "https://api.fda.gov/device/event.json?search=%28%28device.openfda.medical_specialty_description%3A%22Orthopedic%22+AND+%28device.openfda.device_name%3Ahip+OR+device.openfda.device_name%3Aknee+OR+device.openfda.device_name%3Apatellofemorotibial+OR+device.openfda.device_name%3Aacetabular+OR+device.openfda.device_name%3Afemoral+OR+device.openfda.device_name%3Aunicompartmental%29%29+OR+device.openfda.device_name%3A%22Prosthesis%2C+Knee%2C+Patellofemorotibial%2C+Semi-Constrained%2C+Metal%2FPolymer%2C+Mobile+Bearing%22+OR+device.openfda.device_name%3A%22Prosthesis%2C+Knee%2C+Femorotibial%2C+Unicompartmental%2C+Semi-Constrained%2C+Metal%2FPolymer%2C+Mobile+Bearing%22%29+AND+device.brand_name%3A%22Exeter%22+AND+date_received%3A%5B20251018+TO+20261017%5D&count=device.device_report_product_code.exact&limit=20",
+    "label": "Device: reports by FDA product code"
+   },
+   {
+    "url": "https://api.fda.gov/device/event.json?search=device.device_report_product_code%3A%22JDI%22+AND+date_received%3A%5B20251018+TO+20261017%5D&count=event_type.exact&limit=8",
+    "label": "Category JDI: reports by event type"
+   },
+   {
+    "url": "https://api.fda.gov/device/event.json?search=device.device_report_product_code%3A%22JDI%22+AND+date_received%3A%5B20251018+TO+20261017%5D+AND+%28product_problems%3A%22Break%22+OR+product_problems%3A%22Fracture%22%29&limit=1",
+    "label": "Category JDI: reports naming a break or fracture"
+   },
+   {
+    "url": "https://api.fda.gov/device/event.json?search=device.device_report_product_code%3A%22JDI%22+AND+date_received%3A%5B20251018+TO+20261017%5D&count=device.brand_name.exact&limit=999",
+    "label": "Category JDI: brands reported"
+   },
+   {
+    "url": "https://api.fda.gov/device/event.json?search=device.device_report_product_code%3A%22JDI%22+AND+date_received%3A%5B20251018+TO+20261017%5D&count=device.openfda.device_name.exact&limit=1",
+    "label": "Category JDI: FDA device name"
+   },
+   {
+    "url": "https://api.fda.gov/device/event.json?search=device.device_report_product_code%3A%22LPH%22+AND+date_received%3A%5B20251018+TO+20261017%5D&count=event_type.exact&limit=8",
+    "label": "Category LPH: reports by event type"
+   },
+   {
+    "url": "https://api.fda.gov/device/event.json?search=device.device_report_product_code%3A%22LPH%22+AND+date_received%3A%5B20251018+TO+20261017%5D+AND+%28product_problems%3A%22Break%22+OR+product_problems%3A%22Fracture%22%29&limit=1",
+    "label": "Category LPH: reports naming a break or fracture"
+   },
+   {
+    "url": "https://api.fda.gov/device/event.json?search=device.device_report_product_code%3A%22LPH%22+AND+date_received%3A%5B20251018+TO+20261017%5D&count=device.brand_name.exact&limit=999",
+    "label": "Category LPH: brands reported"
+   },
+   {
+    "url": "https://api.fda.gov/device/event.json?search=device.device_report_product_code%3A%22LPH%22+AND+date_received%3A%5B20251018+TO+20261017%5D&count=device.openfda.device_name.exact&limit=1",
+    "label": "Category LPH: FDA device name"
+   },
+   {
+    "url": "https://api.fda.gov/device/event.json?search=%28%28device.openfda.medical_specialty_description%3A%22Orthopedic%22+AND+%28device.openfda.device_name%3Ahip+OR+device.openfda.device_name%3Aknee+OR+device.openfda.device_name%3Apatellofemorotibial+OR+device.openfda.device_name%3Aacetabular+OR+device.openfda.device_name%3Afemoral+OR+device.openfda.device_name%3Aunicompartmental%29%29+OR+device.openfda.device_name%3A%22Prosthesis%2C+Knee%2C+Patellofemorotibial%2C+Semi-Constrained%2C+Metal%2FPolymer%2C+Mobile+Bearing%22+OR+device.openfda.device_name%3A%22Prosthesis%2C+Knee%2C+Femorotibial%2C+Unicompartmental%2C+Semi-Constrained%2C+Metal%2FPolymer%2C+Mobile+Bearing%22%29+AND+device.brand_name%3A%22Exeter%22+AND+date_received%3A%5B20251018+TO+20261017%5D&count=device.manufacturer_d_name.exact&limit=5",
+    "label": "Device: manufacturers filing the reports"
+   },
+   {
+    "url": "https://api.fda.gov/device/enforcement.json?search=product_description%3A%22Exeter%22+AND+recall_initiation_date%3A%5B20211018+TO+20261018%5D&limit=100",
+    "label": "Recalls: enforcement reports naming \"Exeter\""
+   }
+  ]
+ },
+ {
+  "slug": "gmrs",
+  "brand": "GMRS",
+  "score": null,
+  "signal": "insufficient",
+  "directory": 5.5,
+  "confidence": "insufficient",
+  "notes": [
+   "Fewer than 5 MAUDE reports in the window."
+  ],
+  "error": null,
+  "counts": {
+   "death": 0,
+   "other": 0,
+   "total": 0,
+   "breaks": 0,
+   "injury": 0,
+   "malfunction": 0
+  },
+  "codes": [],
+  "recalls": [
+   {
+    "id": "99558",
+    "url": "https://api.fda.gov/device/enforcement.json?search=recall_number%3A%22Z-3199-2026%22",
+    "date": "2026-07-30",
+    "firm": "Howmedica Osteonics Corp.",
+    "reason": "Affected devices were manufactured with Ultra High Molecular Weight Polyethylene (UHMWPE) raw material aged in excess of five years. Product has the potential for elevated levels of oxidation, which m",
+    "product": "ABG I ACETABULAR INSERT HOODED 28mm ID X 48mm C-M079-2-801 ARC2F ACETABULAR INSERT 48/50/52mm OD x 28mm ID C-M071-6-700 ARC2F ACETABULAR INSERT 50mm OD x 28mm ID 10DEGREE HOOD C-M071-8-400 BEARING AND",
+    "classification": "Class II"
+   },
+   {
+    "id": "95114",
+    "url": "https://api.fda.gov/device/enforcement.json?search=recall_number%3A%22Z-2732-2024%22",
+    "date": "2024-08-05",
+    "firm": "Howmedica Osteonics Corp.",
+    "reason": "A patient specific, custom-made device was supplied for a surgical procedure that did not match the design proposal.",
+    "product": "Custom Made Device - GMRS EXTENSION Piece 40MM LEFT, 35 Deg EXT Rotated Tabs (Patient Specific); Catalog Number: C-MM100434-00;",
+    "classification": "Class II"
+   }
+  ],
+  "trend": [
+   0,
+   0
+  ],
+  "relative": null,
+  "breakCap": null,
+  "recallFactor": 0.563,
+  "pulledAt": "2026-10-18T00:46:50.529Z",
+  "window": [
+   "2025-10-18",
+   "2026-10-17"
+  ],
+  "sources": [
+   {
+    "url": "https://api.fda.gov/device/event.json?search=device.openfda.medical_specialty_description%3A%22Orthopedic%22+AND+%28device.openfda.device_name%3Atumor+OR+device.openfda.device_name%3Aoncolog+OR+device.openfda.device_name%3Amegaprosthesis+OR+device.openfda.device_name%3A%22limb+salvage%22%29+AND+device.brand_name%3A%22GMRS%22+AND+date_received%3A%5B20251018+TO+20261017%5D&count=event_type.exact&limit=8",
+    "label": "Device: reports by event type (same search as the MAUDE snapshot)"
+   },
+   {
+    "url": "https://api.fda.gov/device/event.json?search=device.openfda.medical_specialty_description%3A%22Orthopedic%22+AND+%28device.openfda.device_name%3Atumor+OR+device.openfda.device_name%3Aoncolog+OR+device.openfda.device_name%3Amegaprosthesis+OR+device.openfda.device_name%3A%22limb+salvage%22%29+AND+device.brand_name%3A%22GMRS%22+AND+date_received%3A%5B20251018+TO+20261017%5D+AND+%28product_problems%3A%22Break%22+OR+product_problems%3A%22Fracture%22%29&limit=1",
+    "label": "Device: reports naming a break or fracture"
+   },
+   {
+    "url": "https://api.fda.gov/device/event.json?search=device.openfda.medical_specialty_description%3A%22Orthopedic%22+AND+%28device.openfda.device_name%3Atumor+OR+device.openfda.device_name%3Aoncolog+OR+device.openfda.device_name%3Amegaprosthesis+OR+device.openfda.device_name%3A%22limb+salvage%22%29+AND+device.brand_name%3A%22GMRS%22+AND+date_received%3A%5B20251018+TO+20261017%5D&count=date_received",
+    "label": "Device: reports by date received (12-month trend)"
+   },
+   {
+    "url": "https://api.fda.gov/device/enforcement.json?search=product_description%3A%22GMRS%22+AND+recall_initiation_date%3A%5B20211018+TO+20261018%5D&limit=100",
+    "label": "Recalls: enforcement reports naming \"GMRS\""
+   },
+   {
+    "url": "https://api.fda.gov/device/recall.json?search=k_numbers%3A%22K023087%22+AND+event_date_initiated%3A%5B2021-10-18+TO+2026-10-18%5D&limit=100",
+    "label": "Recalls: device/recall records listing K023087"
+   },
+   {
+    "url": "https://api.fda.gov/device/enforcement.json?search=recall_number%3A%22Z-2732-2024%22&limit=1",
+    "label": "Recalls: FDA class for Z-2732-2024"
+   }
+  ]
+ },
+ {
+  "slug": "infinity-ankle",
+  "brand": "INFINITY",
+  "score": 2.1,
+  "signal": "elevated",
+  "directory": 0.4,
+  "confidence": "high",
+  "notes": [],
+  "error": null,
+  "counts": {
+   "death": 0,
+   "other": 0,
+   "total": 410,
+   "breaks": 6,
+   "injury": 405,
+   "malfunction": 5
+  },
+  "codes": [
+   {
+    "code": "HSN",
+    "name": "Prosthesis, Ankle, Semi-Constrained, Cemented, Metal/Polymer",
+    "share": 1,
+    "reports": 1676,
+    "brandCount": 379
+   }
+  ],
+  "recalls": [
+   {
+    "id": "94194",
+    "url": "https://api.fda.gov/device/enforcement.json?search=recall_number%3A%22Z-1477-2024%22",
+    "date": "2024-03-06",
+    "firm": "Wright Medical Technology, Inc.",
+    "reason": "Stryker has identified an issue that impacts specific lots of Infinity\" Resection Guide Adjustment Blocks. The parts within these three lots were found to have been missing an internal screw in the fi",
+    "product": "stryker Infinity Resection Adjustment Block, REF 33600030, ankle arthroplasty",
+    "classification": "Class II"
+   },
+   {
+    "id": "92460",
+    "url": "https://api.fda.gov/device/enforcement.json?search=recall_number%3A%22Z-2105-2023%22",
+    "date": "2023-06-13",
+    "firm": "Wright Medical Technology, Inc.",
+    "reason": "The devices were manufactured with the pin sleeve holes too narrow, which does not allow the pin sleeves to pass through the pin sleeve holes, thereby preventing pin placement through the pin holes.",
+    "product": "Stryker Infinity Alignment Frame Distal Sub-Assembly, Catalog #33600020, non-sterile.",
+    "classification": "Class II"
+   },
+   {
+    "id": "90216",
+    "url": "https://api.fda.gov/device/enforcement.json?search=recall_number%3A%22Z-1291-2022%22",
+    "date": "2022-06-02",
+    "firm": "Wright Medical Technology, Inc.",
+    "reason": "The instrument is incorrectly color coded.",
+    "product": "Stryker INFINITY Resect Guide for INBONE Talus, Size 4, Model #33620254, non-sterile, an instrument used with the INFINITY Total Ankle System.",
+    "classification": "Class II"
+   }
+  ],
+  "trend": [
+   146,
+   264
+  ],
+  "relative": 0.995,
+  "breakCap": 9.85,
+  "recallFactor": 0.422,
+  "pulledAt": "2026-10-18T00:46:33.946Z",
+  "window": [
+   "2025-10-18",
+   "2026-10-17"
+  ],
+  "sources": [
+   {
+    "url": "https://api.fda.gov/device/event.json?search=device.openfda.medical_specialty_description%3A%22Orthopedic%22+AND+%28device.openfda.device_name%3Afoot+OR+device.openfda.device_name%3Aankle+OR+device.openfda.device_name%3Acalcane+OR+device.openfda.device_name%3Atibia+OR+device.openfda.device_name%3Atalus%29+AND+device.brand_name%3A%22INFINITY%22+AND+date_received%3A%5B20251018+TO+20261017%5D&count=event_type.exact&limit=8",
+    "label": "Device: reports by event type (same search as the MAUDE snapshot)"
+   },
+   {
+    "url": "https://api.fda.gov/device/event.json?search=device.openfda.medical_specialty_description%3A%22Orthopedic%22+AND+%28device.openfda.device_name%3Afoot+OR+device.openfda.device_name%3Aankle+OR+device.openfda.device_name%3Acalcane+OR+device.openfda.device_name%3Atibia+OR+device.openfda.device_name%3Atalus%29+AND+device.brand_name%3A%22INFINITY%22+AND+date_received%3A%5B20251018+TO+20261017%5D+AND+%28product_problems%3A%22Break%22+OR+product_problems%3A%22Fracture%22%29&limit=1",
+    "label": "Device: reports naming a break or fracture"
+   },
+   {
+    "url": "https://api.fda.gov/device/event.json?search=device.openfda.medical_specialty_description%3A%22Orthopedic%22+AND+%28device.openfda.device_name%3Afoot+OR+device.openfda.device_name%3Aankle+OR+device.openfda.device_name%3Acalcane+OR+device.openfda.device_name%3Atibia+OR+device.openfda.device_name%3Atalus%29+AND+device.brand_name%3A%22INFINITY%22+AND+date_received%3A%5B20251018+TO+20261017%5D&count=date_received",
+    "label": "Device: reports by date received (12-month trend)"
+   },
+   {
+    "url": "https://api.fda.gov/device/event.json?search=device.openfda.medical_specialty_description%3A%22Orthopedic%22+AND+%28device.openfda.device_name%3Afoot+OR+device.openfda.device_name%3Aankle+OR+device.openfda.device_name%3Acalcane+OR+device.openfda.device_name%3Atibia+OR+device.openfda.device_name%3Atalus%29+AND+device.brand_name%3A%22INFINITY%22+AND+date_received%3A%5B20251018+TO+20261017%5D&count=device.device_report_product_code.exact&limit=20",
+    "label": "Device: reports by FDA product code"
+   },
+   {
+    "url": "https://api.fda.gov/device/event.json?search=device.device_report_product_code%3A%22HSN%22+AND+date_received%3A%5B20251018+TO+20261017%5D&count=event_type.exact&limit=8",
+    "label": "Category HSN: reports by event type"
+   },
+   {
+    "url": "https://api.fda.gov/device/event.json?search=device.device_report_product_code%3A%22HSN%22+AND+date_received%3A%5B20251018+TO+20261017%5D+AND+%28product_problems%3A%22Break%22+OR+product_problems%3A%22Fracture%22%29&limit=1",
+    "label": "Category HSN: reports naming a break or fracture"
+   },
+   {
+    "url": "https://api.fda.gov/device/event.json?search=device.device_report_product_code%3A%22HSN%22+AND+date_received%3A%5B20251018+TO+20261017%5D&count=device.brand_name.exact&limit=999",
+    "label": "Category HSN: brands reported"
+   },
+   {
+    "url": "https://api.fda.gov/device/event.json?search=device.device_report_product_code%3A%22HSN%22+AND+date_received%3A%5B20251018+TO+20261017%5D&count=device.openfda.device_name.exact&limit=1",
+    "label": "Category HSN: FDA device name"
+   },
+   {
+    "url": "https://api.fda.gov/device/event.json?search=device.openfda.medical_specialty_description%3A%22Orthopedic%22+AND+%28device.openfda.device_name%3Afoot+OR+device.openfda.device_name%3Aankle+OR+device.openfda.device_name%3Acalcane+OR+device.openfda.device_name%3Atibia+OR+device.openfda.device_name%3Atalus%29+AND+device.brand_name%3A%22INFINITY%22+AND+date_received%3A%5B20251018+TO+20261017%5D&count=device.manufacturer_d_name.exact&limit=5",
+    "label": "Device: manufacturers filing the reports"
+   },
+   {
+    "url": "https://api.fda.gov/device/enforcement.json?search=product_description%3A%22INFINITY%22+AND+recall_initiation_date%3A%5B20211018+TO+20261018%5D&limit=100",
+    "label": "Recalls: enforcement reports naming \"INFINITY\""
+   }
+  ]
+ },
+ {
+  "slug": "infuse-bone-graft",
+  "brand": "INFUSE Bone Graft",
+  "score": null,
+  "signal": "insufficient",
+  "directory": 5.6,
+  "confidence": "insufficient",
+  "notes": [
+   "No product-code baseline with at least 50 reports."
+  ],
+  "error": null,
+  "counts": {
+   "death": 0,
+   "other": 1,
+   "total": 33,
+   "breaks": 0,
+   "injury": 17,
+   "malfunction": 15
+  },
+  "codes": [
+   {
+    "code": "NEK",
+    "name": "Filler, Recombinant Human Bone Morphogenetic Protein, Collagen Scaffold With Metal Prosthesis, Osteoinduction",
+    "share": 0.939,
+    "reports": 38,
+    "brandCount": 6
+   },
+   {
+    "code": "MPW",
+    "name": "Filler, Recombinant Human Bone Morphogenetic Protein, Collagen Scaffold, Osteoinduction",
+    "share": 0.061,
+    "reports": 2,
+    "brandCount": 2
+   }
+  ],
+  "recalls": [],
+  "trend": [
+   15,
+   18
+  ],
+  "relative": null,
+  "breakCap": null,
+  "recallFactor": 1,
+  "pulledAt": "2026-10-18T00:47:02.458Z",
+  "window": [
+   "2025-10-18",
+   "2026-10-17"
+  ],
+  "sources": [
+   {
+    "url": "https://api.fda.gov/device/event.json?search=%28%28device.openfda.medical_specialty_description%3A%22Orthopedic%22+AND+%28device.openfda.device_name%3Aspinal+OR+device.openfda.device_name%3Aintervertebral+OR+device.openfda.device_name%3Apedicle+OR+device.openfda.device_name%3Avertebral+OR+device.openfda.device_name%3Acervical+OR+device.openfda.device_name%3Asacro+OR+device.openfda.device_name%3Aspinous+OR+device.openfda.device_name%3Akypho+OR+device.openfda.device_name%3Avertebro+OR+device.brand_name%3AHORIZON+OR+device.brand_name%3AINFUSE+OR+device.brand_name%3AIFUSE+OR+device.brand_name%3AiFuse%29%29+OR+device.openfda.device_name%3A%22Prosthesis%2C+Intervertebral+Disc%22+OR+device.openfda.device_name%3A%22Prosthesis%2C+Spinous+Process+Spacer%2FPlate%22+OR+device.openfda.device_name%3A%22Filler%2C+Recombinant+Human+Bone+Morphogenetic+Protein%2C+Collagen+Scaffold+With+Metal+Prosthesis%2C+Osteoinduction%22+OR+device.openfda.device_name%3A%22Filler%2C+Recombinant+Human+Bone+Morphogenetic+Protein%2C+Collagen+Scaffold%2C+Osteoinduction%22+OR+%28device.openfda.device_name%3A%28cervical+AND+%28plate+OR+interbody+OR+cage+OR+%22stand-alone%22+OR+standalone+OR+%22stand+alone%22+OR+%22anterior+cervical%22%29%29+OR+device.brand_name%3A%28ATLANTIS+OR+ZEVO+OR+SKYLINE+OR+%22ZERO-P%22+OR+%22ZERO+P%22+OR+%22SLIM+LOC%22+OR+SLIMLOC+OR+ACIS+OR+COROENT+OR+TRESTLE+OR+REFLEX+OR+FIDJI+OR+LINEUM+OR+PREVAIL+OR+%22TRITANIUM+C%22+OR+PRECEPT+OR+EVEREST+OR+SILHOUETTE%29%29%29+AND+device.brand_name%3A%22INFUSE%22+AND+date_received%3A%5B20251018+TO+20261017%5D&count=event_type.exact&limit=8",
+    "label": "Device: reports by event type (same search as the MAUDE snapshot)"
+   },
+   {
+    "url": "https://api.fda.gov/device/event.json?search=%28%28device.openfda.medical_specialty_description%3A%22Orthopedic%22+AND+%28device.openfda.device_name%3Aspinal+OR+device.openfda.device_name%3Aintervertebral+OR+device.openfda.device_name%3Apedicle+OR+device.openfda.device_name%3Avertebral+OR+device.openfda.device_name%3Acervical+OR+device.openfda.device_name%3Asacro+OR+device.openfda.device_name%3Aspinous+OR+device.openfda.device_name%3Akypho+OR+device.openfda.device_name%3Avertebro+OR+device.brand_name%3AHORIZON+OR+device.brand_name%3AINFUSE+OR+device.brand_name%3AIFUSE+OR+device.brand_name%3AiFuse%29%29+OR+device.openfda.device_name%3A%22Prosthesis%2C+Intervertebral+Disc%22+OR+device.openfda.device_name%3A%22Prosthesis%2C+Spinous+Process+Spacer%2FPlate%22+OR+device.openfda.device_name%3A%22Filler%2C+Recombinant+Human+Bone+Morphogenetic+Protein%2C+Collagen+Scaffold+With+Metal+Prosthesis%2C+Osteoinduction%22+OR+device.openfda.device_name%3A%22Filler%2C+Recombinant+Human+Bone+Morphogenetic+Protein%2C+Collagen+Scaffold%2C+Osteoinduction%22+OR+%28device.openfda.device_name%3A%28cervical+AND+%28plate+OR+interbody+OR+cage+OR+%22stand-alone%22+OR+standalone+OR+%22stand+alone%22+OR+%22anterior+cervical%22%29%29+OR+device.brand_name%3A%28ATLANTIS+OR+ZEVO+OR+SKYLINE+OR+%22ZERO-P%22+OR+%22ZERO+P%22+OR+%22SLIM+LOC%22+OR+SLIMLOC+OR+ACIS+OR+COROENT+OR+TRESTLE+OR+REFLEX+OR+FIDJI+OR+LINEUM+OR+PREVAIL+OR+%22TRITANIUM+C%22+OR+PRECEPT+OR+EVEREST+OR+SILHOUETTE%29%29%29+AND+device.brand_name%3A%22INFUSE%22+AND+date_received%3A%5B20251018+TO+20261017%5D+AND+%28product_problems%3A%22Break%22+OR+product_problems%3A%22Fracture%22%29&limit=1",
+    "label": "Device: reports naming a break or fracture"
+   },
+   {
+    "url": "https://api.fda.gov/device/event.json?search=%28%28device.openfda.medical_specialty_description%3A%22Orthopedic%22+AND+%28device.openfda.device_name%3Aspinal+OR+device.openfda.device_name%3Aintervertebral+OR+device.openfda.device_name%3Apedicle+OR+device.openfda.device_name%3Avertebral+OR+device.openfda.device_name%3Acervical+OR+device.openfda.device_name%3Asacro+OR+device.openfda.device_name%3Aspinous+OR+device.openfda.device_name%3Akypho+OR+device.openfda.device_name%3Avertebro+OR+device.brand_name%3AHORIZON+OR+device.brand_name%3AINFUSE+OR+device.brand_name%3AIFUSE+OR+device.brand_name%3AiFuse%29%29+OR+device.openfda.device_name%3A%22Prosthesis%2C+Intervertebral+Disc%22+OR+device.openfda.device_name%3A%22Prosthesis%2C+Spinous+Process+Spacer%2FPlate%22+OR+device.openfda.device_name%3A%22Filler%2C+Recombinant+Human+Bone+Morphogenetic+Protein%2C+Collagen+Scaffold+With+Metal+Prosthesis%2C+Osteoinduction%22+OR+device.openfda.device_name%3A%22Filler%2C+Recombinant+Human+Bone+Morphogenetic+Protein%2C+Collagen+Scaffold%2C+Osteoinduction%22+OR+%28device.openfda.device_name%3A%28cervical+AND+%28plate+OR+interbody+OR+cage+OR+%22stand-alone%22+OR+standalone+OR+%22stand+alone%22+OR+%22anterior+cervical%22%29%29+OR+device.brand_name%3A%28ATLANTIS+OR+ZEVO+OR+SKYLINE+OR+%22ZERO-P%22+OR+%22ZERO+P%22+OR+%22SLIM+LOC%22+OR+SLIMLOC+OR+ACIS+OR+COROENT+OR+TRESTLE+OR+REFLEX+OR+FIDJI+OR+LINEUM+OR+PREVAIL+OR+%22TRITANIUM+C%22+OR+PRECEPT+OR+EVEREST+OR+SILHOUETTE%29%29%29+AND+device.brand_name%3A%22INFUSE%22+AND+date_received%3A%5B20251018+TO+20261017%5D&count=date_received",
+    "label": "Device: reports by date received (12-month trend)"
+   },
+   {
+    "url": "https://api.fda.gov/device/event.json?search=%28%28device.openfda.medical_specialty_description%3A%22Orthopedic%22+AND+%28device.openfda.device_name%3Aspinal+OR+device.openfda.device_name%3Aintervertebral+OR+device.openfda.device_name%3Apedicle+OR+device.openfda.device_name%3Avertebral+OR+device.openfda.device_name%3Acervical+OR+device.openfda.device_name%3Asacro+OR+device.openfda.device_name%3Aspinous+OR+device.openfda.device_name%3Akypho+OR+device.openfda.device_name%3Avertebro+OR+device.brand_name%3AHORIZON+OR+device.brand_name%3AINFUSE+OR+device.brand_name%3AIFUSE+OR+device.brand_name%3AiFuse%29%29+OR+device.openfda.device_name%3A%22Prosthesis%2C+Intervertebral+Disc%22+OR+device.openfda.device_name%3A%22Prosthesis%2C+Spinous+Process+Spacer%2FPlate%22+OR+device.openfda.device_name%3A%22Filler%2C+Recombinant+Human+Bone+Morphogenetic+Protein%2C+Collagen+Scaffold+With+Metal+Prosthesis%2C+Osteoinduction%22+OR+device.openfda.device_name%3A%22Filler%2C+Recombinant+Human+Bone+Morphogenetic+Protein%2C+Collagen+Scaffold%2C+Osteoinduction%22+OR+%28device.openfda.device_name%3A%28cervical+AND+%28plate+OR+interbody+OR+cage+OR+%22stand-alone%22+OR+standalone+OR+%22stand+alone%22+OR+%22anterior+cervical%22%29%29+OR+device.brand_name%3A%28ATLANTIS+OR+ZEVO+OR+SKYLINE+OR+%22ZERO-P%22+OR+%22ZERO+P%22+OR+%22SLIM+LOC%22+OR+SLIMLOC+OR+ACIS+OR+COROENT+OR+TRESTLE+OR+REFLEX+OR+FIDJI+OR+LINEUM+OR+PREVAIL+OR+%22TRITANIUM+C%22+OR+PRECEPT+OR+EVEREST+OR+SILHOUETTE%29%29%29+AND+device.brand_name%3A%22INFUSE%22+AND+date_received%3A%5B20251018+TO+20261017%5D&count=device.device_report_product_code.exact&limit=20",
+    "label": "Device: reports by FDA product code"
+   },
+   {
+    "url": "https://api.fda.gov/device/event.json?search=device.device_report_product_code%3A%22NEK%22+AND+date_received%3A%5B20251018+TO+20261017%5D&count=event_type.exact&limit=8",
+    "label": "Category NEK: reports by event type"
+   },
+   {
+    "url": "https://api.fda.gov/device/event.json?search=device.device_report_product_code%3A%22NEK%22+AND+date_received%3A%5B20251018+TO+20261017%5D+AND+%28product_problems%3A%22Break%22+OR+product_problems%3A%22Fracture%22%29&limit=1",
+    "label": "Category NEK: reports naming a break or fracture"
+   },
+   {
+    "url": "https://api.fda.gov/device/event.json?search=device.device_report_product_code%3A%22NEK%22+AND+date_received%3A%5B20251018+TO+20261017%5D&count=device.brand_name.exact&limit=999",
+    "label": "Category NEK: brands reported"
+   },
+   {
+    "url": "https://api.fda.gov/device/event.json?search=device.device_report_product_code%3A%22NEK%22+AND+date_received%3A%5B20251018+TO+20261017%5D&count=device.openfda.device_name.exact&limit=1",
+    "label": "Category NEK: FDA device name"
+   },
+   {
+    "url": "https://api.fda.gov/device/event.json?search=device.device_report_product_code%3A%22MPW%22+AND+date_received%3A%5B20251018+TO+20261017%5D&count=event_type.exact&limit=8",
+    "label": "Category MPW: reports by event type"
+   },
+   {
+    "url": "https://api.fda.gov/device/event.json?search=device.device_report_product_code%3A%22MPW%22+AND+date_received%3A%5B20251018+TO+20261017%5D+AND+%28product_problems%3A%22Break%22+OR+product_problems%3A%22Fracture%22%29&limit=1",
+    "label": "Category MPW: reports naming a break or fracture"
+   },
+   {
+    "url": "https://api.fda.gov/device/event.json?search=device.device_report_product_code%3A%22MPW%22+AND+date_received%3A%5B20251018+TO+20261017%5D&count=device.brand_name.exact&limit=999",
+    "label": "Category MPW: brands reported"
+   },
+   {
+    "url": "https://api.fda.gov/device/event.json?search=device.device_report_product_code%3A%22MPW%22+AND+date_received%3A%5B20251018+TO+20261017%5D&count=device.openfda.device_name.exact&limit=1",
+    "label": "Category MPW: FDA device name"
+   },
+   {
+    "url": "https://api.fda.gov/device/event.json?search=%28%28device.openfda.medical_specialty_description%3A%22Orthopedic%22+AND+%28device.openfda.device_name%3Aspinal+OR+device.openfda.device_name%3Aintervertebral+OR+device.openfda.device_name%3Apedicle+OR+device.openfda.device_name%3Avertebral+OR+device.openfda.device_name%3Acervical+OR+device.openfda.device_name%3Asacro+OR+device.openfda.device_name%3Aspinous+OR+device.openfda.device_name%3Akypho+OR+device.openfda.device_name%3Avertebro+OR+device.brand_name%3AHORIZON+OR+device.brand_name%3AINFUSE+OR+device.brand_name%3AIFUSE+OR+device.brand_name%3AiFuse%29%29+OR+device.openfda.device_name%3A%22Prosthesis%2C+Intervertebral+Disc%22+OR+device.openfda.device_name%3A%22Prosthesis%2C+Spinous+Process+Spacer%2FPlate%22+OR+device.openfda.device_name%3A%22Filler%2C+Recombinant+Human+Bone+Morphogenetic+Protein%2C+Collagen+Scaffold+With+Metal+Prosthesis%2C+Osteoinduction%22+OR+device.openfda.device_name%3A%22Filler%2C+Recombinant+Human+Bone+Morphogenetic+Protein%2C+Collagen+Scaffold%2C+Osteoinduction%22+OR+%28device.openfda.device_name%3A%28cervical+AND+%28plate+OR+interbody+OR+cage+OR+%22stand-alone%22+OR+standalone+OR+%22stand+alone%22+OR+%22anterior+cervical%22%29%29+OR+device.brand_name%3A%28ATLANTIS+OR+ZEVO+OR+SKYLINE+OR+%22ZERO-P%22+OR+%22ZERO+P%22+OR+%22SLIM+LOC%22+OR+SLIMLOC+OR+ACIS+OR+COROENT+OR+TRESTLE+OR+REFLEX+OR+FIDJI+OR+LINEUM+OR+PREVAIL+OR+%22TRITANIUM+C%22+OR+PRECEPT+OR+EVEREST+OR+SILHOUETTE%29%29%29+AND+device.brand_name%3A%22INFUSE%22+AND+date_received%3A%5B20251018+TO+20261017%5D&count=device.manufacturer_d_name.exact&limit=5",
+    "label": "Device: manufacturers filing the reports"
+   },
+   {
+    "url": "https://api.fda.gov/device/enforcement.json?search=product_description%3A%22INFUSE%22+AND+recall_initiation_date%3A%5B20211018+TO+20261018%5D&limit=100",
+    "label": "Recalls: enforcement reports naming \"INFUSE\""
+   },
+   {
+    "url": "https://api.fda.gov/device/recall.json?search=pma_numbers%3A%22P000058%22+AND+event_date_initiated%3A%5B2021-10-18+TO+2026-10-18%5D&limit=100",
+    "label": "Recalls: device/recall records listing P000058"
+   }
+  ]
+ },
+ {
+  "slug": "mobi-c",
+  "brand": "Mobi-C",
+  "score": 5,
+  "signal": "quiet",
+  "directory": 6.1,
+  "confidence": "medium",
+  "notes": [],
+  "error": null,
+  "counts": {
+   "death": 0,
+   "other": 1,
+   "total": 46,
+   "breaks": 2,
+   "injury": 32,
+   "malfunction": 13
+  },
+  "codes": [
+   {
+    "code": "MJO",
+    "name": "Prosthesis, Intervertebral Disc",
+    "share": 1,
+    "reports": 287,
+    "brandCount": 113
+   }
+  ],
+  "recalls": [],
+  "trend": [
+   20,
+   26
+  ],
+  "relative": 0.995,
+  "breakCap": 9.62,
+  "recallFactor": 1,
+  "pulledAt": "2026-10-18T00:47:07.901Z",
+  "window": [
+   "2025-10-18",
+   "2026-10-17"
+  ],
+  "sources": [
+   {
+    "url": "https://api.fda.gov/device/event.json?search=%28%28device.openfda.medical_specialty_description%3A%22Orthopedic%22+AND+%28device.openfda.device_name%3Aspinal+OR+device.openfda.device_name%3Aintervertebral+OR+device.openfda.device_name%3Apedicle+OR+device.openfda.device_name%3Avertebral+OR+device.openfda.device_name%3Acervical+OR+device.openfda.device_name%3Asacro+OR+device.openfda.device_name%3Aspinous+OR+device.openfda.device_name%3Akypho+OR+device.openfda.device_name%3Avertebro+OR+device.brand_name%3AHORIZON+OR+device.brand_name%3AINFUSE+OR+device.brand_name%3AIFUSE+OR+device.brand_name%3AiFuse%29%29+OR+device.openfda.device_name%3A%22Prosthesis%2C+Intervertebral+Disc%22+OR+device.openfda.device_name%3A%22Prosthesis%2C+Spinous+Process+Spacer%2FPlate%22+OR+device.openfda.device_name%3A%22Filler%2C+Recombinant+Human+Bone+Morphogenetic+Protein%2C+Collagen+Scaffold+With+Metal+Prosthesis%2C+Osteoinduction%22+OR+device.openfda.device_name%3A%22Filler%2C+Recombinant+Human+Bone+Morphogenetic+Protein%2C+Collagen+Scaffold%2C+Osteoinduction%22+OR+%28device.openfda.device_name%3A%28cervical+AND+%28plate+OR+interbody+OR+cage+OR+%22stand-alone%22+OR+standalone+OR+%22stand+alone%22+OR+%22anterior+cervical%22%29%29+OR+device.brand_name%3A%28ATLANTIS+OR+ZEVO+OR+SKYLINE+OR+%22ZERO-P%22+OR+%22ZERO+P%22+OR+%22SLIM+LOC%22+OR+SLIMLOC+OR+ACIS+OR+COROENT+OR+TRESTLE+OR+REFLEX+OR+FIDJI+OR+LINEUM+OR+PREVAIL+OR+%22TRITANIUM+C%22+OR+PRECEPT+OR+EVEREST+OR+SILHOUETTE%29%29%29+AND+device.brand_name%3A%22Mobi-C%22+AND+date_received%3A%5B20251018+TO+20261017%5D&count=event_type.exact&limit=8",
+    "label": "Device: reports by event type (same search as the MAUDE snapshot)"
+   },
+   {
+    "url": "https://api.fda.gov/device/event.json?search=%28%28device.openfda.medical_specialty_description%3A%22Orthopedic%22+AND+%28device.openfda.device_name%3Aspinal+OR+device.openfda.device_name%3Aintervertebral+OR+device.openfda.device_name%3Apedicle+OR+device.openfda.device_name%3Avertebral+OR+device.openfda.device_name%3Acervical+OR+device.openfda.device_name%3Asacro+OR+device.openfda.device_name%3Aspinous+OR+device.openfda.device_name%3Akypho+OR+device.openfda.device_name%3Avertebro+OR+device.brand_name%3AHORIZON+OR+device.brand_name%3AINFUSE+OR+device.brand_name%3AIFUSE+OR+device.brand_name%3AiFuse%29%29+OR+device.openfda.device_name%3A%22Prosthesis%2C+Intervertebral+Disc%22+OR+device.openfda.device_name%3A%22Prosthesis%2C+Spinous+Process+Spacer%2FPlate%22+OR+device.openfda.device_name%3A%22Filler%2C+Recombinant+Human+Bone+Morphogenetic+Protein%2C+Collagen+Scaffold+With+Metal+Prosthesis%2C+Osteoinduction%22+OR+device.openfda.device_name%3A%22Filler%2C+Recombinant+Human+Bone+Morphogenetic+Protein%2C+Collagen+Scaffold%2C+Osteoinduction%22+OR+%28device.openfda.device_name%3A%28cervical+AND+%28plate+OR+interbody+OR+cage+OR+%22stand-alone%22+OR+standalone+OR+%22stand+alone%22+OR+%22anterior+cervical%22%29%29+OR+device.brand_name%3A%28ATLANTIS+OR+ZEVO+OR+SKYLINE+OR+%22ZERO-P%22+OR+%22ZERO+P%22+OR+%22SLIM+LOC%22+OR+SLIMLOC+OR+ACIS+OR+COROENT+OR+TRESTLE+OR+REFLEX+OR+FIDJI+OR+LINEUM+OR+PREVAIL+OR+%22TRITANIUM+C%22+OR+PRECEPT+OR+EVEREST+OR+SILHOUETTE%29%29%29+AND+device.brand_name%3A%22Mobi-C%22+AND+date_received%3A%5B20251018+TO+20261017%5D+AND+%28product_problems%3A%22Break%22+OR+product_problems%3A%22Fracture%22%29&limit=1",
+    "label": "Device: reports naming a break or fracture"
+   },
+   {
+    "url": "https://api.fda.gov/device/event.json?search=%28%28device.openfda.medical_specialty_description%3A%22Orthopedic%22+AND+%28device.openfda.device_name%3Aspinal+OR+device.openfda.device_name%3Aintervertebral+OR+device.openfda.device_name%3Apedicle+OR+device.openfda.device_name%3Avertebral+OR+device.openfda.device_name%3Acervical+OR+device.openfda.device_name%3Asacro+OR+device.openfda.device_name%3Aspinous+OR+device.openfda.device_name%3Akypho+OR+device.openfda.device_name%3Avertebro+OR+device.brand_name%3AHORIZON+OR+device.brand_name%3AINFUSE+OR+device.brand_name%3AIFUSE+OR+device.brand_name%3AiFuse%29%29+OR+device.openfda.device_name%3A%22Prosthesis%2C+Intervertebral+Disc%22+OR+device.openfda.device_name%3A%22Prosthesis%2C+Spinous+Process+Spacer%2FPlate%22+OR+device.openfda.device_name%3A%22Filler%2C+Recombinant+Human+Bone+Morphogenetic+Protein%2C+Collagen+Scaffold+With+Metal+Prosthesis%2C+Osteoinduction%22+OR+device.openfda.device_name%3A%22Filler%2C+Recombinant+Human+Bone+Morphogenetic+Protein%2C+Collagen+Scaffold%2C+Osteoinduction%22+OR+%28device.openfda.device_name%3A%28cervical+AND+%28plate+OR+interbody+OR+cage+OR+%22stand-alone%22+OR+standalone+OR+%22stand+alone%22+OR+%22anterior+cervical%22%29%29+OR+device.brand_name%3A%28ATLANTIS+OR+ZEVO+OR+SKYLINE+OR+%22ZERO-P%22+OR+%22ZERO+P%22+OR+%22SLIM+LOC%22+OR+SLIMLOC+OR+ACIS+OR+COROENT+OR+TRESTLE+OR+REFLEX+OR+FIDJI+OR+LINEUM+OR+PREVAIL+OR+%22TRITANIUM+C%22+OR+PRECEPT+OR+EVEREST+OR+SILHOUETTE%29%29%29+AND+device.brand_name%3A%22Mobi-C%22+AND+date_received%3A%5B20251018+TO+20261017%5D&count=date_received",
+    "label": "Device: reports by date received (12-month trend)"
+   },
+   {
+    "url": "https://api.fda.gov/device/event.json?search=%28%28device.openfda.medical_specialty_description%3A%22Orthopedic%22+AND+%28device.openfda.device_name%3Aspinal+OR+device.openfda.device_name%3Aintervertebral+OR+device.openfda.device_name%3Apedicle+OR+device.openfda.device_name%3Avertebral+OR+device.openfda.device_name%3Acervical+OR+device.openfda.device_name%3Asacro+OR+device.openfda.device_name%3Aspinous+OR+device.openfda.device_name%3Akypho+OR+device.openfda.device_name%3Avertebro+OR+device.brand_name%3AHORIZON+OR+device.brand_name%3AINFUSE+OR+device.brand_name%3AIFUSE+OR+device.brand_name%3AiFuse%29%29+OR+device.openfda.device_name%3A%22Prosthesis%2C+Intervertebral+Disc%22+OR+device.openfda.device_name%3A%22Prosthesis%2C+Spinous+Process+Spacer%2FPlate%22+OR+device.openfda.device_name%3A%22Filler%2C+Recombinant+Human+Bone+Morphogenetic+Protein%2C+Collagen+Scaffold+With+Metal+Prosthesis%2C+Osteoinduction%22+OR+device.openfda.device_name%3A%22Filler%2C+Recombinant+Human+Bone+Morphogenetic+Protein%2C+Collagen+Scaffold%2C+Osteoinduction%22+OR+%28device.openfda.device_name%3A%28cervical+AND+%28plate+OR+interbody+OR+cage+OR+%22stand-alone%22+OR+standalone+OR+%22stand+alone%22+OR+%22anterior+cervical%22%29%29+OR+device.brand_name%3A%28ATLANTIS+OR+ZEVO+OR+SKYLINE+OR+%22ZERO-P%22+OR+%22ZERO+P%22+OR+%22SLIM+LOC%22+OR+SLIMLOC+OR+ACIS+OR+COROENT+OR+TRESTLE+OR+REFLEX+OR+FIDJI+OR+LINEUM+OR+PREVAIL+OR+%22TRITANIUM+C%22+OR+PRECEPT+OR+EVEREST+OR+SILHOUETTE%29%29%29+AND+device.brand_name%3A%22Mobi-C%22+AND+date_received%3A%5B20251018+TO+20261017%5D&count=device.device_report_product_code.exact&limit=20",
+    "label": "Device: reports by FDA product code"
+   },
+   {
+    "url": "https://api.fda.gov/device/event.json?search=device.device_report_product_code%3A%22MJO%22+AND+date_received%3A%5B20251018+TO+20261017%5D&count=event_type.exact&limit=8",
+    "label": "Category MJO: reports by event type"
+   },
+   {
+    "url": "https://api.fda.gov/device/event.json?search=device.device_report_product_code%3A%22MJO%22+AND+date_received%3A%5B20251018+TO+20261017%5D+AND+%28product_problems%3A%22Break%22+OR+product_problems%3A%22Fracture%22%29&limit=1",
+    "label": "Category MJO: reports naming a break or fracture"
+   },
+   {
+    "url": "https://api.fda.gov/device/event.json?search=device.device_report_product_code%3A%22MJO%22+AND+date_received%3A%5B20251018+TO+20261017%5D&count=device.brand_name.exact&limit=999",
+    "label": "Category MJO: brands reported"
+   },
+   {
+    "url": "https://api.fda.gov/device/event.json?search=device.device_report_product_code%3A%22MJO%22+AND+date_received%3A%5B20251018+TO+20261017%5D&count=device.openfda.device_name.exact&limit=1",
+    "label": "Category MJO: FDA device name"
+   },
+   {
+    "url": "https://api.fda.gov/device/event.json?search=%28%28device.openfda.medical_specialty_description%3A%22Orthopedic%22+AND+%28device.openfda.device_name%3Aspinal+OR+device.openfda.device_name%3Aintervertebral+OR+device.openfda.device_name%3Apedicle+OR+device.openfda.device_name%3Avertebral+OR+device.openfda.device_name%3Acervical+OR+device.openfda.device_name%3Asacro+OR+device.openfda.device_name%3Aspinous+OR+device.openfda.device_name%3Akypho+OR+device.openfda.device_name%3Avertebro+OR+device.brand_name%3AHORIZON+OR+device.brand_name%3AINFUSE+OR+device.brand_name%3AIFUSE+OR+device.brand_name%3AiFuse%29%29+OR+device.openfda.device_name%3A%22Prosthesis%2C+Intervertebral+Disc%22+OR+device.openfda.device_name%3A%22Prosthesis%2C+Spinous+Process+Spacer%2FPlate%22+OR+device.openfda.device_name%3A%22Filler%2C+Recombinant+Human+Bone+Morphogenetic+Protein%2C+Collagen+Scaffold+With+Metal+Prosthesis%2C+Osteoinduction%22+OR+device.openfda.device_name%3A%22Filler%2C+Recombinant+Human+Bone+Morphogenetic+Protein%2C+Collagen+Scaffold%2C+Osteoinduction%22+OR+%28device.openfda.device_name%3A%28cervical+AND+%28plate+OR+interbody+OR+cage+OR+%22stand-alone%22+OR+standalone+OR+%22stand+alone%22+OR+%22anterior+cervical%22%29%29+OR+device.brand_name%3A%28ATLANTIS+OR+ZEVO+OR+SKYLINE+OR+%22ZERO-P%22+OR+%22ZERO+P%22+OR+%22SLIM+LOC%22+OR+SLIMLOC+OR+ACIS+OR+COROENT+OR+TRESTLE+OR+REFLEX+OR+FIDJI+OR+LINEUM+OR+PREVAIL+OR+%22TRITANIUM+C%22+OR+PRECEPT+OR+EVEREST+OR+SILHOUETTE%29%29%29+AND+device.brand_name%3A%22Mobi-C%22+AND+date_received%3A%5B20251018+TO+20261017%5D&count=device.manufacturer_d_name.exact&limit=5",
+    "label": "Device: manufacturers filing the reports"
+   },
+   {
+    "url": "https://api.fda.gov/device/enforcement.json?search=product_description%3A%22Mobi-C%22+AND+recall_initiation_date%3A%5B20211018+TO+20261018%5D&limit=100",
+    "label": "Recalls: enforcement reports naming \"Mobi-C\""
+   },
+   {
+    "url": "https://api.fda.gov/device/recall.json?search=pma_numbers%3A%22P110002%22+AND+event_date_initiated%3A%5B2021-10-18+TO+2026-10-18%5D&limit=100",
+    "label": "Recalls: device/recall records listing P110002"
+   },
+   {
+    "url": "https://api.fda.gov/device/recall.json?search=pma_numbers%3A%22P110009%22+AND+event_date_initiated%3A%5B2021-10-18+TO+2026-10-18%5D&limit=100",
+    "label": "Recalls: device/recall records listing P110009"
+   }
+  ]
+ },
+ {
+  "slug": "osteocel",
+  "brand": "Osteocel",
+  "score": null,
+  "signal": "insufficient",
+  "directory": 5.6,
+  "confidence": "insufficient",
+  "notes": [
+   "Fewer than 5 MAUDE reports in the window."
+  ],
+  "error": null,
+  "counts": {
+   "death": 0,
+   "other": 0,
+   "total": 0,
+   "breaks": 0,
+   "injury": 0,
+   "malfunction": 0
+  },
+  "codes": [],
+  "recalls": [],
+  "trend": [
+   0,
+   0
+  ],
+  "relative": null,
+  "breakCap": null,
+  "recallFactor": 1,
+  "pulledAt": "2026-10-18T00:46:32.501Z",
+  "window": [
+   "2025-10-18",
+   "2026-10-17"
+  ],
+  "sources": [
+   {
+    "url": "https://api.fda.gov/device/event.json?search=%28%28device.openfda.medical_specialty_description%3A%22Orthopedic%22+AND+%28device.openfda.device_name%3Agraft+OR+device.openfda.device_name%3A%22bone+void%22+OR+device.openfda.device_name%3Ademineralized+OR+device.openfda.device_name%3Afiller+OR+device.openfda.device_name%3Abmp+OR+device.openfda.device_name%3Aallograft+OR+device.brand_name%3AINFUSE%29%29+OR+device.openfda.device_name%3A%22Filler%2C+Recombinant+Human+Bone+Morphogenetic+Protein%2C+Collagen+Scaffold+With+Metal+Prosthesis%2C+Osteoinduction%22+OR+device.openfda.device_name%3A%22Filler%2C+Recombinant+Human+Bone+Morphogenetic+Protein%2C+Collagen+Scaffold%2C+Osteoinduction%22%29+AND+device.brand_name%3A%22Osteocel%22+AND+date_received%3A%5B20251018+TO+20261017%5D&count=event_type.exact&limit=8",
+    "label": "Device: reports by event type (same search as the MAUDE snapshot)"
+   },
+   {
+    "url": "https://api.fda.gov/device/event.json?search=%28%28device.openfda.medical_specialty_description%3A%22Orthopedic%22+AND+%28device.openfda.device_name%3Agraft+OR+device.openfda.device_name%3A%22bone+void%22+OR+device.openfda.device_name%3Ademineralized+OR+device.openfda.device_name%3Afiller+OR+device.openfda.device_name%3Abmp+OR+device.openfda.device_name%3Aallograft+OR+device.brand_name%3AINFUSE%29%29+OR+device.openfda.device_name%3A%22Filler%2C+Recombinant+Human+Bone+Morphogenetic+Protein%2C+Collagen+Scaffold+With+Metal+Prosthesis%2C+Osteoinduction%22+OR+device.openfda.device_name%3A%22Filler%2C+Recombinant+Human+Bone+Morphogenetic+Protein%2C+Collagen+Scaffold%2C+Osteoinduction%22%29+AND+device.brand_name%3A%22Osteocel%22+AND+date_received%3A%5B20251018+TO+20261017%5D+AND+%28product_problems%3A%22Break%22+OR+product_problems%3A%22Fracture%22%29&limit=1",
+    "label": "Device: reports naming a break or fracture"
+   },
+   {
+    "url": "https://api.fda.gov/device/event.json?search=%28%28device.openfda.medical_specialty_description%3A%22Orthopedic%22+AND+%28device.openfda.device_name%3Agraft+OR+device.openfda.device_name%3A%22bone+void%22+OR+device.openfda.device_name%3Ademineralized+OR+device.openfda.device_name%3Afiller+OR+device.openfda.device_name%3Abmp+OR+device.openfda.device_name%3Aallograft+OR+device.brand_name%3AINFUSE%29%29+OR+device.openfda.device_name%3A%22Filler%2C+Recombinant+Human+Bone+Morphogenetic+Protein%2C+Collagen+Scaffold+With+Metal+Prosthesis%2C+Osteoinduction%22+OR+device.openfda.device_name%3A%22Filler%2C+Recombinant+Human+Bone+Morphogenetic+Protein%2C+Collagen+Scaffold%2C+Osteoinduction%22%29+AND+device.brand_name%3A%22Osteocel%22+AND+date_received%3A%5B20251018+TO+20261017%5D&count=date_received",
+    "label": "Device: reports by date received (12-month trend)"
+   },
+   {
+    "url": "https://api.fda.gov/device/enforcement.json?search=product_description%3A%22Osteocel%22+AND+recall_initiation_date%3A%5B20211018+TO+20261018%5D&limit=100",
+    "label": "Recalls: enforcement reports naming \"Osteocel\""
+   }
+  ]
+ },
+ {
+  "slug": "pediloc",
+  "brand": "PediLoc",
+  "score": null,
+  "signal": "insufficient",
+  "directory": 5.5,
+  "confidence": "insufficient",
+  "notes": [
+   "Fewer than 5 MAUDE reports in the window."
+  ],
+  "error": null,
+  "counts": {
+   "death": 0,
+   "other": 0,
+   "total": 0,
+   "breaks": 0,
+   "injury": 0,
+   "malfunction": 0
+  },
+  "codes": [],
+  "recalls": [],
+  "trend": [
+   0,
+   0
+  ],
+  "relative": null,
+  "breakCap": null,
+  "recallFactor": 1,
+  "pulledAt": "2026-10-18T00:46:52.687Z",
+  "window": [
+   "2025-10-18",
+   "2026-10-17"
+  ],
+  "sources": [
+   {
+    "url": "https://api.fda.gov/device/event.json?search=device.openfda.medical_specialty_description%3A%22Orthopedic%22+AND+%28device.openfda.device_name%3Apediatric+OR+device.openfda.device_name%3Agrowth+OR+device.openfda.device_name%3Aepiphys%29+AND+device.brand_name%3A%22PediLoc%22+AND+date_received%3A%5B20251018+TO+20261017%5D&count=event_type.exact&limit=8",
+    "label": "Device: reports by event type (same search as the MAUDE snapshot)"
+   },
+   {
+    "url": "https://api.fda.gov/device/event.json?search=device.openfda.medical_specialty_description%3A%22Orthopedic%22+AND+%28device.openfda.device_name%3Apediatric+OR+device.openfda.device_name%3Agrowth+OR+device.openfda.device_name%3Aepiphys%29+AND+device.brand_name%3A%22PediLoc%22+AND+date_received%3A%5B20251018+TO+20261017%5D+AND+%28product_problems%3A%22Break%22+OR+product_problems%3A%22Fracture%22%29&limit=1",
+    "label": "Device: reports naming a break or fracture"
+   },
+   {
+    "url": "https://api.fda.gov/device/event.json?search=device.openfda.medical_specialty_description%3A%22Orthopedic%22+AND+%28device.openfda.device_name%3Apediatric+OR+device.openfda.device_name%3Agrowth+OR+device.openfda.device_name%3Aepiphys%29+AND+device.brand_name%3A%22PediLoc%22+AND+date_received%3A%5B20251018+TO+20261017%5D&count=date_received",
+    "label": "Device: reports by date received (12-month trend)"
+   },
+   {
+    "url": "https://api.fda.gov/device/enforcement.json?search=product_description%3A%22PediLoc%22+AND+recall_initiation_date%3A%5B20211018+TO+20261018%5D&limit=100",
+    "label": "Recalls: enforcement reports naming \"PediLoc\""
+   }
+  ]
+ },
+ {
+  "slug": "persona-knee",
+  "brand": "Persona Knee",
+  "score": 4.2,
+  "signal": "watch",
+  "directory": 4.1,
+  "confidence": "high",
+  "notes": [],
+  "error": null,
+  "counts": {
+   "death": 0,
+   "other": 0,
+   "total": 1309,
+   "breaks": 227,
+   "injury": 827,
+   "malfunction": 482
+  },
+  "codes": [
+   {
+    "code": "JWH",
+    "name": "Prosthesis, Knee, Patellofemorotibial, Semi-Constrained, Cemented, Polymer/Metal/Polymer",
+    "share": 0.498,
+    "reports": 7680,
+    "brandCount": 998
+   },
+   {
+    "code": "MBH",
+    "name": "Prosthesis, Knee, Patello/Femorotibial, Semi-Constrained, Uncemented, Porous, Coated, Polymer/Metal/Polymer",
+    "share": 0.479,
+    "reports": 1603,
+    "brandCount": 823
+   }
+  ],
+  "recalls": [
+   {
+    "id": "99073",
+    "url": "https://api.fda.gov/device/enforcement.json?search=recall_number%3A%22Z-2578-2026%22",
+    "date": "2026-05-11",
+    "firm": "Zimmer, Inc.",
+    "reason": "Firm received a complaint with no clinical impact in which a posterior augment was found within the distal augment package.",
+    "product": "Brand Name: Persona Revision Product Name: Persona Revision¿ Trabecular Metal¿ Femoral Distal Augment Model/Catalog Number: 42-5572-066-10 Software Version: N/A Product Description: Persona Revision¿ ",
+    "classification": "Class II"
+   }
+  ],
+  "trend": [
+   716,
+   593
+  ],
+  "relative": 0.896,
+  "breakCap": 8.28,
+  "recallFactor": 0.75,
+  "pulledAt": "2026-10-18T00:46:45.820Z",
+  "window": [
+   "2025-10-18",
+   "2026-10-17"
+  ],
+  "sources": [
+   {
+    "url": "https://api.fda.gov/device/event.json?search=%28%28device.openfda.medical_specialty_description%3A%22Orthopedic%22+AND+%28device.openfda.device_name%3Ahip+OR+device.openfda.device_name%3Aknee+OR+device.openfda.device_name%3Apatellofemorotibial+OR+device.openfda.device_name%3Aacetabular+OR+device.openfda.device_name%3Afemoral+OR+device.openfda.device_name%3Aunicompartmental%29%29+OR+device.openfda.device_name%3A%22Prosthesis%2C+Knee%2C+Patellofemorotibial%2C+Semi-Constrained%2C+Metal%2FPolymer%2C+Mobile+Bearing%22+OR+device.openfda.device_name%3A%22Prosthesis%2C+Knee%2C+Femorotibial%2C+Unicompartmental%2C+Semi-Constrained%2C+Metal%2FPolymer%2C+Mobile+Bearing%22%29+AND+device.brand_name%3A%22Persona%22+AND+date_received%3A%5B20251018+TO+20261017%5D&count=event_type.exact&limit=8",
+    "label": "Device: reports by event type (same search as the MAUDE snapshot)"
+   },
+   {
+    "url": "https://api.fda.gov/device/event.json?search=%28%28device.openfda.medical_specialty_description%3A%22Orthopedic%22+AND+%28device.openfda.device_name%3Ahip+OR+device.openfda.device_name%3Aknee+OR+device.openfda.device_name%3Apatellofemorotibial+OR+device.openfda.device_name%3Aacetabular+OR+device.openfda.device_name%3Afemoral+OR+device.openfda.device_name%3Aunicompartmental%29%29+OR+device.openfda.device_name%3A%22Prosthesis%2C+Knee%2C+Patellofemorotibial%2C+Semi-Constrained%2C+Metal%2FPolymer%2C+Mobile+Bearing%22+OR+device.openfda.device_name%3A%22Prosthesis%2C+Knee%2C+Femorotibial%2C+Unicompartmental%2C+Semi-Constrained%2C+Metal%2FPolymer%2C+Mobile+Bearing%22%29+AND+device.brand_name%3A%22Persona%22+AND+date_received%3A%5B20251018+TO+20261017%5D+AND+%28product_problems%3A%22Break%22+OR+product_problems%3A%22Fracture%22%29&limit=1",
+    "label": "Device: reports naming a break or fracture"
+   },
+   {
+    "url": "https://api.fda.gov/device/event.json?search=%28%28device.openfda.medical_specialty_description%3A%22Orthopedic%22+AND+%28device.openfda.device_name%3Ahip+OR+device.openfda.device_name%3Aknee+OR+device.openfda.device_name%3Apatellofemorotibial+OR+device.openfda.device_name%3Aacetabular+OR+device.openfda.device_name%3Afemoral+OR+device.openfda.device_name%3Aunicompartmental%29%29+OR+device.openfda.device_name%3A%22Prosthesis%2C+Knee%2C+Patellofemorotibial%2C+Semi-Constrained%2C+Metal%2FPolymer%2C+Mobile+Bearing%22+OR+device.openfda.device_name%3A%22Prosthesis%2C+Knee%2C+Femorotibial%2C+Unicompartmental%2C+Semi-Constrained%2C+Metal%2FPolymer%2C+Mobile+Bearing%22%29+AND+device.brand_name%3A%22Persona%22+AND+date_received%3A%5B20251018+TO+20261017%5D&count=date_received",
+    "label": "Device: reports by date received (12-month trend)"
+   },
+   {
+    "url": "https://api.fda.gov/device/event.json?search=%28%28device.openfda.medical_specialty_description%3A%22Orthopedic%22+AND+%28device.openfda.device_name%3Ahip+OR+device.openfda.device_name%3Aknee+OR+device.openfda.device_name%3Apatellofemorotibial+OR+device.openfda.device_name%3Aacetabular+OR+device.openfda.device_name%3Afemoral+OR+device.openfda.device_name%3Aunicompartmental%29%29+OR+device.openfda.device_name%3A%22Prosthesis%2C+Knee%2C+Patellofemorotibial%2C+Semi-Constrained%2C+Metal%2FPolymer%2C+Mobile+Bearing%22+OR+device.openfda.device_name%3A%22Prosthesis%2C+Knee%2C+Femorotibial%2C+Unicompartmental%2C+Semi-Constrained%2C+Metal%2FPolymer%2C+Mobile+Bearing%22%29+AND+device.brand_name%3A%22Persona%22+AND+date_received%3A%5B20251018+TO+20261017%5D&count=device.device_report_product_code.exact&limit=20",
+    "label": "Device: reports by FDA product code"
+   },
+   {
+    "url": "https://api.fda.gov/device/event.json?search=device.device_report_product_code%3A%22JWH%22+AND+date_received%3A%5B20251018+TO+20261017%5D&count=event_type.exact&limit=8",
+    "label": "Category JWH: reports by event type"
+   },
+   {
+    "url": "https://api.fda.gov/device/event.json?search=device.device_report_product_code%3A%22JWH%22+AND+date_received%3A%5B20251018+TO+20261017%5D+AND+%28product_problems%3A%22Break%22+OR+product_problems%3A%22Fracture%22%29&limit=1",
+    "label": "Category JWH: reports naming a break or fracture"
+   },
+   {
+    "url": "https://api.fda.gov/device/event.json?search=device.device_report_product_code%3A%22JWH%22+AND+date_received%3A%5B20251018+TO+20261017%5D&count=device.brand_name.exact&limit=999",
+    "label": "Category JWH: brands reported"
+   },
+   {
+    "url": "https://api.fda.gov/device/event.json?search=device.device_report_product_code%3A%22JWH%22+AND+date_received%3A%5B20251018+TO+20261017%5D&count=device.openfda.device_name.exact&limit=1",
+    "label": "Category JWH: FDA device name"
+   },
+   {
+    "url": "https://api.fda.gov/device/event.json?search=device.device_report_product_code%3A%22MBH%22+AND+date_received%3A%5B20251018+TO+20261017%5D&count=event_type.exact&limit=8",
+    "label": "Category MBH: reports by event type"
+   },
+   {
+    "url": "https://api.fda.gov/device/event.json?search=device.device_report_product_code%3A%22MBH%22+AND+date_received%3A%5B20251018+TO+20261017%5D+AND+%28product_problems%3A%22Break%22+OR+product_problems%3A%22Fracture%22%29&limit=1",
+    "label": "Category MBH: reports naming a break or fracture"
+   },
+   {
+    "url": "https://api.fda.gov/device/event.json?search=device.device_report_product_code%3A%22MBH%22+AND+date_received%3A%5B20251018+TO+20261017%5D&count=device.brand_name.exact&limit=999",
+    "label": "Category MBH: brands reported"
+   },
+   {
+    "url": "https://api.fda.gov/device/event.json?search=device.device_report_product_code%3A%22MBH%22+AND+date_received%3A%5B20251018+TO+20261017%5D&count=device.openfda.device_name.exact&limit=1",
+    "label": "Category MBH: FDA device name"
+   },
+   {
+    "url": "https://api.fda.gov/device/event.json?search=%28%28device.openfda.medical_specialty_description%3A%22Orthopedic%22+AND+%28device.openfda.device_name%3Ahip+OR+device.openfda.device_name%3Aknee+OR+device.openfda.device_name%3Apatellofemorotibial+OR+device.openfda.device_name%3Aacetabular+OR+device.openfda.device_name%3Afemoral+OR+device.openfda.device_name%3Aunicompartmental%29%29+OR+device.openfda.device_name%3A%22Prosthesis%2C+Knee%2C+Patellofemorotibial%2C+Semi-Constrained%2C+Metal%2FPolymer%2C+Mobile+Bearing%22+OR+device.openfda.device_name%3A%22Prosthesis%2C+Knee%2C+Femorotibial%2C+Unicompartmental%2C+Semi-Constrained%2C+Metal%2FPolymer%2C+Mobile+Bearing%22%29+AND+device.brand_name%3A%22Persona%22+AND+date_received%3A%5B20251018+TO+20261017%5D&count=device.manufacturer_d_name.exact&limit=5",
+    "label": "Device: manufacturers filing the reports"
+   },
+   {
+    "url": "https://api.fda.gov/device/enforcement.json?search=product_description%3A%22Persona%22+AND+recall_initiation_date%3A%5B20211018+TO+20261018%5D&limit=100",
+    "label": "Recalls: enforcement reports naming \"Persona\""
+   }
+  ]
+ },
+ {
+  "slug": "simplify-cervical-disc",
+  "brand": "Simplify Cervical Artificial Disc",
+  "score": null,
+  "signal": "insufficient",
+  "directory": 5.7,
+  "confidence": "insufficient",
+  "notes": [
+   "Fewer than 5 MAUDE reports in the window."
+  ],
+  "error": null,
+  "counts": {
+   "death": 0,
+   "other": 0,
+   "total": 1,
+   "breaks": 0,
+   "injury": 1,
+   "malfunction": 0
+  },
+  "codes": [
+   {
+    "code": "MJO",
+    "name": "Prosthesis, Intervertebral Disc",
+    "share": 1,
+    "reports": 287,
+    "brandCount": 113
+   }
+  ],
+  "recalls": [
+   {
+    "id": "90500",
+    "url": "https://api.fda.gov/device/enforcement.json?search=recall_number%3A%22Z-1453-2022%22&limit=1",
+    "date": "2022-06-20",
+    "firm": "NuVasive Inc",
+    "reason": "Cervical artificial disc Unique Device Identifier (UDI) barcodes contain the incorrect Global Trade Item Number (GTIN) on the Patient Label when scanned and may also contain the incorrect GTIN human r",
+    "product": "Description/Part: Simplify Disc Size 1, Ht 5/SM-5; Simplify Disc Size 1, Ht 6/SM-6; Simplify Disc Size 2, Ht 4/MD-4; Simplify Disc Size 2, Ht 5/MD-5; Simplify Disc Size 2, Ht 5, 5/MD-5L; Simplify Disc",
+    "classification": "Class II"
+   }
+  ],
+  "trend": [
+   1,
+   0
+  ],
+  "relative": null,
+  "breakCap": null,
+  "recallFactor": 0.75,
+  "pulledAt": "2026-10-18T00:47:09.049Z",
+  "window": [
+   "2025-10-18",
+   "2026-10-17"
+  ],
+  "sources": [
+   {
+    "url": "https://api.fda.gov/device/event.json?search=%28%28device.openfda.medical_specialty_description%3A%22Orthopedic%22+AND+%28device.openfda.device_name%3Aspinal+OR+device.openfda.device_name%3Aintervertebral+OR+device.openfda.device_name%3Apedicle+OR+device.openfda.device_name%3Avertebral+OR+device.openfda.device_name%3Acervical+OR+device.openfda.device_name%3Asacro+OR+device.openfda.device_name%3Aspinous+OR+device.openfda.device_name%3Akypho+OR+device.openfda.device_name%3Avertebro+OR+device.brand_name%3AHORIZON+OR+device.brand_name%3AINFUSE+OR+device.brand_name%3AIFUSE+OR+device.brand_name%3AiFuse%29%29+OR+device.openfda.device_name%3A%22Prosthesis%2C+Intervertebral+Disc%22+OR+device.openfda.device_name%3A%22Prosthesis%2C+Spinous+Process+Spacer%2FPlate%22+OR+device.openfda.device_name%3A%22Filler%2C+Recombinant+Human+Bone+Morphogenetic+Protein%2C+Collagen+Scaffold+With+Metal+Prosthesis%2C+Osteoinduction%22+OR+device.openfda.device_name%3A%22Filler%2C+Recombinant+Human+Bone+Morphogenetic+Protein%2C+Collagen+Scaffold%2C+Osteoinduction%22+OR+%28device.openfda.device_name%3A%28cervical+AND+%28plate+OR+interbody+OR+cage+OR+%22stand-alone%22+OR+standalone+OR+%22stand+alone%22+OR+%22anterior+cervical%22%29%29+OR+device.brand_name%3A%28ATLANTIS+OR+ZEVO+OR+SKYLINE+OR+%22ZERO-P%22+OR+%22ZERO+P%22+OR+%22SLIM+LOC%22+OR+SLIMLOC+OR+ACIS+OR+COROENT+OR+TRESTLE+OR+REFLEX+OR+FIDJI+OR+LINEUM+OR+PREVAIL+OR+%22TRITANIUM+C%22+OR+PRECEPT+OR+EVEREST+OR+SILHOUETTE%29%29%29+AND+device.brand_name%3A%22Simplify+Cervical+Artificial+Disc%22+AND+date_received%3A%5B20251018+TO+20261017%5D&count=event_type.exact&limit=8",
+    "label": "Device: reports by event type (same search as the MAUDE snapshot)"
+   },
+   {
+    "url": "https://api.fda.gov/device/event.json?search=%28%28device.openfda.medical_specialty_description%3A%22Orthopedic%22+AND+%28device.openfda.device_name%3Aspinal+OR+device.openfda.device_name%3Aintervertebral+OR+device.openfda.device_name%3Apedicle+OR+device.openfda.device_name%3Avertebral+OR+device.openfda.device_name%3Acervical+OR+device.openfda.device_name%3Asacro+OR+device.openfda.device_name%3Aspinous+OR+device.openfda.device_name%3Akypho+OR+device.openfda.device_name%3Avertebro+OR+device.brand_name%3AHORIZON+OR+device.brand_name%3AINFUSE+OR+device.brand_name%3AIFUSE+OR+device.brand_name%3AiFuse%29%29+OR+device.openfda.device_name%3A%22Prosthesis%2C+Intervertebral+Disc%22+OR+device.openfda.device_name%3A%22Prosthesis%2C+Spinous+Process+Spacer%2FPlate%22+OR+device.openfda.device_name%3A%22Filler%2C+Recombinant+Human+Bone+Morphogenetic+Protein%2C+Collagen+Scaffold+With+Metal+Prosthesis%2C+Osteoinduction%22+OR+device.openfda.device_name%3A%22Filler%2C+Recombinant+Human+Bone+Morphogenetic+Protein%2C+Collagen+Scaffold%2C+Osteoinduction%22+OR+%28device.openfda.device_name%3A%28cervical+AND+%28plate+OR+interbody+OR+cage+OR+%22stand-alone%22+OR+standalone+OR+%22stand+alone%22+OR+%22anterior+cervical%22%29%29+OR+device.brand_name%3A%28ATLANTIS+OR+ZEVO+OR+SKYLINE+OR+%22ZERO-P%22+OR+%22ZERO+P%22+OR+%22SLIM+LOC%22+OR+SLIMLOC+OR+ACIS+OR+COROENT+OR+TRESTLE+OR+REFLEX+OR+FIDJI+OR+LINEUM+OR+PREVAIL+OR+%22TRITANIUM+C%22+OR+PRECEPT+OR+EVEREST+OR+SILHOUETTE%29%29%29+AND+device.brand_name%3A%22Simplify+Cervical+Artificial+Disc%22+AND+date_received%3A%5B20251018+TO+20261017%5D+AND+%28product_problems%3A%22Break%22+OR+product_problems%3A%22Fracture%22%29&limit=1",
+    "label": "Device: reports naming a break or fracture"
+   },
+   {
+    "url": "https://api.fda.gov/device/event.json?search=%28%28device.openfda.medical_specialty_description%3A%22Orthopedic%22+AND+%28device.openfda.device_name%3Aspinal+OR+device.openfda.device_name%3Aintervertebral+OR+device.openfda.device_name%3Apedicle+OR+device.openfda.device_name%3Avertebral+OR+device.openfda.device_name%3Acervical+OR+device.openfda.device_name%3Asacro+OR+device.openfda.device_name%3Aspinous+OR+device.openfda.device_name%3Akypho+OR+device.openfda.device_name%3Avertebro+OR+device.brand_name%3AHORIZON+OR+device.brand_name%3AINFUSE+OR+device.brand_name%3AIFUSE+OR+device.brand_name%3AiFuse%29%29+OR+device.openfda.device_name%3A%22Prosthesis%2C+Intervertebral+Disc%22+OR+device.openfda.device_name%3A%22Prosthesis%2C+Spinous+Process+Spacer%2FPlate%22+OR+device.openfda.device_name%3A%22Filler%2C+Recombinant+Human+Bone+Morphogenetic+Protein%2C+Collagen+Scaffold+With+Metal+Prosthesis%2C+Osteoinduction%22+OR+device.openfda.device_name%3A%22Filler%2C+Recombinant+Human+Bone+Morphogenetic+Protein%2C+Collagen+Scaffold%2C+Osteoinduction%22+OR+%28device.openfda.device_name%3A%28cervical+AND+%28plate+OR+interbody+OR+cage+OR+%22stand-alone%22+OR+standalone+OR+%22stand+alone%22+OR+%22anterior+cervical%22%29%29+OR+device.brand_name%3A%28ATLANTIS+OR+ZEVO+OR+SKYLINE+OR+%22ZERO-P%22+OR+%22ZERO+P%22+OR+%22SLIM+LOC%22+OR+SLIMLOC+OR+ACIS+OR+COROENT+OR+TRESTLE+OR+REFLEX+OR+FIDJI+OR+LINEUM+OR+PREVAIL+OR+%22TRITANIUM+C%22+OR+PRECEPT+OR+EVEREST+OR+SILHOUETTE%29%29%29+AND+device.brand_name%3A%22Simplify+Cervical+Artificial+Disc%22+AND+date_received%3A%5B20251018+TO+20261017%5D&count=date_received",
+    "label": "Device: reports by date received (12-month trend)"
+   },
+   {
+    "url": "https://api.fda.gov/device/event.json?search=%28%28device.openfda.medical_specialty_description%3A%22Orthopedic%22+AND+%28device.openfda.device_name%3Aspinal+OR+device.openfda.device_name%3Aintervertebral+OR+device.openfda.device_name%3Apedicle+OR+device.openfda.device_name%3Avertebral+OR+device.openfda.device_name%3Acervical+OR+device.openfda.device_name%3Asacro+OR+device.openfda.device_name%3Aspinous+OR+device.openfda.device_name%3Akypho+OR+device.openfda.device_name%3Avertebro+OR+device.brand_name%3AHORIZON+OR+device.brand_name%3AINFUSE+OR+device.brand_name%3AIFUSE+OR+device.brand_name%3AiFuse%29%29+OR+device.openfda.device_name%3A%22Prosthesis%2C+Intervertebral+Disc%22+OR+device.openfda.device_name%3A%22Prosthesis%2C+Spinous+Process+Spacer%2FPlate%22+OR+device.openfda.device_name%3A%22Filler%2C+Recombinant+Human+Bone+Morphogenetic+Protein%2C+Collagen+Scaffold+With+Metal+Prosthesis%2C+Osteoinduction%22+OR+device.openfda.device_name%3A%22Filler%2C+Recombinant+Human+Bone+Morphogenetic+Protein%2C+Collagen+Scaffold%2C+Osteoinduction%22+OR+%28device.openfda.device_name%3A%28cervical+AND+%28plate+OR+interbody+OR+cage+OR+%22stand-alone%22+OR+standalone+OR+%22stand+alone%22+OR+%22anterior+cervical%22%29%29+OR+device.brand_name%3A%28ATLANTIS+OR+ZEVO+OR+SKYLINE+OR+%22ZERO-P%22+OR+%22ZERO+P%22+OR+%22SLIM+LOC%22+OR+SLIMLOC+OR+ACIS+OR+COROENT+OR+TRESTLE+OR+REFLEX+OR+FIDJI+OR+LINEUM+OR+PREVAIL+OR+%22TRITANIUM+C%22+OR+PRECEPT+OR+EVEREST+OR+SILHOUETTE%29%29%29+AND+device.brand_name%3A%22Simplify+Cervical+Artificial+Disc%22+AND+date_received%3A%5B20251018+TO+20261017%5D&count=device.device_report_product_code.exact&limit=20",
+    "label": "Device: reports by FDA product code"
+   },
+   {
+    "url": "https://api.fda.gov/device/event.json?search=device.device_report_product_code%3A%22MJO%22+AND+date_received%3A%5B20251018+TO+20261017%5D&count=event_type.exact&limit=8",
+    "label": "Category MJO: reports by event type"
+   },
+   {
+    "url": "https://api.fda.gov/device/event.json?search=device.device_report_product_code%3A%22MJO%22+AND+date_received%3A%5B20251018+TO+20261017%5D+AND+%28product_problems%3A%22Break%22+OR+product_problems%3A%22Fracture%22%29&limit=1",
+    "label": "Category MJO: reports naming a break or fracture"
+   },
+   {
+    "url": "https://api.fda.gov/device/event.json?search=device.device_report_product_code%3A%22MJO%22+AND+date_received%3A%5B20251018+TO+20261017%5D&count=device.brand_name.exact&limit=999",
+    "label": "Category MJO: brands reported"
+   },
+   {
+    "url": "https://api.fda.gov/device/event.json?search=device.device_report_product_code%3A%22MJO%22+AND+date_received%3A%5B20251018+TO+20261017%5D&count=device.openfda.device_name.exact&limit=1",
+    "label": "Category MJO: FDA device name"
+   },
+   {
+    "url": "https://api.fda.gov/device/event.json?search=%28%28device.openfda.medical_specialty_description%3A%22Orthopedic%22+AND+%28device.openfda.device_name%3Aspinal+OR+device.openfda.device_name%3Aintervertebral+OR+device.openfda.device_name%3Apedicle+OR+device.openfda.device_name%3Avertebral+OR+device.openfda.device_name%3Acervical+OR+device.openfda.device_name%3Asacro+OR+device.openfda.device_name%3Aspinous+OR+device.openfda.device_name%3Akypho+OR+device.openfda.device_name%3Avertebro+OR+device.brand_name%3AHORIZON+OR+device.brand_name%3AINFUSE+OR+device.brand_name%3AIFUSE+OR+device.brand_name%3AiFuse%29%29+OR+device.openfda.device_name%3A%22Prosthesis%2C+Intervertebral+Disc%22+OR+device.openfda.device_name%3A%22Prosthesis%2C+Spinous+Process+Spacer%2FPlate%22+OR+device.openfda.device_name%3A%22Filler%2C+Recombinant+Human+Bone+Morphogenetic+Protein%2C+Collagen+Scaffold+With+Metal+Prosthesis%2C+Osteoinduction%22+OR+device.openfda.device_name%3A%22Filler%2C+Recombinant+Human+Bone+Morphogenetic+Protein%2C+Collagen+Scaffold%2C+Osteoinduction%22+OR+%28device.openfda.device_name%3A%28cervical+AND+%28plate+OR+interbody+OR+cage+OR+%22stand-alone%22+OR+standalone+OR+%22stand+alone%22+OR+%22anterior+cervical%22%29%29+OR+device.brand_name%3A%28ATLANTIS+OR+ZEVO+OR+SKYLINE+OR+%22ZERO-P%22+OR+%22ZERO+P%22+OR+%22SLIM+LOC%22+OR+SLIMLOC+OR+ACIS+OR+COROENT+OR+TRESTLE+OR+REFLEX+OR+FIDJI+OR+LINEUM+OR+PREVAIL+OR+%22TRITANIUM+C%22+OR+PRECEPT+OR+EVEREST+OR+SILHOUETTE%29%29%29+AND+device.brand_name%3A%22Simplify+Cervical+Artificial+Disc%22+AND+date_received%3A%5B20251018+TO+20261017%5D&count=device.manufacturer_d_name.exact&limit=5",
+    "label": "Device: manufacturers filing the reports"
+   },
+   {
+    "url": "https://api.fda.gov/device/enforcement.json?search=product_description%3A%22Simplify+Cervical+Artificial+Disc%22+AND+recall_initiation_date%3A%5B20211018+TO+20261018%5D&limit=100",
+    "label": "Recalls: enforcement reports naming \"Simplify Cervical Artificial Disc\""
+   },
+   {
+    "url": "https://api.fda.gov/device/recall.json?search=pma_numbers%3A%22P200022%22+AND+event_date_initiated%3A%5B2021-10-18+TO+2026-10-18%5D&limit=100",
+    "label": "Recalls: device/recall records listing P200022"
+   },
+   {
+    "url": "https://api.fda.gov/device/enforcement.json?search=recall_number%3A%22Z-1453-2022%22&limit=1",
+    "label": "Recalls: FDA class for Z-1453-2022"
+   }
+  ]
+ },
+ {
+  "slug": "swivelock-anchor",
+  "brand": "SwiveLock",
+  "score": 4.6,
+  "signal": "watch",
+  "directory": 4.1,
+  "confidence": "high",
+  "notes": [],
+  "error": null,
+  "counts": {
+   "death": 0,
+   "other": 0,
+   "total": 201,
+   "breaks": 106,
+   "injury": 18,
+   "malfunction": 183
+  },
+  "codes": [
+   {
+    "code": "MAI",
+    "name": "Fastener, Fixation, Biodegradable, Soft Tissue",
+    "share": 0.891,
+    "reports": 2513,
+    "brandCount": 263
+   },
+   {
+    "code": "MBI",
+    "name": "Fastener, Fixation, Nondegradable, Soft Tissue",
+    "share": 0.109,
+    "reports": 4169,
+    "brandCount": 450
+   }
+  ],
+  "recalls": [],
+  "trend": [
+   81,
+   120
+  ],
+  "relative": 0.88,
+  "breakCap": 4.57,
+  "recallFactor": 1,
+  "pulledAt": "2026-10-18T00:47:17.738Z",
+  "window": [
+   "2025-10-18",
+   "2026-10-17"
+  ],
+  "sources": [
+   {
+    "url": "https://api.fda.gov/device/event.json?search=device.openfda.medical_specialty_description%3A%22Orthopedic%22+AND+%28device.openfda.device_name%3A%22soft+tissue%22+OR+device.openfda.device_name%3Asuture+OR+device.openfda.device_name%3Aanchor+OR+device.openfda.device_name%3Aarthroscope+OR+device.openfda.device_name%3Aligament%29+AND+device.brand_name%3A%22SwiveLock%22+AND+date_received%3A%5B20251018+TO+20261017%5D&count=event_type.exact&limit=8",
+    "label": "Device: reports by event type (same search as the MAUDE snapshot)"
+   },
+   {
+    "url": "https://api.fda.gov/device/event.json?search=device.openfda.medical_specialty_description%3A%22Orthopedic%22+AND+%28device.openfda.device_name%3A%22soft+tissue%22+OR+device.openfda.device_name%3Asuture+OR+device.openfda.device_name%3Aanchor+OR+device.openfda.device_name%3Aarthroscope+OR+device.openfda.device_name%3Aligament%29+AND+device.brand_name%3A%22SwiveLock%22+AND+date_received%3A%5B20251018+TO+20261017%5D+AND+%28product_problems%3A%22Break%22+OR+product_problems%3A%22Fracture%22%29&limit=1",
+    "label": "Device: reports naming a break or fracture"
+   },
+   {
+    "url": "https://api.fda.gov/device/event.json?search=device.openfda.medical_specialty_description%3A%22Orthopedic%22+AND+%28device.openfda.device_name%3A%22soft+tissue%22+OR+device.openfda.device_name%3Asuture+OR+device.openfda.device_name%3Aanchor+OR+device.openfda.device_name%3Aarthroscope+OR+device.openfda.device_name%3Aligament%29+AND+device.brand_name%3A%22SwiveLock%22+AND+date_received%3A%5B20251018+TO+20261017%5D&count=date_received",
+    "label": "Device: reports by date received (12-month trend)"
+   },
+   {
+    "url": "https://api.fda.gov/device/event.json?search=device.openfda.medical_specialty_description%3A%22Orthopedic%22+AND+%28device.openfda.device_name%3A%22soft+tissue%22+OR+device.openfda.device_name%3Asuture+OR+device.openfda.device_name%3Aanchor+OR+device.openfda.device_name%3Aarthroscope+OR+device.openfda.device_name%3Aligament%29+AND+device.brand_name%3A%22SwiveLock%22+AND+date_received%3A%5B20251018+TO+20261017%5D&count=device.device_report_product_code.exact&limit=20",
+    "label": "Device: reports by FDA product code"
+   },
+   {
+    "url": "https://api.fda.gov/device/event.json?search=device.device_report_product_code%3A%22MAI%22+AND+date_received%3A%5B20251018+TO+20261017%5D&count=event_type.exact&limit=8",
+    "label": "Category MAI: reports by event type"
+   },
+   {
+    "url": "https://api.fda.gov/device/event.json?search=device.device_report_product_code%3A%22MAI%22+AND+date_received%3A%5B20251018+TO+20261017%5D+AND+%28product_problems%3A%22Break%22+OR+product_problems%3A%22Fracture%22%29&limit=1",
+    "label": "Category MAI: reports naming a break or fracture"
+   },
+   {
+    "url": "https://api.fda.gov/device/event.json?search=device.device_report_product_code%3A%22MAI%22+AND+date_received%3A%5B20251018+TO+20261017%5D&count=device.brand_name.exact&limit=999",
+    "label": "Category MAI: brands reported"
+   },
+   {
+    "url": "https://api.fda.gov/device/event.json?search=device.device_report_product_code%3A%22MAI%22+AND+date_received%3A%5B20251018+TO+20261017%5D&count=device.openfda.device_name.exact&limit=1",
+    "label": "Category MAI: FDA device name"
+   },
+   {
+    "url": "https://api.fda.gov/device/event.json?search=device.device_report_product_code%3A%22MBI%22+AND+date_received%3A%5B20251018+TO+20261017%5D&count=event_type.exact&limit=8",
+    "label": "Category MBI: reports by event type"
+   },
+   {
+    "url": "https://api.fda.gov/device/event.json?search=device.device_report_product_code%3A%22MBI%22+AND+date_received%3A%5B20251018+TO+20261017%5D+AND+%28product_problems%3A%22Break%22+OR+product_problems%3A%22Fracture%22%29&limit=1",
+    "label": "Category MBI: reports naming a break or fracture"
+   },
+   {
+    "url": "https://api.fda.gov/device/event.json?search=device.device_report_product_code%3A%22MBI%22+AND+date_received%3A%5B20251018+TO+20261017%5D&count=device.brand_name.exact&limit=999",
+    "label": "Category MBI: brands reported"
+   },
+   {
+    "url": "https://api.fda.gov/device/event.json?search=device.device_report_product_code%3A%22MBI%22+AND+date_received%3A%5B20251018+TO+20261017%5D&count=device.openfda.device_name.exact&limit=1",
+    "label": "Category MBI: FDA device name"
+   },
+   {
+    "url": "https://api.fda.gov/device/event.json?search=device.openfda.medical_specialty_description%3A%22Orthopedic%22+AND+%28device.openfda.device_name%3A%22soft+tissue%22+OR+device.openfda.device_name%3Asuture+OR+device.openfda.device_name%3Aanchor+OR+device.openfda.device_name%3Aarthroscope+OR+device.openfda.device_name%3Aligament%29+AND+device.brand_name%3A%22SwiveLock%22+AND+date_received%3A%5B20251018+TO+20261017%5D&count=device.manufacturer_d_name.exact&limit=5",
+    "label": "Device: manufacturers filing the reports"
+   },
+   {
+    "url": "https://api.fda.gov/device/enforcement.json?search=product_description%3A%22SwiveLock%22+AND+recall_initiation_date%3A%5B20211018+TO+20261018%5D&limit=100",
+    "label": "Recalls: enforcement reports naming \"SwiveLock\""
+   }
+  ]
+ },
+ {
+  "slug": "tfn-advanced",
+  "brand": "TFN-ADVANCED",
+  "score": null,
+  "signal": "insufficient",
+  "directory": 5.7,
+  "confidence": "insufficient",
+  "notes": [
+   "Fewer than 5 MAUDE reports in the window."
+  ],
+  "error": null,
+  "counts": {
+   "death": 0,
+   "other": 0,
+   "total": 0,
+   "breaks": 0,
+   "injury": 0,
+   "malfunction": 0
+  },
+  "codes": [],
+  "recalls": [],
+  "trend": [
+   0,
+   0
+  ],
+  "relative": null,
+  "breakCap": null,
+  "recallFactor": 1,
+  "pulledAt": "2026-10-18T00:46:54.259Z",
+  "window": [
+   "2025-10-18",
+   "2026-10-17"
+  ],
+  "sources": [
+   {
+    "url": "https://api.fda.gov/device/event.json?search=device.openfda.medical_specialty_description%3A%22Orthopedic%22+AND+%28device.openfda.device_name%3Aintramedullary+OR+device.openfda.device_name%3A%22plate%2C+fixation%22+OR+device.openfda.device_name%3Atrauma+OR+device.openfda.device_name%3A%22nail%2C+fixation%22+OR+device.openfda.device_name%3A%22screw%2C+fixation%2C+bone%22%29+AND+device.brand_name%3A%22TFN-ADVANCED%22+AND+date_received%3A%5B20251018+TO+20261017%5D&count=event_type.exact&limit=8",
+    "label": "Device: reports by event type (same search as the MAUDE snapshot)"
+   },
+   {
+    "url": "https://api.fda.gov/device/event.json?search=device.openfda.medical_specialty_description%3A%22Orthopedic%22+AND+%28device.openfda.device_name%3Aintramedullary+OR+device.openfda.device_name%3A%22plate%2C+fixation%22+OR+device.openfda.device_name%3Atrauma+OR+device.openfda.device_name%3A%22nail%2C+fixation%22+OR+device.openfda.device_name%3A%22screw%2C+fixation%2C+bone%22%29+AND+device.brand_name%3A%22TFN-ADVANCED%22+AND+date_received%3A%5B20251018+TO+20261017%5D+AND+%28product_problems%3A%22Break%22+OR+product_problems%3A%22Fracture%22%29&limit=1",
+    "label": "Device: reports naming a break or fracture"
+   },
+   {
+    "url": "https://api.fda.gov/device/event.json?search=device.openfda.medical_specialty_description%3A%22Orthopedic%22+AND+%28device.openfda.device_name%3Aintramedullary+OR+device.openfda.device_name%3A%22plate%2C+fixation%22+OR+device.openfda.device_name%3Atrauma+OR+device.openfda.device_name%3A%22nail%2C+fixation%22+OR+device.openfda.device_name%3A%22screw%2C+fixation%2C+bone%22%29+AND+device.brand_name%3A%22TFN-ADVANCED%22+AND+date_received%3A%5B20251018+TO+20261017%5D&count=date_received",
+    "label": "Device: reports by date received (12-month trend)"
+   },
+   {
+    "url": "https://api.fda.gov/device/enforcement.json?search=product_description%3A%22TFN-ADVANCED%22+AND+recall_initiation_date%3A%5B20211018+TO+20261018%5D&limit=100",
+    "label": "Recalls: enforcement reports naming \"TFN-ADVANCED\""
+   }
+  ]
+ },
+ {
+  "slug": "prodisc-c",
+  "brand": "prodisc C",
+  "score": 2,
+  "signal": "elevated",
+  "directory": 0.8,
+  "confidence": "medium",
+  "notes": [],
+  "error": null,
+  "counts": {
+   "death": 0,
+   "other": 0,
+   "total": 73,
+   "breaks": 1,
+   "injury": 61,
+   "malfunction": 12
+  },
+  "codes": [
+   {
+    "code": "MJO",
+    "name": "Prosthesis, Intervertebral Disc",
+    "share": 1,
+    "reports": 287,
+    "brandCount": 113
+   }
+  ],
+  "recalls": [
+   {
+    "id": "98721",
+    "url": "https://api.fda.gov/device/enforcement.json?search=recall_number%3A%22Z-2050-2026%22",
+    "date": "2026-03-20",
+    "firm": "Centinel Spine, Inc.",
+    "reason": "Product labeling mix up. The prodisc C SK U.S. Implant Extra Large 6mm product was labeled as a 5mm and prodisc C SK U.S. Implant Extra Large 5mm product was labeled as a 6mm.",
+    "product": "Prodisc C SK U.S. IMPLANT EXTRA LARGE 5MM. Model: PDSXL5 Total cervical disc replacement.",
+    "classification": "Class II"
+   },
+   {
+    "id": "98282",
+    "url": "https://api.fda.gov/device/enforcement.json?search=recall_number%3A%22Z-1426-2026%22",
+    "date": "2025-12-31",
+    "firm": "Centinel Spine, Inc.",
+    "reason": "Products were mislabeled as the 6mm product but included the 5 mm product.",
+    "product": "Brand Name: Prodisc Product Name: Prodisc C SK Model/Catalog Number: PDSL6 Software Version: N/A Product Description: Total cervical disc replacement Component: No",
+    "classification": "Class II"
+   },
+   {
+    "id": "95164",
+    "url": "https://api.fda.gov/device/enforcement.json?search=recall_number%3A%22Z-3212-2024%22",
+    "date": "2024-07-18",
+    "firm": "Centinel Spine, Inc.",
+    "reason": "During the assembly of Prodisc C, a blue discoloration was observed on a Prodisc C inlay. The discoloration is considered a foreign contaminate that may not have been fully evaluated in the manufactur",
+    "product": "prodisc C SK, Total cervical disc replacement, medical device, Model/Catalog Number: PDSM5",
+    "classification": "Class II"
+   }
+  ],
+  "trend": [
+   28,
+   45
+  ],
+  "relative": 1.072,
+  "breakCap": 9.83,
+  "recallFactor": 0.422,
+  "pulledAt": "2026-10-18T00:47:09.049Z",
+  "window": [
+   "2025-10-18",
+   "2026-10-17"
+  ],
+  "sources": [
+   {
+    "url": "https://api.fda.gov/device/event.json?search=%28%28device.openfda.medical_specialty_description%3A%22Orthopedic%22+AND+%28device.openfda.device_name%3Aspinal+OR+device.openfda.device_name%3Aintervertebral+OR+device.openfda.device_name%3Apedicle+OR+device.openfda.device_name%3Avertebral+OR+device.openfda.device_name%3Acervical+OR+device.openfda.device_name%3Asacro+OR+device.openfda.device_name%3Aspinous+OR+device.openfda.device_name%3Akypho+OR+device.openfda.device_name%3Avertebro+OR+device.brand_name%3AHORIZON+OR+device.brand_name%3AINFUSE+OR+device.brand_name%3AIFUSE+OR+device.brand_name%3AiFuse%29%29+OR+device.openfda.device_name%3A%22Prosthesis%2C+Intervertebral+Disc%22+OR+device.openfda.device_name%3A%22Prosthesis%2C+Spinous+Process+Spacer%2FPlate%22+OR+device.openfda.device_name%3A%22Filler%2C+Recombinant+Human+Bone+Morphogenetic+Protein%2C+Collagen+Scaffold+With+Metal+Prosthesis%2C+Osteoinduction%22+OR+device.openfda.device_name%3A%22Filler%2C+Recombinant+Human+Bone+Morphogenetic+Protein%2C+Collagen+Scaffold%2C+Osteoinduction%22+OR+%28device.openfda.device_name%3A%28cervical+AND+%28plate+OR+interbody+OR+cage+OR+%22stand-alone%22+OR+standalone+OR+%22stand+alone%22+OR+%22anterior+cervical%22%29%29+OR+device.brand_name%3A%28ATLANTIS+OR+ZEVO+OR+SKYLINE+OR+%22ZERO-P%22+OR+%22ZERO+P%22+OR+%22SLIM+LOC%22+OR+SLIMLOC+OR+ACIS+OR+COROENT+OR+TRESTLE+OR+REFLEX+OR+FIDJI+OR+LINEUM+OR+PREVAIL+OR+%22TRITANIUM+C%22+OR+PRECEPT+OR+EVEREST+OR+SILHOUETTE%29%29%29+AND+device.brand_name%3A%22prodisc+C%22+AND+date_received%3A%5B20251018+TO+20261017%5D&count=event_type.exact&limit=8",
+    "label": "Device: reports by event type (same search as the MAUDE snapshot)"
+   },
+   {
+    "url": "https://api.fda.gov/device/event.json?search=%28%28device.openfda.medical_specialty_description%3A%22Orthopedic%22+AND+%28device.openfda.device_name%3Aspinal+OR+device.openfda.device_name%3Aintervertebral+OR+device.openfda.device_name%3Apedicle+OR+device.openfda.device_name%3Avertebral+OR+device.openfda.device_name%3Acervical+OR+device.openfda.device_name%3Asacro+OR+device.openfda.device_name%3Aspinous+OR+device.openfda.device_name%3Akypho+OR+device.openfda.device_name%3Avertebro+OR+device.brand_name%3AHORIZON+OR+device.brand_name%3AINFUSE+OR+device.brand_name%3AIFUSE+OR+device.brand_name%3AiFuse%29%29+OR+device.openfda.device_name%3A%22Prosthesis%2C+Intervertebral+Disc%22+OR+device.openfda.device_name%3A%22Prosthesis%2C+Spinous+Process+Spacer%2FPlate%22+OR+device.openfda.device_name%3A%22Filler%2C+Recombinant+Human+Bone+Morphogenetic+Protein%2C+Collagen+Scaffold+With+Metal+Prosthesis%2C+Osteoinduction%22+OR+device.openfda.device_name%3A%22Filler%2C+Recombinant+Human+Bone+Morphogenetic+Protein%2C+Collagen+Scaffold%2C+Osteoinduction%22+OR+%28device.openfda.device_name%3A%28cervical+AND+%28plate+OR+interbody+OR+cage+OR+%22stand-alone%22+OR+standalone+OR+%22stand+alone%22+OR+%22anterior+cervical%22%29%29+OR+device.brand_name%3A%28ATLANTIS+OR+ZEVO+OR+SKYLINE+OR+%22ZERO-P%22+OR+%22ZERO+P%22+OR+%22SLIM+LOC%22+OR+SLIMLOC+OR+ACIS+OR+COROENT+OR+TRESTLE+OR+REFLEX+OR+FIDJI+OR+LINEUM+OR+PREVAIL+OR+%22TRITANIUM+C%22+OR+PRECEPT+OR+EVEREST+OR+SILHOUETTE%29%29%29+AND+device.brand_name%3A%22prodisc+C%22+AND+date_received%3A%5B20251018+TO+20261017%5D+AND+%28product_problems%3A%22Break%22+OR+product_problems%3A%22Fracture%22%29&limit=1",
+    "label": "Device: reports naming a break or fracture"
+   },
+   {
+    "url": "https://api.fda.gov/device/event.json?search=%28%28device.openfda.medical_specialty_description%3A%22Orthopedic%22+AND+%28device.openfda.device_name%3Aspinal+OR+device.openfda.device_name%3Aintervertebral+OR+device.openfda.device_name%3Apedicle+OR+device.openfda.device_name%3Avertebral+OR+device.openfda.device_name%3Acervical+OR+device.openfda.device_name%3Asacro+OR+device.openfda.device_name%3Aspinous+OR+device.openfda.device_name%3Akypho+OR+device.openfda.device_name%3Avertebro+OR+device.brand_name%3AHORIZON+OR+device.brand_name%3AINFUSE+OR+device.brand_name%3AIFUSE+OR+device.brand_name%3AiFuse%29%29+OR+device.openfda.device_name%3A%22Prosthesis%2C+Intervertebral+Disc%22+OR+device.openfda.device_name%3A%22Prosthesis%2C+Spinous+Process+Spacer%2FPlate%22+OR+device.openfda.device_name%3A%22Filler%2C+Recombinant+Human+Bone+Morphogenetic+Protein%2C+Collagen+Scaffold+With+Metal+Prosthesis%2C+Osteoinduction%22+OR+device.openfda.device_name%3A%22Filler%2C+Recombinant+Human+Bone+Morphogenetic+Protein%2C+Collagen+Scaffold%2C+Osteoinduction%22+OR+%28device.openfda.device_name%3A%28cervical+AND+%28plate+OR+interbody+OR+cage+OR+%22stand-alone%22+OR+standalone+OR+%22stand+alone%22+OR+%22anterior+cervical%22%29%29+OR+device.brand_name%3A%28ATLANTIS+OR+ZEVO+OR+SKYLINE+OR+%22ZERO-P%22+OR+%22ZERO+P%22+OR+%22SLIM+LOC%22+OR+SLIMLOC+OR+ACIS+OR+COROENT+OR+TRESTLE+OR+REFLEX+OR+FIDJI+OR+LINEUM+OR+PREVAIL+OR+%22TRITANIUM+C%22+OR+PRECEPT+OR+EVEREST+OR+SILHOUETTE%29%29%29+AND+device.brand_name%3A%22prodisc+C%22+AND+date_received%3A%5B20251018+TO+20261017%5D&count=date_received",
+    "label": "Device: reports by date received (12-month trend)"
+   },
+   {
+    "url": "https://api.fda.gov/device/event.json?search=%28%28device.openfda.medical_specialty_description%3A%22Orthopedic%22+AND+%28device.openfda.device_name%3Aspinal+OR+device.openfda.device_name%3Aintervertebral+OR+device.openfda.device_name%3Apedicle+OR+device.openfda.device_name%3Avertebral+OR+device.openfda.device_name%3Acervical+OR+device.openfda.device_name%3Asacro+OR+device.openfda.device_name%3Aspinous+OR+device.openfda.device_name%3Akypho+OR+device.openfda.device_name%3Avertebro+OR+device.brand_name%3AHORIZON+OR+device.brand_name%3AINFUSE+OR+device.brand_name%3AIFUSE+OR+device.brand_name%3AiFuse%29%29+OR+device.openfda.device_name%3A%22Prosthesis%2C+Intervertebral+Disc%22+OR+device.openfda.device_name%3A%22Prosthesis%2C+Spinous+Process+Spacer%2FPlate%22+OR+device.openfda.device_name%3A%22Filler%2C+Recombinant+Human+Bone+Morphogenetic+Protein%2C+Collagen+Scaffold+With+Metal+Prosthesis%2C+Osteoinduction%22+OR+device.openfda.device_name%3A%22Filler%2C+Recombinant+Human+Bone+Morphogenetic+Protein%2C+Collagen+Scaffold%2C+Osteoinduction%22+OR+%28device.openfda.device_name%3A%28cervical+AND+%28plate+OR+interbody+OR+cage+OR+%22stand-alone%22+OR+standalone+OR+%22stand+alone%22+OR+%22anterior+cervical%22%29%29+OR+device.brand_name%3A%28ATLANTIS+OR+ZEVO+OR+SKYLINE+OR+%22ZERO-P%22+OR+%22ZERO+P%22+OR+%22SLIM+LOC%22+OR+SLIMLOC+OR+ACIS+OR+COROENT+OR+TRESTLE+OR+REFLEX+OR+FIDJI+OR+LINEUM+OR+PREVAIL+OR+%22TRITANIUM+C%22+OR+PRECEPT+OR+EVEREST+OR+SILHOUETTE%29%29%29+AND+device.brand_name%3A%22prodisc+C%22+AND+date_received%3A%5B20251018+TO+20261017%5D&count=device.device_report_product_code.exact&limit=20",
+    "label": "Device: reports by FDA product code"
+   },
+   {
+    "url": "https://api.fda.gov/device/event.json?search=device.device_report_product_code%3A%22MJO%22+AND+date_received%3A%5B20251018+TO+20261017%5D&count=event_type.exact&limit=8",
+    "label": "Category MJO: reports by event type"
+   },
+   {
+    "url": "https://api.fda.gov/device/event.json?search=device.device_report_product_code%3A%22MJO%22+AND+date_received%3A%5B20251018+TO+20261017%5D+AND+%28product_problems%3A%22Break%22+OR+product_problems%3A%22Fracture%22%29&limit=1",
+    "label": "Category MJO: reports naming a break or fracture"
+   },
+   {
+    "url": "https://api.fda.gov/device/event.json?search=device.device_report_product_code%3A%22MJO%22+AND+date_received%3A%5B20251018+TO+20261017%5D&count=device.brand_name.exact&limit=999",
+    "label": "Category MJO: brands reported"
+   },
+   {
+    "url": "https://api.fda.gov/device/event.json?search=device.device_report_product_code%3A%22MJO%22+AND+date_received%3A%5B20251018+TO+20261017%5D&count=device.openfda.device_name.exact&limit=1",
+    "label": "Category MJO: FDA device name"
+   },
+   {
+    "url": "https://api.fda.gov/device/event.json?search=%28%28device.openfda.medical_specialty_description%3A%22Orthopedic%22+AND+%28device.openfda.device_name%3Aspinal+OR+device.openfda.device_name%3Aintervertebral+OR+device.openfda.device_name%3Apedicle+OR+device.openfda.device_name%3Avertebral+OR+device.openfda.device_name%3Acervical+OR+device.openfda.device_name%3Asacro+OR+device.openfda.device_name%3Aspinous+OR+device.openfda.device_name%3Akypho+OR+device.openfda.device_name%3Avertebro+OR+device.brand_name%3AHORIZON+OR+device.brand_name%3AINFUSE+OR+device.brand_name%3AIFUSE+OR+device.brand_name%3AiFuse%29%29+OR+device.openfda.device_name%3A%22Prosthesis%2C+Intervertebral+Disc%22+OR+device.openfda.device_name%3A%22Prosthesis%2C+Spinous+Process+Spacer%2FPlate%22+OR+device.openfda.device_name%3A%22Filler%2C+Recombinant+Human+Bone+Morphogenetic+Protein%2C+Collagen+Scaffold+With+Metal+Prosthesis%2C+Osteoinduction%22+OR+device.openfda.device_name%3A%22Filler%2C+Recombinant+Human+Bone+Morphogenetic+Protein%2C+Collagen+Scaffold%2C+Osteoinduction%22+OR+%28device.openfda.device_name%3A%28cervical+AND+%28plate+OR+interbody+OR+cage+OR+%22stand-alone%22+OR+standalone+OR+%22stand+alone%22+OR+%22anterior+cervical%22%29%29+OR+device.brand_name%3A%28ATLANTIS+OR+ZEVO+OR+SKYLINE+OR+%22ZERO-P%22+OR+%22ZERO+P%22+OR+%22SLIM+LOC%22+OR+SLIMLOC+OR+ACIS+OR+COROENT+OR+TRESTLE+OR+REFLEX+OR+FIDJI+OR+LINEUM+OR+PREVAIL+OR+%22TRITANIUM+C%22+OR+PRECEPT+OR+EVEREST+OR+SILHOUETTE%29%29%29+AND+device.brand_name%3A%22prodisc+C%22+AND+date_received%3A%5B20251018+TO+20261017%5D&count=device.manufacturer_d_name.exact&limit=5",
+    "label": "Device: manufacturers filing the reports"
+   },
+   {
+    "url": "https://api.fda.gov/device/enforcement.json?search=product_description%3A%22prodisc+C%22+AND+recall_initiation_date%3A%5B20211018+TO+20261018%5D&limit=100",
+    "label": "Recalls: enforcement reports naming \"prodisc C\""
+   },
+   {
+    "url": "https://api.fda.gov/device/recall.json?search=pma_numbers%3A%22P070001%22+AND+event_date_initiated%3A%5B2021-10-18+TO+2026-10-18%5D&limit=100",
+    "label": "Recalls: device/recall records listing P070001"
+   },
+   {
+    "url": "https://api.fda.gov/device/enforcement.json?search=recall_number%3A%22Z-1426-2026%22&limit=1",
+    "label": "Recalls: FDA class for Z-1426-2026"
+   },
+   {
+    "url": "https://api.fda.gov/device/enforcement.json?search=recall_number%3A%22Z-2050-2026%22&limit=1",
+    "label": "Recalls: FDA class for Z-2050-2026"
+   },
+   {
+    "url": "https://api.fda.gov/device/enforcement.json?search=recall_number%3A%22Z-2051-2026%22&limit=1",
+    "label": "Recalls: FDA class for Z-2051-2026"
+   }
+  ]
+ }
+]
