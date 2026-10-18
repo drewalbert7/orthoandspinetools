@@ -110,7 +110,7 @@ export async function resolveMaudeSignalForImplant(options: {
   specialty: string;
   company?: string | null;
   fdaApplicant?: string | null;
-  fdaNumber?: string | null;
+  fdaNumbers?: string[];
 }): Promise<MaudeSignalSnapshot> {
   const key = options.maudeBrandKey?.trim() || '';
   if (!key) return emptySnapshot(false, 'unlinked');
@@ -124,7 +124,7 @@ export async function resolveMaudeSignalForImplant(options: {
       specialty,
       company: options.company,
       fdaApplicant: options.fdaApplicant,
-      fdaNumber: options.fdaNumber,
+      fdaNumbers: options.fdaNumbers,
     });
     return snapshotFromSafety(shortDeviceLabel(key), computeSafetySignal(input));
   } catch (err) {

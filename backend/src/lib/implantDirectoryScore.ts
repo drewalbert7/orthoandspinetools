@@ -14,6 +14,7 @@
 
 import { Prisma } from '@prisma/client';
 import { prisma } from './prisma';
+import { implantFdaRecords } from './implantFda';
 import {
   MAUDE_MIN_REPORTS_FOR_HAZARD,
   resolveMaudeSignalForImplant,
@@ -468,7 +469,7 @@ export async function recomputeImplantDirectoryScore(
     specialty: implant.specialty,
     company: implant.company,
     fdaApplicant: implant.fdaApplicant,
-    fdaNumber: implant.fdaNumber,
+    fdaNumbers: implantFdaRecords(implant).map((r) => r.number),
   });
 
   const breakdown = scoreFromParts(

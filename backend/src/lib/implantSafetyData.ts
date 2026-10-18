@@ -192,7 +192,8 @@ export async function fetchSafetySignalInput(options: {
   specialty?: string;
   company?: string | null;
   fdaApplicant?: string | null;
-  fdaNumber?: string | null;
+  /** Every verified FDA number on file (510(k) or PMA); recalls listing any of them count. */
+  fdaNumbers?: string[];
   now?: Date;
 }): Promise<SafetySignalInput> {
   const ctx: Ctx = { sources: [], fetchedAt: [] };
@@ -268,26 +269,27 @@ export async function fetchSafetySignalInput(options: {
     }
   }
 
-  // Recalls tied to the FDA number on file (exact 510(k) or PMA match in device/recall).
-  const num = options.fdaNumber?.trim().toUpperCase() || '';
-  const field = /^K\d{6}$/.test(num) ? 'k_numbers' : /^P\d{6}$/.test(num) ? 'pma_numbers' : null;
-  if (field) {
+  // Recalls tied to an FDA number on file (exact 510(k) or PMA match in device/recall).
+  const resNumbers = new Set<string>();
+  for (const raw of options.fdaNumbers ?? []) {
+    const num = raw.trim().toUpperCase();
+    const field = /^K\d{6}$/.test(num) ? 'k_numbers' : /^P\d{6}$/.test(num) ? 'pma_numbers' : null;
+    if (!field) continue;
     const rec = await get(ctx, `Recalls: device/recall records listing ${num}`, 'recall', {
       search: `${field}:"${num}" AND event_date_initiated:[${since.toISOString().slice(0, 10)} TO ${now.toISOString().slice(0, 10)}]`,
       limit: '100',
     });
-    const resNumbers = new Set<string>();
     if (rec.status !== 404) {
       for (const row of rec.json.results || []) {
         if (typeof row.product_res_number === 'string') resNumbers.add(row.product_res_number);
       }
     }
-    for (const rn of [...resNumbers].slice(0, 10)) {
-      const e = await get(ctx, `Recalls: FDA class for ${rn}`, 'enforcement', { search: `recall_number:"${rn}"`, limit: '1' });
-      const row = e.status === 404 ? null : e.json.results?.[0];
-      const r = row ? enforcementToRecall(row, e.url) : null;
-      if (r) recallRows.push(r);
-    }
+  }
+  for (const rn of [...resNumbers].slice(0, 10)) {
+    const e = await get(ctx, `Recalls: FDA class for ${rn}`, 'enforcement', { search: `recall_number:"${rn}"`, limit: '1' });
+    const row = e.status === 404 ? null : e.json.results?.[0];
+    const r = row ? enforcementToRecall(row, e.url) : null;
+    if (r) recallRows.push(r);
   }
 
   const pulledAt = ctx.fetchedAt.sort()[0] || new Date().toISOString();
