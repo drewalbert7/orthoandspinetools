@@ -63,7 +63,7 @@ services:
       DATABASE_URL: postgresql://ost_app:${OST_APP_DB_PASSWORD:?OST_APP_DB_PASSWORD must be set in .env}@postgres:5432/orthoandspinetools?connection_limit=10&pool_timeout=20
       # env_file .env also injects the superuser password; blank it inside the app container.
       POSTGRES_PASSWORD: ""
-      JWT_SECRET: ${JWT_SECRET:-your-super-secret-jwt-key-change-this-in-production}
+      JWT_SECRET: ${JWT_SECRET:?JWT_SECRET must be set in .env}
       JWT_EXPIRES_IN: 7d
       # Backend reads CORS_ORIGINS (plural); comma-separated. Defaults in code if unset.
       CORS_ORIGINS: https://orthoandspinetools.com,https://www.orthoandspinetools.com

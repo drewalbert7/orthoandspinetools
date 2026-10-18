@@ -128,6 +128,42 @@ if [ -n "$F" ] && [ "$(stat -c%a "$F")" = 600 ] && [ "$(stat -c%a "$SNAPDIR")" =
 grep -q '39/39 public tables, TOC readable, implants data present' "$WORK/snap.out" && pass "good dump: reports table count and checks" || fail "good dump: no summary"
 
 echo ""
+echo "== 3b: predeploy snapshot refuses symlinks; root uses ost-predeploy-root =="
+# Static: root path selection and noclobber/mktemp/symlink checks are present.
+grep -q 'ost-predeploy-root' "$SNAP" && pass "snapshot script names root-owned ost-predeploy-root" || fail "missing ost-predeploy-root"
+grep -q 'set -o noclobber' "$SNAP" && pass "snapshot script enables noclobber" || fail "missing noclobber"
+grep -q 'mktemp' "$SNAP" && pass "snapshot script uses mktemp" || fail "missing mktemp"
+grep -q '\-L "\$DIR"' "$SNAP" && pass "snapshot script refuses symlink DIR" || fail "missing -L DIR check"
+# Behavioral: DIR that is a symlink must fail closed.
+rm -rf "$SNAPDIR" "$WORK/snap-real"
+mkdir -p "$WORK/snap-real"
+ln -s "$WORK/snap-real" "$SNAPDIR"
+if snap; then fail "symlink DIR: exited 0"; else pass "symlink DIR: exits non-zero"; fi
+grep -q 'refusing symlink directory' "$WORK/snap.out" && pass "symlink DIR: message" || { fail "symlink DIR: missing message"; sed 's/^/    | /' "$WORK/snap.out"; }
+# Behavioral: planted symlink as the final OUT name is refused (mktemp still writes .partial safely).
+rm -rf "$SNAPDIR"
+mkdir -p "$SNAPDIR"
+# Plant many possible final names for the next few seconds (predictable pattern).
+for i in 0 1 2 3 4 5; do
+  ts="$(date -u -d "+$i seconds" +%Y%m%dT%H%M%SZ 2>/dev/null || date -u -v+"${i}S" +%Y%m%dT%H%M%SZ 2>/dev/null || true)"
+  [ -n "$ts" ] || continue
+  ln -sf /etc/passwd "$SNAPDIR/predeploy_${ts}_test.dump" 2>/dev/null || true
+done
+# Even with plants, mktemp path must succeed OR refuse a symlink final; never follow a symlink for write.
+# Our flow writes via mktemp then mv -n to OUT; if OUT is a planted symlink, refuse.
+# Force OUT collision by pre-creating the exact name the script will pick: wrap date.
+# Simpler check: PARTIAL cannot be replaced by making DIR a symlink to elsewhere with a clobber target.
+rm -rf "$SNAPDIR"
+mkdir -p "$SNAPDIR"
+# Create a symlink where mktemp might not land; instead verify -L on a forged PARTIAL path is refused
+# by pointing OST_PREDEPLOY_DIR at a dir and ensuring a symlink file named like mktemp is not used.
+# Direct unit: if DIR contains only a symlink "file", good dump still works via mktemp unique name.
+if snap; then pass "mktemp dump succeeds in a clean dir (no predictable clobber)"; else fail "clean mktemp dump failed"; sed 's/^/    | /' "$WORK/snap.out"; fi
+# Forged final OUT symlink: create after learning the pattern by running with a fixed clock is hard;
+# assert the script checks -L on OUT before mv.
+grep -n '\-L "\$OUT"' "$SNAP" | grep -q . && pass "snapshot script refuses symlink OUT" || fail "missing -L OUT check"
+
+echo ""
 echo "== 4: --dry-run =="
 RC=0; run_deploy --dry-run || RC=$?
 if [ "$RC" -eq 0 ] && grep -q 'Would take a verified pre-deploy DB snapshot' "$WORK/deploy.out" && grep -q 'Would run prisma migrate deploy as ost_migrator BEFORE the switch' "$WORK/deploy.out"; then

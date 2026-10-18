@@ -1,0 +1,7 @@
+# Security-sensitive paths: Drew must review changes (required reviewers need branch protection).
+.github/ @drewalbert7
+scripts/db-guard/ @drewalbert7
+scripts/db/*.sql @drewalbert7
+.db-guard-ignore @drewalbert7
+.phi-allowlist @drewalbert7
+scripts/phi-guard/ @drewalbert7

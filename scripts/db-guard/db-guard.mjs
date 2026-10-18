@@ -19,7 +19,7 @@ const MIGRATION_RE = /(^|\/)prisma\/migrations\/[^/]+\/migration\.sql$/;
 // Security-owned files: exempt from content rules (they define the guard / break-glass), but ANY later
 // edit, rename or delete is a blocking finding (guard-changed) that needs the marker + label.
 const SELF_RE = /(^|\/)scripts\/db-guard\/|(^|\/)scripts\/db\/(roles|rollback|verify)\.sql$/;
-const DOC_RE = /\.(md|mdx|mdc|txt|rst)$|(^|\/)docs\//i;
+const DOC_RE = /\.(md|mdx|mdc|txt|rst)$/i; // doc extensions only (not every file under docs/)
 const IGNORE_FILE = '.db-guard-ignore';
 const MARKER_RE = /DESTRUCTIVE-OK:\s*[A-Za-z0-9][A-Za-z0-9._\/#:-]{2,}/;
 const BACKUPISH_PATH_RE = /(^|\/)(scripts|ops|deploy|bin)\/|\.sh$|backup|dump|restore/i;
@@ -135,7 +135,7 @@ for (const s of statusLines) {
   const paths = [a, b].filter(Boolean);
   if (/^[MDR]/.test(st) && paths.some((p) => MIGRATION_RE.test(p) || /(^|\/)prisma\/migrations\/migration_lock\.toml$/.test(p)))
     findings.push({ file: a, line: 0, rule: 'migration-history-edited', token: st[0], msg: 'existing migration edited/renamed/deleted', markerable: false });
-  if (/^[MDR]/.test(st) && paths.some((p) => /(^|\/)\.github\/workflows\/db-guard\.yml$/.test(p) || SELF_RE.test(p)))
+  if (/^[AMDR]/.test(st) && paths.some((p) => /(^|\/)\.github\/workflows\/db-guard\.yml$/.test(p) || SELF_RE.test(p)))
     findings.push({ file: a, line: 0, rule: 'guard-changed', token: st[0], msg: 'db-guard itself changed (needs Security Officer review)', markerable: true });
 }
 

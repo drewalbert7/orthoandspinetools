@@ -7,10 +7,35 @@ on:
     types: [opened, synchronize, reopened, labeled, unlabeled]
 permissions:
   contents: read
+  pull-requests: write
 jobs:
+  # Sticky destructive-ok would approve every later DESTRUCTIVE-OK marker. Drop it on each push.
+  clear-destructive-ok-on-push:
+    if: github.event.action == 'synchronize'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Remove destructive-ok label on synchronize
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR: ${{ github.event.pull_request.number }}
+          REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          if gh pr view "$PR" --repo "$REPO" --json labels --jq '.labels[].name' | grep -Fxq 'destructive-ok'; then
+            gh api --method DELETE "repos/$REPO/issues/$PR/labels/destructive-ok"
+            echo "Removed destructive-ok (re-apply after reviewing the new head)."
+          else
+            echo "destructive-ok not present; nothing to remove."
+          fi
+
   db-guard:
     runs-on: ubuntu-latest
     timeout-minutes: 5
+    # Run after label clear so DB_GUARD_APPROVED reflects the post-synchronize state.
+    needs: [clear-destructive-ok-on-push]
+    # needs fails when the clear job is skipped (non-synchronize). Use always + if.
+    if: always() && (needs.clear-destructive-ok-on-push.result == 'success' || needs.clear-destructive-ok-on-push.result == 'skipped')
     steps:
       - uses: actions/checkout@v4
         with:
@@ -19,9 +44,25 @@ jobs:
         with:
           node-version: '20'
       # Override needs BOTH the DESTRUCTIVE-OK marker in the change AND this label (Drew / CEO only).
-      - name: db-guard (lines added by this PR)
+      # Run the guard script from the BASE commit so a PR cannot neuter the gate by editing it.
+      - name: db-guard from base SHA (lines added by this PR)
         env:
-          DB_GUARD_APPROVED: ${{ contains(github.event.pull_request.labels.*.name, 'destructive-ok') }}
+          # synchronize keeps stale labels in the event payload; never trust them on a new push
+          DB_GUARD_APPROVED: ${{ github.event.action != 'synchronize' && contains(github.event.pull_request.labels.*.name, 'destructive-ok') }}
           BASE_SHA: ${{ github.event.pull_request.base.sha }}
           HEAD_SHA: ${{ github.event.pull_request.head.sha }}
-        run: sh scripts/db-guard/db-guard.sh --diff "$BASE_SHA" "$HEAD_SHA"
+        run: |
+          set -euo pipefail
+          GUARD_DIR="$(mktemp -d)"
+          cleanup() { rm -rf "$GUARD_DIR"; }
+          trap cleanup EXIT
+          if git cat-file -e "${BASE_SHA}:scripts/db-guard/db-guard.mjs" 2>/dev/null; then
+            git show "${BASE_SHA}:scripts/db-guard/db-guard.mjs" > "$GUARD_DIR/db-guard.mjs"
+            echo "Running db-guard.mjs from base ${BASE_SHA}"
+          else
+            # First introduction on this branch: base has no guard yet; use HEAD copy.
+            cp scripts/db-guard/db-guard.mjs "$GUARD_DIR/db-guard.mjs"
+            echo "Base has no db-guard.mjs; using HEAD copy (transitional)"
+          fi
+          # Fail closed: node must exit nonzero on BLOCK.
+          node "$GUARD_DIR/db-guard.mjs" --diff "$BASE_SHA" "$HEAD_SHA"
