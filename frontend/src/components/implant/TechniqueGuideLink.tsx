@@ -25,7 +25,7 @@ export function TechniqueGuideLink({ url, title, compact = false, className = ''
         target="_blank"
         rel="noopener noreferrer"
         title={`${label} (PDF)`}
-        aria-label={`${label} — open PDF in new tab`}
+        aria-label={`${label} (opens PDF in new tab)`}
         onClick={(e) => e.stopPropagation()}
         className={`touch-target inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-md border border-gray-200 bg-white text-gray-600 transition-colors hover:border-blue-400 hover:bg-blue-50 hover:text-blue-800 ${className}`}
       >

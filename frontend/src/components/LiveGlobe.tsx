@@ -41,7 +41,7 @@ const LiveGlobe: React.FC = () => {
       ref={rootRef as React.RefObject<HTMLElement>}
       className="ost-stats-panel"
       data-oc-globe=""
-      aria-label="Live visitors map — real traffic only"
+      aria-label="Live visitors map (real traffic only)"
     >
       <div className="mb-3 flex flex-wrap items-baseline justify-between gap-2">
         <h2 className="font-stats-mono text-[0.62rem] uppercase tracking-[0.16em] text-[var(--ost-accent)]">
@@ -58,7 +58,7 @@ const LiveGlobe: React.FC = () => {
         <div className="globe-side min-w-0">
           <div className="g-count">
             <span className="g-num" data-g-live>
-              —
+              -
             </span>
             <span className="g-lab">people on the site right now</span>
           </div>

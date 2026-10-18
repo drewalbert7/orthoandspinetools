@@ -296,7 +296,7 @@ function inAmericas(pin) {
   ].includes(countryCode(pin))
 }
 
-/** Prefer North America / live local pins — never average US+NZ into the Pacific. */
+/** Prefer North America / live local pins: never average US+NZ into the Pacific. */
 function pickFocus(livePins, placePins) {
   const liveAm = (livePins || []).filter(inAmericas)
   if (liveAm.length) return cameraFromGeo(centroidOf(liveAm)) || { ...HOME }
@@ -443,7 +443,7 @@ export function initLiveGlobe(rootEl, options = {}) {
     const drift = driftSec()
 
     if (elLive) {
-      elLive.textContent = ready && data ? formatNum(data.live) : '—'
+      elLive.textContent = ready && data ? formatNum(data.live) : '-'
     }
 
     if (elSub) {
@@ -473,7 +473,7 @@ export function initLiveGlobe(rootEl, options = {}) {
       } else if (offline) {
         elSub.textContent = isMembers
           ? 'community floor offline'
-          : 'live map offline — showing no invented traffic'
+          : 'live map offline, showing no invented traffic'
       } else {
         elSub.textContent = isMembers ? 'loading member map…' : 'loading live map…'
       }
@@ -512,8 +512,8 @@ export function initLiveGlobe(rootEl, options = {}) {
         }
       } else if (ready && !feed.length) {
         elFeed.innerHTML = isMembers
-          ? '<li><span class="g-dot" aria-hidden="true"></span><span class="g-line">no cities shared yet — country pins still show</span></li>'
-          : '<li><span class="g-dot" aria-hidden="true"></span><span class="g-line">quiet — no recent real visits yet</span></li>'
+          ? '<li><span class="g-dot" aria-hidden="true"></span><span class="g-line">no cities shared yet, country pins still show</span></li>'
+          : '<li><span class="g-dot" aria-hidden="true"></span><span class="g-line">quiet, no recent real visits yet</span></li>'
       } else {
         elFeed.innerHTML = `<li><span class="g-dot" aria-hidden="true"></span><span class="g-line">${
           offline
@@ -582,7 +582,7 @@ export function initLiveGlobe(rootEl, options = {}) {
       placePins = buildPlacePins(next.topCountries || [], 'place')
     }
     // Prefer North America framing; live Americas pins may nudge latitude target.
-    // Do not snap lon0/lat0 on poll — that kills idle spin and feels jumpy.
+    // Do not snap lon0/lat0 on poll: that kills idle spin and feels jumpy.
     targetView = { ...HOME }
     const liveAm = livePins.filter(inAmericas)
     if (liveAm.length) {

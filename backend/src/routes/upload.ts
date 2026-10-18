@@ -19,7 +19,7 @@ import { virusScanService } from '../services/virusScanService';
 
 const router = Router();
 
-// Post media readiness (no auth; no secrets — ops + honest UI when storage is missing)
+// Post media readiness (no auth; no secrets: ops + honest UI when storage is missing)
 router.get('/status', asyncHandler(async (_req: Request, res: Response) => {
   const media = getMediaStatus();
   res.json({

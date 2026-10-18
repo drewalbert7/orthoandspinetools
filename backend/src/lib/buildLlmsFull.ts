@@ -24,7 +24,7 @@ function formatPostLine(origin: string, post: LlmsPost): string[] {
   const date = post.createdAt.toISOString().slice(0, 10);
   const comm = post.community ? `o/${post.community.name}` : 'community';
   const lines = [
-    `- ${origin}/post/${post.id} — "${post.title}" — ${comm} — u/${post.author.username} — ${date}`,
+    `- ${origin}/post/${post.id}: "${post.title}" (${comm}, u/${post.author.username}, ${date})`,
   ];
   const excerpt = post.content ? stripToPlainText(post.content, 220) : '';
   if (excerpt) {
@@ -42,9 +42,9 @@ export function buildLlmsFullText(params: {
 }): string {
   const origin = getPublicSiteUrl();
   const lines: string[] = [
-    '# OrthoAndSpineTools — extended index for AI systems',
+    '# OrthoAndSpineTools: extended index for AI systems',
     '',
-    `> ${origin} — Ortho and Spine Tools - Hunt for the Best. Professional discussions for orthopedic and spine surgeons.`,
+    `> ${origin}. Ortho and Spine Tools: Hunt for the Best. Professional discussions for orthopedic and spine surgeons.`,
     '',
     '## Site purpose',
     '',
@@ -53,23 +53,23 @@ export function buildLlmsFullText(params: {
     '',
     '## Primary entry points',
     '',
-    `- ${origin}/ — Latest posts`,
-    `- ${origin}/popular — Popular posts`,
-    `- ${origin}/cases — Case-tagged posts`,
-    `- ${origin}/implants — Implant Directory (proprietary device catalog)`,
-    `- ${origin}/startups — Startup / product launch posts`,
-    `- ${origin}/maude — FDA MAUDE implant adverse-event trends`,
-    `- ${origin}/search — Search posts and communities`,
-    `- ${origin}/sitemap.xml — Machine-readable URL list (posts, communities, profiles, implants)`,
-    `- ${origin}/llms.txt — Short AI index`,
+    `- ${origin}/: Latest posts`,
+    `- ${origin}/popular: Popular posts`,
+    `- ${origin}/cases: Case-tagged posts`,
+    `- ${origin}/implants: Implant Directory (proprietary device catalog)`,
+    `- ${origin}/startups: Startup / product launch posts`,
+    `- ${origin}/maude: FDA MAUDE implant adverse-event trends`,
+    `- ${origin}/search: Search posts and communities`,
+    `- ${origin}/sitemap.xml: Machine-readable URL list (posts, communities, profiles, implants)`,
+    `- ${origin}/llms.txt: Short AI index`,
     '',
     '## URL patterns',
     '',
-    `- ${origin}/post/{id} — Discussion thread (JSON-LD: DiscussionForumPosting; OG HTML for crawlers)`,
-    `- ${origin}/community/{slug} — Community hub (JSON-LD: DiscussionForum)`,
-    `- ${origin}/user/{username} — Public member profile (JSON-LD: Person)`,
-    `- ${origin}/implants/{slug} — Implant profile (JSON-LD: MedicalDevice)`,
-    `- ${origin}/implants/{slug}.md — AI-citable Markdown twin (prefer for citations)`,
+    `- ${origin}/post/{id}: Discussion thread (JSON-LD: DiscussionForumPosting; OG HTML for crawlers)`,
+    `- ${origin}/community/{slug}: Community hub (JSON-LD: DiscussionForum)`,
+    `- ${origin}/user/{username}: Public member profile (JSON-LD: Person)`,
+    `- ${origin}/implants/{slug}: Implant profile (JSON-LD: MedicalDevice)`,
+    `- ${origin}/implants/{slug}.md: AI-citable Markdown twin (prefer for citations)`,
     '',
     '## How to cite a post',
     '',
@@ -89,34 +89,34 @@ export function buildLlmsFullText(params: {
 
   for (const c of params.communities) {
     const desc = c.description?.trim().replace(/\s+/g, ' ').slice(0, 120);
-    lines.push(`- ${origin}/community/${c.slug} — o/${c.name}${desc ? ` — ${desc}` : ''}`);
+    lines.push(`- ${origin}/community/${c.slug}: o/${c.name}${desc ? `. ${desc}` : ''}`);
   }
 
   lines.push('', '## Public member profiles', '');
   for (const u of params.users) {
     const name = [u.firstName, u.lastName].filter(Boolean).join(' ').trim();
     const spec = u.specialty ? ` (${u.specialty})` : '';
-    lines.push(`- ${origin}/user/${u.username} — ${name || u.username}${spec}`);
+    lines.push(`- ${origin}/user/${u.username}: ${name || u.username}${spec}`);
   }
 
   lines.push('', '## Implant Directory (prefer .md twins)', '');
   const implants = params.implants || [];
   if (implants.length === 0) {
-    lines.push(`- Browse ${origin}/implants — catalog is growing`);
+    lines.push(`- Browse ${origin}/implants (catalog is growing)`);
   } else {
     for (const i of implants) {
-      const company = i.company ? ` — ${i.company}` : '';
+      const company = i.company ? `, ${i.company}` : '';
       const desc = i.description?.trim().replace(/\s+/g, ' ').slice(0, 140);
       lines.push(
-        `- ${origin}/implants/${i.slug}.md — ${i.brandName}${company} (${i.specialty}, ${i.deviceClass.replace(/_/g, ' ')})` +
-          (desc ? ` — ${desc}` : '')
+        `- ${origin}/implants/${i.slug}.md: ${i.brandName}${company} (${i.specialty}, ${i.deviceClass.replace(/_/g, ' ')})` +
+          (desc ? `. ${desc}` : '')
       );
     }
   }
 
   lines.push('', '## Startup & product posts', '');
   if (params.startupPosts.length === 0) {
-    lines.push(`- (none yet) — browse ${origin}/startups for orthopedic and spine startup discussions`);
+    lines.push(`- None yet. Browse ${origin}/startups for orthopedic and spine startup discussions`);
   } else {
     for (const p of params.startupPosts) {
       lines.push(...formatPostLine(origin, p));

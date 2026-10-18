@@ -1,3 +1,4 @@
+import { implantFdaRecords } from './implantFda';
 import { Prisma } from '@prisma/client';
 import { prisma } from './prisma';
 import {
@@ -251,11 +252,18 @@ export function slugifyImplant(input: string): string {
 export const PUBLIC_IMPLANT_STATUSES = ['published', 'verified'] as const;
 
 function buildOrIlikePattern(tokens: string[]): string {
-  // Used only for logging / debugging helpers — matching is done in SQL with OR of ILIKEs
+  // Used only for logging / debugging helpers: matching is done in SQL with OR of ILIKEs
   return tokens.filter(Boolean).join('|');
 }
 
 export type ImplantSort = 'ai' | 'name' | 'reviews';
+
+/** ORDER BY for the name and discussion sorts: case-insensitive brand, then id for stable paging. */
+export function implantListOrderSql(sort: 'name' | 'reviews'): Prisma.Sql {
+  return sort === 'reviews'
+    ? Prisma.sql`(SELECT count(*) FROM implant_comments c WHERE c.implant_id = i.id) DESC, lower(i.brand_name) ASC, i.id ASC`
+    : Prisma.sql`lower(i.brand_name) ASC, i.id ASC`;
+}
 
 export async function searchImplantIds(params: {
   q?: string;
@@ -283,18 +291,29 @@ export async function searchImplantIds(params: {
       ...(specialty ? { specialty } : {}),
       ...(deviceClass ? { deviceClass } : {}),
     };
-    const orderBy =
-      sort === 'name'
-        ? [{ brandName: 'asc' as const }]
-        : sort === 'reviews'
-          ? [
-              { comments: { _count: 'desc' as const } },
-              { brandName: 'asc' as const },
-            ]
-          : [
-              { aiRating: { sort: 'desc' as const, nulls: 'last' as const } },
-              { brandName: 'asc' as const },
-            ];
+    if (sort === 'name' || sort === 'reviews') {
+      // Case-insensitive brand order (Prisma orderBy cannot lower()), so "prodisc C"
+      // sorts with the P's instead of after every capitalized brand.
+      const statusSql = Prisma.join(statuses.map((st) => Prisma.sql`${st}`));
+      const spec = specialty || '';
+      const [total, rows] = await Promise.all([
+        prisma.implant.count({ where }),
+        prisma.$queryRaw<Array<{ id: string }>>`
+          SELECT i.id
+          FROM implants i
+          WHERE i.status IN (${statusSql})
+            AND (${spec} = '' OR i.specialty = ${spec})
+            AND (${deviceClass} = '' OR i.device_class = ${deviceClass})
+          ORDER BY ${implantListOrderSql(sort)}
+          LIMIT ${params.limit} OFFSET ${params.offset}
+        `,
+      ]);
+      return { ids: rows.map((r) => r.id), total };
+    }
+    const orderBy = [
+      { aiRating: { sort: 'desc' as const, nulls: 'last' as const } },
+      { brandName: 'asc' as const },
+    ];
     const [total, rows] = await Promise.all([
       prisma.implant.count({ where }),
       prisma.implant.findMany({
@@ -352,14 +371,14 @@ export async function searchImplantIds(params: {
   // Postgres ~* for case-insensitive. Collapse concepts into one prefer and one demote pattern when possible.
   const preferSrc = preferRes.map((r) => r.source).filter(Boolean);
   const demoteSrc = demoteRes.map((r) => r.source).filter(Boolean);
-  // Never use empty ~* patterns (match-all / errors) — use impossible token instead
+  // Never use empty ~* patterns (match-all / errors): use impossible token instead
   const preferPat = preferSrc.length ? preferSrc.join('|') : 'a\\A';
   const demotePat = demoteSrc.length ? demoteSrc.join('|') : 'a\\A';
   const hasPrefer = preferSrc.length > 0;
   const hasDemote = demoteSrc.length > 0;
 
   const specialtyFilter = specialty;
-  // Soft specialty boost when inferred (All specialties) — do not hard-filter
+  // Soft specialty boost when inferred (All specialties): do not hard-filter
   const softSpecialty = !specialtyFilter && inferredSpecialty ? inferredSpecialty : '';
 
   void buildOrIlikePattern;
@@ -419,7 +438,7 @@ export async function searchImplantIds(params: {
     SELECT id, COUNT(*) OVER()::bigint AS total, score
     FROM filtered
     WHERE score > -50
-    ORDER BY score DESC, brand_name ASC, id
+    ORDER BY score DESC, lower(brand_name) ASC, id
     LIMIT ${params.limit} OFFSET ${params.offset}
   `;
 
@@ -455,6 +474,7 @@ export function buildImplantMarkdown(params: {
     fdaApplicant?: string | null;
     fdaMaterials?: string | null;
     fdaSourceUrl?: string | null;
+    fdaRecords?: unknown;
     aiRating?: number | null;
     aiSummary?: string | null;
     aliases: string[];
@@ -500,23 +520,21 @@ export function buildImplantMarkdown(params: {
   }
 
   // FDA regulatory data (each fact cites openFDA/AccessGUDID source)
-  if (implant.fdaNumber || implant.fdaApplicant || implant.fdaMaterials) {
+  const fdaRecords = implantFdaRecords(implant);
+  if (fdaRecords.length > 0 || implant.fdaMaterials) {
     lines.push('', '## FDA regulatory data', '');
-    if (implant.fdaNumber) {
-      const fdaType = implant.fdaNumber.startsWith('P') ? 'PMA' : '510(k)';
-      lines.push(`- ${fdaType}: ${implant.fdaNumber}`);
-    }
-    if (implant.fdaDecisionDate) {
-      lines.push(`- Decision date: ${implant.fdaDecisionDate.toISOString().slice(0, 10)}`);
-    }
-    if (implant.fdaApplicant) {
-      lines.push(`- Applicant: ${implant.fdaApplicant}`);
+    for (const r of fdaRecords) {
+      const bits = [
+        `${r.pathway}: ${r.number}`,
+        r.label,
+        r.decisionDate ? `decision date ${r.decisionDate}` : null,
+        r.applicant ? `applicant ${r.applicant}` : null,
+        r.sourceUrl ? `source ${r.sourceUrl}` : null,
+      ].filter(Boolean);
+      lines.push(`- ${bits.join(', ')}`);
     }
     if (implant.fdaMaterials) {
       lines.push(`- Materials: ${implant.fdaMaterials}`);
-    }
-    if (implant.fdaSourceUrl) {
-      lines.push(`- Source: ${implant.fdaSourceUrl}`);
     }
   }
 

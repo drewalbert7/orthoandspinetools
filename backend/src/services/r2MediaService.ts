@@ -45,7 +45,7 @@ function bucket(): string {
 function endpoint(): string {
   const explicit = (process.env.R2_ENDPOINT || '').trim().replace(/\/+$/, '');
   if (explicit) {
-    // Allow pasting .../bucket — strip trailing bucket segment if present
+    // Allow pasting .../bucket: strip trailing bucket segment if present
     const b = bucket();
     if (b && explicit.endsWith(`/${b}`)) {
       return explicit.slice(0, -(b.length + 1));
@@ -152,7 +152,7 @@ async function publicOrSignedUrl(key: string): Promise<string> {
   if (base) {
     return `${base}/${key.split('/').map(encodeURIComponent).join('/')}`;
   }
-  // Private bucket fallback — long-lived signed GET (not ideal for permanent post embeds)
+  // Private bucket fallback: long-lived signed GET (not ideal for permanent post embeds)
   const signed = await getSignedUrl(
     getClient(),
     new GetObjectCommand({ Bucket: bucket(), Key: key }),

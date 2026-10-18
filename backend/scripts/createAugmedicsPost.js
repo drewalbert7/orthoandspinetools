@@ -16,9 +16,9 @@ const TAG_IDS = [
   '7517cc9e-7fc9-4c1a-a8e7-1469a0aec1b5',
 ];
 
-const TITLE = 'Augmedics X2 — FDA-cleared next-gen AR headset for spine navigation';
+const TITLE = 'Augmedics X2: FDA-cleared next-gen AR headset for spine navigation';
 
-const CONTENT = `Augmedics just received FDA 510(k) clearance for X2, the next-generation headset for the xvision Spine System. This is a meaningful hardware upgrade for a platform that already has real adoption — more than 12,000 patients and 65,000+ pedicle screws placed with first-gen xvision across 25 U.S. states.
+const CONTENT = `Augmedics just received FDA 510(k) clearance for X2, the next-generation headset for the xvision Spine System. This is a meaningful hardware upgrade for a platform that already has real adoption: more than 12,000 patients and 65,000+ pedicle screws placed with first-gen xvision across 25 U.S. states.
 
 What stands out on paper:
 • Purpose-built OR form factor (not a consumer AR headset repurposed for surgery)
@@ -26,7 +26,7 @@ What stands out on paper:
 • ~100% larger field of view vs the prior headset, with higher resolution and brightness
 • More efficient processor for steadier AR overlay performance
 
-For spine surgeons evaluating navigation options, the practical question is whether the ergonomics and optical upgrades translate to smoother workflow in long deformity or MIS cases — especially when you're toggling between direct visualization and AR-guided screw trajectories.
+For spine surgeons evaluating navigation options, the practical question is whether the ergonomics and optical upgrades translate to smoother workflow in long deformity or MIS cases, especially when you're toggling between direct visualization and AR-guided screw trajectories.
 
 Worth watching as hospitals refresh capital equipment and as VB Spine's planned acquisition of Augmedics' spine platform moves forward.
 

@@ -1,3 +1,4 @@
+import { cleanImplantSeoTitle } from './implantFda';
 import type { Request } from 'express';
 import {
   buildCommunityDiscussionJsonLd,
@@ -9,7 +10,7 @@ import {
 
 export const OG_SITE_NAME = 'OrthoAndSpineTools';
 export const OG_DEFAULT_DESCRIPTION =
-  'Ortho and Spine Tools — Hunt for the Best. A professional community for orthopedic and spine surgeons to discuss cases, tools, biologics, and startups.';
+  'Ortho and Spine Tools: Hunt for the Best. A professional community for orthopedic and spine surgeons to discuss cases, tools, biologics, and startups.';
 
 export type OgPostPayload = {
   id: string;
@@ -179,7 +180,7 @@ export const SHARE_PAGES: Record<
 > = {
   home: {
     path: '/',
-    title: 'OrthoAndSpineTools — Hunt for the Best',
+    title: 'OrthoAndSpineTools: Hunt for the Best',
     description: OG_DEFAULT_DESCRIPTION,
     ogType: 'website',
   },
@@ -187,7 +188,7 @@ export const SHARE_PAGES: Record<
     path: '/cases',
     title: 'Cases | OrthoAndSpineTools',
     description:
-      'Case studies and surgical cases — orthopedic and spine discussions on OrthoAndSpineTools.',
+      'Case studies and surgical cases: orthopedic and spine discussions on OrthoAndSpineTools.',
     ogType: 'website',
   },
   startups: {
@@ -207,14 +208,14 @@ export const SHARE_PAGES: Record<
     path: '/maude',
     title: 'MAUDE implant trends | OrthoAndSpineTools',
     description:
-      'Daily FDA device adverse event report trends from openFDA / MAUDE — early signal charts for orthopedic and spine implants.',
+      'Daily FDA device adverse event report trends from openFDA / MAUDE: early signal charts for orthopedic and spine implants.',
     ogType: 'website',
   },
   implants: {
     path: '/implants',
     title: 'Implant Directory | OrthoAndSpineTools',
     description:
-      'Browse orthopedic implants with Directory Scores, product photos, surgical technique PDFs, and MAUDE signals — OrthoAndSpineTools.',
+      'Browse orthopedic implants with Directory Scores, product photos, surgical technique PDFs, and MAUDE signals on OrthoAndSpineTools.',
     ogType: 'website',
   },
 };
@@ -473,11 +474,11 @@ ${shareMetaTags({
 export function buildPageShareHtml(pageKey: OgPageKey, origin: string): string {
   const page = SHARE_PAGES[pageKey];
   const canonical = page.path === '/' ? `${origin}/` : `${origin}${page.path}`;
-  const imageMeta = shareImageMeta(origin, defaultOgImage(origin), `${OG_SITE_NAME} — Hunt for the Best`);
+  const imageMeta = shareImageMeta(origin, defaultOgImage(origin), `${OG_SITE_NAME}: Hunt for the Best`);
   const e = escapeHtml;
   const body =
     pageKey === 'home'
-      ? 'Professional community for orthopedic and spine surgeons — cases, tools, biologics, and startups.'
+      ? 'Professional community for orthopedic and spine surgeons: cases, tools, biologics, and startups.'
       : page.description;
   const hubName = page.title.replace(` | ${OG_SITE_NAME}`, '');
   const hubJsonLd = buildHubCollectionJsonLd(origin, page.path, hubName, page.description);
@@ -616,7 +617,7 @@ export function buildImplantOgDescription(implant: OgImplantPayload): string {
   const meta = bits.join(' · ');
   let desc = lead
     ? `${lead}${meta ? ` · ${meta}` : ''}`
-    : `${implant.brandName}${meta ? ` — ${meta}` : ''} on OrthoAndSpineTools Implant Directory.`;
+    : `${implant.brandName}${meta ? ` (${meta})` : ''} on OrthoAndSpineTools Implant Directory.`;
   if (implant.aiRating != null && Number.isFinite(implant.aiRating)) {
     const scoreBit = `Score ${implant.aiRating.toFixed(1)}/10`;
     if (!desc.includes(scoreBit) && desc.length + scoreBit.length + 3 <= 155) {
@@ -630,7 +631,7 @@ export function buildImplantOgDescription(implant: OgImplantPayload): string {
 export function buildImplantShareHtml(implant: OgImplantPayload, origin: string): string {
   const canonical = `${origin}/implants/${implant.slug}`;
   const headline =
-    implant.seoTitle?.trim() ||
+    cleanImplantSeoTitle(implant.seoTitle) ||
     `${implant.brandName} · Implant Directory | ${OG_SITE_NAME}`;
   const description = buildImplantOgDescription(implant);
   const rawImage = implant.productImageUrl

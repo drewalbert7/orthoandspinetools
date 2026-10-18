@@ -30,6 +30,9 @@ jobs:
       - name: phi-guard scan (all tracked files)
         run: sh scripts/phi-guard/phi-scan.sh --all
 
+      - name: check-no-em-dash (no U+2014/U+2013 in frontend/src, frontend/public, index.html, backend/src, backend/scripts, backend/prisma)
+        run: python3 scripts/check-no-em-dash.py
+
   backend-unit-tests:
     needs: phi-guard
     runs-on: ubuntu-latest
@@ -47,7 +50,7 @@ jobs:
         working-directory: ./backend
         run: npm ci --include=dev
 
-      - name: Rate limiter tests
+      - name: Backend unit tests (rate limiter, safety signal, MAUDE facet, FDA helpers, sort)
         working-directory: ./backend
         run: npm test
 
@@ -63,7 +66,10 @@ jobs:
         run: docker version && docker compose version
 
       - name: Shellcheck deploy scripts
-        run: shellcheck -S warning deploy.sh scripts/lib/deploy-rollback.sh scripts/tests/deploy-rollback.test.sh
+        run: shellcheck -S warning deploy.sh scripts/lib/deploy-rollback.sh scripts/lib/deploy-disk-prune.sh scripts/tests/deploy-rollback.test.sh scripts/tests/deploy-prune-guard.test.sh
+
+      - name: deploy.sh prune guard (no volume/system/image prune or rmi; prune only after passing health; disk check below 5G)
+        run: bash scripts/tests/deploy-prune-guard.test.sh
 
       - name: deploy.sh rollback simulation (failed check -> previous image IDs; passing check -> new build)
         run: bash scripts/tests/deploy-rollback.test.sh

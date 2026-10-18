@@ -39,7 +39,7 @@ const TermsOfService: React.FC = () => (
       <p>
         <strong className="text-gray-900">The Service is not medical advice.</strong> Content on the Service
         represents opinions and experiences of individual users, not {LEGAL_OPERATOR_NAME}. Nothing on the Service
-        creates a doctor–patient relationship between you and {LEGAL_OPERATOR_NAME} or any other user. You are solely
+        creates a doctor-patient relationship between you and {LEGAL_OPERATOR_NAME} or any other user. You are solely
         responsible for your clinical judgment and patient care decisions.
       </p>
       <p>

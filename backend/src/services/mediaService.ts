@@ -139,7 +139,7 @@ export async function uploadImageMedia(
   }
 
   const kind = options.isAvatar ? 'avatar' : options.folder?.includes('banner') ? 'banner' : 'feed';
-  // Cloudflare Images applies Reddit-like variants on delivery — only soft-prep (EXIF + soft cap).
+  // Cloudflare Images applies Reddit-like variants on delivery: only soft-prep (EXIF + soft cap).
   // R2/Cloudinary need full resize/encode here.
   const optimized = await optimizeImageForUpload(buffer, originalName, kind, {
     mode: provider === 'cloudflare' ? 'light' : 'full',

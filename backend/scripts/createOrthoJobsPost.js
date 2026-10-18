@@ -11,21 +11,21 @@ const AUTHOR_ID = 'cmgegneva000012rq3iebof1y';
 const COMMUNITY_ID = 'cmnfelfr7000113suuq7t82ay';
 const TAG_IDS = ['85839822-b2ee-49a6-a6ce-9d42fba56341'];
 
-const TITLE = 'I built Ortho & Spine Jobs — a surgeon-run job board and compensation map';
+const TITLE = 'I built Ortho & Spine Jobs: a surgeon-run job board and compensation map';
 
 const CONTENT = `I built https://orthoandspinejobs.com because our job search deserves better than a generic listings site.
 
 What's live now:
 • 160 open orthopedic and spine positions, filterable by subspecialty, state, and compensation
 • Sports, Spine, Joints, Foot & Ankle, Hand, Peds, and Trauma, plus a research fellowship database
-• Free for surgeons and trainees — research positions are always free to post
+• Free for surgeons and trainees: research positions are always free to post
 • ~700 surgeons and trainees reached each month
 
 The piece I'd most like help with is the compensation map.
 
 Most of us negotiate with almost no idea what the market actually pays in our state and subspecialty. The map reports P25, median, and P75 instead of hiding the spread behind one average, suppresses any cell with too few responses, and reviews submissions before release. It's anonymous, and everyone who completes it gets the results sent back.
 
-It only becomes useful if enough of us contribute — right now it's built on a small sample.
+It only becomes useful if enough of us contribute. Right now it's built on a small sample.
 
 Take the anonymous survey: https://orthoandspinejobs.com/compensation/survey/
 Explore the map: https://orthoandspinejobs.com/compensation/

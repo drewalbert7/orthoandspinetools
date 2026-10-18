@@ -21,7 +21,7 @@ const SiteFooter: React.FC = () => (
       <span>© {new Date().getFullYear()}</span>
     </p>
     <p className="mt-1.5 text-[11px] sm:text-xs text-gray-400 max-w-2xl mx-auto leading-snug">
-      Professional discussion only — not medical advice. Do not post identifiable patient information.
+      Professional discussion only. Not medical advice. Do not post identifiable patient information.
     </p>
   </footer>
 );

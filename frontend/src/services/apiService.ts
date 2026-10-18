@@ -3,7 +3,7 @@ import axios from 'axios';
 /** Same-origin `/api` uses Vite dev proxy (vite.config) or production nginx. Set VITE_API_URL only for a separate API host. */
 const API_BASE_URL = import.meta.env.VITE_API_URL || '/api';
 
-// No default Content-Type — setting JSON globally breaks multipart uploads (avatar/images).
+// No default Content-Type: setting JSON globally breaks multipart uploads (avatar/images).
 const api = axios.create({
   baseURL: API_BASE_URL,
 });
@@ -412,6 +412,7 @@ export interface ImplantDirectoryItem {
       status?: string;
       detail: string;
     }>;
+    maude?: { safety?: import('../lib/implantSafety').SafetySignalPayload | null } | null;
   } | null;
   imageCount?: number;
   xrayCount?: number;
@@ -452,6 +453,16 @@ export interface ImplantComment {
 
 export interface ImplantDetail extends ImplantDirectoryItem {
   longDescription?: string | null;
+  /** FDA 510(k) K-number, PMA P-number or De Novo DEN-number (openFDA-verified only). */
+  fdaNumber?: string | null;
+  /** ISO date (FDA decision date). */
+  fdaDecisionDate?: string | null;
+  fdaApplicant?: string | null;
+  fdaMaterials?: string | null;
+  /** accessdata.fda.gov record URL. */
+  fdaSourceUrl?: string | null;
+  /** Every verified FDA record (one or more), each with its own source link. */
+  fdaRecords?: import('../lib/implantFda').FdaRecord[];
   indications?: string | null;
   contraindications?: string | null;
   aliases: string[];
@@ -467,7 +478,7 @@ export interface ImplantDetail extends ImplantDirectoryItem {
   canComment?: boolean;
   related?: ImplantDirectoryItem[];
   reviews: ImplantReview[] | null;
-  /** Legacy — discussion uses comments */
+  /** Legacy: discussion uses comments */
   reviewsLocked: boolean;
   canWriteReview?: boolean;
   canonicalPath?: string;

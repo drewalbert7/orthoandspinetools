@@ -1,4 +1,4 @@
-/** Direct surgical / operative technique PDF only — never HTML marketing pages. */
+/** Direct surgical / operative technique PDF only: never HTML marketing pages. */
 export function isTechniqueGuidePdfUrl(url: string | null | undefined): boolean {
   if (!url?.trim()) return false;
   try {

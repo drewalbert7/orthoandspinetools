@@ -78,7 +78,7 @@ router.post(
   })
 );
 
-/** Public first-party stats (aggregates only — no visitor hashes / IPs). */
+/** Public first-party stats (aggregates only: no visitor hashes / IPs). */
 router.get(
   '/stats',
   publicStatsLimiter,

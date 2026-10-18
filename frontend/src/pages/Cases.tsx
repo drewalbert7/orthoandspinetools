@@ -66,7 +66,7 @@ const Cases: React.FC = () => {
     <div className="mx-auto min-w-0 max-w-4xl px-3 sm:px-4">
       <DocumentMeta
         title="Cases"
-        description={`Case studies and surgical cases tagged ${CASE_TOPIC_DISPLAY_NAME} — orthopedic and spine discussions on OrthoAndSpineTools.`}
+        description={`Case studies and surgical cases tagged ${CASE_TOPIC_DISPLAY_NAME}. Orthopedic and spine discussions on OrthoAndSpineTools.`}
         canonicalPath="/cases"
         jsonLd={hubJsonLd}
       />

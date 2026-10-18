@@ -13,7 +13,7 @@ import {
 } from '../lib/implantSpecialties';
 import { apiService, type ImplantDirectoryItem } from '../services/apiService';
 
-/** Compact Direct-Care-style control — scoped to Implant Directory only */
+/** Compact Direct-Care-style control: scoped to Implant Directory only */
 const filterControlClass =
   'h-10 w-full appearance-none rounded-md border border-gray-300 bg-white pl-3 pr-8 text-sm text-gray-800 shadow-none focus:border-gray-400 focus:outline-none focus:ring-0 sm:h-9';
 
@@ -108,10 +108,11 @@ const DEVICE_CLASS_OPTIONS = [
   { id: 'megaprosthesis', label: 'Megaprosthesis' },
 ];
 
+// Short labels: the sort select is half width at 390px and "sort: Directory Score" was cut off.
 const SORT_OPTIONS = [
-  { id: 'ai', label: 'sort: Directory Score' },
-  { id: 'name', label: 'sort: name' },
-  { id: 'reviews', label: 'sort: discussion' },
+  { id: 'ai', label: 'Sort: Score' },
+  { id: 'name', label: 'Sort: Name' },
+  { id: 'reviews', label: 'Sort: Discussion' },
 ] as const;
 
 const ImplantDirectory: React.FC = () => {
@@ -207,7 +208,7 @@ const ImplantDirectory: React.FC = () => {
         path: '/implants',
         name: 'Implant Directory',
         description:
-          'Proprietary orthopedic implant directory across all subspecialties — Directory Scores, brands, MAUDE links, and discussion.',
+          'Proprietary orthopedic implant directory across all subspecialties: Directory Scores, brands, MAUDE links, and discussion.',
       }),
     []
   );
@@ -504,7 +505,7 @@ const ImplantDirectory: React.FC = () => {
       </div>
 
       <p className="mt-2 px-0.5 text-[11px] leading-snug text-gray-400">
-        Directory Scores are editorial (0–10), not medical advice or FDA endorsement.{' '}
+        Directory Scores are editorial (0-10), not medical advice or FDA endorsement.{' '}
         <Link to="/implants/methodology" className="underline hover:text-gray-600">
           How it works →
         </Link>

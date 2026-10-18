@@ -1,9 +1,11 @@
 /**
- * OrthoAndSpineTools proprietary Directory Score (ost-dir-v2)
+ * OrthoAndSpineTools proprietary Directory Score (ost-dir-v3)
  *
  * Dual objective (asymmetric):
- * 1) Utility — listing quality + vote-weighted surgeon discussion (identify strong options)
- * 2) MAUDE hazard — peer-normalized rising/volume signal (flag problems earlier)
+ * 1) Utility: listing quality + vote-weighted surgeon discussion (identify strong options)
+ * 2) MAUDE hazard: Reported safety signal (FDA MAUDE), severity-weighted, relative to the
+ *    device's FDA product-code category with Bayesian shrinkage, recalls weighted by class.
+ *    See docs/implant-safety-signal.md.
  *
  * Final = Utility × (1 − λH) − μH   → polish cannot average away a hot surveillance signal.
  *
@@ -12,16 +14,17 @@
 
 import { Prisma } from '@prisma/client';
 import { prisma } from './prisma';
+import { implantFdaRecords } from './implantFda';
 import {
+  MAUDE_MIN_REPORTS_FOR_HAZARD,
   resolveMaudeSignalForImplant,
   type MaudeSignalLabel,
   type MaudeSignalSnapshot,
 } from './implantMaudeSignal';
-import { getMaudeDailyTrends } from './openFdaMaude';
 
-export const RATING_VERSION = 'ost-dir-v2';
+export const RATING_VERSION = 'ost-dir-v3';
 
-/** How hard MAUDE hazard multiplies down utility (0–1 scale on H). */
+/** How hard MAUDE hazard multiplies down utility (0-1 scale on H). */
 const HAZARD_MULTIPLIER = 0.55;
 /** Additive point penalty at H=1. */
 const HAZARD_ADDITIVE = 3.5;
@@ -99,7 +102,7 @@ function lenBoost(text: string | null | undefined, softCap: number, maxPts: numb
 }
 
 /**
- * Listing / structural quality — completeness of the directory profile.
+ * Listing / structural quality: completeness of the directory profile.
  * Intentionally NOT a clinical endorsement.
  */
 export function computeCatalogScore(input: CatalogInput): number {
@@ -231,7 +234,7 @@ export function computeCommunityScore(comments: CommentEvidence[]): {
 
 /**
  * Utility: excellence prior from listing + discussion.
- * Without discussion, shrink listing toward neutral 5 — complete pages ≠ great implants.
+ * Without discussion, shrink listing toward neutral 5: complete pages ≠ great implants.
  */
 export function computeUtilityScore(
   listingScore: number,
@@ -268,23 +271,40 @@ export function applyMaudeHazard(
   return round1(clamp(final, 0, 10));
 }
 
+export const SAFETY_FACET_LABEL = 'Reported safety signal (FDA MAUDE)';
+
+const CONFIDENCE_TEXT: Record<string, string> = {
+  high: 'High confidence',
+  medium: 'Medium confidence',
+  low: 'Low confidence',
+};
+
+function maudeFacetStatus(m: MaudeSignalSnapshot): string {
+  if (!m.linked) return 'Not linked';
+  const c = m.safety?.confidence;
+  if (m.quietScore == null || !c || c === 'insufficient') return 'Insufficient data';
+  return CONFIDENCE_TEXT[c] || 'Low confidence';
+}
+
 function maudeFacetDetail(m: MaudeSignalSnapshot): string {
-  if (!m.linked) return 'No MAUDE brand key linked — surveillance facet unavailable.';
-  if (m.label === 'insufficient' || m.hazard == null) {
-    return m.matchedBrand
-      ? `Linked (${m.matchedBrand}) but peer context insufficient for a stable signal.`
-      : 'Linked brand not found in specialty peer panel yet.';
+  if (!m.linked) return 'No MAUDE brand key linked, so there is no safety signal.';
+  const win = m.windowLabel ? m.windowLabel.replace(/mo$/, ' mo') : '12 mo';
+  if (m.windowReports == null || !m.safety) {
+    return 'MAUDE data unavailable for this brand key right now.';
   }
-  const bits = [
-    m.windowLabel ? `window ${m.windowLabel}` : null,
-    m.recentTotal != null && m.priorTotal != null
-      ? `reports ${m.recentTotal} vs prior ${m.priorTotal}`
-      : null,
-    m.peerRisingPercentile != null
-      ? `rising peer pctl ${Math.round(m.peerRisingPercentile * 100)}%`
-      : null,
-  ].filter(Boolean);
-  return bits.join(' · ');
+  const c = m.safety.counts;
+  const count = `${c.total} report${c.total === 1 ? '' : 's'} in the last ${win} (same count as the MAUDE snapshot)`;
+  if (m.quietScore == null) {
+    const why = m.safety.notes[0] || `Fewer than ${MAUDE_MIN_REPORTS_FOR_HAZARD} reports.`;
+    return `${count}. ${why} No score.`;
+  }
+  const codes = m.safety.categories.map((x) => x.code).join(', ');
+  return [
+    count,
+    `death ${c.death}, injury ${c.injury}, malfunction ${c.malfunction}, breaks ${c.breaks}`,
+    `vs product code ${codes}`,
+    `${m.safety.recalls.length} recall${m.safety.recalls.length === 1 ? '' : 's'} in 5 yr`,
+  ].join(' · ');
 }
 
 export function scoreFromParts(
@@ -332,18 +352,9 @@ export function scoreFromParts(
     },
     {
       id: 'maude',
-      label: 'MAUDE surveillance',
+      label: SAFETY_FACET_LABEL,
       score: maudeScore,
-      status:
-        maudeSignal === 'elevated'
-          ? 'Elevated signal'
-          : maudeSignal === 'watch'
-            ? 'Watch'
-            : maudeSignal === 'quiet'
-              ? 'Quiet vs peers'
-              : maudeSignal === 'unlinked'
-                ? 'Not linked'
-                : 'Insufficient data',
+      status: maudeFacetStatus(maude),
       detail: maudeFacetDetail(maude),
     },
     {
@@ -361,7 +372,7 @@ export function scoreFromParts(
         maudeSignal === 'quiet' ||
         maudeSignal === 'unlinked' ||
         maudeSignal === 'insufficient'
-          ? `Utility ${utility} — MAUDE hazard not applied (${maudeSignal}).`
+          ? `Utility ${utility}, safety signal not applied (${maudeSignal}).`
           : maudeSignal === 'watch'
             ? `Utility ${utility} × partial watch hazard ${round1(maude.hazard)}.`
             : `Utility ${utility} × elevated hazard ${round1(maude.hazard)} (asymmetric).`,
@@ -370,18 +381,18 @@ export function scoreFromParts(
 
   const maudeBit =
     maudeSignal === 'elevated'
-      ? 'MAUDE elevated vs peers'
+      ? `safety signal ${maudeScore} (elevated vs category)`
       : maudeSignal === 'watch'
-        ? 'MAUDE watch'
+        ? `safety signal ${maudeScore} (watch)`
         : maudeSignal === 'quiet'
-          ? 'MAUDE quiet vs peers'
+          ? `safety signal ${maudeScore}`
           : maudeSignal === 'unlinked'
-            ? 'MAUDE unlinked'
-            : 'MAUDE insufficient';
+            ? 'MAUDE not linked'
+            : 'safety signal: Insufficient data';
 
-  const summary = `OST Directory Score ${finalScore}/10 (${RATING_VERSION}) — utility ${utility} (listing ${catalogScore}${
+  const summary = `OST Directory Score ${finalScore}/10 (${RATING_VERSION}): utility ${utility} (listing ${catalogScore}${
     communityScore != null ? `, discussion ${communityScore}` : ''
-  }) · ${maudeBit}. Editorial composite — not medical advice or FDA judgment.`;
+  }) · ${maudeBit}. Editorial composite, not medical advice or an FDA judgment.`;
 
   return {
     version: RATING_VERSION,
@@ -400,7 +411,7 @@ export function scoreFromParts(
   };
 }
 
-/** @deprecated use scoreFromParts with MAUDE snapshot — kept for unit tests of catalog/community */
+/** @deprecated use scoreFromParts with MAUDE snapshot: kept for unit tests of catalog/community */
 export function blendDirectoryScore(
   catalogScore: number,
   communityScore: number | null,
@@ -456,7 +467,9 @@ export async function recomputeImplantDirectoryScore(
   const maude = await resolveMaudeSignalForImplant({
     maudeBrandKey: implant.maudeBrandKey,
     specialty: implant.specialty,
-    days: 365,
+    company: implant.company,
+    fdaApplicant: implant.fdaApplicant,
+    fdaNumbers: implantFdaRecords(implant).map((r) => r.number),
   });
 
   const breakdown = scoreFromParts(
@@ -509,25 +522,12 @@ export async function recomputeAllImplantDirectoryScores(): Promise<number> {
     orderBy: [{ specialty: 'asc' }, { brandName: 'asc' }],
   });
 
-  // Prefetch specialty MAUDE peer panels once (shared cache), paced to avoid FDA 429s.
-  const specialties = [...new Set(rows.map((r) => r.specialty || 'spine'))];
-  for (const spec of specialties) {
-    try {
-      await getMaudeDailyTrends({
-        specialty: spec === 'all' ? undefined : spec,
-        days: 365,
-        includeBrandSeries: true,
-      });
-    } catch {
-      /* best-effort warm */
-    }
-    await new Promise((r) => setTimeout(r, 4000));
-  }
-
   let n = 0;
   for (const row of rows) {
     await recomputeImplantDirectoryScore(row.id);
     n += 1;
+    // openFdaHttp paces every request; a short gap between implants keeps bursts small.
+    if (n < rows.length) await new Promise((r) => setTimeout(r, 500));
   }
   return n;
 }

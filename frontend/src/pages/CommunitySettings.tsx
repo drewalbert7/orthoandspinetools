@@ -436,7 +436,7 @@ const CommunitySettings: React.FC = () => {
           />
         )}
 
-        {/* Topic tags — options members pick when posting; filter feed by topic */}
+        {/* Topic tags: options members pick when posting; filter feed by topic */}
         {canEdit && (
           <div className="mb-8">
             <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 mb-4">

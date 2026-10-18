@@ -13,7 +13,7 @@ export function escapeHtmlAttribute(url: string): string {
 }
 
 const TRANSACTIONAL_FOOTER =
-  'OrthoAndSpineTools — community for orthopedic and spine professionals. This is a transactional message about your account.';
+  'OrthoAndSpineTools, a community for orthopedic and spine professionals. This is a transactional message about your account.';
 
 export function wrapTransactionalHtml(innerBodyHtml: string): string {
   return `<!DOCTYPE html>

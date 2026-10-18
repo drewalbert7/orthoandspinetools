@@ -99,7 +99,7 @@ const CommunityPage: React.FC = () => {
   const communityMetaDescription = useMemo(() => {
     if (!communityData?.description) return SEO_DEFAULTS.description;
     const t = stripToPlainText(communityData.description, 260);
-    return `${t} — o/${communityData.name} on ${SEO_DEFAULTS.siteName}`;
+    return `${t} (o/${communityData.name} on ${SEO_DEFAULTS.siteName})`;
   }, [communityData]);
 
   const posts = postsData ?? [];

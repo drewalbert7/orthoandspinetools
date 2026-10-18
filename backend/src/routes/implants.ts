@@ -1,3 +1,4 @@
+import { defaultImplantSeoTitle } from '../lib/implantFda';
 import { Router, Response } from 'express';
 import { body, param, query, validationResult } from 'express-validator';
 import rateLimit from 'express-rate-limit';
@@ -19,6 +20,7 @@ import {
   normalizeImplantSpecialty,
 } from '../lib/implantSpecialties';
 import {
+  RATING_VERSION,
   recomputeAllImplantDirectoryScores,
   recomputeImplantDirectoryScore,
 } from '../lib/implantDirectoryScore';
@@ -90,7 +92,7 @@ const ingestLimiter = rateLimit({
   message: { success: false, message: 'Ingest rate limit exceeded' },
 });
 
-/** Dedicated ingest secret only — do not share MAUDE/digest cron secrets. */
+/** Dedicated ingest secret only: do not share MAUDE/digest cron secrets. */
 function resolveIngestSecret(): string | null {
   const dedicated = process.env.IMPLANT_INGEST_SECRET?.trim();
   return dedicated || null;
@@ -268,7 +270,7 @@ router.get(
   })
 );
 
-/** Admin: recompute all Directory Scores (ost-dir-v2 + MAUDE facets). */
+/** Admin: recompute all Directory Scores (ost-dir-v3 + Reported safety signal). */
 router.post(
   '/admin/recompute-scores',
   ingestLimiter,
@@ -277,7 +279,7 @@ router.post(
   asyncHandler(async (_req: AuthRequest, res: Response) => {
     const n = await recomputeAllImplantDirectoryScores();
     logger.info('Admin recomputed implant directory scores', { count: n });
-    res.json({ success: true, data: { recomputed: n, version: 'ost-dir-v2' } });
+    res.json({ success: true, data: { recomputed: n, version: RATING_VERSION } });
   })
 );
 
@@ -330,7 +332,7 @@ router.get(
   })
 );
 
-/** Grokbot / admin ingest upsert — registered before /:slug */
+/** Grokbot / admin ingest upsert: registered before /:slug */
 router.post(
   '/ingest',
   ingestLimiter,
@@ -429,8 +431,7 @@ router.post(
       indications: req.body.indications?.trim() || null,
       contraindications: req.body.contraindications?.trim() || null,
       seoTitle:
-        req.body.seoTitle?.trim() ||
-        `${brandName} implant — OrthoAndSpineTools Directory`,
+        req.body.seoTitle?.trim() || defaultImplantSeoTitle(brandName),
       seoDescription:
         req.body.seoDescription?.trim() ||
         (req.body.description || `${brandName} orthopedic implant profile`).slice(0, 160),
@@ -572,6 +573,7 @@ router.get(
         fdaApplicant: implant.fdaApplicant,
         fdaMaterials: implant.fdaMaterials,
         fdaSourceUrl: implant.fdaSourceUrl,
+        fdaRecords: implant.fdaRecords,
         aiRating: implant.aiRating,
         aiSummary: implant.aiSummary,
         aliases: implant.aliases.map((a) => a.alias),
@@ -670,7 +672,7 @@ router.get(
         commentsLocked: !req.user,
         canComment: Boolean(req.user),
         related: relatedSorted.slice(0, 6).map((r) => toImplantListCard(r)),
-        /** Legacy empty array — UI uses comments */
+        /** Legacy empty array: UI uses comments */
         reviews: [] as unknown[],
         reviewsLocked: true,
         canWriteReview: false,

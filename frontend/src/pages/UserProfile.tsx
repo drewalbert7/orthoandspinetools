@@ -66,7 +66,7 @@ const UserProfile: React.FC = () => {
         title={`u/${user.username}`}
         description={
           user.bio?.trim() ||
-          `${displayName || user.username} on OrthoAndSpineTools — ${stats.postsCount} posts, ${stats.commentsCount} comments.`
+          `${displayName || user.username} on OrthoAndSpineTools: ${stats.postsCount} posts, ${stats.commentsCount} comments.`
         }
         canonicalPath={`/user/${user.username}`}
         jsonLd={profileJsonLd}
@@ -99,7 +99,7 @@ const UserProfile: React.FC = () => {
             {user.specialty && (
               <p className="text-xs sm:text-sm text-gray-500 mt-1">
                 {user.specialty}
-                {user.subSpecialty && ` — ${user.subSpecialty}`}
+                {user.subSpecialty && `, ${user.subSpecialty}`}
               </p>
             )}
             {user.institution && (

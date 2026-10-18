@@ -1,4 +1,5 @@
 import { logger } from '../utils/logger';
+import { openFdaFetch, type OpenFdaJson } from './openFdaHttp';
 
 export type MaudeDailyPoint = {
   date: string; // YYYY-MM-DD
@@ -47,7 +48,7 @@ export type MaudeTrendResult = {
   topDevices: MaudeTopDevice[];
   /** When set, chart is scoped to this brand. */
   selectedBrand: string | null;
-  /** Chart grain — monthly for multi-year windows. */
+  /** Chart grain: monthly for multi-year windows. */
   grain: 'day' | 'month';
   /**
    * Top brand cumulative series for specialty comparison charts
@@ -222,7 +223,7 @@ export const MAUDE_SPECIALTIES: Record<
   },
 };
 
-/** @deprecated Use MAUDE_SPECIALTIES — kept for older clients sending preset= */
+/** @deprecated Use MAUDE_SPECIALTIES: kept for older clients sending preset= */
 export const MAUDE_PRESETS = MAUDE_SPECIALTIES;
 
 const INSTRUMENT_NOISE =
@@ -584,7 +585,7 @@ export function shortDeviceLabel(name: string): string {
     .replace(/[®™©¿�]+/g, '')
     .replace(/[_]+/g, ' ')
     .replace(/\s+/g, ' ')
-    .replace(/^\s*[-–—:]+\s*/, '')
+    .replace(/^\s*[-\u2013\u2014:]+\s*/, '')
     .trim();
 
   cleaned = cleaned
@@ -603,7 +604,7 @@ export function shortDeviceLabel(name: string): string {
   return `${cleaned.slice(0, 55).trim()}…`;
 }
 
-/** Display title: "Device — Company" when company is known. */
+/** Display title: "Device (Company)" when company is known. */
 export function formatBrandTitle(name: string, company?: string | null): string {
   const product = shortDeviceLabel(name);
   if (!company) return product;
@@ -611,7 +612,7 @@ export function formatBrandTitle(name: string, company?: string | null): string 
   if (product.toLowerCase().includes(companyLower.split(/[\/+]/)[0].trim())) {
     return product;
   }
-  return `${product} — ${company}`;
+  return `${product} (${company})`;
 }
 
 export function resolveCompanyFromBrandName(brand: string): string | null {
@@ -890,7 +891,7 @@ function sanitizeBrandForSearch(brand: string): string {
 }
 
 const JUNK_BRAND =
-  /^(unk|unknown|n\/a|na|ni|none|null|not available|not provided|not reported|\*|-|—|–)$/i;
+  /^(unk|unknown|n\/a|na|ni|none|null|not available|not provided|not reported|\*|-|\u2014|\u2013)$/i;
 
 const JUNK_BRAND_PHRASE =
   /not reported|not available|not provided|specific device|unknown device|device not|n\/a\b/i;
@@ -1039,7 +1040,7 @@ function buildSearch(params: {
   if (brand && brand.length >= 2 && brand.length <= 80) {
     const safe = sanitizeBrandForSearch(brand);
     if (safe.length >= 2) {
-      // Phrase match after stripping ®/¿ — exact fails when FDA stored the symbol.
+      // Phrase match after stripping ®/¿: exact fails when FDA stored the symbol.
       clauses.push(`device.brand_name:"${safe}"`);
       labelParts.push(formatBrandTitle(brand, resolveCompanyFromBrandName(brand)));
     }
@@ -1069,48 +1070,47 @@ function buildSearch(params: {
 
 async function openFdaGet(search: string, extra: Record<string, string>): Promise<{
   status: number;
-  json: {
-    meta?: { last_updated?: string; disclaimer?: string; results?: { total?: number } };
-    results?: Array<Record<string, unknown>>;
-    error?: { code?: string; message?: string };
-  };
+  json: OpenFdaJson;
 }> {
-  const url = new URL('https://api.fda.gov/device/event.json');
-  url.searchParams.set('search', search);
-  for (const [k, v] of Object.entries(extra)) url.searchParams.set(k, v);
+  // Shared client: key when set, keyless fallback (count limit clamped to 999), retries,
+  // pacing. This module keeps its own TTL caches, so the client memory cache is skipped.
+  const { status, json } = await openFdaFetch('event', { search, ...extra }, { memoryCache: false });
+  return { status, json };
+}
 
-  const apiKey = process.env.OPENFDA_API_KEY?.trim();
-  if (apiKey) url.searchParams.set('api_key', apiKey);
-
-  const maxAttempts = 3;
-  let lastStatus = 0;
-  let lastJson: {
-    meta?: { last_updated?: string; disclaimer?: string; results?: { total?: number } };
-    results?: Array<Record<string, unknown>>;
-    error?: { code?: string; message?: string };
-  } = {};
-
-  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
-    const res = await fetch(url.toString(), {
-      headers: { Accept: 'application/json' },
-      signal: AbortSignal.timeout(35000),
-    });
-
-    const json = (await res.json().catch(() => ({}))) as typeof lastJson;
-    lastStatus = res.status;
-    lastJson = json;
-
-    const retryable = res.status === 429 || res.status === 502 || res.status === 503;
-    if (!retryable || attempt === maxAttempts) {
-      return { status: res.status, json };
-    }
-
-    const backoffMs = res.status === 429 ? 1500 * attempt : 400 * attempt * attempt;
-    logger.warn('openFDA transient error — retrying', { status: res.status, attempt, backoffMs });
-    await sleep(backoffMs);
-  }
-
-  return { status: lastStatus, json: lastJson };
+/**
+ * Brand search for the detail-page MAUDE snapshot (getMaudeBrandSynopsis): same specialty
+ * scope, brand phrase and date window. The safety signal reads exactly this search so its
+ * report count always equals the snapshot count.
+ */
+export function maudeBrandWindowSearch(options: { brand: string; specialty?: string; days: number }): {
+  search: string;
+  specialtyOnlySearch: string;
+  startIso: string;
+  endIso: string;
+  startCompact: string;
+  endCompact: string;
+} {
+  const window = resolveDateWindow(options.days);
+  const { search } = buildSearch({
+    specialty: options.specialty,
+    brand: options.brand,
+    startCompact: window.startCompact,
+    endCompact: window.endCompact,
+  });
+  const specialtyOnlySearch = buildSearch({
+    specialty: options.specialty,
+    startCompact: window.startCompact,
+    endCompact: window.endCompact,
+  }).search;
+  return {
+    search,
+    specialtyOnlySearch,
+    startIso: window.startIso,
+    endIso: window.endIso,
+    startCompact: window.startCompact,
+    endCompact: window.endCompact,
+  };
 }
 
 async function fetchOpenFdaDailyCounts(search: string): Promise<{
@@ -1241,7 +1241,7 @@ const SEARCH_CONCEPTS: MaudeSearchConcept[] = [
     id: 'cervical-disc-arthroplasty',
     label: 'Cervical disc arthroplasty',
     test: /\b(cervical\s+(disc|tdr|adr|arthroplasty)|c-?adr|artificial\s+cervical\s+disc|cervical\s+artificial\s+disc)\b/i,
-    // Stick to the disc-prosthesis class — "cervical + intervertebral" also matches ACDF cages.
+    // Stick to the disc-prosthesis class: "cervical + intervertebral" also matches ACDF cages.
     clause: DISC_ARTHROPLASTY,
     prefer: /\bmobi|prodisc[-\s]*c\b|simplify|m6-?c|secure-?c|prestige|pcm\b|bryan|discover|activ.?c|cervical|pcm\s+cervical/i,
     demote: /\bprodisc[-\s]*l\b|lumbar|activ.?l|charit[eé]|maverick|flexicore/i,
@@ -1264,7 +1264,7 @@ const SEARCH_CONCEPTS: MaudeSearchConcept[] = [
   {
     id: 'acdf',
     label: 'ACDF / anterior cervical fusion',
-    // Clinical phrases only — brand names use rollups / prefix search (do not match here)
+    // Clinical phrases only: brand names use rollups / prefix search (do not match here)
     test: /\b(acdf|anterior\s+cervical(\s+(discectomy|decompression))?(\s+and)?(\s+fusion)?|cervical\s+(plate|cage|interbody|fusion)|stand[-\s]?alone\s+cervical)\b/i,
     clause: ACDF_IMPLANTS,
     prefer:
@@ -1446,7 +1446,7 @@ export async function searchMaudeBrands(options: {
     }
   };
 
-  // 0) Direct rollup hit (e.g. "Zero-P", "Tritanium C") — seed before openFDA so hyphen brands work
+  // 0) Direct rollup hit (e.g. "Zero-P", "Tritanium C"): seed before openFDA so hyphen brands work
   for (const rollup of BRAND_ROLLUPS) {
     if (rollup.test.test(safe) || rollup.test.test(raw) || rollup.filterName.toLowerCase() === qLower) {
       upsert(rollup.filterName, 1, 'exact', 850);
@@ -1485,7 +1485,7 @@ export async function searchMaudeBrands(options: {
           (h) => sanitizeBrandForSearch(h.name).toLowerCase().includes(rollup.filterName.toLowerCase().split(/\s+/)[0])
         );
         if (already) continue;
-        // Light placeholder — real count filled if openFDA returned a sibling SKU
+        // Light placeholder: real count filled if openFDA returned a sibling SKU
         upsert(rollup.filterName, 1, 'concept', 900 + scoreConceptBrand(rollup.displayName, concept), concept.label);
       }
     } catch {
@@ -1494,7 +1494,7 @@ export async function searchMaudeBrands(options: {
   }
 
   // 2) Direct brand prefix / wildcard (classic autocomplete)
-  // openFDA Lucene 404s on unquoted hyphenated wildcards (Zero-P*) — quote or space-normalize.
+  // openFDA Lucene 404s on unquoted hyphenated wildcards (Zero-P*): quote or space-normalize.
   try {
     const brandClauses: string[] = [];
     if (safe.includes('-')) {
@@ -1740,7 +1740,7 @@ export type MaudeBrandSynopsis = {
   /** Cleaned product name. */
   shortLabel: string;
   company: string | null;
-  /** "Device — Company" when company known. */
+  /** "Device (Company)" when company known. */
   displayTitle: string;
   label: string;
   specialty: string;
@@ -1824,7 +1824,7 @@ function buildSynopsisSummary(
     .map((t) => `${t.term} (${t.count.toLocaleString()})`);
   if (topPatient.length) parts.push(`Leading patient problems: ${topPatient.join(', ')}.`);
 
-  parts.push('This is an automated roll-up of FDA reports — not a clinical conclusion.');
+  parts.push('This is an automated roll-up of FDA reports, not a clinical conclusion.');
   return parts.join(' ');
 }
 

@@ -12,6 +12,8 @@
 #   3. failing stub check command: DEPLOY_CHECK_CMD records the image the backend runs
 #      during the check (proves the new build was live) and exits 1 -> back on the
 #      previous image IDs.
+#   Build cache prune: only the passing path (2) may run "docker builder prune -f";
+#   the failed paths (1, 3) must not prune.
 #
 # Usage: scripts/tests/deploy-rollback.test.sh   (needs docker + docker compose, non-root)
 
@@ -72,6 +74,8 @@ REAL_DOCKER="$(command -v docker)"
 cat > "$WORK/bin/docker" <<SHIM
 #!/bin/bash
 echo "docker \$*" >> "$WORK/docker.log"
+# Log the build cache prune but never run it on the test host; the log is what we assert.
+if [ "\$1" = builder ] && [ "\$2" = prune ]; then exit 0; fi
 exec "$REAL_DOCKER" "\$@"
 SHIM
 chmod +x "$WORK/bin/docker"
@@ -134,6 +138,7 @@ else
     fail "rollback did not run the expected --no-build --no-deps up"; grep -E 'compose .* up ' docker.log || true
 fi
 grep -q 'Rolled back to previous version' deploy.out && pass "deploy.sh reports rollback success" || fail "no rollback success message"
+if grep -q 'builder prune' docker.log; then fail "failed check still pruned build cache"; else pass "failed check: no build cache prune"; fi
 
 echo ""
 echo "== test 2: passing check stays on v2 =="
@@ -147,6 +152,8 @@ assert_ne "$NEW_FRONTEND" "$V1_FRONTEND" "frontend moved off v1"
 assert_eq "$NEW_BACKEND" "$(tag_id "$PROJECT-backend:latest")" "backend runs the new :latest"
 assert_eq "$(version_in backend)" "v2b" "backend serves new version"
 assert_eq "$(container_id postgres)" "$PG_CID" "postgres container not recreated"
+assert_eq "$(grep -c 'prune' docker.log || true)" "1" "passing deploy runs exactly one prune"
+if grep -qx 'docker builder prune -f' docker.log; then pass "passing deploy pruned with 'docker builder prune -f' after health passed"; else fail "passing deploy did not run 'docker builder prune -f'"; fi
 
 echo ""
 echo "== test 3: failing stub check command rolls back to previous build =="
@@ -163,6 +170,7 @@ assert_eq "$(running_id backend)" "$PREV_BACKEND" "backend back on previous imag
 assert_eq "$(running_id frontend)" "$PREV_FRONTEND" "frontend back on previous image ID"
 assert_eq "$(version_in backend)" "v2b" "backend serves previous version"
 assert_eq "$(container_id postgres)" "$PG_CID" "postgres container not recreated"
+if grep -q 'builder prune' docker.log; then fail "failing check still pruned build cache"; else pass "failing check: no build cache prune"; fi
 
 echo ""
 if [ "$FAILS" -eq 0 ]; then

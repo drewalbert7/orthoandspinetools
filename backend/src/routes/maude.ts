@@ -160,7 +160,7 @@ router.post(
         data: {
           id: recent.id,
           duplicate: true,
-          message: 'Thanks — we already have a pending request for this brand.',
+          message: 'Thanks, we already have a pending request for this brand.',
         },
       });
       return;
@@ -237,7 +237,7 @@ router.post(
       data: {
         id: created.id,
         duplicate: false,
-        message: 'Thanks — we received your request and will review it.',
+        message: 'Thanks, we received your request and will review it.',
       },
     });
   })

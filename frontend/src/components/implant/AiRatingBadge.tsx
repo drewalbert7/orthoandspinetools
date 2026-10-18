@@ -5,7 +5,7 @@ type Props = {
   className?: string;
 };
 
-/** Proprietary OST Directory Score 0–10 — catalog + community evidence, not clinical advice */
+/** Proprietary OST Directory Score 0-10: catalog + community evidence, not clinical advice */
 export function AiRatingBadge({
   rating,
   size = 'sm',
@@ -20,7 +20,7 @@ export function AiRatingBadge({
         } ${className}`}
         title="Directory Score pending"
       >
-        <span className="font-semibold tabular-nums">—</span>
+        <span className="font-semibold tabular-nums">n/a</span>
         {showLabel ? <span className="font-medium">Score</span> : null}
       </span>
     );
@@ -39,7 +39,7 @@ export function AiRatingBadge({
       className={`inline-flex items-center gap-1 rounded-md border font-semibold tabular-nums ${tone} ${
         size === 'md' ? 'px-2.5 py-1 text-sm' : 'px-1.5 py-0.5 text-[11px]'
       } ${className}`}
-      title="Directory Score (0–10): listing completeness + surgeon discussion + MAUDE signal. Not medical advice."
+      title="Directory Score (0-10): listing completeness + surgeon discussion + MAUDE signal. Not medical advice."
     >
       <span>{value.toFixed(1)}</span>
       {showLabel ? <span className="font-medium opacity-80">Score</span> : null}

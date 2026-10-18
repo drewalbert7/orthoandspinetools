@@ -80,7 +80,7 @@ export function validateSesConfigurationAtStartup(): void {
 
   if (cfg.enforceSnsTopicAllowList && !cfg.snsTopicArn) {
     logger.warn(
-      'SES email: AWS_SES_SNS_TOPIC_ARN is not set — bounce/complaint SNS events will be rejected until configured (sends still work)'
+      'SES email: AWS_SES_SNS_TOPIC_ARN is not set, so bounce/complaint SNS events will be rejected until configured (sends still work)'
     );
   } else if (cfg.snsTopicArn) {
     logger.info('SES email: SNS topic allow-list configured for /api/ses/events');

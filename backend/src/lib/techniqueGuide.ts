@@ -1,5 +1,5 @@
 /**
- * Surgeon-facing technique links must be direct surgical / operative technique PDFs —
+ * Surgeon-facing technique links must be direct surgical / operative technique PDFs,
  * not marketing brochures, product catalogs, or HTML landing pages.
  */
 
