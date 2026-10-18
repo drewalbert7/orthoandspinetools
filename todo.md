@@ -73,7 +73,7 @@ See `AGENTS.md` and `.cursor/rules/analytics-durability.mdc` for full details. K
 |----|-------------|--------|
 | [#7](https://github.com/drewalbert7/orthoandspinetools/pull/7) | Implant catalog staging tables and openFDA importer | Draft, awaiting review |
 | [#9](https://github.com/drewalbert7/orthoandspinetools/pull/9) | Restructure todo.md + check-gated deploy with rollback | In progress |
-| [#14](https://github.com/drewalbert7/orthoandspinetools/pull/14) | Implant detail FDA record panel (openFDA-verified only), MAUDE score fix (Insufficient data instead of 10.0; same brand key and 12-month window as the snapshot), case-insensitive name sort, title and 390px sort label fixes. Data migration `20261017210000_implant_fda_verified_and_title_fixes` must be applied by hand, then recompute scores | Open, not merged or deployed |
+| [#14](https://github.com/drewalbert7/orthoandspinetools/pull/14) | Implant detail FDA record panel (openFDA-verified only), MAUDE score fix (Insufficient data instead of 10.0; same brand key and 12-month window as the snapshot), case-insensitive name sort, title and 390px sort label fixes. Data migration `20261017210000_implant_fda_verified_and_title_fixes` must be applied by hand, then recompute scores. Also: Reported safety signal (FDA MAUDE) redesign `ost-safety-v1` / `ost-dir-v3` (severity-weighted, product-code baseline, Bayesian shrinkage, recalls by class, confidence label, cited openFDA URLs; docs/implant-safety-signal.md), openFDA keyless fallback, and deploy.sh disk check (stop below 5G free) plus `docker builder prune -f` after a passing deploy | Open, not merged or deployed |
 
 ---
 
@@ -108,7 +108,7 @@ See `AGENTS.md` and `.cursor/rules/analytics-durability.mdc` for full details. K
 
 ### Deploy Hygiene
 
-- Proposal only (not built): have deploy.sh run `docker builder prune` after a successful deploy, so each deploy does not leave about 2.3G of build cache behind. Needs Drew's approval before it goes into deploy.sh
+- Done in PR #14 (approved by Drew 2026-10-17): deploy.sh stops before any build when / has less than 5G free, and runs `docker builder prune -f` only after a validated deploy with passing health checks. The original proposal line moved to History > Backlog Archive
 
 ---
 
@@ -153,6 +153,8 @@ See `AGENTS.md` and `.cursor/rules/analytics-durability.mdc` for full details. K
 | **deploy.sh rollback came back up on the NEW build** | Old rollback tagged previous images as `orthoandspinetools-{backend,frontend}:rollback` (names compose never uses) then ran `compose up` on `orthoandspinetools-main-{backend,frontend}`, which already pointed at the new images. Fixed in `scripts/lib/deploy-rollback.sh`: rollback retags `<name>:pre-deploy-<ts>` to the compose names and never uses `--build`. Prod compose names are `orthoandspinetools-main-{backend,frontend}:latest` (project dir `orthoandspinetools-main`) |
 | **Manual pre-deploy tags on prod** | `orthoandspinetools-main-{backend,frontend}:pre-deploy-20261017-190412` were made by hand as a safety net. Remove only after the rollback fix ships, and only with Drew's approval. deploy.sh now creates `pre-deploy-<ts>` tags on every deploy and never deletes them; prune old ones manually |
 | **Build cache fills the disk** | Each deploy adds about 2.3G of Docker build cache and disk sits at about 90% right after a deploy. Run `docker builder prune` before the next deploy (PR #13 deploy was held for disk until cleanup on 2026-10-17) |
+| **openFDA without a key** | Keyless openFDA allows about 240 requests/min and 1000/day per IP and returns 403 "No api_key was supplied" for count queries with `limit=1000`. openFdaHttp clamps keyless count limits to 999 and falls back to keyless if a key is rejected. Keep `OPENFDA_API_KEY` set on prod; a full safety recompute is about 150 to 250 requests |
+| **Safety signal needs a recompute** | Stored v2 MAUDE numbers have no evidence block, so the API shows them as Insufficient data until the admin recompute runs on prod with the new code |
 | **Seeded FDA numbers were wrong** | Migration 20261016030000 wrote K073633 (a Stryker microdebrider) for Solera, K122752 (a drug screen dipstick) for INFINITY and P050010 (ProDisc-L) for prodisc C. Check every FDA number against api.fda.gov before writing it; blank beats a guess |
 
 ---
@@ -257,6 +259,7 @@ Rows moved out of section 3 once merged (verbatim).
 
 ### Backlog Archive
 
+- Moved from Next up, done in PR #14. Proposal only (not built): have deploy.sh run `docker builder prune` after a successful deploy, so each deploy does not leave about 2.3G of build cache behind. Needs Drew's approval before it goes into deploy.sh
 - Scaling - VPS RAM/disk upgrade before ~5k users; Redis for multi-replica rate limits; managed Postgres later
 - Link previews - Optional branded og-share.png (1200x630)
 - Disk / ops - Cloudflare R2 off-site DB backups done; root disk stays lean via volume backups + Docker log limits
@@ -278,6 +281,7 @@ Rows moved out of section 3 once merged (verbatim).
 | Implant directory review | Live review of /implants (15 listings, 5 verified); top 5 ranked by surgeon value vs effort |
 | PR #13 deploy | Held for disk, deployed after cleanup 8:04 to 8:07 PM ET at a3c262d; 19/19 checks, phi-guard 0 hits |
 | FDA + MAUDE PR | FDA record panel, openFDA-verified data migration, MAUDE Insufficient data fix, small fixes (see In Progress) |
+| Safety signal + deploy hygiene (PR #14) | Reported safety signal (FDA MAUDE) with severity weights, product-code baseline, shrinkage (k=25), recalls by class, confidence; real keyless openFDA pull for all 15 listings; deploy.sh disk check and post-deploy build cache prune with a guard test in CI |
 
 #### Session log (Aug 28-29, 2026 - MAUDE trends)
 
