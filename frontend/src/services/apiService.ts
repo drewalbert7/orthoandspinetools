@@ -412,6 +412,7 @@ export interface ImplantDirectoryItem {
       status?: string;
       detail: string;
     }>;
+    maude?: { safety?: import('../lib/implantSafety').SafetySignalPayload | null } | null;
   } | null;
   imageCount?: number;
   xrayCount?: number;

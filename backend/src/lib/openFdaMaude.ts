@@ -1,4 +1,5 @@
 import { logger } from '../utils/logger';
+import { openFdaFetch, type OpenFdaJson } from './openFdaHttp';
 
 export type MaudeDailyPoint = {
   date: string; // YYYY-MM-DD
@@ -1069,48 +1070,47 @@ function buildSearch(params: {
 
 async function openFdaGet(search: string, extra: Record<string, string>): Promise<{
   status: number;
-  json: {
-    meta?: { last_updated?: string; disclaimer?: string; results?: { total?: number } };
-    results?: Array<Record<string, unknown>>;
-    error?: { code?: string; message?: string };
-  };
+  json: OpenFdaJson;
 }> {
-  const url = new URL('https://api.fda.gov/device/event.json');
-  url.searchParams.set('search', search);
-  for (const [k, v] of Object.entries(extra)) url.searchParams.set(k, v);
+  // Shared client: key when set, keyless fallback (count limit clamped to 999), retries,
+  // pacing. This module keeps its own TTL caches, so the client memory cache is skipped.
+  const { status, json } = await openFdaFetch('event', { search, ...extra }, { memoryCache: false });
+  return { status, json };
+}
 
-  const apiKey = process.env.OPENFDA_API_KEY?.trim();
-  if (apiKey) url.searchParams.set('api_key', apiKey);
-
-  const maxAttempts = 3;
-  let lastStatus = 0;
-  let lastJson: {
-    meta?: { last_updated?: string; disclaimer?: string; results?: { total?: number } };
-    results?: Array<Record<string, unknown>>;
-    error?: { code?: string; message?: string };
-  } = {};
-
-  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
-    const res = await fetch(url.toString(), {
-      headers: { Accept: 'application/json' },
-      signal: AbortSignal.timeout(35000),
-    });
-
-    const json = (await res.json().catch(() => ({}))) as typeof lastJson;
-    lastStatus = res.status;
-    lastJson = json;
-
-    const retryable = res.status === 429 || res.status === 502 || res.status === 503;
-    if (!retryable || attempt === maxAttempts) {
-      return { status: res.status, json };
-    }
-
-    const backoffMs = res.status === 429 ? 1500 * attempt : 400 * attempt * attempt;
-    logger.warn('openFDA transient error — retrying', { status: res.status, attempt, backoffMs });
-    await sleep(backoffMs);
-  }
-
-  return { status: lastStatus, json: lastJson };
+/**
+ * Brand search for the detail-page MAUDE snapshot (getMaudeBrandSynopsis): same specialty
+ * scope, brand phrase and date window. The safety signal reads exactly this search so its
+ * report count always equals the snapshot count.
+ */
+export function maudeBrandWindowSearch(options: { brand: string; specialty?: string; days: number }): {
+  search: string;
+  specialtyOnlySearch: string;
+  startIso: string;
+  endIso: string;
+  startCompact: string;
+  endCompact: string;
+} {
+  const window = resolveDateWindow(options.days);
+  const { search } = buildSearch({
+    specialty: options.specialty,
+    brand: options.brand,
+    startCompact: window.startCompact,
+    endCompact: window.endCompact,
+  });
+  const specialtyOnlySearch = buildSearch({
+    specialty: options.specialty,
+    startCompact: window.startCompact,
+    endCompact: window.endCompact,
+  }).search;
+  return {
+    search,
+    specialtyOnlySearch,
+    startIso: window.startIso,
+    endIso: window.endIso,
+    startCompact: window.startCompact,
+    endCompact: window.endCompact,
+  };
 }
 
 async function fetchOpenFdaDailyCounts(search: string): Promise<{

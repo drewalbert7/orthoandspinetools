@@ -4,7 +4,7 @@ import {
   computeUtilityScore,
   scoreFromParts,
 } from './implantDirectoryScore';
-import { hazardFromPeerStats, MAUDE_MIN_REPORTS_FOR_HAZARD } from './implantMaudeSignal';
+import { MAUDE_MIN_REPORTS_FOR_HAZARD } from './implantMaudeSignal';
 
 function assert(cond: boolean, msg: string) {
   if (!cond) throw new Error(msg);
@@ -37,70 +37,7 @@ function main() {
     `utility without discussion should shrink toward 5 (got ${utilityNoDiscuss} from ${richListing})`
   );
 
-  // Hot peer rising → high hazard
-  const hot = hazardFromPeerStats({
-    risingScore: 200,
-    recentTotal: 40,
-    priorTotal: 8,
-    peerRisingPercentile: 0.95,
-    peerVolumePercentile: 0.7,
-  });
-  assert(hot.hazard >= 0.55, `hot hazard expected elevated, got ${hot.hazard}`);
-  assert(hot.label === 'elevated', `label ${hot.label}`);
-
-  // Quiet / declining
-  const quiet = hazardFromPeerStats({
-    risingScore: -20,
-    recentTotal: 8,
-    priorTotal: 12,
-    peerRisingPercentile: 0.15,
-    peerVolumePercentile: 0.2,
-  });
-  assert(quiet.hazard < 0.32, `quiet hazard ${quiet.hazard}`);
-  assert(quiet.label === 'quiet' || quiet.label === 'insufficient', quiet.label);
-
-  // Flat window must stay quiet even if peer rising-pctl looks high (ProDisc-C case)
-  const flat = hazardFromPeerStats({
-    risingScore: 0,
-    recentTotal: 14,
-    priorTotal: 14,
-    peerRisingPercentile: 0.75,
-    peerVolumePercentile: 0.69,
-  });
-  assert(flat.label === 'quiet', `flat must be quiet, got ${flat.label}`);
-  assert(flat.hazard < 0.32, `flat hazard ${flat.hazard}`);
-
-  // Declining mid-pack peers must not become watch
-  const declining = hazardFromPeerStats({
-    risingScore: -30,
-    recentTotal: 13,
-    priorTotal: 14,
-    peerRisingPercentile: 0.64,
-    peerVolumePercentile: 0.64,
-  });
-  assert(declining.label === 'quiet', `declining must be quiet, got ${declining.label}`);
-
-  // Below minimum threshold: must be 'insufficient' with 0 hazard
-  const lowN = hazardFromPeerStats({
-    risingScore: 287,
-    recentTotal: 2,
-    priorTotal: 2,
-    peerRisingPercentile: 0.97,
-    peerVolumePercentile: 0.28,
-  });
-  assert(lowN.label === 'insufficient', `low n must be insufficient, got ${lowN.label}`);
-  assert(lowN.hazard === 0, `low n hazard must be 0, got ${lowN.hazard}`);
-
-  // Real rising outlier with sufficient reports stays elevated
-  const risingOutlier = hazardFromPeerStats({
-    risingScore: 287,
-    recentTotal: 15,
-    priorTotal: 5,
-    peerRisingPercentile: 0.97,
-    peerVolumePercentile: 0.35,
-  });
-  assert(risingOutlier.label === 'elevated', `rising outlier ${risingOutlier.label}`);
-  assert(risingOutlier.hazard >= 0.55, `rising outlier H ${risingOutlier.hazard}`);
+  // MAUDE math (safety signal) is covered by implantSafetySignal.test.ts (npm test).
 
   // Asymmetry: quiet does not punish; elevated crushes
   const u = 8.0;
@@ -136,28 +73,20 @@ function main() {
       recentTotal: 30,
       priorTotal: 5,
       changePct: 200,
-      risingScore: 180,
-      peerRisingPercentile: 0.92,
-      peerVolumePercentile: 0.8,
-      peerCount: 20,
       matchedBrand: 'Problem Device',
-      windowLabel: '6mo',
+      windowLabel: '12mo',
     }
   );
   assert(breakdown.finalScore < 4.5, `problem device final ${breakdown.finalScore}`);
   assert(breakdown.facets.length >= 4, 'facets present');
-  assert(breakdown.version === 'ost-dir-v2', breakdown.version);
+  assert(breakdown.version === 'ost-dir-v3', breakdown.version);
 
   // Verify minimum threshold constant
   assert(MAUDE_MIN_REPORTS_FOR_HAZARD >= 5, `threshold ${MAUDE_MIN_REPORTS_FOR_HAZARD}`);
 
-  console.log('ost-dir-v2 math checks OK', {
+  console.log('ost-dir-v3 math checks OK', {
     richListing,
     utilityNoDiscuss,
-    hot: hot.hazard,
-    quiet: quiet.hazard,
-    lowN: lowN.hazard,
-    risingOutlier: risingOutlier.hazard,
     clean,
     dirty,
     problemFinal: breakdown.finalScore,

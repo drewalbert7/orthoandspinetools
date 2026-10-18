@@ -1,3 +1,6 @@
+import { ImplantSafetySignal } from './ImplantSafetySignal';
+import { SAFETY_SIGNAL_LABEL, type SafetySignalPayload } from '../../lib/implantSafety';
+
 export type ScoreFacet = {
   id: string;
   label: string;
@@ -17,6 +20,7 @@ export type ScoreBreakdownPayload = {
   maudeSignal?: string;
   summary?: string;
   facets?: ScoreFacet[];
+  maude?: { safety?: SafetySignalPayload | null } | null;
 };
 
 function barTone(id: string, score: number | null, signal?: string): string {
@@ -36,14 +40,20 @@ function barTone(id: string, score: number | null, signal?: string): string {
 function FacetRow({
   facet,
   maudeSignal,
+  safety,
 }: {
   facet: ScoreFacet;
   maudeSignal?: string;
+  safety?: SafetySignalPayload | null;
 }) {
-  // MAUDE with insufficient data never shows a number (older stored rows carried a 10.0).
+  // MAUDE never shows a number without evidence: insufficient data, or an older stored
+  // row without the safety signal evidence block, reads "Insufficient data".
   const insufficientMaude =
     facet.id === 'maude' &&
-    (maudeSignal === 'insufficient' || facet.status === 'Insufficient data');
+    (maudeSignal === 'insufficient' ||
+      facet.status === 'Insufficient data' ||
+      !safety ||
+      safety.score == null);
   const score = insufficientMaude ? null : facet.score;
   const pct = score == null ? 0 : Math.max(0, Math.min(100, (score / 10) * 100));
   const scoreText =
@@ -75,6 +85,7 @@ function FacetRow({
         />
       </div>
       <p className="text-[11px] leading-snug text-gray-500">{facet.detail}</p>
+      {facet.id === 'maude' && safety ? <ImplantSafetySignal safety={safety} /> : null}
     </div>
   );
 }
@@ -93,7 +104,7 @@ type Props = {
 };
 
 /**
- * Transparent ost-dir-v2 facet panel — listing, discussion, MAUDE → summary.
+ * Transparent Directory Score facet panel: listing, discussion, Reported safety signal, summary.
  */
 export function ImplantScoreBreakdown({
   rating,
@@ -127,10 +138,10 @@ export function ImplantScoreBreakdown({
       },
       {
         id: 'maude',
-        label: 'MAUDE surveillance',
+        label: SAFETY_SIGNAL_LABEL,
         score: maudeScore ?? null,
         status: maudeSignal || undefined,
-        detail: 'Peer-normalized openFDA signal when brand key is linked.',
+        detail: 'Severity-weighted MAUDE reports and recalls vs the FDA product-code category.',
       },
     ];
 
@@ -138,7 +149,11 @@ export function ImplantScoreBreakdown({
   const util = utilityScore ?? breakdown?.utilityScore ?? null;
   const signal = maudeSignal || breakdown?.maudeSignal || undefined;
   const blurb = summary || breakdown?.summary || null;
-  const version = ratingVersion || breakdown?.version || 'ost-dir-v2';
+  const version = ratingVersion || breakdown?.version || 'ost-dir-v3';
+  const safety = breakdown?.maude?.safety ?? null;
+  const facetsShown = facets.map((f) =>
+    f.id === 'maude' ? { ...f, label: SAFETY_SIGNAL_LABEL } : f
+  );
 
   return (
     <section
@@ -150,12 +165,12 @@ export function ImplantScoreBreakdown({
         <div>
           <h2 className="text-sm font-semibold text-gray-900">Directory Score breakdown</h2>
           <p className="mt-0.5 text-[11px] text-gray-500">
-            Utility from listing + discussion; MAUDE can pull the summary down when peer signal is hot.
+            Utility from listing and discussion; the FDA safety signal can pull the summary down.
           </p>
         </div>
         <div className="text-right">
           <p className="text-2xl font-bold tabular-nums text-gray-900">
-            {final != null ? final.toFixed(1) : '—'}
+            {final != null ? final.toFixed(1) : 'None'}
             <span className="text-sm font-semibold text-gray-500"> / 10</span>
           </p>
           <p className="text-[10px] uppercase tracking-wide text-gray-400">{version}</p>
@@ -174,15 +189,22 @@ export function ImplantScoreBreakdown({
                   : 'bg-gray-100 text-gray-600'
           }`}
         >
-          MAUDE: {signal === 'insufficient' ? 'insufficient data' : signal}
+          Safety signal:{' '}
+          {signal === 'insufficient' || !safety || safety.score == null
+            ? 'Insufficient data'
+            : signal === 'elevated'
+              ? 'elevated vs category'
+              : signal === 'watch'
+                ? 'watch'
+                : 'not elevated'}
         </p>
       ) : signal === 'unlinked' ? (
         <p className="mt-2 text-[11px] font-medium text-gray-500">MAUDE brand key not linked</p>
       ) : null}
 
       <div className="mt-3 space-y-3">
-        {facets.map((f) => (
-          <FacetRow key={f.id} facet={f} maudeSignal={signal} />
+        {facetsShown.map((f) => (
+          <FacetRow key={f.id} facet={f} maudeSignal={signal} safety={safety} />
         ))}
       </div>
 
@@ -190,7 +212,7 @@ export function ImplantScoreBreakdown({
         <p className="mt-3 text-[11px] tabular-nums text-gray-500">
           Utility (pre-hazard): {util.toFixed(1)}
           {final != null && signal && signal !== 'unlinked' && signal !== 'insufficient'
-            ? ` → summary ${final.toFixed(1)} after MAUDE`
+            ? `, summary ${final.toFixed(1)} after the safety signal`
             : null}
         </p>
       ) : null}
@@ -199,7 +221,7 @@ export function ImplantScoreBreakdown({
         <p className="mt-2 text-[11px] leading-snug text-gray-500">{blurb}</p>
       ) : (
         <p className="mt-2 text-[11px] leading-snug text-gray-400">
-          Editorial composite for directory ranking — not medical advice, incidence rates, or FDA
+          Editorial composite for directory ranking, not medical advice, incidence rates, or an FDA
           judgment.
         </p>
       )}
@@ -209,7 +231,7 @@ export function ImplantScoreBreakdown({
           href="/implants/methodology"
           className="text-blue-600 hover:text-blue-800 underline-offset-2 hover:underline"
         >
-          How the Directory Score works →
+          How the Directory Score and safety signal work
         </a>
       </p>
     </section>

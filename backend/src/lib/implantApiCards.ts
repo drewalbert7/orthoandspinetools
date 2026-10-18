@@ -64,15 +64,27 @@ export function stripFdaMojibake(text: string): string {
   return text.replace(/[\u00bf\ufffd]/g, '').replace(/[ \t]{2,}/g, ' ');
 }
 
+/** True when a stored breakdown carries the evidence block of the Reported safety signal. */
+export function hasSafetyEvidence(breakdown: unknown): boolean {
+  if (!breakdown || typeof breakdown !== 'object') return false;
+  const maude = (breakdown as Record<string, unknown>).maude;
+  if (!maude || typeof maude !== 'object') return false;
+  const safety = (maude as Record<string, unknown>).safety;
+  return Boolean(safety && typeof safety === 'object');
+}
+
 /**
  * Rows scored before the MAUDE fix stored a 10.0 facet for insufficient data and the raw
- * openFDA brand string. Never serve either, even before the next recompute.
+ * openFDA brand string. Rows scored before the safety signal (ost-dir-v2) carry a MAUDE
+ * number without the severity, baseline and source evidence. Never serve any of these as
+ * a number, even before the next recompute: they read Insufficient data.
  */
 export function sanitizeScoreBreakdown(breakdown: unknown, maudeSignal: string | null | undefined): unknown {
   if (!breakdown || typeof breakdown !== 'object') return breakdown ?? null;
   const b = breakdown as Record<string, unknown>;
   const signal = (typeof b.maudeSignal === 'string' ? b.maudeSignal : null) || maudeSignal;
-  const insufficient = signal === 'insufficient';
+  const linked = signal !== 'unlinked';
+  const insufficient = signal === 'insufficient' || (linked && !hasSafetyEvidence(b));
   const facets = Array.isArray(b.facets)
     ? (b.facets as Array<Record<string, unknown>>).map((f) => {
         if (!f || typeof f !== 'object') return f;
@@ -172,7 +184,10 @@ export function toImplantDetailBase(implant: ImplantCardSource) {
     ratingVersion: implant.ratingVersion ?? null,
     aiRatingLocked: Boolean(implant.aiRatingLocked),
     utilityScore: implant.utilityScore ?? null,
-    maudeScore: implant.maudeSignal === 'insufficient' ? null : (implant.maudeScore ?? null),
+    maudeScore:
+      implant.maudeSignal === 'insufficient' || !hasSafetyEvidence(implant.scoreBreakdown)
+        ? null
+        : (implant.maudeScore ?? null),
     maudeHazard: implant.maudeHazard ?? null,
     maudeSignal: implant.maudeSignal ?? null,
     scoreBreakdown: sanitizeScoreBreakdown(implant.scoreBreakdown, implant.maudeSignal),

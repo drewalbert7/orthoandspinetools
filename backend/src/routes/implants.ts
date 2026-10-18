@@ -20,6 +20,7 @@ import {
   normalizeImplantSpecialty,
 } from '../lib/implantSpecialties';
 import {
+  RATING_VERSION,
   recomputeAllImplantDirectoryScores,
   recomputeImplantDirectoryScore,
 } from '../lib/implantDirectoryScore';
@@ -269,7 +270,7 @@ router.get(
   })
 );
 
-/** Admin: recompute all Directory Scores (ost-dir-v2 + MAUDE facets). */
+/** Admin: recompute all Directory Scores (ost-dir-v3 + Reported safety signal). */
 router.post(
   '/admin/recompute-scores',
   ingestLimiter,
@@ -278,7 +279,7 @@ router.post(
   asyncHandler(async (_req: AuthRequest, res: Response) => {
     const n = await recomputeAllImplantDirectoryScores();
     logger.info('Admin recomputed implant directory scores', { count: n });
-    res.json({ success: true, data: { recomputed: n, version: 'ost-dir-v2' } });
+    res.json({ success: true, data: { recomputed: n, version: RATING_VERSION } });
   })
 );
 
