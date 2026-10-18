@@ -1,0 +1,3 @@
+# db-guard ignore list (path globs, ** = any depth). Ships EMPTY on purpose.
+# Any non-comment line ADDED here is itself a blocking finding (needs a DESTRUCTIVE-OK marker on that line
+# + the destructive-ok PR label), so widening the ignore list always gets Drew/CEO eyes.

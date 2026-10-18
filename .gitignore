@@ -72,3 +72,6 @@ backend/prisma/migrations/\$\(date*/
 e2e/test-results/
 e2e/playwright-report/
 e2e/.playwright/
+
+# WAL spool for local/CI stacks (prod uses /mnt/HC_Volume_106016238/ost-wal-spool)
+.wal-spool/

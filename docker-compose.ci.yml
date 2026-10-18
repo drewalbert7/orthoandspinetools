@@ -1,0 +1,14 @@
+# CI-only override (audit items 1 + 2 in CI). Use as:
+#   docker volume create orthoandspinetools-main_postgres_data
+#   docker compose -f docker-compose.prod.yml -f docker-compose.ci.yml up -d --build
+# On a FRESH data dir the postgres entrypoint runs roles.sql, so CI exercises the app as ost_app
+# (DML only) exactly like prod. Never used on the prod host (its data dir already exists, so
+# initdb scripts would not run anyway).
+services:
+  postgres:
+    environment:
+      OST_APP_DB_PASSWORD: ${OST_APP_DB_PASSWORD:?}
+      OST_MIGRATOR_DB_PASSWORD: ${OST_MIGRATOR_DB_PASSWORD:?}
+      OST_BACKUP_DB_PASSWORD: ${OST_BACKUP_DB_PASSWORD:?}
+    volumes:
+      - ./scripts/db/roles.sql:/docker-entrypoint-initdb.d/10-roles.sql:ro

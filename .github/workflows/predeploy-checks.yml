@@ -9,6 +9,9 @@ on:
 env:
   NODE_ENV: production
   POSTGRES_PASSWORD: test_password_ci_only
+  OST_APP_DB_PASSWORD: ci_app_password_0123456789abcdef
+  OST_MIGRATOR_DB_PASSWORD: ci_migrator_password_0123456789ab
+  OST_BACKUP_DB_PASSWORD: ci_backup_password_0123456789abcd
   JWT_SECRET: test_jwt_secret_ci_only_not_for_production
 
 jobs:
@@ -87,6 +90,7 @@ jobs:
           cat > .env << EOF
           NODE_ENV=production
           POSTGRES_PASSWORD=${{ env.POSTGRES_PASSWORD }}
+          OST_APP_DB_PASSWORD=${{ env.OST_APP_DB_PASSWORD }}
           JWT_SECRET=${{ env.JWT_SECRET }}
           DOMAIN=localhost
           VITE_API_URL=/api
@@ -177,7 +181,10 @@ jobs:
 
       - name: Build and start services
         run: |
-          docker compose -f docker-compose.prod.yml up -d --build
+          # postgres_data is external in prod (audit item 2); CI creates it. docker-compose.ci.yml runs
+          # scripts/db/roles.sql at initdb so the app runs as ost_app (DML only), like prod.
+          docker volume create orthoandspinetools-main_postgres_data
+          docker compose -f docker-compose.prod.yml -f docker-compose.ci.yml up -d --build
           echo "Waiting for services to be healthy..."
           sleep 45
 
@@ -199,7 +206,10 @@ jobs:
           # CI starts with an empty database. The checks now FAIL on an empty home feed or
           # implant directory, so create the schema and load minimal fixture rows.
           # (Migration history is not replayable from zero, so use db push in CI only.)
-          docker compose -f docker-compose.prod.yml exec -T backend npx prisma db push --skip-generate --accept-data-loss
+          # Schema is created as the superuser (the app role cannot run DDL). CI-only throwaway DB.
+          docker compose -f docker-compose.prod.yml exec -T \
+            -e DATABASE_URL="postgresql://postgres:${POSTGRES_PASSWORD}@postgres:5432/orthoandspinetools" \
+            backend npx prisma db push --skip-generate --accept-data-loss  # DESTRUCTIVE-OK: CI-throwaway-db
           docker compose -f docker-compose.prod.yml exec -T postgres \
             psql -v ON_ERROR_STOP=1 -U postgres -d orthoandspinetools < e2e/fixtures/ci-seed.sql
           curl -sfk "https://localhost/api/posts?limit=5" | head -c 300; echo
