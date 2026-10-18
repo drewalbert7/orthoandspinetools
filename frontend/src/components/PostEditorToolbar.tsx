@@ -218,7 +218,7 @@ const PostEditorToolbar: React.FC<PostEditorToolbarProps> = ({
             type="button"
             className={btnClass}
             aria-label="Image Markdown"
-            title="Insert image Markdown — prefer media upload when available"
+            title="Insert image Markdown (prefer media upload when available)"
             onMouseDown={(e) => e.preventDefault()}
             onClick={onEmbedImage}
           >

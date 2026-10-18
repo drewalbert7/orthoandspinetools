@@ -196,7 +196,7 @@ function BrandSynopsisPanel({
       <div className="mb-2 flex flex-wrap items-start justify-between gap-2">
         <div>
           <h2 className="text-sm font-semibold text-gray-900">
-            What’s going wrong — {data?.displayTitle || brand}
+            What’s going wrong: {data?.displayTitle || brand}
           </h2>
           <p className="mt-0.5 text-xs text-gray-500">
             FDA problem codes and recent report excerpts for this brand in the selected window
@@ -315,7 +315,7 @@ function TrendBadge({ trend }: { trend: MaudeTrendData['trend'] }) {
     );
   }
   const pct =
-    trend.changePct == null ? '—' : `${trend.changePct > 0 ? '+' : ''}${trend.changePct.toFixed(0)}%`;
+    trend.changePct == null ? 'n/a' : `${trend.changePct > 0 ? '+' : ''}${trend.changePct.toFixed(0)}%`;
   const styles =
     trend.direction === 'up'
       ? 'bg-red-50 text-red-700'
@@ -809,7 +809,7 @@ function BrandSearchBar({
             }
             if (e.key === 'Escape') setOpen(false);
           }}
-          placeholder="Start typing a brand — ATTUNE, HORIZON, PERSONA…"
+          placeholder="Start typing a brand: ATTUNE, HORIZON, PERSONA…"
           className="w-full rounded-lg border border-gray-300 bg-white py-2.5 pl-9 pr-24 text-sm text-gray-900 placeholder:text-gray-400 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
           autoComplete="off"
           spellCheck={false}
@@ -822,7 +822,7 @@ function BrandSearchBar({
         <ul className="absolute z-20 mt-1 max-h-96 w-full overflow-auto rounded-lg border border-gray-200 bg-white py-1 shadow-lg">
           {query.trim().length < 2 && (
             <li className="px-3 py-2 text-xs text-gray-500">
-              Type at least 2 characters — results come from FDA brand names in this specialty.
+              Type at least 2 characters. Results come from FDA brand names in this specialty.
             </li>
           )}
           {query.trim().length >= 2 && searching && merged.length === 0 && (
@@ -901,7 +901,7 @@ function BrandSearchBar({
                   <textarea
                     value={requestNote}
                     onChange={(e) => setRequestNote(e.target.value)}
-                    placeholder="Anything helpful — product line, specialty (optional)"
+                    placeholder="Anything helpful: product line, specialty (optional)"
                     rows={2}
                     className="w-full rounded border border-gray-300 bg-white px-2 py-1.5 text-sm"
                   />
@@ -1313,7 +1313,7 @@ function MultiBrandChart({
               ·{' '}
               {visibleSeries
                 .find((s) => s.brand.name === focusBrand)
-                ?.points[hover]?.count.toLocaleString() ?? '—'}{' '}
+                ?.points[hover]?.count.toLocaleString() ?? 'n/a'}{' '}
               for{' '}
               <span className="font-medium text-gray-900">
                 {ranked.find((b) => b.name === focusBrand)?.shortLabel}
@@ -1336,8 +1336,8 @@ function MultiBrandChart({
         </div>
         <p className="mb-2 min-h-[2.5rem] text-xs text-gray-500 sm:min-h-[1.25rem]">
           {sortMode === 'rising'
-            ? 'Same order as the chart — hottest recent growth first (like Reddit Rising).'
-            : 'Same order as the chart — most reports in this window first.'}
+            ? 'Same order as the chart, hottest recent growth first (like Reddit Rising).'
+            : 'Same order as the chart, most reports in this window first.'}
         </p>
         <ol className="divide-y divide-gray-100 rounded-lg border border-gray-200 bg-white">
           {ranked.map((brand, bi) => {
@@ -1571,7 +1571,7 @@ const MaudeTrends: React.FC = () => {
     <div className="mx-auto min-w-0 max-w-4xl px-3 sm:px-4">
       <DocumentMeta
         title="MAUDE implant trends"
-        description="FDA openFDA / MAUDE adverse-event trends by orthopedic specialty — top implant brands and multi-year cumulative report growth."
+        description="FDA openFDA / MAUDE adverse-event trends by orthopedic specialty: top implant brands and multi-year cumulative report growth."
         canonicalPath="/maude"
         jsonLd={hubJsonLd}
       />
@@ -1583,7 +1583,7 @@ const MaudeTrends: React.FC = () => {
             <p className="mt-1 text-sm text-gray-600">
               Multi-year adverse-event volume from FDA openFDA (MAUDE). Compare brands by{' '}
               <strong>Rising</strong> (recent growth, like Reddit Rising) or <strong>Top</strong> volume. Chart and
-              list stay in the same order. Spikes are signals — not proof a device is unsafe.
+              list stay in the same order. Spikes are signals, not proof a device is unsafe.
             </p>
           </div>
           {data && <TrendBadge trend={data.trend} />}
@@ -1824,7 +1824,7 @@ const MaudeTrends: React.FC = () => {
         )}
         <p className="mt-2 text-xs text-gray-400">
           {sortMode === 'rising'
-            ? 'Same Rising order as the chart and list above — recent growth vs the prior window.'
+            ? 'Same Rising order as the chart and list above: recent growth vs the prior window.'
             : 'Same volume order as the chart and list above.'}{' '}
           Tap a brand to focus its cumulative series. Filters sync to the URL for sharing.
         </p>

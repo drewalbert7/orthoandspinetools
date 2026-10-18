@@ -2,9 +2,9 @@ import type { Community, Post } from '../services/apiService';
 
 export const SEO_DEFAULTS = {
   siteName: 'OrthoAndSpineTools',
-  title: 'OrthoAndSpineTools — Hunt for the Best',
+  title: 'OrthoAndSpineTools: Hunt for the Best',
   description:
-    'Ortho and Spine Tools — Hunt for the Best. A professional community for orthopedic and spine surgeons to discuss cases, tools, biologics, and startups. User-generated posts with author attribution.',
+    'Ortho and Spine Tools: Hunt for the Best. A professional community for orthopedic and spine surgeons to discuss cases, tools, biologics, and startups. User-generated posts with author attribution.',
   tagline: 'Ortho and Spine Tools - Hunt for the Best',
 } as const;
 
@@ -390,7 +390,7 @@ export function buildUserProfileJsonLd(
   const url = absoluteUrl(path);
   const displayName =
     [user.firstName, user.lastName].filter(Boolean).join(' ').trim() || user.username;
-  const jobTitle = [user.specialty, user.subSpecialty].filter(Boolean).join(' — ') || undefined;
+  const jobTitle = [user.specialty, user.subSpecialty].filter(Boolean).join(', ') || undefined;
 
   return {
     '@context': 'https://schema.org',

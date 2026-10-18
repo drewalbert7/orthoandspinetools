@@ -120,7 +120,7 @@ const Header: React.FC<HeaderProps> = ({ isMobileSidebarOpen, onMobileSidebarTog
             </Link>
           </div>
 
-          {/* Search — works on mobile and desktop */}
+          {/* Search: works on mobile and desktop */}
           <form
             onSubmit={handleSearchSubmit}
             className="flex-1 min-w-0 max-w-lg mx-1.5 sm:mx-4 md:mx-8"
@@ -176,7 +176,7 @@ const Header: React.FC<HeaderProps> = ({ isMobileSidebarOpen, onMobileSidebarTog
             </button>
             {user ? (
               <>
-                {/* Create Post — icon-only on narrow phones */}
+                {/* Create Post: icon-only on narrow phones */}
                 <Link
                   to="/create-post"
                   className="touch-target flex items-center gap-1 rounded-md border border-gray-200 bg-white px-2 sm:px-3 py-1.5 text-sm font-medium text-black transition-colors hover:bg-gray-100 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100 dark:hover:bg-slate-700"

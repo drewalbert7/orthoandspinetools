@@ -1,4 +1,4 @@
-/** Placeholder IFU boilerplate used in early seeds — treat as empty for UI. */
+/** Placeholder IFU boilerplate used in early seeds: treat as empty for UI. */
 const IFU_PLACEHOLDER =
   /^see current manufacturer labeling\s*\/\s*ifu/i;
 

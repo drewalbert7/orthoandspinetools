@@ -9,7 +9,7 @@ type StartupPostBadgeProps = {
 const StartupPostBadge: React.FC<StartupPostBadgeProps> = ({ className = '', compact = false }) => (
   <Link
     to="/startups"
-    title="Startup launch — view all startup posts"
+    title="Startup launch: view all startup posts"
     className={`inline-flex items-center gap-1 rounded-full border border-amber-300 bg-amber-50 font-semibold text-amber-900 hover:bg-amber-100 hover:border-amber-400 transition-colors no-touch-target ${
       compact ? 'px-1.5 py-0.5 text-[10px] leading-none' : 'px-2 py-0.5 text-[11px] leading-tight'
     } ${className}`}

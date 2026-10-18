@@ -13,7 +13,7 @@ export interface ResizeOptions {
   cropToFit?: boolean; // Crop to exact dimensions (for avatars)
 }
 
-/** Canvas output is always JPEG — filename must end in .jpg so multipart/multer validation accepts the upload. */
+/** Canvas output is always JPEG: filename must end in .jpg so multipart/multer validation accepts the upload. */
 function jpegOutputFileName(originalName: string): string {
   const base =
     originalName.includes('.') && originalName.lastIndexOf('.') > 0

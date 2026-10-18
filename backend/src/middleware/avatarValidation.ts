@@ -22,7 +22,7 @@ export const validateAvatarUpload = (req: Request, res: Response, next: NextFunc
     return next(new AppError('Avatar must be under 500KB', 413));
   }
 
-  // Check filename extension (allow no extension — some clients send "IMG_1234" after resize)
+  // Check filename extension (allow no extension: some clients send "IMG_1234" after resize)
   const allowedExtensions = ['.jpg', '.jpeg', '.png'];
   const lastDot = file.originalname.lastIndexOf('.');
   const ext = lastDot >= 0 ? file.originalname.toLowerCase().substring(lastDot) : '';

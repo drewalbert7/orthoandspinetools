@@ -569,7 +569,7 @@ const CreatePost: React.FC = () => {
             </h1>
             {isLaunchMode && (
               <p className="text-sm text-gray-600 mt-1 max-w-2xl">
-                Product Hunt–style launch: pick the community that fits your product, add your website link, at least
+                Product Hunt-style launch: pick the community that fits your product, add your website link, at least
                 one image or demo video, and your story. With the Startup topic tag, it appears on{' '}
                 <Link to="/startups" className="text-blue-600 hover:underline">
                   Startups
@@ -609,7 +609,7 @@ const CreatePost: React.FC = () => {
           </div>
         )}
 
-        {/* Community Selection — menu rendered via portal so it is not covered by the title field (stacking) */}
+        {/* Community Selection: menu rendered via portal so it is not covered by the title field (stacking) */}
         <div className="mb-4 sm:mb-6" ref={dropdownRef}>
           <div className="relative">
             <button
@@ -711,7 +711,7 @@ const CreatePost: React.FC = () => {
           </div>
         )}
 
-        {/* Title Input — z-0 so portaled community menu (body, z~11k) always stacks above */}
+        {/* Title Input: z-0 so portaled community menu (body, z~11k) always stacks above */}
         <div className="mb-4 sm:mb-6 relative z-0">
           <div className="relative z-0">
             <input
@@ -769,7 +769,7 @@ const CreatePost: React.FC = () => {
           </div>
         )}
 
-        {/* Topic tags — admin-defined options for this community */}
+        {/* Topic tags: admin-defined options for this community */}
         {selectedCommunity && (
           <div className="mb-4 sm:mb-6">
             <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -870,10 +870,10 @@ const CreatePost: React.FC = () => {
                   onPaste={(e) => tryApplyUrlPasteToTextarea(e, body, setBody)}
                   placeholder={
                     isLaunchMode
-                      ? 'Tell the community what you built — problem, solution, who it’s for (Markdown supported) *'
+                      ? 'Tell the community what you built: problem, solution, who it’s for (Markdown supported) *'
                       : postType === 'images'
-                        ? 'Caption or description (optional) — Markdown supported'
-                        : 'Body text (optional) — Markdown supported'
+                        ? 'Caption or description (optional). Markdown supported'
+                        : 'Body text (optional). Markdown supported'
                   }
                   rows={10}
                   spellCheck
@@ -887,7 +887,7 @@ const CreatePost: React.FC = () => {
                   onChange={setBody}
                   placeholder={
                     isLaunchMode
-                      ? 'Tell the community what you built — problem, solution, who it’s for *'
+                      ? 'Tell the community what you built: problem, solution, who it’s for *'
                       : postType === 'images'
                         ? 'Caption or description (optional)'
                         : 'Body text (optional)'

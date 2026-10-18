@@ -24,7 +24,7 @@ import {
 
 export const RATING_VERSION = 'ost-dir-v3';
 
-/** How hard MAUDE hazard multiplies down utility (0–1 scale on H). */
+/** How hard MAUDE hazard multiplies down utility (0-1 scale on H). */
 const HAZARD_MULTIPLIER = 0.55;
 /** Additive point penalty at H=1. */
 const HAZARD_ADDITIVE = 3.5;
@@ -102,7 +102,7 @@ function lenBoost(text: string | null | undefined, softCap: number, maxPts: numb
 }
 
 /**
- * Listing / structural quality — completeness of the directory profile.
+ * Listing / structural quality: completeness of the directory profile.
  * Intentionally NOT a clinical endorsement.
  */
 export function computeCatalogScore(input: CatalogInput): number {
@@ -234,7 +234,7 @@ export function computeCommunityScore(comments: CommentEvidence[]): {
 
 /**
  * Utility: excellence prior from listing + discussion.
- * Without discussion, shrink listing toward neutral 5 — complete pages ≠ great implants.
+ * Without discussion, shrink listing toward neutral 5: complete pages ≠ great implants.
  */
 export function computeUtilityScore(
   listingScore: number,
@@ -411,7 +411,7 @@ export function scoreFromParts(
   };
 }
 
-/** @deprecated use scoreFromParts with MAUDE snapshot — kept for unit tests of catalog/community */
+/** @deprecated use scoreFromParts with MAUDE snapshot: kept for unit tests of catalog/community */
 export function blendDirectoryScore(
   catalogScore: number,
   communityScore: number | null,

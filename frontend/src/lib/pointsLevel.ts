@@ -1,6 +1,6 @@
 /**
  * Points → level (max 150). Rising XP curve (Helldivers-style).
- * Same logic as `backend/src/utils/pointsLevel.ts` — update both if you change tuning.
+ * Same logic as `backend/src/utils/pointsLevel.ts`: update both if you change tuning.
  */
 export const MAX_POINTS_LEVEL = 150;
 

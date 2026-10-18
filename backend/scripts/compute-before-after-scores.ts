@@ -542,7 +542,7 @@ function main() {
     const before = computeScore(implant, false);
     const after = computeScore(implant, true);
     const change = after.score - before.score;
-    const changeStr = change === 0 ? '—' : change > 0 ? `+${change.toFixed(1)}` : change.toFixed(1);
+    const changeStr = change === 0 ? 'n/a' : change > 0 ? `+${change.toFixed(1)}` : change.toFixed(1);
     const totalReports = (implant.maudeRecentTotal ?? 0) + (implant.maudePriorTotal ?? 0);
     const reportsStr = implant.maudeRecentTotal === null ? 'n/a' : totalReports.toString();
     
@@ -580,7 +580,7 @@ function main() {
   console.log('| Simplify | P200022 (PMA) | 2020-09-18 | Globus Medical, Inc. | https://www.accessdata.fda.gov/cdrh_docs/pdf20/P200022B.pdf |');
   console.log('| INFUSE Bone Graft | P000058 (PMA) | 2002-07-02 | Medtronic Sofamor Danek USA, Inc. | https://www.accessdata.fda.gov/scripts/cdrh/cfdocs/cfpma/pma.cfm?ID=P000058 |');
   console.log('| INFINITY | K122752 (510k) | 2013-07-31 | Stryker Orthopaedics | https://www.accessdata.fda.gov/cdrh_docs/pdf12/K122752.pdf |');
-  console.log('| CD Horizon Solera | K073633 (510k) | — | Medtronic Spinal and Biologics | https://www.accessdata.fda.gov/cdrh_docs/pdf7/K073633.pdf |');
+  console.log('| CD Horizon Solera | K073633 (510k) | n/a | Medtronic Spinal and Biologics | https://www.accessdata.fda.gov/cdrh_docs/pdf7/K073633.pdf |');
 }
 
 main();

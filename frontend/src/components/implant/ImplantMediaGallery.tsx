@@ -91,7 +91,7 @@ export function ImplantMediaGallery({ brandName, images, className = '' }: Props
         >
           <img
             src={current!.url}
-            alt={current!.alt || `${brandName} — ${kindLabel(current!.kind)}`}
+            alt={current!.alt || `${brandName}: ${kindLabel(current!.kind)}`}
             className={`aspect-square w-full bg-white object-contain p-2 ${
               current!.kind === 'xray' ? 'bg-neutral-950 p-1' : ''
             }`}
@@ -229,7 +229,7 @@ export function ImplantMediaGallery({ brandName, images, className = '' }: Props
             ) : null}
             <img
               src={current.url}
-              alt={current.alt || `${brandName} — ${kindLabel(current.kind)}`}
+              alt={current.alt || `${brandName}: ${kindLabel(current.kind)}`}
               style={{ transform: `scale(${zoom})` }}
               className="max-h-full max-w-full object-contain transition-transform duration-150"
             />

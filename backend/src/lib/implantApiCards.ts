@@ -59,7 +59,7 @@ function pickProduct(images: ImplantImageRow[]) {
   return sorted.find((i) => i.kind === 'product') || sorted[0] || null;
 }
 
-/** Directory / related strip — keep payload small for pagination at scale. */
+/** Directory / related strip: keep payload small for pagination at scale. */
 /** openFDA brand strings sometimes carry a mis-encoded trademark sign ("VOYAGER\u00bf"). Drop it. */
 export function stripFdaMojibake(text: string): string {
   return text.replace(/[\u00bf\ufffd]/g, '').replace(/[ \t]{2,}/g, ' ');

@@ -1,5 +1,5 @@
 /**
- * Implant Directory specialty keys — aligned with community slugs + MAUDE filters.
+ * Implant Directory specialty keys: aligned with community slugs + MAUDE filters.
  * Keep in sync with frontend/src/lib/implantSpecialties.ts
  */
 export const IMPLANT_SPECIALTIES = [

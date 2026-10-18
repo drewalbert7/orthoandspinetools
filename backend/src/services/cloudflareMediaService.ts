@@ -129,7 +129,7 @@ export function getCloudflareImageUrl(
     const h = options.height || 1920;
     return namedOrFlex(imageId, 'feed', `w=${w},h=${h},fit=scale-down,f=auto`);
   }
-  // Default feed delivery — scale-down to 1920
+  // Default feed delivery: scale-down to 1920
   return namedOrFlex(imageId, 'feed', 'w=1920,h=1920,fit=scale-down,f=auto');
 }
 
@@ -151,7 +151,7 @@ export async function uploadImageToCloudflare(
     throw new AppError('Cloudflare Images not configured', 500);
   }
 
-  // Direct Creator Upload — more reliable than /images/v1 multipart on some accounts
+  // Direct Creator Upload: more reliable than /images/v1 multipart on some accounts
   const draftForm = new FormData();
   draftForm.append('requireSignedURLs', 'false');
   const meta: Record<string, string> = {

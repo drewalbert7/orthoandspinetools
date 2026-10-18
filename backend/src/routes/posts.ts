@@ -130,7 +130,7 @@ router.post('/', authenticate, normalizeCreatePostBody, validatePost, asyncHandl
     const arr = Array.isArray(rawOpts) ? rawOpts : [];
     const parsed = parsePollOptionStrings(arr);
     if (!parsed) {
-      throw new AppError('Poll requires 2–6 options, each 1–200 characters', 400);
+      throw new AppError('Poll requires 2-6 options, each 1-200 characters', 400);
     }
     pollOptionsValue = parsed;
     const pe = req.body.pollEndsAt;

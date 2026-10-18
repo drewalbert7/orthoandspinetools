@@ -2,7 +2,7 @@ import axios from 'axios';
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || '/api';
 
-// No default Content-Type — JSON default breaks multipart (same as apiService).
+// No default Content-Type: JSON default breaks multipart (same as apiService).
 const api = axios.create({
   baseURL: API_BASE_URL,
 });

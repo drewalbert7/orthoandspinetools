@@ -11,11 +11,11 @@ const AUTHOR_ID = 'cmgegneva000012rq3iebof1y';
 const COMMUNITY_ID = 'cmnfelfr7000113suuq7t82ay';
 const TAG_IDS = ['85839822-b2ee-49a6-a6ce-9d42fba56341'];
 
-const TITLE = 'I built The Direct Care List — a crowd-ranked directory of direct care practices';
+const TITLE = 'I built The Direct Care List: a crowd-ranked directory of direct care practices';
 
 const CONTENT = `New project: https://thedirectcarelist.com
 
-It's a crowd-ranked directory of direct primary care (DPC), direct specialty care (DSC), and cash-pay clinics — practices with transparent prices and no middlemen, where the clinician works for the patient relationship.
+It's a crowd-ranked directory of direct primary care (DPC), direct specialty care (DSC), and cash-pay clinics: practices with transparent prices and no middlemen, where the clinician works for the patient relationship.
 
 Why I built it:
 • Patients and employers struggle to find direct/cash-pay options in one place
@@ -25,7 +25,7 @@ Why I built it:
 
 For the surgeons here running or considering a direct specialty / cash-pay model: you can add your practice (specialty, city/state, membership or cash pricing, and why it's direct) at https://thedirectcarelist.com/#add
 
-Feedback welcome — especially on what would make a listing genuinely useful to patients.`;
+Feedback welcome, especially on what would make a listing genuinely useful to patients.`;
 
 const IMAGES = [
   { path: '/tmp/dcl-og.png', name: 'the-direct-care-list.png', mime: 'image/png' },

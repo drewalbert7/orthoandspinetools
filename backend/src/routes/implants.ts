@@ -92,7 +92,7 @@ const ingestLimiter = rateLimit({
   message: { success: false, message: 'Ingest rate limit exceeded' },
 });
 
-/** Dedicated ingest secret only — do not share MAUDE/digest cron secrets. */
+/** Dedicated ingest secret only: do not share MAUDE/digest cron secrets. */
 function resolveIngestSecret(): string | null {
   const dedicated = process.env.IMPLANT_INGEST_SECRET?.trim();
   return dedicated || null;
@@ -332,7 +332,7 @@ router.get(
   })
 );
 
-/** Grokbot / admin ingest upsert — registered before /:slug */
+/** Grokbot / admin ingest upsert: registered before /:slug */
 router.post(
   '/ingest',
   ingestLimiter,
@@ -672,7 +672,7 @@ router.get(
         commentsLocked: !req.user,
         canComment: Boolean(req.user),
         related: relatedSorted.slice(0, 6).map((r) => toImplantListCard(r)),
-        /** Legacy empty array — UI uses comments */
+        /** Legacy empty array: UI uses comments */
         reviews: [] as unknown[],
         reviewsLocked: true,
         canWriteReview: false,

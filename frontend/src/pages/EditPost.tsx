@@ -206,7 +206,7 @@ const EditPost: React.FC = () => {
                 value={body}
                 onChange={(e) => setBody(e.target.value)}
                 onPaste={(e) => tryApplyUrlPasteToTextarea(e, body, setBody)}
-                placeholder="Body (optional) — Markdown supported"
+                placeholder="Body (optional). Markdown supported"
                 rows={10}
                 spellCheck
                 autoComplete="off"

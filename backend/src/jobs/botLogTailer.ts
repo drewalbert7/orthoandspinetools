@@ -3,10 +3,10 @@
  * Modeled on Physician Forge pf_analytics.py behavior.
  *
  * Env:
- *   SITE_ACCESS_LOG — path to nginx access.log (required)
- *   BOT_IGNORE_IPS — comma-separated IPs to skip (server self-hits)
- *   BOT_BACKFILL_DAYS — default 14
- *   DATABASE_URL — Prisma connection
+ *   SITE_ACCESS_LOG: path to nginx access.log (required)
+ *   BOT_IGNORE_IPS: comma-separated IPs to skip (server self-hits)
+ *   BOT_BACKFILL_DAYS: default 14
+ *   DATABASE_URL: Prisma connection
  */
 
 import 'dotenv/config';

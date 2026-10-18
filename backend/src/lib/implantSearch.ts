@@ -252,7 +252,7 @@ export function slugifyImplant(input: string): string {
 export const PUBLIC_IMPLANT_STATUSES = ['published', 'verified'] as const;
 
 function buildOrIlikePattern(tokens: string[]): string {
-  // Used only for logging / debugging helpers — matching is done in SQL with OR of ILIKEs
+  // Used only for logging / debugging helpers: matching is done in SQL with OR of ILIKEs
   return tokens.filter(Boolean).join('|');
 }
 
@@ -371,14 +371,14 @@ export async function searchImplantIds(params: {
   // Postgres ~* for case-insensitive. Collapse concepts into one prefer and one demote pattern when possible.
   const preferSrc = preferRes.map((r) => r.source).filter(Boolean);
   const demoteSrc = demoteRes.map((r) => r.source).filter(Boolean);
-  // Never use empty ~* patterns (match-all / errors) — use impossible token instead
+  // Never use empty ~* patterns (match-all / errors): use impossible token instead
   const preferPat = preferSrc.length ? preferSrc.join('|') : 'a\\A';
   const demotePat = demoteSrc.length ? demoteSrc.join('|') : 'a\\A';
   const hasPrefer = preferSrc.length > 0;
   const hasDemote = demoteSrc.length > 0;
 
   const specialtyFilter = specialty;
-  // Soft specialty boost when inferred (All specialties) — do not hard-filter
+  // Soft specialty boost when inferred (All specialties): do not hard-filter
   const softSpecialty = !specialtyFilter && inferredSpecialty ? inferredSpecialty : '';
 
   void buildOrIlikePattern;

@@ -29,7 +29,7 @@ const PRODUCT_COLORS: Record<string, string> = {
 };
 
 function fmt(n: number | undefined | null): string {
-  if (n == null || Number.isNaN(n)) return '—';
+  if (n == null || Number.isNaN(n)) return 'n/a';
   return Math.round(Number(n)).toLocaleString('en-US');
 }
 
@@ -233,7 +233,7 @@ const Stats: React.FC = () => {
 
   const updatedLabel = dataUpdatedAt
     ? new Date(dataUpdatedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-    : '—';
+    : 'n/a';
 
   return (
     <div className="ost-stats max-w-5xl mx-auto px-4 py-8 sm:py-10">
@@ -281,7 +281,7 @@ const Stats: React.FC = () => {
       {isLoading ? (
         <p className="text-[var(--ost-muted)] py-16 text-center">Loading traffic…</p>
       ) : isError || !data ? (
-        <p className="text-[var(--ost-muted)] py-16 text-center">Stats offline — try again shortly.</p>
+        <p className="text-[var(--ost-muted)] py-16 text-center">Stats offline. Try again shortly.</p>
       ) : (
         <>
           <section aria-labelledby="ost-humans-heading" className="mb-10">
@@ -354,7 +354,7 @@ const Stats: React.FC = () => {
                 <canvas ref={canvasRef} role="img" aria-label="Human page views chart" />
               ) : (
                 <p className="py-10 text-sm text-[var(--ost-muted)]">
-                  No traffic yet — chart fills in as people visit.
+                  No traffic yet. The chart fills in as people visit.
                 </p>
               )}
             </div>
@@ -439,7 +439,7 @@ const Stats: React.FC = () => {
                             ? Math.round((100 * productLeads.majority.n) / productLeads.sum)
                             : 0
                         }%)`
-                      : '—'}
+                      : 'n/a'}
                   </p>
                   <div className="mt-3 space-y-2.5">
                     {productLeads.rows.slice(0, 8).map((row) => (
@@ -494,7 +494,7 @@ const Stats: React.FC = () => {
                   </h3>
                   <p className="mt-1 max-w-2xl text-[0.75rem] leading-snug text-[var(--ost-muted)]">
                     Real browsers that arrived from a chat UI referrer (claude.ai, chatgpt.com, gemini, grok, …).
-                    Not bots — counted from the site beacon only.
+                    Not bots: counted from the site beacon only.
                   </p>
                 </div>
                 <p className="font-stats-mono text-[0.52rem] uppercase tracking-[0.12em] text-[var(--ost-muted)]">
@@ -556,7 +556,7 @@ const Stats: React.FC = () => {
                     </article>
                   </div>
                   <p className="mt-2 text-[0.7rem] text-[var(--ost-muted)]">
-                    Kept as two tallies on purpose — crawl/agent traffic ≠ people clicking through from chat.
+                    Kept as two tallies on purpose: crawl/agent traffic ≠ people clicking through from chat.
                   </p>
                 </div>
               </div>
@@ -582,7 +582,7 @@ const Stats: React.FC = () => {
                 <h3 className="font-stats-mono text-[0.58rem] uppercase tracking-[0.14em] text-[var(--ost-accent)]">
                   Paths bots hit
                 </h3>
-                <p className="mt-1 text-[0.7rem] text-[var(--ost-muted)]">robots, sitemaps, pages — scanners excluded from headlines</p>
+                <p className="mt-1 text-[0.7rem] text-[var(--ost-muted)]">robots, sitemaps, pages (scanners excluded from headlines)</p>
                 <ol className="ost-stats-list mt-2">
                   {(botHeadline?.topPaths || []).slice(0, 12).map((row) => (
                     <li key={row.path}>

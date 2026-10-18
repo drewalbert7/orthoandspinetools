@@ -1,4 +1,4 @@
-/** Country centroids [lat, lon] for globe pins — plus US/CA subdivisions. */
+/** Country centroids [lat, lon] for globe pins: plus US/CA subdivisions. */
 export const CENTROIDS = {
   AD: [42.5, 1.5],
   AE: [24, 54],
@@ -127,7 +127,7 @@ export const CENTROIDS = {
   UA: [49, 32],
   UG: [1.4, 32.3],
   US: [39.8, -98.6],
-  // US states (ISO 3166-2 without country prefix — also keyed as US-XX below)
+  // US states (ISO 3166-2 without country prefix: also keyed as US-XX below)
   'US-AL': [32.8, -86.8],
   'US-AK': [64.2, -153.5],
   'US-AZ': [34.3, -111.7],
@@ -204,7 +204,7 @@ export const CENTROIDS = {
 
 /** Coarse land polygons [lat, lon][] for dithered globe dots. */
 export const LAND_POLYS = [
-  // Contiguous United States — higher-resolution outline so states read on the globe
+  // Contiguous United States: higher-resolution outline so states read on the globe
   [
     [49.0, -125.0],
     [48.5, -123.0],

@@ -3,7 +3,7 @@ import axios from 'axios';
 /** Same-origin `/api` uses Vite dev proxy (vite.config) or production nginx. Set VITE_API_URL only for a separate API host. */
 const API_BASE_URL = import.meta.env.VITE_API_URL || '/api';
 
-// No default Content-Type — setting JSON globally breaks multipart uploads (avatar/images).
+// No default Content-Type: setting JSON globally breaks multipart uploads (avatar/images).
 const api = axios.create({
   baseURL: API_BASE_URL,
 });
@@ -478,7 +478,7 @@ export interface ImplantDetail extends ImplantDirectoryItem {
   canComment?: boolean;
   related?: ImplantDirectoryItem[];
   reviews: ImplantReview[] | null;
-  /** Legacy — discussion uses comments */
+  /** Legacy: discussion uses comments */
   reviewsLocked: boolean;
   canWriteReview?: boolean;
   canonicalPath?: string;

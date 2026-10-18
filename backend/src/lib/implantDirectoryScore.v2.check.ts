@@ -14,7 +14,7 @@ function nearly(a: number, b: number, eps = 0.15) {
   return Math.abs(a - b) <= eps;
 }
 
-/** Lightweight assertions — run with: npx ts-node --transpile-only src/lib/implantDirectoryScore.v2.check.ts */
+/** Lightweight assertions. Run with: npx ts-node --transpile-only src/lib/implantDirectoryScore.v2.check.ts */
 function main() {
   // Rich listing alone must not look "great" without discussion
   const richListing = computeCatalogScore({

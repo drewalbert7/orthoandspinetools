@@ -693,14 +693,14 @@ const MarkdownEditor = forwardRef<MarkdownEditorHandle, MarkdownEditorProps>(({
   );
 
   // Update HTML when markdown changes externally (formatting buttons / programmatic).
-  // Do NOT reset the DOM when the editor already represents the same markdown — that breaks typing (esp. mobile).
+  // Do NOT reset the DOM when the editor already represents the same markdown: that breaks typing (esp. mobile).
   useEffect(() => {
     if (!editorRef.current || isUpdating || composingRef.current) return;
 
     const currentHtml = editorRef.current.innerHTML;
     const v = value || '';
 
-    // Visually empty but stale wrappers (e.g. <s><br></s>) — sync to empty markdown + clean DOM
+    // Visually empty but stale wrappers (e.g. <s><br></s>): sync to empty markdown + clean DOM
     if (isEffectivelyEmptyContent(currentHtml) && v.trim() === '') {
       if (currentHtml !== '<br>') {
         setIsUpdating(true);

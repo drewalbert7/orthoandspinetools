@@ -9,7 +9,7 @@ function isNotificationsTableMissing(err: unknown): boolean {
 
 function logNotificationsDegraded(reason: string, err: unknown) {
   logger.warn({
-    msg: 'Notifications API degraded — run `npx prisma migrate deploy` if you expect this feature.',
+    msg: 'Notifications API degraded. Run `npx prisma migrate deploy` if you expect this feature.',
     reason,
     error: err instanceof Error ? err.message : String(err),
   });

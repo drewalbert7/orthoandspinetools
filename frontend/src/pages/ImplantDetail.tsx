@@ -209,7 +209,7 @@ const ImplantDetail: React.FC = () => {
   const pageDescriptionRaw =
     data.seoDescription ||
     data.description ||
-    `${data.brandName}${data.company ? ` by ${data.company}` : ''} — implant profile on OrthoAndSpineTools.`;
+    `${data.brandName}${data.company ? ` by ${data.company}` : ''}. Implant profile on OrthoAndSpineTools.`;
   const pageDescription =
     pageDescriptionRaw.length > 155
       ? `${pageDescriptionRaw.slice(0, 152).trimEnd()}…`
@@ -401,7 +401,7 @@ const ImplantDetail: React.FC = () => {
             <p className="mt-2 text-sm text-gray-500">Loading 12-month report count…</p>
           )}
           <p className="mt-2 text-[10px] text-gray-400">
-            Counts are openFDA device reports matched to this brand key — not implant-specific incidence
+            Counts are openFDA device reports matched to this brand key, not implant-specific incidence
             rates and not medical advice.
           </p>
         </div>
@@ -410,7 +410,7 @@ const ImplantDetail: React.FC = () => {
       {user?.isAdmin ? (
         <div className="mb-4 rounded-md border border-amber-200 bg-amber-50 p-3 sm:p-5">
           <div className="flex flex-wrap items-center justify-between gap-2">
-            <h2 className="text-sm font-semibold text-gray-900">Admin — edit listing</h2>
+            <h2 className="text-sm font-semibold text-gray-900">Admin: edit listing</h2>
             <button
               type="button"
               onClick={() => setAdminOpen((v) => !v)}
@@ -456,7 +456,7 @@ const ImplantDetail: React.FC = () => {
                     className="mt-0.5 w-full rounded border border-gray-200 bg-white px-2 py-1.5 text-sm text-gray-900"
                     placeholder={
                       key === 'techniqueGuideUrl'
-                        ? 'https://…/…-surgical-technique.pdf — not brochure/catalog'
+                        ? 'https://…/…-surgical-technique.pdf (not brochure/catalog)'
                         : key === 'techniqueGuideTitle'
                           ? 'Surgical technique guide'
                           : undefined
@@ -491,7 +491,7 @@ const ImplantDetail: React.FC = () => {
                 </select>
               </label>
               <label className="text-xs text-gray-600">
-                Manual Directory Score override (0–10, locks auto)
+                Manual Directory Score override (0-10, locks auto)
                 <input
                   type="number"
                   min={0}

@@ -16,7 +16,7 @@ const ProfileSettings: React.FC = () => {
   const queryClient = useQueryClient();
   const [activeTab, setActiveTab] = useState<'profile' | 'password' | 'admin'>('profile');
 
-  // Dedicated key: Profile.tsx uses useInfiniteQuery with ['user-profile', id] — same key breaks this query (cache shape is { pages } not UserProfile).
+  // Dedicated key: Profile.tsx uses useInfiniteQuery with ['user-profile', id]: same key breaks this query (cache shape is { pages } not UserProfile).
   const profileSettingsQueryKey = ['user-profile-settings', user?.id] as const;
 
   const { data: userProfileData, isLoading } = useQuery({
@@ -25,7 +25,7 @@ const ProfileSettings: React.FC = () => {
     enabled: !!user,
   });
 
-  // Profile update mutation — must use AuthContext.updateProfile so Header (and other consumers) get new user state (e.g. profileImage). authService alone only updates localStorage.
+  // Profile update mutation: must use AuthContext.updateProfile so Header (and other consumers) get new user state (e.g. profileImage). authService alone only updates localStorage.
   const profileMutation = useMutation({
     mutationFn: (data: Partial<User>) => updateProfile(data),
     onSuccess: async () => {

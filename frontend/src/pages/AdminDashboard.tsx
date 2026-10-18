@@ -948,7 +948,7 @@ const AdminDashboard: React.FC = () => {
                               ))}
                             </div>
                           ) : (
-                            <p className="text-sm text-gray-500">No bot families yet — run the log tailer.</p>
+                            <p className="text-sm text-gray-500">No bot families yet. Run the log tailer.</p>
                           )}
                         </div>
                         <div className="bg-white rounded-lg border border-gray-200 p-4">

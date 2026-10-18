@@ -660,31 +660,31 @@ model Implant {
   /// P110002 and two-level P110009). Array of { number, label, decisionDate, applicant, sourceUrl },
   /// each from openFDA device/pma or device/510k with its own accessdata source link.
   fdaRecords      Json?    @map("fda_records")
-  /// Proprietary OST Directory Score 0–10 (catalog + community evidence — not clinical advice)
+  /// Proprietary OST Directory Score 0-10 (catalog + community evidence, not clinical advice)
   aiRating        Float?   @map("ai_rating")
   aiSummary       String?  @map("ai_summary") @db.Text
   aiRatedAt       DateTime? @map("ai_rated_at")
-  /// Structural catalog component 0–10 (completeness / verification / media)
+  /// Structural catalog component 0-10 (completeness / verification / media)
   catalogScore    Float?   @map("catalog_score")
-  /// Community evidence component 0–10 from vote-weighted implant comments
+  /// Community evidence component 0-10 from vote-weighted implant comments
   communityScore  Float?   @map("community_score")
   /// Effective sample size used in community blend (confidence)
   ratingSampleN   Float?   @map("rating_sample_n")
   /// Algorithm id, e.g. ost-dir-v2
   ratingVersion   String?  @map("rating_version")
-  /// Optional admin lock — when set, auto-recompute will not overwrite aiRating
+  /// Optional admin lock: when set, auto-recompute will not overwrite aiRating
   aiRatingLocked  Boolean  @default(false) @map("ai_rating_locked")
   /// ost-dir-v2: listing+discussion utility before MAUDE hazard
   utilityScore    Float?   @map("utility_score")
-  /// ost-dir-v2: MAUDE quietness 0–10 (10 = quiet vs peers)
+  /// ost-dir-v2: MAUDE quietness 0-10 (10 = quiet vs peers)
   maudeScore      Float?   @map("maude_score")
-  /// ost-dir-v2: MAUDE hazard 0–1 (1 = alarming)
+  /// ost-dir-v2: MAUDE hazard 0-1 (1 = alarming)
   maudeHazard     Float?   @map("maude_hazard")
   /// ost-dir-v2: quiet | watch | elevated | unlinked | insufficient
   maudeSignal     String?  @map("maude_signal")
   /// Full facet breakdown JSON for detail UI
   scoreBreakdown  Json?    @map("score_breakdown")
-  /// Legacy: mean of star reviews (1–5); prefer communityScore going forward
+  /// Legacy: mean of star reviews (1-5); prefer communityScore going forward
   memberRatingAvg Float?   @map("member_rating_avg")
   /// Denormalized search blob (brand, aliases, company, class, anatomy…)
   searchText      String   @default("") @map("search_text") @db.Text

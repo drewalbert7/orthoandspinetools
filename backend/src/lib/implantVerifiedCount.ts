@@ -1,6 +1,6 @@
 import { prisma } from './prisma';
 
-/** Short TTL cache — verified count is filter chrome, not transactional. */
+/** Short TTL cache: verified count is filter chrome, not transactional. */
 const TTL_MS = 60_000;
 
 let cache: { value: number; at: number } | null = null;

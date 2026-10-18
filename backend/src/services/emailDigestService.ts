@@ -37,7 +37,7 @@ function buildDigestEmailHtml(params: {
   const subject = `Your OrthoAndSpineTools summary: ${unreadCount} unread notification${unreadCount === 1 ? '' : 's'}`;
 
   const postLines = posts.map(
-    (p, i) => `${i + 1}. ${p.title} (${p.communityName}) — ${baseUrl}/post/${p.postId}`
+    (p, i) => `${i + 1}. ${p.title} (${p.communityName}): ${baseUrl}/post/${p.postId}`
   );
 
   const textBody = [
