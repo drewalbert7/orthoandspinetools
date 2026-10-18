@@ -1,3 +1,4 @@
+import { fdaPathway } from './implantFda';
 import { Prisma } from '@prisma/client';
 import { prisma } from './prisma';
 import {
@@ -257,6 +258,13 @@ function buildOrIlikePattern(tokens: string[]): string {
 
 export type ImplantSort = 'ai' | 'name' | 'reviews';
 
+/** ORDER BY for the name and discussion sorts: case-insensitive brand, then id for stable paging. */
+export function implantListOrderSql(sort: 'name' | 'reviews'): Prisma.Sql {
+  return sort === 'reviews'
+    ? Prisma.sql`(SELECT count(*) FROM implant_comments c WHERE c.implant_id = i.id) DESC, lower(i.brand_name) ASC, i.id ASC`
+    : Prisma.sql`lower(i.brand_name) ASC, i.id ASC`;
+}
+
 export async function searchImplantIds(params: {
   q?: string;
   specialty?: string;
@@ -283,18 +291,29 @@ export async function searchImplantIds(params: {
       ...(specialty ? { specialty } : {}),
       ...(deviceClass ? { deviceClass } : {}),
     };
-    const orderBy =
-      sort === 'name'
-        ? [{ brandName: 'asc' as const }]
-        : sort === 'reviews'
-          ? [
-              { comments: { _count: 'desc' as const } },
-              { brandName: 'asc' as const },
-            ]
-          : [
-              { aiRating: { sort: 'desc' as const, nulls: 'last' as const } },
-              { brandName: 'asc' as const },
-            ];
+    if (sort === 'name' || sort === 'reviews') {
+      // Case-insensitive brand order (Prisma orderBy cannot lower()), so "prodisc C"
+      // sorts with the P's instead of after every capitalized brand.
+      const statusSql = Prisma.join(statuses.map((st) => Prisma.sql`${st}`));
+      const spec = specialty || '';
+      const [total, rows] = await Promise.all([
+        prisma.implant.count({ where }),
+        prisma.$queryRaw<Array<{ id: string }>>`
+          SELECT i.id
+          FROM implants i
+          WHERE i.status IN (${statusSql})
+            AND (${spec} = '' OR i.specialty = ${spec})
+            AND (${deviceClass} = '' OR i.device_class = ${deviceClass})
+          ORDER BY ${implantListOrderSql(sort)}
+          LIMIT ${params.limit} OFFSET ${params.offset}
+        `,
+      ]);
+      return { ids: rows.map((r) => r.id), total };
+    }
+    const orderBy = [
+      { aiRating: { sort: 'desc' as const, nulls: 'last' as const } },
+      { brandName: 'asc' as const },
+    ];
     const [total, rows] = await Promise.all([
       prisma.implant.count({ where }),
       prisma.implant.findMany({
@@ -419,7 +438,7 @@ export async function searchImplantIds(params: {
     SELECT id, COUNT(*) OVER()::bigint AS total, score
     FROM filtered
     WHERE score > -50
-    ORDER BY score DESC, brand_name ASC, id
+    ORDER BY score DESC, lower(brand_name) ASC, id
     LIMIT ${params.limit} OFFSET ${params.offset}
   `;
 
@@ -503,7 +522,7 @@ export function buildImplantMarkdown(params: {
   if (implant.fdaNumber || implant.fdaApplicant || implant.fdaMaterials) {
     lines.push('', '## FDA regulatory data', '');
     if (implant.fdaNumber) {
-      const fdaType = implant.fdaNumber.startsWith('P') ? 'PMA' : '510(k)';
+      const fdaType = fdaPathway(implant.fdaNumber) || 'FDA number';
       lines.push(`- ${fdaType}: ${implant.fdaNumber}`);
     }
     if (implant.fdaDecisionDate) {

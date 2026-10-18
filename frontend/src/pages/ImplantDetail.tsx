@@ -7,6 +7,8 @@ import { AiRatingBadge } from '../components/implant/AiRatingBadge';
 import ImplantCommentSection from '../components/implant/ImplantCommentSection';
 import { ImplantMediaGallery } from '../components/implant/ImplantMediaGallery';
 import { TechniqueGuideLink } from '../components/implant/TechniqueGuideLink';
+import { ImplantFdaPanel } from '../components/implant/ImplantFdaPanel';
+import { cleanImplantSeoTitle } from '../lib/implantFda';
 import { ImplantScoreBreakdown } from '../components/implant/ImplantScoreBreakdown';
 import { useAuth } from '../contexts/AuthContext';
 import { isMeaningfulDirectoryNote } from '../lib/implantNotes';
@@ -203,7 +205,7 @@ const ImplantDetail: React.FC = () => {
     );
   }
 
-  const pageTitle = data.seoTitle || `${data.brandName} · Implant Directory`;
+  const pageTitle = cleanImplantSeoTitle(data.seoTitle) || `${data.brandName} · Implant Directory`;
   const pageDescriptionRaw =
     data.seoDescription ||
     data.description ||
@@ -301,6 +303,13 @@ const ImplantDetail: React.FC = () => {
                 Also known as: {data.aliases.join(', ')}
               </p>
             ) : null}
+            <ImplantFdaPanel
+              fdaNumber={data.fdaNumber}
+              fdaDecisionDate={data.fdaDecisionDate}
+              fdaApplicant={data.fdaApplicant}
+              fdaMaterials={data.fdaMaterials}
+              fdaSourceUrl={data.fdaSourceUrl}
+            />
             <div className="mt-4 flex flex-wrap items-center gap-x-3 gap-y-2 text-sm">
               {data.maudeBrandKey ? (
                 <a href="#maude-snapshot" className="font-medium text-blue-600 hover:text-blue-800">

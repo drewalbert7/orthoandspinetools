@@ -1,3 +1,4 @@
+import { cleanImplantSeoTitle } from './implantFda';
 import type { Request } from 'express';
 import {
   buildCommunityDiscussionJsonLd,
@@ -630,7 +631,7 @@ export function buildImplantOgDescription(implant: OgImplantPayload): string {
 export function buildImplantShareHtml(implant: OgImplantPayload, origin: string): string {
   const canonical = `${origin}/implants/${implant.slug}`;
   const headline =
-    implant.seoTitle?.trim() ||
+    cleanImplantSeoTitle(implant.seoTitle) ||
     `${implant.brandName} · Implant Directory | ${OG_SITE_NAME}`;
   const description = buildImplantOgDescription(implant);
   const rawImage = implant.productImageUrl

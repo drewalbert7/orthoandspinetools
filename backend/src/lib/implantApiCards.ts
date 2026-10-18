@@ -3,6 +3,7 @@
  * List/related cards: product thumb only, no SEO body / AI summary blobs.
  * Detail cards: full media + score metadata.
  */
+import { cleanImplantSeoTitle } from './implantFda';
 
 export type ImplantImageRow = {
   kind: string;
@@ -58,6 +59,40 @@ function pickProduct(images: ImplantImageRow[]) {
 }
 
 /** Directory / related strip — keep payload small for pagination at scale. */
+/** openFDA brand strings sometimes carry a mis-encoded trademark sign ("VOYAGER\u00bf"). Drop it. */
+export function stripFdaMojibake(text: string): string {
+  return text.replace(/[\u00bf\ufffd]/g, '').replace(/[ \t]{2,}/g, ' ');
+}
+
+/**
+ * Rows scored before the MAUDE fix stored a 10.0 facet for insufficient data and the raw
+ * openFDA brand string. Never serve either, even before the next recompute.
+ */
+export function sanitizeScoreBreakdown(breakdown: unknown, maudeSignal: string | null | undefined): unknown {
+  if (!breakdown || typeof breakdown !== 'object') return breakdown ?? null;
+  const b = breakdown as Record<string, unknown>;
+  const signal = (typeof b.maudeSignal === 'string' ? b.maudeSignal : null) || maudeSignal;
+  const insufficient = signal === 'insufficient';
+  const facets = Array.isArray(b.facets)
+    ? (b.facets as Array<Record<string, unknown>>).map((f) => {
+        if (!f || typeof f !== 'object') return f;
+        const detail = typeof f.detail === 'string' ? stripFdaMojibake(f.detail) : f.detail;
+        if (f.id === 'maude' && insufficient) {
+          return { ...f, detail, score: null, status: 'Insufficient data' };
+        }
+        return { ...f, detail };
+      })
+    : b.facets;
+  let maude = b.maude;
+  if (maude && typeof maude === 'object') {
+    const m = { ...(maude as Record<string, unknown>) };
+    if (typeof m.matchedBrand === 'string') m.matchedBrand = stripFdaMojibake(m.matchedBrand);
+    if (insufficient) m.quietScore = null;
+    maude = m;
+  }
+  return { ...b, ...(insufficient ? { maudeScore: null } : {}), facets, maude };
+}
+
 export function toImplantListCard(implant: ImplantCardSource) {
   const product = pickProduct(implant.images);
   const imageCount = implant._count.images ?? implant.images.length;
@@ -110,7 +145,7 @@ export function toImplantDetailBase(implant: ImplantCardSource) {
     anatomy: implant.anatomy,
     deviceClass: implant.deviceClass,
     description: implant.description,
-    seoTitle: implant.seoTitle ?? null,
+    seoTitle: cleanImplantSeoTitle(implant.seoTitle),
     seoDescription: implant.seoDescription ?? null,
     status: implant.status,
     maudeBrandKey: implant.maudeBrandKey,
@@ -137,10 +172,10 @@ export function toImplantDetailBase(implant: ImplantCardSource) {
     ratingVersion: implant.ratingVersion ?? null,
     aiRatingLocked: Boolean(implant.aiRatingLocked),
     utilityScore: implant.utilityScore ?? null,
-    maudeScore: implant.maudeScore ?? null,
+    maudeScore: implant.maudeSignal === 'insufficient' ? null : (implant.maudeScore ?? null),
     maudeHazard: implant.maudeHazard ?? null,
     maudeSignal: implant.maudeSignal ?? null,
-    scoreBreakdown: implant.scoreBreakdown ?? null,
+    scoreBreakdown: sanitizeScoreBreakdown(implant.scoreBreakdown, implant.maudeSignal),
     memberRatingAvg: implant.memberRatingAvg ?? null,
     reviewCount: implant._count.reviews,
     commentCount,

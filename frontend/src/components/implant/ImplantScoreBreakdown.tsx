@@ -40,7 +40,14 @@ function FacetRow({
   facet: ScoreFacet;
   maudeSignal?: string;
 }) {
-  const pct = facet.score == null ? 0 : Math.max(0, Math.min(100, (facet.score / 10) * 100));
+  // MAUDE with insufficient data never shows a number (older stored rows carried a 10.0).
+  const insufficientMaude =
+    facet.id === 'maude' &&
+    (maudeSignal === 'insufficient' || facet.status === 'Insufficient data');
+  const score = insufficientMaude ? null : facet.score;
+  const pct = score == null ? 0 : Math.max(0, Math.min(100, (score / 10) * 100));
+  const scoreText =
+    score != null ? score.toFixed(1) : facet.id === 'maude' ? 'Insufficient data' : 'None yet';
   return (
     <div className="space-y-1">
       <div className="flex items-baseline justify-between gap-2">
@@ -50,14 +57,21 @@ function FacetRow({
             <p className="text-[11px] text-gray-500">{facet.status}</p>
           ) : null}
         </div>
-        <p className="shrink-0 text-sm font-semibold tabular-nums text-gray-900">
-          {facet.score == null ? '—' : facet.score.toFixed(1)}
+        <p
+          className={`shrink-0 tabular-nums ${
+            score == null && facet.id === 'maude'
+              ? 'text-xs font-medium text-gray-500'
+              : 'text-sm font-semibold text-gray-900'
+          }`}
+          data-testid={`facet-score-${facet.id}`}
+        >
+          {scoreText}
         </p>
       </div>
       <div className="h-1.5 overflow-hidden rounded-full bg-gray-100">
         <div
-          className={`h-full rounded-full transition-[width] ${barTone(facet.id, facet.score, maudeSignal)}`}
-          style={{ width: facet.score == null ? '0%' : `${pct}%` }}
+          className={`h-full rounded-full transition-[width] ${barTone(facet.id, score, maudeSignal)}`}
+          style={{ width: score == null ? '0%' : `${pct}%` }}
         />
       </div>
       <p className="text-[11px] leading-snug text-gray-500">{facet.detail}</p>
@@ -160,7 +174,7 @@ export function ImplantScoreBreakdown({
                   : 'bg-gray-100 text-gray-600'
           }`}
         >
-          MAUDE: {signal}
+          MAUDE: {signal === 'insufficient' ? 'insufficient data' : signal}
         </p>
       ) : signal === 'unlinked' ? (
         <p className="mt-2 text-[11px] font-medium text-gray-500">MAUDE brand key not linked</p>

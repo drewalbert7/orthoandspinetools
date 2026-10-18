@@ -47,7 +47,7 @@ jobs:
         working-directory: ./backend
         run: npm ci --include=dev
 
-      - name: Rate limiter tests
+      - name: Backend unit tests (rate limiter, MAUDE score, FDA helpers, sort)
         working-directory: ./backend
         run: npm test
 

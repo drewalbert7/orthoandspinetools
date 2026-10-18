@@ -1,3 +1,4 @@
+import { defaultImplantSeoTitle } from '../lib/implantFda';
 import { Router, Response } from 'express';
 import { body, param, query, validationResult } from 'express-validator';
 import rateLimit from 'express-rate-limit';
@@ -429,8 +430,7 @@ router.post(
       indications: req.body.indications?.trim() || null,
       contraindications: req.body.contraindications?.trim() || null,
       seoTitle:
-        req.body.seoTitle?.trim() ||
-        `${brandName} implant — OrthoAndSpineTools Directory`,
+        req.body.seoTitle?.trim() || defaultImplantSeoTitle(brandName),
       seoDescription:
         req.body.seoDescription?.trim() ||
         (req.body.description || `${brandName} orthopedic implant profile`).slice(0, 160),

@@ -13,6 +13,7 @@
 import { Prisma } from '@prisma/client';
 import { prisma } from './prisma';
 import {
+  MAUDE_MIN_REPORTS_FOR_HAZARD,
   resolveMaudeSignalForImplant,
   type MaudeSignalLabel,
   type MaudeSignalSnapshot,
@@ -269,16 +270,23 @@ export function applyMaudeHazard(
 }
 
 function maudeFacetDetail(m: MaudeSignalSnapshot): string {
-  if (!m.linked) return 'No MAUDE brand key linked — surveillance facet unavailable.';
+  if (!m.linked) return 'No MAUDE brand key linked, so the surveillance facet is unavailable.';
+  const win = m.windowLabel ? m.windowLabel.replace(/mo$/, ' mo') : '12 mo';
+  const count =
+    m.windowReports != null
+      ? `${m.windowReports} report${m.windowReports === 1 ? '' : 's'} in the last ${win} (same count as the MAUDE snapshot)`
+      : null;
   if (m.label === 'insufficient' || m.hazard == null) {
-    return m.matchedBrand
-      ? `Linked (${m.matchedBrand}) but peer context insufficient for a stable signal.`
-      : 'Linked brand not found in specialty peer panel yet.';
+    if (m.windowReports == null) return 'MAUDE data unavailable for this brand key right now.';
+    if (m.windowReports < MAUDE_MIN_REPORTS_FOR_HAZARD) {
+      return `${count}. Fewer than ${MAUDE_MIN_REPORTS_FOR_HAZARD} reports, so no score.`;
+    }
+    return `${count}. Not enough specialty peers to compare against, so no score.`;
   }
   const bits = [
-    m.windowLabel ? `window ${m.windowLabel}` : null,
+    count,
     m.recentTotal != null && m.priorTotal != null
-      ? `reports ${m.recentTotal} vs prior ${m.priorTotal}`
+      ? `last 6 mo ${m.recentTotal} vs earlier ${m.priorTotal}`
       : null,
     m.peerRisingPercentile != null
       ? `rising peer pctl ${Math.round(m.peerRisingPercentile * 100)}%`
@@ -528,6 +536,8 @@ export async function recomputeAllImplantDirectoryScores(): Promise<number> {
   for (const row of rows) {
     await recomputeImplantDirectoryScore(row.id);
     n += 1;
+    // Each implant now reads its own brand synopsis + series (same as the snapshot); pace openFDA.
+    if (n < rows.length) await new Promise((r) => setTimeout(r, 1500));
   }
   return n;
 }

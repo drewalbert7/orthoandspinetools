@@ -452,6 +452,14 @@ export interface ImplantComment {
 
 export interface ImplantDetail extends ImplantDirectoryItem {
   longDescription?: string | null;
+  /** FDA 510(k) K-number, PMA P-number or De Novo DEN-number (openFDA-verified only). */
+  fdaNumber?: string | null;
+  /** ISO date (FDA decision date). */
+  fdaDecisionDate?: string | null;
+  fdaApplicant?: string | null;
+  fdaMaterials?: string | null;
+  /** accessdata.fda.gov record URL. */
+  fdaSourceUrl?: string | null;
   indications?: string | null;
   contraindications?: string | null;
   aliases: string[];

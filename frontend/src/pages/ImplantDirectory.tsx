@@ -108,10 +108,11 @@ const DEVICE_CLASS_OPTIONS = [
   { id: 'megaprosthesis', label: 'Megaprosthesis' },
 ];
 
+// Short labels: the sort select is half width at 390px and "sort: Directory Score" was cut off.
 const SORT_OPTIONS = [
-  { id: 'ai', label: 'sort: Directory Score' },
-  { id: 'name', label: 'sort: name' },
-  { id: 'reviews', label: 'sort: discussion' },
+  { id: 'ai', label: 'Sort: Score' },
+  { id: 'name', label: 'Sort: Name' },
+  { id: 'reviews', label: 'Sort: Discussion' },
 ] as const;
 
 const ImplantDirectory: React.FC = () => {
