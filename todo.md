@@ -780,3 +780,9 @@ docker compose -f docker-compose.prod.yml exec backend npm run backfill-case-pos
 | Restore test | `scripts/db/restore-test.sh` (throwaway postgres 15.14, tmpfs); runs in CI on the seeded DB |
 | Docs | `docs/db-safety/` (RUNBOOK, R2 rules, docker group + cron inventory) |
 | Open | Nothing applied to prod. Needs: `destructive-ok` label (Drew/CEO) for the CI db push line, R2 bucket + tokens, pinned rclone, root-owned `/usr/local/sbin/ost-*` copies + sudoers line, roles.sql window, postgres recreate [RESTART] |
+
+| Env files (Oct 17, 2026) | Detail |
+|------|--------|
+| .dockerignore | `backend/` and `frontend/` exclude `.env` and `.env.*` (tracked via `.gitignore` negation); `backend/.env` no longer lands at `/app/.env`. CI: `dockerignore-env.test.sh` (planted files) + image check in predeploy-checks |
+| Unused secrets | `SESSION_SECRET`, `ENCRYPTION_KEY` removed from `backend/env.example` (never read by code). **After the deploy only:** remove those lines from the server `.env` files |
+| JWT_SECRET | Rotated on prod Oct 17, 2026. Live value = ROOT `.env` via compose `${JWT_SECRET}`; the `backend/.env` line is stale and unused (documented in `docs/deployment.md`) |

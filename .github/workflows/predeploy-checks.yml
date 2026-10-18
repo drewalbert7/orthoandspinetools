@@ -69,7 +69,7 @@ jobs:
         run: docker version && docker compose version
 
       - name: Shellcheck deploy scripts
-        run: shellcheck -S warning deploy.sh scripts/lib/deploy-rollback.sh scripts/lib/deploy-disk-prune.sh scripts/tests/deploy-rollback.test.sh scripts/tests/deploy-prune-guard.test.sh scripts/tests/deploy-db-order.test.sh scripts/predeploy-db-snapshot.sh scripts/db-migrate.sh scripts/db/restore-test.sh scripts/db/ost-archive-wal.sh scripts/backup/ost-db-backup.sh scripts/backup/ost-wal-ship.sh scripts/backup/ost-basebackup.sh
+        run: shellcheck -S warning deploy.sh scripts/lib/deploy-rollback.sh scripts/lib/deploy-disk-prune.sh scripts/tests/deploy-rollback.test.sh scripts/tests/deploy-prune-guard.test.sh scripts/tests/deploy-db-order.test.sh scripts/predeploy-db-snapshot.sh scripts/db-migrate.sh scripts/db/restore-test.sh scripts/db/ost-archive-wal.sh scripts/backup/ost-db-backup.sh scripts/backup/ost-wal-ship.sh scripts/backup/ost-basebackup.sh scripts/tests/dockerignore-env.test.sh
 
       - name: deploy.sh prune guard (no volume/system/image prune or rmi; prune only after passing health; disk check below 5G)
         run: bash scripts/tests/deploy-prune-guard.test.sh
@@ -79,6 +79,9 @@ jobs:
 
       - name: deploy.sh DB order (snapshot -> build -> migrate as ost_migrator -> switch; fail-closed)
         run: bash scripts/tests/deploy-db-order.test.sh
+
+      - name: No .env files in docker build contexts (planted .env files must not reach the image)
+        run: bash scripts/tests/dockerignore-env.test.sh
 
   predeploy-checks:
     runs-on: ubuntu-latest
@@ -223,6 +226,11 @@ jobs:
             psql -v ON_ERROR_STOP=1 -U postgres -d orthoandspinetools < e2e/fixtures/ci-seed.sql
           curl -sfk "https://localhost/api/posts?limit=5" | head -c 300; echo
           curl -sfk "https://localhost/api/implants" | head -c 300; echo
+
+      - name: Built images carry no .env file (runtime env comes from compose env_file + environment)
+        run: |
+          docker compose -f docker-compose.prod.yml exec -T backend sh -c 'set -- /app/.env /app/.env.*; for f; do [ -e "$f" ] && { echo "env file baked into image: $f"; exit 1; }; done; echo "no env file in /app"'
+          docker compose -f docker-compose.prod.yml exec -T backend node -e 'if (!process.env.JWT_SECRET || !process.env.DATABASE_URL) { console.error("runtime env missing"); process.exit(1) } console.log("runtime env present from compose")'
 
       - name: Restore test (dump the seeded CI database, restore into a throwaway postgres 15.14, compare counts)
         run: |

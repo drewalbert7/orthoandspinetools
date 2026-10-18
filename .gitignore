@@ -32,6 +32,9 @@ yarn-error.log*
 
 # Docker
 .dockerignore
+# ...except the build-context ignores that keep .env files out of images (tracked on purpose)
+!backend/.dockerignore
+!frontend/.dockerignore
 docker-compose
 
 # Backups (but keep .backup files in version control for critical files)
