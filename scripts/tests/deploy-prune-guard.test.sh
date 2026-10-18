@@ -85,7 +85,7 @@ SHIM
 cat > "$WORK/bin/df" <<SHIM
 #!/bin/bash
 echo "Filesystem 1024-blocks Used Available Capacity Mounted on"
-echo "/dev/root 80000000 70000000 \${FAKE_DF_AVAIL_KB:?} 90% /"
+echo "/dev/root 80000000 70000000 \${FAKE_DF_AVAIL_KB:?} \${FAKE_DF_USE_PCT:-50}% /"
 SHIM
 chmod +x "$WORK/bin/docker" "$WORK/bin/df"
 echo "services: {}" > "$WORK/run/compose.yml"
@@ -122,6 +122,25 @@ source "$LIB"
 if (PATH="$WORK/bin:$PATH" FAKE_DF_AVAIL_KB=$((5 * 1024 * 1024)) dd_disk_check > /dev/null); then pass "exactly 5G passes"; else fail "exactly 5G failed"; fi
 if (PATH="$WORK/bin:$PATH" FAKE_DF_AVAIL_KB=$((40 * 1024 * 1024)) dd_disk_check > /dev/null); then pass "40G passes"; else fail "40G failed"; fi
 if (PATH="$WORK/bin:$PATH" FAKE_DF_AVAIL_KB=garbage dd_disk_check > /dev/null 2>&1); then fail "unreadable df passed"; else pass "unreadable df output fails closed"; fi
+if (PATH="$WORK/bin:$PATH" FAKE_DF_AVAIL_KB=$((40 * 1024 * 1024)) FAKE_DF_USE_PCT=garbage dd_disk_check > /dev/null 2>&1); then fail "unreadable use% passed"; else pass "unreadable use% fails closed"; fi
+
+echo ""
+echo "== 2b: use% gate (build cache and images share /) =="
+RC=0; FAKE_DF_AVAIL_KB=$((40 * 1024 * 1024)) FAKE_DF_USE_PCT=92 run_deploy || RC=$?
+if [ "$RC" -ne 0 ]; then pass "40G free but 92% used fails (rc=$RC)"; else fail "92% used passed"; fi
+if grep -q '/ is 92% full (40.0G free); a build needs it below 90%' "$WORK/deploy.out"; then
+    pass "plain error message names use% and the 90% limit"
+else
+    fail "missing use% error message"; sed 's/^/    | /' "$WORK/deploy.out"
+fi
+if grep -Eq ' (build|up|tag|compose|exec)( |$)' "$WORK/docker.log"; then
+    fail "docker build/tag/compose/exec ran despite the use% gate"; cat "$WORK/docker.log"
+else
+    pass "no docker build, tag, compose or exec call before the use% gate stopped the deploy"
+fi
+if (PATH="$WORK/bin:$PATH" FAKE_DF_AVAIL_KB=$((6 * 1024 * 1024)) FAKE_DF_USE_PCT=90 dd_disk_check > /dev/null 2>&1); then fail "exactly 90% passed"; else pass "exactly 90% fails"; fi
+if (PATH="$WORK/bin:$PATH" FAKE_DF_AVAIL_KB=$((6 * 1024 * 1024)) FAKE_DF_USE_PCT=89 dd_disk_check > /dev/null); then pass "6G free at 89% passes"; else fail "6G at 89% failed"; fi
+if (PATH="$WORK/bin:$PATH" FAKE_DF_AVAIL_KB=$((4 * 1024 * 1024)) FAKE_DF_USE_PCT=10 dd_disk_check > /dev/null 2>&1); then fail "4G free at 10% passed"; else pass "4G free fails even at 10% used (both conditions required)"; fi
 
 echo ""
 echo "== 3: prune only after a passing health check =="

@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 # Report Docker/root disk usage and optionally run SAFE cleanup.
-# Never runs: docker compose down -v, docker volume rm on named prod volumes, or system prune -a --volumes
+# Never runs: docker compose down -v, any volume removal or volume prune, or system prune.
+# Volumes are never pruned by this script (DB safety audit 2026-10-17, item 2): the postgres
+# volume is declared external in docker-compose.prod.yml and unused volumes are only reported.
 set -euo pipefail
 
 COMPOSE_FILE="${COMPOSE_FILE:-docker-compose.prod.yml}"
@@ -20,7 +22,7 @@ report() {
     || echo "WARNING: $PROD_VOLUME not found"
   docker ps --filter "name=orthoandspinetools-postgres" --format 'Container: {{.Names}}  Status: {{.Status}}' 2>/dev/null || true
   echo ""
-  echo "=== Unused volumes (docker volume prune candidates) ==="
+  echo "=== Unused volumes (report only; never removed by this script) ==="
   docker system df -v 2>/dev/null | awk '/^VOLUME NAME/ {v=1; next} v && $2==0 {print "  "$1"  "$4}' || echo "  (run: docker system df -v)"
   echo ""
   echo "=== Dangling images ==="
@@ -47,9 +49,8 @@ safe_cleanup() {
   docker builder prune -af
 
   echo ""
-  echo "3. Unused volumes (skips volumes still referenced by any container)..."
-  echo "   Protected named volume: $PROD_VOLUME"
-  docker volume prune -f
+  echo "3. Volumes: not pruned (DB safety rule). Unused volumes are listed in the report above;"
+  echo "   removing one needs Drew's explicit OK via CEO. Protected: $PROD_VOLUME"
 
   echo ""
   echo "4. Nginx access log rotation (truncate if >50MB)..."
@@ -87,8 +88,8 @@ case "$ACTION" in
     ;;
   *)
     echo "Usage: $0 [report|cleanup]"
-    echo "  report  — show usage (default); exits 1 if disk >= ${WARN_PCT}%"
-    echo "  cleanup — safe prune images, build cache, unused volumes, large nginx log"
+    echo "  report: show usage (default); exits 1 if disk >= ${WARN_PCT}%"
+    echo "  cleanup: prune dangling images and build cache, rotate a large nginx log (never volumes)"
     exit 1
     ;;
 esac

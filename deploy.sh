@@ -6,6 +6,9 @@
 # Flow:
 #   1. Record current running image IDs and tag them <compose-name>:pre-deploy-<ts>
 #   2. Build new images WITHOUT taking site down
+#   2a. Fail-closed pre-deploy pg_dump (gzip -t, size, table count; abort if any check fails)
+#   2b. prisma migrate deploy as ost_migrator in a one-off container of the NEW backend image,
+#       BEFORE the switch (scripts/lib/deploy-db.sh). Abort leaves the old containers running.
 #   3. Bring new stack up (minimal downtime), wait for health
 #   4. Run Playwright checks against the LOCAL stack (public hostname resolved to 127.0.0.1)
 #   5. On failure: retag pre-deploy images back to the compose names, recreate
@@ -14,12 +17,19 @@
 #   6. On success with passing health checks only: docker builder prune -f
 #      (build cache only; scripts/lib/deploy-disk-prune.sh)
 #
-# Before any build, the deploy stops with a non-zero exit when / has less than 5G free.
+# Before any build, the deploy stops with a non-zero exit when / has less than 5G free OR is
+# 90% full or more (build cache and images share that disk).
 #
 # Usage:
 #   ./deploy.sh              # Full deploy with checks
 #   ./deploy.sh --skip-checks # Emergency deploy (logs loudly)
 #   ./deploy.sh --dry-run    # Show what would happen, don't deploy
+#   ./deploy.sh --no-migrate # Deploy without running migrations (release has no new migration).
+#                            # The pre-deploy dump still runs and still gates the deploy.
+#
+# Migrations need .env.migrate (mode 600) with MIGRATE_DATABASE_URL for the ost_migrator role.
+# DEPLOY_DOCKER_SUDO=1 runs every docker call as `sudo -n /usr/bin/docker` (for when the deploy
+# user is no longer in the docker group; see docs/db-safety/docker-group-plan.md).
 #
 # Test/drill hooks (used by scripts/tests/deploy-rollback.test.sh):
 #   DEPLOY_COMPOSE_FILE  compose file (default docker-compose.prod.yml)
@@ -36,14 +46,25 @@ COMPOSE_FILE="${DEPLOY_COMPOSE_FILE:-docker-compose.prod.yml}"
 source "$SCRIPT_DIR/scripts/lib/deploy-rollback.sh"
 # shellcheck source=scripts/lib/deploy-disk-prune.sh
 source "$SCRIPT_DIR/scripts/lib/deploy-disk-prune.sh"
+# shellcheck source=scripts/lib/deploy-db.sh
+source "$SCRIPT_DIR/scripts/lib/deploy-db.sh"
+
+# Optional: docker through a narrow sudoers rule instead of docker group membership.
+if [ "${DEPLOY_DOCKER_SUDO:-0}" = "1" ]; then
+    docker() { sudo -n /usr/bin/docker "$@"; }
+fi
 
 # Parse arguments
 SKIP_CHECKS=false
 DRY_RUN=false
+NO_MIGRATE=false
 for arg in "$@"; do
   case $arg in
     --skip-checks)
       SKIP_CHECKS=true
+      ;;
+    --no-migrate)
+      NO_MIGRATE=true
       ;;
     --dry-run)
       DRY_RUN=true
@@ -135,10 +156,10 @@ if [ ! -f "$COMPOSE_FILE" ]; then
     exit 1
 fi
 
-# Disk guard: stop before tagging or building when / has less than 5G free.
+# Disk guard: stop before tagging or building when / has less than 5G free or is 90%+ full.
 echo ""
 if ! dd_disk_check; then
-    echo "❌ Deploy stopped: not enough free disk space on /." >&2
+    echo "❌ Deploy stopped: not enough disk headroom on /." >&2
     exit 1
 fi
 
@@ -177,6 +198,14 @@ if [ "$DRY_RUN" = true ]; then
     echo ""
     echo "🔍 DRY RUN: Would tag running images as <compose-name>:pre-deploy-<ts>"
     echo "🔍 DRY RUN: Would build new images (without taking site down)"
+    echo "🔍 DRY RUN: Would dump $DEPLOY_DB_NAME to $DEPLOY_DUMP_DIR/predeploy_<ts>.sql.gz and abort unless gzip -t, size >= ${DEPLOY_DUMP_MIN_BYTES} bytes, CREATE TABLE count = live count (>= ${DEPLOY_DUMP_MIN_TABLES}) and the implants COPY section all pass"
+    if [ "$NO_MIGRATE" = true ]; then
+        echo "🔍 DRY RUN: --no-migrate: would NOT run prisma migrate deploy"
+    elif MIGRATE_CHECK="$(ddb_migrate_url 2>&1 >/dev/null)"; then
+        echo "🔍 DRY RUN: Would run prisma migrate deploy as $DEPLOY_MIGRATOR_ROLE (new backend image) BEFORE the switch ($DEPLOY_MIGRATE_ENV_FILE: OK)"
+    else
+        echo "🔍 DRY RUN: A real deploy would STOP before the switch: ${MIGRATE_CHECK#deploy: }"
+    fi
     echo "🔍 DRY RUN: Would bring up new stack and wait for health"
     if [ "$SKIP_CHECKS" = false ]; then
         echo "🔍 DRY RUN: Would run Playwright checks"
@@ -192,6 +221,19 @@ fi
 echo ""
 echo "🔨 Building new images (site stays up)..."
 docker compose -f "$COMPOSE_FILE" build --no-cache backend frontend
+
+# Database gate: verified dump, then migrations as ost_migrator, BEFORE any container switch.
+echo ""
+if ! ddb_predeploy_dump; then
+    echo "❌ Deploy stopped before the switch: the pre-deploy dump did not verify." >&2
+    exit 1
+fi
+if [ "$NO_MIGRATE" = true ]; then
+    echo "⚠️  --no-migrate: skipping prisma migrate deploy (only for releases with no new migration)"
+elif ! ddb_migrate; then
+    echo "❌ Deploy stopped before the switch: migrations did not complete." >&2
+    exit 1
+fi
 
 # Bring up new stack with minimal downtime
 echo ""

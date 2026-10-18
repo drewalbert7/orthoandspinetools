@@ -1,0 +1,8 @@
+# db-guard allowlist: path | rule | reason
+# Keep this narrow. Every entry is a reviewed exception; widening it needs Security review.
+scripts/database-volume-protection.sh | volume-rm-prune | protective wrapper: lists the commands it BLOCKS
+scripts/database-volume-protection.sh | compose-down-v | protective wrapper: lists the commands it BLOCKS
+scripts/database-volume-protection.sh | system-prune | protective wrapper: lists the commands it BLOCKS
+scripts/docker-safety-wrapper.sh | volume-rm-prune | protective wrapper: intercepts and refuses volume rm/prune
+scripts/docker-safety-wrapper.sh | compose-down-v | protective wrapper: intercepts and refuses down -v
+.github/workflows/predeploy-checks.yml | data-loss-flag | CI-only: schema push into the throwaway CI database
