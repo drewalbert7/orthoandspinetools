@@ -1,5 +1,6 @@
 # Destructive DB / volume / backup operation gate (audit item 3). Blocks the PR on a hit.
 # Make it a REQUIRED status check on main (branch protection), or the gate is advisory only.
+# Trigger is pull_request only (never pull_request_target): PR code never gets a write token here.
 name: db-guard
 on:
   pull_request:
@@ -7,6 +8,7 @@ on:
     types: [opened, synchronize, reopened, labeled, unlabeled]
 permissions:
   contents: read
+  issues: read           # PR timeline (label events) for the approval check
   pull-requests: write
 jobs:
   # Sticky destructive-ok would approve every later DESTRUCTIVE-OK marker. Drop it on each push.
@@ -44,6 +46,8 @@ jobs:
         with:
           node-version: '20'
       # Override needs BOTH the DESTRUCTIVE-OK marker in the change AND this label (Drew / CEO only).
+      # The label counts only if its latest labeled event is newer than the head commit and was applied
+      # by an allowlisted human maintainer (db-guard.mjs labelApproval). Events come from the read-only API.
       # Run the guard script from the BASE commit so a PR cannot neuter the gate by editing it.
       - name: db-guard from base SHA (lines added by this PR)
         env:
@@ -51,11 +55,21 @@ jobs:
           DB_GUARD_APPROVED: ${{ github.event.action != 'synchronize' && contains(github.event.pull_request.labels.*.name, 'destructive-ok') }}
           BASE_SHA: ${{ github.event.pull_request.base.sha }}
           HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR: ${{ github.event.pull_request.number }}
+          REPO: ${{ github.repository }}
         run: |
           set -euo pipefail
           GUARD_DIR="$(mktemp -d)"
           cleanup() { rm -rf "$GUARD_DIR"; }
           trap cleanup EXIT
+          # destructive-ok label events (one JSON object per line) and the head commit date.
+          gh api --paginate "repos/$REPO/issues/$PR/timeline?per_page=100" \
+            --jq '.[] | select((.event == "labeled" or .event == "unlabeled") and .label.name == "destructive-ok") | {event, created_at, label: {name: .label.name}, actor: {login: .actor.login, type: .actor.type}}' \
+            | jq -c . > "$GUARD_DIR/label-events.ndjson"
+          export DB_GUARD_LABEL_EVENTS="$GUARD_DIR/label-events.ndjson"
+          DB_GUARD_HEAD_DATE="$(git show -s --format=%cI "$HEAD_SHA")"
+          export DB_GUARD_HEAD_DATE
           if git cat-file -e "${BASE_SHA}:scripts/db-guard/db-guard.mjs" 2>/dev/null; then
             git show "${BASE_SHA}:scripts/db-guard/db-guard.mjs" > "$GUARD_DIR/db-guard.mjs"
             echo "Running db-guard.mjs from base ${BASE_SHA}"

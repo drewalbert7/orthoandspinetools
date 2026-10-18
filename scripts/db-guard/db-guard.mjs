@@ -9,16 +9,25 @@
 // Exit: 0 clean | 1 findings | 2 usage/internal error (fails CLOSED).
 //
 // Override (both required): a `DESTRUCTIVE-OK: <approval-ref>` marker on the offending line (or, for a
-// Prisma migration, anywhere in that migration.sql) AND env DB_GUARD_APPROVED=true, which the workflow
-// sets only when the PR carries the `destructive-ok` label (applied by Drew / CEO).
+// Prisma migration, anywhere in that migration.sql) AND a valid `destructive-ok` label (applied by Drew / CEO).
+// The label counts only when env DB_GUARD_APPROVED=true AND labelApproval() accepts the label events in
+// DB_GUARD_LABEL_EVENTS (file, NDJSON or JSON array of PR timeline events) against DB_GUARD_HEAD_DATE
+// (head commit committer date): latest destructive-ok event is `labeled`, newer than the head commit,
+// by an allowlisted human maintainer (not a bot). Missing or unreadable events = not approved.
+// guard-changed: a guard file ADDED by the change (status A, absent at the merge base) is cleared by the
+// label alone (there is no line to mark). Editing, renaming or deleting an existing one is a hard block.
 // Output is file:line + rule id + the matched token only (never the whole line).
 import { execFileSync } from 'node:child_process';
 import { readFileSync, existsSync } from 'node:fs';
+import { pathToFileURL } from 'node:url';
 
 const MIGRATION_RE = /(^|\/)prisma\/migrations\/[^/]+\/migration\.sql$/;
-// Security-owned files: exempt from content rules (they define the guard / break-glass), but ANY later
-// edit, rename or delete is a blocking finding (guard-changed) that needs the marker + label.
+// Security-owned files: exempt from content rules (they define the guard / break-glass). Adding one is a
+// guard-changed finding the label can clear; any later edit, rename or delete is a hard block.
 const SELF_RE = /(^|\/)scripts\/db-guard\/|(^|\/)scripts\/db\/(roles|rollback|verify)\.sql$/;
+const GUARD_WORKFLOW_RE = /(^|\/)\.github\/workflows\/db-guard\.yml$/;
+export const LABEL = 'destructive-ok';
+export const LABEL_MAINTAINERS = ['drewalbert7']; // human maintainers allowed to apply the label
 const DOC_RE = /\.(md|mdx|mdc|txt|rst)$/i; // doc extensions only (not every file under docs/)
 const IGNORE_FILE = '.db-guard-ignore';
 const MARKER_RE = /DESTRUCTIVE-OK:\s*[A-Za-z0-9][A-Za-z0-9._\/#:-]{2,}/;
@@ -55,6 +64,60 @@ const UPLOAD_RE = /\brclone\s+(copy|copyto)\b|\baws\s+s3\s+(cp|mv)\b|\bwrangler\
 const DUMPISH_RE = /\.sql(\.gz)?\b|\.dump\b|\.bak\b|\bpg_dump|\bbackup_|\bdb-\d|\.tar(\.gz)?\b/i;
 const ENCRYPTED_RE = /\.gpg\b|\.age\b|\.enc\b|\bgpg\b|\bage\s+-r\b|encrypt/i;
 const SDK_UPLOAD_RE = /\bPutObjectCommand\b|\.putObject\(|new\s+Upload\(|\.upload\(/;
+
+// ---- Pure decision helpers (no git, no network; unit-tested in scripts/tests/db-guard.test.mjs) ----
+
+// Does the destructive-ok label count for the current head? events: PR timeline events
+// ({event, created_at, label: {name}, actor: {login, type}}). Returns {approved, reason}.
+export function labelApproval({ labelPresent, events, headCommitDate, maintainers = LABEL_MAINTAINERS }) {
+  if (!labelPresent) return { approved: false, reason: 'label not on the PR' };
+  if (!Array.isArray(events)) return { approved: false, reason: 'no label events supplied' };
+  const headMs = Date.parse(headCommitDate || '');
+  if (Number.isNaN(headMs)) return { approved: false, reason: 'head commit date missing or invalid' };
+  const mine = events
+    .filter((e) => e && (e.event === 'labeled' || e.event === 'unlabeled') && e.label && e.label.name === LABEL)
+    .map((e) => ({ ...e, ms: Date.parse(e.created_at || '') }))
+    .filter((e) => !Number.isNaN(e.ms))
+    .sort((a, b) => a.ms - b.ms);
+  const last = mine[mine.length - 1];
+  if (!last || last.event !== 'labeled') return { approved: false, reason: 'no current labeled event' };
+  if (!(last.ms > headMs)) return { approved: false, reason: 'label is older than the head commit' };
+  const login = String((last.actor && last.actor.login) || '');
+  const type = String((last.actor && last.actor.type) || '');
+  if (type.toLowerCase() === 'bot' || /\[bot\]$/i.test(login)) return { approved: false, reason: `label applied by a bot (${login})` };
+  if (!maintainers.some((m) => m.toLowerCase() === login.toLowerCase())) return { approved: false, reason: `label actor not an allowlisted maintainer (${login || 'unknown'})` };
+  return { approved: true, reason: `labeled by ${login}` };
+}
+
+// guard-changed findings from `git diff --name-status -M` lines. existedAtBase(path) -> bool.
+// A (absent at base): approvable by the label. M / D / R / C, or A of a path the base has: hard block.
+export function guardChangeFindings(statusLines, existedAtBase = () => false) {
+  const out = [];
+  for (const s of statusLines) {
+    const [st, a, b] = s.split('\t');
+    const paths = [a, b].filter(Boolean);
+    if (!/^[AMDRC]/.test(st) || !paths.some((p) => GUARD_WORKFLOW_RE.test(p) || SELF_RE.test(p))) continue;
+    const added = st[0] === 'A' && !existedAtBase(a);
+    out.push(added
+      ? { file: a, line: 0, rule: 'guard-changed', token: st[0], msg: 'new db-guard file (needs Security Officer review)', markerable: true, marked: true, why: ' (approvable: new file, needs a valid destructive-ok label)' }
+      : { file: a, line: 0, rule: 'guard-changed', token: st[0], msg: 'existing db-guard file edited/renamed/deleted (needs Security Officer review)', markerable: false, why: ' (hard block: the label cannot clear an edit to an existing guard file)' });
+  }
+  return out;
+}
+
+// Final verdict. A finding passes only if it is markerable, marked and the label is approved.
+export function decide(findings, approved) {
+  const results = findings.map((f) => ({ ...f, ok: Boolean(f.markerable && f.marked && approved) }));
+  const allowed = results.filter((r) => r.ok).length;
+  return { results, allowed, blocking: results.length - allowed };
+}
+
+function parseEvents(text) {
+  const t = text.trim();
+  if (!t) return [];
+  if (t.startsWith('[')) return JSON.parse(t);
+  return t.split('\n').filter((l) => l.trim()).map((l) => JSON.parse(l));
+}
 
 function git(args, opts = {}) {
   return execFileSync('git', args, { encoding: 'utf8', maxBuffer: 256 * 1024 * 1024, ...opts });
@@ -94,6 +157,8 @@ function fileContent(mode, file, head) {
   try { return readFileSync(file, 'utf8'); } catch { return ''; }
 }
 
+// CLI entry. Body kept at top-level indentation so the review diff stays small (git diff -w).
+function main() {
 const args = process.argv.slice(2);
 let mode = null, base = null, head = 'HEAD', strict = false;
 for (let i = 0; i < args.length; i++) {
@@ -107,11 +172,19 @@ for (let i = 0; i < args.length; i++) {
 }
 if (!mode || (mode === 'diff' && !base)) { console.error('db-guard: need --diff <base> [<head>], --staged or --all'); process.exit(2); }
 
-const approved = /^(1|true|yes)$/i.test(process.env.DB_GUARD_APPROVED || '');
+const labelPresent = /^(1|true|yes)$/i.test(process.env.DB_GUARD_APPROVED || '');
+let events = null;
+if (process.env.DB_GUARD_LABEL_EVENTS) {
+  try { events = parseEvents(readFileSync(process.env.DB_GUARD_LABEL_EVENTS, 'utf8')); } catch { events = null; }
+}
+const approval = labelApproval({ labelPresent, events, headCommitDate: process.env.DB_GUARD_HEAD_DATE });
+const approved = approval.approved;
+if (labelPresent) console.log(`db-guard: destructive-ok label ${approved ? 'accepted' : 'NOT accepted'} (${approval.reason})`);
 const ignore = loadIgnore();
 const findings = [];
 let lines = [];
 let statusLines = [];
+let baseRef = null;
 try {
   if (mode === 'all') {
     for (const f of git(['ls-files', '-z']).split('\0').filter(Boolean)) {
@@ -123,6 +196,7 @@ try {
     const range = mode === 'staged' ? ['--cached'] : [`${base}...${head}`];
     lines = parseDiff(git(['diff', '-U0', '--no-color', '--no-ext-diff', '--diff-filter=AMR', ...range]));
     statusLines = git(['diff', '--name-status', '--no-color', '-M', ...range]).split('\n').filter(Boolean);
+    baseRef = mode === 'staged' ? 'HEAD' : git(['merge-base', base, head]).trim();
   }
 } catch (e) {
   console.error(`db-guard: git failed (${e.message.split('\n')[0]}). Refusing to pass.`);
@@ -135,9 +209,13 @@ for (const s of statusLines) {
   const paths = [a, b].filter(Boolean);
   if (/^[MDR]/.test(st) && paths.some((p) => MIGRATION_RE.test(p) || /(^|\/)prisma\/migrations\/migration_lock\.toml$/.test(p)))
     findings.push({ file: a, line: 0, rule: 'migration-history-edited', token: st[0], msg: 'existing migration edited/renamed/deleted', markerable: false });
-  if (/^[AMDR]/.test(st) && paths.some((p) => /(^|\/)\.github\/workflows\/db-guard\.yml$/.test(p) || SELF_RE.test(p)))
-    findings.push({ file: a, line: 0, rule: 'guard-changed', token: st[0], msg: 'db-guard itself changed (needs Security Officer review)', markerable: true });
 }
+// Guard files: "added" is double-checked against the merge base (staged: HEAD). Unknown base = existed.
+const existedAtBase = (p) => {
+  if (!baseRef) return true;
+  try { git(['cat-file', '-e', `${baseRef}:${p}`], { stdio: 'ignore' }); return true; } catch { return false; }
+};
+findings.push(...guardChangeFindings(statusLines, existedAtBase));
 
 const migrationHasMarker = new Map();
 const byFile = new Map();
@@ -180,12 +258,10 @@ for (const [file, flines] of byFile) {
   }
 }
 
-let blocking = 0, allowed = 0;
-for (const f of findings) {
-  const ok = f.markerable && f.marked && approved;
-  const tag = ok ? 'ALLOWED' : 'BLOCK';
-  if (ok) allowed++; else blocking++;
-  const why = !f.markerable ? '' : f.marked && !approved ? ' (marker present but PR lacks the destructive-ok label)' : !f.marked ? ' (no DESTRUCTIVE-OK marker)' : '';
+const { results, allowed, blocking } = decide(findings, approved);
+for (const f of results) {
+  const tag = f.ok ? 'ALLOWED' : 'BLOCK';
+  const why = f.ok ? '' : f.why ? f.why : !f.markerable ? '' : f.marked ? ' (approvable: marker present, needs a valid destructive-ok label)' : ' (no DESTRUCTIVE-OK marker)';
   console.log(`${tag}  ${f.file}:${f.line}  [${f.rule}] ${f.msg}${f.token ? ` :: "${f.token}"` : ''}${why}`);
 }
 const scanned = mode === 'all' ? 'all tracked files' : `${lines.length} added line(s) in ${byFile.size} file(s)`;
@@ -197,3 +273,7 @@ console.log(`db-guard: ${blocking} blocking finding(s) in ${scanned}.`);
 console.log('Destructive DB/volume/backup operations need Drew\'s explicit OK via CEO: add `DESTRUCTIVE-OK: <approval ref>`');
 console.log('on the line (or in the migration.sql) AND have Drew/CEO apply the `destructive-ok` PR label. See AGENTS.md "Database safety".');
 process.exit(mode === 'all' && !strict ? 0 : 1);
+}
+
+// Run only as a script, so the test suite can import the pure helpers.
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) main();
