@@ -42,3 +42,71 @@ export function cleanImplantSeoTitle(title: string | null | undefined): string |
 export function defaultImplantSeoTitle(brandName: string): string {
   return `${brandName} implant | Implant Directory`;
 }
+
+/** One verified FDA record, each with its own accessdata source link. */
+export type FdaRecord = {
+  number: string;
+  pathway: FdaPathway;
+  /** What this record covers, e.g. "One-level indication". */
+  label: string | null;
+  decisionDate: string | null;
+  applicant: string | null;
+  sourceUrl: string | null;
+};
+
+function isoDate(v: unknown): string | null {
+  if (v instanceof Date) return v.toISOString().slice(0, 10);
+  const m = typeof v === 'string' ? /^(\d{4}-\d{2}-\d{2})/.exec(v.trim()) : null;
+  return m ? m[1] : null;
+}
+
+function str(v: unknown): string | null {
+  return typeof v === 'string' && v.trim() ? v.trim() : null;
+}
+
+/**
+ * All FDA records for a listing: the fda_records array when present (invalid entries dropped),
+ * otherwise the single record from the fda_* columns. Never invents a record.
+ */
+export function implantFdaRecords(implant: {
+  fdaNumber?: string | null;
+  fdaDecisionDate?: Date | string | null;
+  fdaApplicant?: string | null;
+  fdaSourceUrl?: string | null;
+  fdaRecords?: unknown;
+}): FdaRecord[] {
+  if (Array.isArray(implant.fdaRecords) && implant.fdaRecords.length > 0) {
+    const out: FdaRecord[] = [];
+    for (const raw of implant.fdaRecords) {
+      if (!raw || typeof raw !== 'object') continue;
+      const r = raw as Record<string, unknown>;
+      const number = str(r.number)?.toUpperCase() || '';
+      const pathway = fdaPathway(number);
+      if (!pathway) continue;
+      const url = str(r.sourceUrl);
+      out.push({
+        number,
+        pathway,
+        label: str(r.label),
+        decisionDate: isoDate(r.decisionDate),
+        applicant: str(r.applicant),
+        sourceUrl: isFdaSourceUrl(url) ? url : null,
+      });
+    }
+    if (out.length > 0) return out;
+  }
+  const number = str(implant.fdaNumber)?.toUpperCase() || '';
+  const pathway = fdaPathway(number);
+  if (!pathway) return [];
+  const url = str(implant.fdaSourceUrl);
+  return [
+    {
+      number,
+      pathway,
+      label: null,
+      decisionDate: isoDate(implant.fdaDecisionDate),
+      applicant: str(implant.fdaApplicant),
+      sourceUrl: isFdaSourceUrl(url) ? url : null,
+    },
+  ];
+}

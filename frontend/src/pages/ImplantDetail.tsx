@@ -309,6 +309,7 @@ const ImplantDetail: React.FC = () => {
               fdaApplicant={data.fdaApplicant}
               fdaMaterials={data.fdaMaterials}
               fdaSourceUrl={data.fdaSourceUrl}
+              fdaRecords={data.fdaRecords}
             />
             <div className="mt-4 flex flex-wrap items-center gap-x-3 gap-y-2 text-sm">
               {data.maudeBrandKey ? (

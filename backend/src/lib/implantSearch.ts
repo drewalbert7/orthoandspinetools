@@ -1,4 +1,4 @@
-import { fdaPathway } from './implantFda';
+import { implantFdaRecords } from './implantFda';
 import { Prisma } from '@prisma/client';
 import { prisma } from './prisma';
 import {
@@ -474,6 +474,7 @@ export function buildImplantMarkdown(params: {
     fdaApplicant?: string | null;
     fdaMaterials?: string | null;
     fdaSourceUrl?: string | null;
+    fdaRecords?: unknown;
     aiRating?: number | null;
     aiSummary?: string | null;
     aliases: string[];
@@ -519,23 +520,21 @@ export function buildImplantMarkdown(params: {
   }
 
   // FDA regulatory data (each fact cites openFDA/AccessGUDID source)
-  if (implant.fdaNumber || implant.fdaApplicant || implant.fdaMaterials) {
+  const fdaRecords = implantFdaRecords(implant);
+  if (fdaRecords.length > 0 || implant.fdaMaterials) {
     lines.push('', '## FDA regulatory data', '');
-    if (implant.fdaNumber) {
-      const fdaType = fdaPathway(implant.fdaNumber) || 'FDA number';
-      lines.push(`- ${fdaType}: ${implant.fdaNumber}`);
-    }
-    if (implant.fdaDecisionDate) {
-      lines.push(`- Decision date: ${implant.fdaDecisionDate.toISOString().slice(0, 10)}`);
-    }
-    if (implant.fdaApplicant) {
-      lines.push(`- Applicant: ${implant.fdaApplicant}`);
+    for (const r of fdaRecords) {
+      const bits = [
+        `${r.pathway}: ${r.number}`,
+        r.label,
+        r.decisionDate ? `decision date ${r.decisionDate}` : null,
+        r.applicant ? `applicant ${r.applicant}` : null,
+        r.sourceUrl ? `source ${r.sourceUrl}` : null,
+      ].filter(Boolean);
+      lines.push(`- ${bits.join(', ')}`);
     }
     if (implant.fdaMaterials) {
       lines.push(`- Materials: ${implant.fdaMaterials}`);
-    }
-    if (implant.fdaSourceUrl) {
-      lines.push(`- Source: ${implant.fdaSourceUrl}`);
     }
   }
 

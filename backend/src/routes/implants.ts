@@ -573,6 +573,7 @@ router.get(
         fdaApplicant: implant.fdaApplicant,
         fdaMaterials: implant.fdaMaterials,
         fdaSourceUrl: implant.fdaSourceUrl,
+        fdaRecords: implant.fdaRecords,
         aiRating: implant.aiRating,
         aiSummary: implant.aiSummary,
         aliases: implant.aliases.map((a) => a.alias),

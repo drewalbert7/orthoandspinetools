@@ -656,6 +656,10 @@ model Implant {
   fdaMaterials    String?  @map("fda_materials")
   /// Source URL for FDA data (openFDA or AccessGUDID link)
   fdaSourceUrl    String?  @map("fda_source_url") @db.Text
+  /// Every verified FDA record for the listing when there is more than one (e.g. Mobi-C one-level
+  /// P110002 and two-level P110009). Array of { number, label, decisionDate, applicant, sourceUrl },
+  /// each from openFDA device/pma or device/510k with its own accessdata source link.
+  fdaRecords      Json?    @map("fda_records")
   /// Proprietary OST Directory Score 0–10 (catalog + community evidence — not clinical advice)
   aiRating        Float?   @map("ai_rating")
   aiSummary       String?  @map("ai_summary") @db.Text

@@ -461,6 +461,8 @@ export interface ImplantDetail extends ImplantDirectoryItem {
   fdaMaterials?: string | null;
   /** accessdata.fda.gov record URL. */
   fdaSourceUrl?: string | null;
+  /** Every verified FDA record (one or more), each with its own source link. */
+  fdaRecords?: import('../lib/implantFda').FdaRecord[];
   indications?: string | null;
   contraindications?: string | null;
   aliases: string[];

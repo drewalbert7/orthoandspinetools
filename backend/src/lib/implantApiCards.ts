@@ -3,7 +3,7 @@
  * List/related cards: product thumb only, no SEO body / AI summary blobs.
  * Detail cards: full media + score metadata.
  */
-import { cleanImplantSeoTitle } from './implantFda';
+import { cleanImplantSeoTitle, implantFdaRecords } from './implantFda';
 
 export type ImplantImageRow = {
   kind: string;
@@ -35,6 +35,7 @@ export type ImplantCardSource = {
   fdaApplicant?: string | null;
   fdaMaterials?: string | null;
   fdaSourceUrl?: string | null;
+  fdaRecords?: unknown;
   aiRating?: number | null;
   aiSummary?: string | null;
   aiRatedAt?: Date | null;
@@ -170,6 +171,7 @@ export function toImplantDetailBase(implant: ImplantCardSource) {
     fdaApplicant: implant.fdaApplicant ?? null,
     fdaMaterials: implant.fdaMaterials ?? null,
     fdaSourceUrl: implant.fdaSourceUrl ?? null,
+    fdaRecords: implantFdaRecords(implant),
     // Backward-compatible aliases
     aiRating: score,
     aiSummary: summary,

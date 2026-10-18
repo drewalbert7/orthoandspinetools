@@ -48,3 +48,13 @@ export function fdaDateLabel(value: string | null | undefined): string | null {
   const m = /^(\d{4}-\d{2}-\d{2})/.exec((value || '').trim());
   return m ? m[1] : null;
 }
+
+/** One verified FDA record from the API (backend implantFdaRecords). */
+export type FdaRecord = {
+  number: string;
+  pathway: FdaPathway;
+  label: string | null;
+  decisionDate: string | null;
+  applicant: string | null;
+  sourceUrl: string | null;
+};
