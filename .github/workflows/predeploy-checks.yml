@@ -69,7 +69,7 @@ jobs:
         run: docker version && docker compose version
 
       - name: Shellcheck deploy scripts
-        run: shellcheck -S warning deploy.sh scripts/lib/deploy-rollback.sh scripts/lib/deploy-disk-prune.sh scripts/tests/deploy-rollback.test.sh scripts/tests/deploy-prune-guard.test.sh scripts/tests/deploy-db-order.test.sh scripts/predeploy-db-snapshot.sh scripts/db-migrate.sh scripts/db/restore-test.sh scripts/db/ost-archive-wal.sh scripts/backup/ost-db-backup.sh scripts/backup/ost-wal-ship.sh scripts/backup/ost-basebackup.sh scripts/tests/dockerignore-env.test.sh
+        run: shellcheck -S warning deploy.sh scripts/lib/deploy-rollback.sh scripts/lib/deploy-disk-prune.sh scripts/tests/deploy-rollback.test.sh scripts/tests/deploy-prune-guard.test.sh scripts/tests/deploy-db-order.test.sh scripts/predeploy-db-snapshot.sh scripts/db-migrate.sh scripts/db/restore-test.sh scripts/db/ost-archive-wal.sh scripts/backup/ost-db-backup.sh scripts/backup/ost-wal-ship.sh scripts/backup/ost-basebackup.sh scripts/tests/dockerignore-env.test.sh scripts/tests/backup-umask-r2-message.test.sh scripts/database-backup-production.sh scripts/analytics-backup.sh
 
       - name: deploy.sh prune guard (no volume/system/image prune or rmi; prune only after passing health; disk check below 5G)
         run: bash scripts/tests/deploy-prune-guard.test.sh
@@ -82,6 +82,9 @@ jobs:
 
       - name: No .env files in docker build contexts (planted .env files must not reach the image)
         run: bash scripts/tests/dockerignore-env.test.sh
+
+      - name: Backup dump umask 077 and SKIP_R2 success message (static)
+        run: bash scripts/tests/backup-umask-r2-message.test.sh
 
   predeploy-checks:
     runs-on: ubuntu-latest
