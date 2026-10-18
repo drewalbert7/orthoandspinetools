@@ -14,8 +14,11 @@
 // DB_GUARD_LABEL_EVENTS (file, NDJSON or JSON array of PR timeline events) against DB_GUARD_HEAD_DATE
 // (head commit committer date): latest destructive-ok event is `labeled`, newer than the head commit,
 // by an allowlisted human maintainer (not a bot). Missing or unreadable events = not approved.
-// guard-changed: a guard file ADDED by the change (status A, absent at the merge base) is cleared by the
-// label alone (there is no line to mark). Editing, renaming or deleting an existing one is a hard block.
+// guard-changed: a guard file ADDED by the change (status A, absent at the base tip) is cleared by the
+// label alone (there is no line to mark). Any other status (M, D, R, C, T, U, X...) is a hard block.
+// Every git call uses -c core.quotePath=false and -z name lists; diffs use -a --no-textconv --no-ext-diff
+// so a PR's .gitattributes (-diff, binary, textconv) cannot hide added lines. Any .gitattributes change
+// is itself a finding (label-approvable). .db-guard-ignore is read from the base, never from the PR.
 // Output is file:line + rule id + the matched token only (never the whole line).
 import { execFileSync } from 'node:child_process';
 import { readFileSync, existsSync } from 'node:fs';
@@ -26,6 +29,7 @@ const MIGRATION_RE = /(^|\/)prisma\/migrations\/[^/]+\/migration\.sql$/;
 // guard-changed finding the label can clear; any later edit, rename or delete is a hard block.
 const SELF_RE = /(^|\/)scripts\/db-guard\/|(^|\/)scripts\/db\/(roles|rollback|verify)\.sql$/;
 const GUARD_WORKFLOW_RE = /(^|\/)\.github\/workflows\/db-guard\.yml$/;
+const GITATTRIBUTES_RE = /(^|\/)\.gitattributes$/;
 export const LABEL = 'destructive-ok';
 export const LABEL_MAINTAINERS = ['drewalbert7']; // human maintainers allowed to apply the label
 const DOC_RE = /\.(md|mdx|mdc|txt|rst)$/i; // doc extensions only (not every file under docs/)
@@ -89,18 +93,22 @@ export function labelApproval({ labelPresent, events, headCommitDate, maintainer
   return { approved: true, reason: `labeled by ${login}` };
 }
 
-// guard-changed findings from `git diff --name-status -M` lines. existedAtBase(path) -> bool.
-// A (absent at base): approvable by the label. M / D / R / C, or A of a path the base has: hard block.
+// guard-changed / gitattributes-changed findings from name-status entries: [status, path, newPath?]
+// (a "status<TAB>path" string is also accepted). existedAtBase(path) -> bool.
+// Guard path with status exactly A and absent at base: approvable. Any other status: hard block.
+// .gitattributes anywhere, any status: approvable by the label (it is not a guard file).
 export function guardChangeFindings(statusLines, existedAtBase = () => false) {
   const out = [];
   for (const s of statusLines) {
-    const [st, a, b] = s.split('\t');
+    const [st, a, b] = Array.isArray(s) ? s : s.split('\t');
     const paths = [a, b].filter(Boolean);
-    if (!/^[AMDRC]/.test(st) || !paths.some((p) => GUARD_WORKFLOW_RE.test(p) || SELF_RE.test(p))) continue;
-    const added = st[0] === 'A' && !existedAtBase(a);
+    if (paths.some((p) => GITATTRIBUTES_RE.test(p)))
+      out.push({ file: b || a, line: 0, rule: 'gitattributes-changed', token: st, msg: '.gitattributes changed (can alter how git shows content)', markerable: true, marked: true, why: ' (approvable: needs a valid destructive-ok label)' });
+    if (!paths.some((p) => GUARD_WORKFLOW_RE.test(p) || SELF_RE.test(p))) continue;
+    const added = st === 'A' && !existedAtBase(a);
     out.push(added
       ? { file: a, line: 0, rule: 'guard-changed', token: st[0], msg: 'new db-guard file (needs Security Officer review)', markerable: true, marked: true, why: ' (approvable: new file, needs a valid destructive-ok label)' }
-      : { file: a, line: 0, rule: 'guard-changed', token: st[0], msg: 'existing db-guard file edited/renamed/deleted (needs Security Officer review)', markerable: false, why: ' (hard block: the label cannot clear an edit to an existing guard file)' });
+      : { file: a, line: 0, rule: 'guard-changed', token: st, msg: 'existing db-guard file edited/renamed/deleted/type-changed (needs Security Officer review)', markerable: false, why: ' (hard block: the label cannot clear an edit to an existing guard file)' });
   }
   return out;
 }
@@ -119,12 +127,26 @@ function parseEvents(text) {
   return t.split('\n').filter((l) => l.trim()).map((l) => JSON.parse(l));
 }
 
-function git(args, opts = {}) {
-  return execFileSync('git', args, { encoding: 'utf8', maxBuffer: 256 * 1024 * 1024, ...opts });
+// `git diff --name-status -z` -> [[status, path, newPath?], ...]. Paths come back verbatim (no quoting).
+export function parseNameStatusZ(text) {
+  const parts = text.split('\0'); const out = [];
+  for (let i = 0; i < parts.length && parts[i]; ) {
+    const st = parts[i++];
+    const n = /^[RC]/.test(st) ? 2 : 1;
+    out.push([st, ...parts.slice(i, i + n)]); i += n;
+  }
+  return out;
 }
-function loadIgnore() {
-  if (!existsSync(IGNORE_FILE)) return [];
-  return readFileSync(IGNORE_FILE, 'utf8').split('\n').map((l) => l.trim()).filter((l) => l && !l.startsWith('#'))
+
+function git(args, opts = {}) {
+  return execFileSync('git', ['-c', 'core.quotePath=false', ...args], { encoding: 'utf8', maxBuffer: 256 * 1024 * 1024, ...opts });
+}
+// ignoreRef: read .db-guard-ignore from that commit (the base), or from the working tree when null.
+function loadIgnore(ignoreRef) {
+  let txt = '';
+  if (ignoreRef) { try { txt = git(['show', '--no-textconv', `${ignoreRef}:${IGNORE_FILE}`], { stdio: ['ignore', 'pipe', 'ignore'] }); } catch { txt = ''; } }
+  else if (existsSync(IGNORE_FILE)) txt = readFileSync(IGNORE_FILE, 'utf8');
+  return txt.split('\n').map((l) => l.trim()).filter((l) => l && !l.startsWith('#'))
     .map((g) => new RegExp('^' + g.replace(/[.+^${}()|[\]\\]/g, '\\$&').replace(/\*\*/g, '\u0000').replace(/\*/g, '[^/]*').replace(/\u0000/g, '.*') + '$'));
 }
 function scopeOk(scope, file) {
@@ -138,21 +160,21 @@ function scopeOk(scope, file) {
     default: return false;
   }
 }
-// Parse `git diff -U0` output -> [{file, line, text}] for added lines, plus file status list.
-function parseDiff(diffText) {
-  const out = []; let file = null; let ln = 0;
+// Parse one file's `git diff -U0` output -> [{file, line, text}] for added lines. The path comes from
+// the -z name list, so quoted or non-ASCII names in the patch header do not matter.
+function parseDiff(diffText, file) {
+  const out = []; let ln = 0; let inHunk = false;
   for (const raw of diffText.split('\n')) {
-    if (raw.startsWith('+++ ')) { file = raw === '+++ /dev/null' ? null : raw.replace(/^\+\+\+ b\//, ''); continue; }
-    if (raw.startsWith('@@')) { const m = /\+(\d+)(?:,(\d+))?/.exec(raw); ln = m ? parseInt(m[1], 10) : 0; continue; }
-    if (!file) continue;
-    if (raw.startsWith('+') && !raw.startsWith('+++')) { out.push({ file, line: ln, text: raw.slice(1) }); ln++; }
+    if (raw.startsWith('@@')) { const m = /\+(\d+)(?:,(\d+))?/.exec(raw); ln = m ? parseInt(m[1], 10) : 0; inHunk = true; continue; }
+    if (raw.startsWith('diff --git ')) { inHunk = false; continue; }
+    if (inHunk && raw.startsWith('+')) { out.push({ file, line: ln, text: raw.slice(1) }); ln++; }
   }
   return out;
 }
 function fileContent(mode, file, head) {
   try {
-    if (mode === 'staged') return git(['show', `:${file}`]);
-    if (mode === 'diff') return git(['show', `${head}:${file}`]);
+    if (mode === 'staged') return git(['show', '--no-textconv', `:${file}`]);
+    if (mode === 'diff') return git(['show', '--no-textconv', `${head}:${file}`]);
   } catch { /* deleted */ }
   try { return readFileSync(file, 'utf8'); } catch { return ''; }
 }
@@ -180,11 +202,12 @@ if (process.env.DB_GUARD_LABEL_EVENTS) {
 const approval = labelApproval({ labelPresent, events, headCommitDate: process.env.DB_GUARD_HEAD_DATE });
 const approved = approval.approved;
 if (labelPresent) console.log(`db-guard: destructive-ok label ${approved ? 'accepted' : 'NOT accepted'} (${approval.reason})`);
-const ignore = loadIgnore();
+// Base tip (diff) or HEAD (staged): source of .db-guard-ignore and of the "absent at base" check.
+const baseRef = mode === 'diff' ? base : mode === 'staged' ? 'HEAD' : null;
+const ignore = loadIgnore(baseRef);
 const findings = [];
 let lines = [];
 let statusLines = [];
-let baseRef = null;
 try {
   if (mode === 'all') {
     for (const f of git(['ls-files', '-z']).split('\0').filter(Boolean)) {
@@ -194,9 +217,13 @@ try {
     }
   } else {
     const range = mode === 'staged' ? ['--cached'] : [`${base}...${head}`];
-    lines = parseDiff(git(['diff', '-U0', '--no-color', '--no-ext-diff', '--diff-filter=AMR', ...range]));
-    statusLines = git(['diff', '--name-status', '--no-color', '-M', ...range]).split('\n').filter(Boolean);
-    baseRef = mode === 'staged' ? 'HEAD' : git(['merge-base', base, head]).trim();
+    const DIFF = ['diff', '-a', '--no-textconv', '--no-ext-diff', '--no-color', '-M'];
+    statusLines = parseNameStatusZ(git([...DIFF, '--name-status', '-z', ...range]));
+    // Content scan: every status except D (A, C, M, R, T, U, X...), one file (or rename pair) at a time.
+    for (const [st, a, b] of statusLines) {
+      if (st[0] === 'D') continue;
+      lines.push(...parseDiff(git([...DIFF, '-U0', ...range, '--', ...[a, b].filter(Boolean)]), b || a));
+    }
   }
 } catch (e) {
   console.error(`db-guard: git failed (${e.message.split('\n')[0]}). Refusing to pass.`);
@@ -204,13 +231,12 @@ try {
 }
 
 // Rule: applied migrations must never be edited, renamed or deleted (Prisma checksum drift -> reset prompts).
-for (const s of statusLines) {
-  const [st, a, b] = s.split('\t');
+for (const [st, a, b] of statusLines) {
   const paths = [a, b].filter(Boolean);
-  if (/^[MDR]/.test(st) && paths.some((p) => MIGRATION_RE.test(p) || /(^|\/)prisma\/migrations\/migration_lock\.toml$/.test(p)))
+  if (/^[MDRT]/.test(st) && paths.some((p) => MIGRATION_RE.test(p) || /(^|\/)prisma\/migrations\/migration_lock\.toml$/.test(p)))
     findings.push({ file: a, line: 0, rule: 'migration-history-edited', token: st[0], msg: 'existing migration edited/renamed/deleted', markerable: false });
 }
-// Guard files: "added" is double-checked against the merge base (staged: HEAD). Unknown base = existed.
+// Guard files: "added" is double-checked against the base tip (staged: HEAD). Unknown base = existed.
 const existedAtBase = (p) => {
   if (!baseRef) return true;
   try { git(['cat-file', '-e', `${baseRef}:${p}`], { stdio: 'ignore' }); return true; } catch { return false; }
