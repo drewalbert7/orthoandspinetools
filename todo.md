@@ -295,7 +295,7 @@ Rows moved out of section 3 once merged (verbatim).
 | Search + trending | Live openFDA brand autocomplete; trending by recent vs prior growth |
 | Brand synopsis | Click brand for event mix, device/patient problems, recent narrative excerpts |
 | Coverage gaps | OR Unknown-specialty classes: disc arthroplasty, spinous spacers, INFUSE/rhBMP, mobile-bearing + UKA knees |
-| SKU rollups | Mobi-C, prodisc C/L, M6-C, Simplify, Superion, INFUSE, ATTUNE, iFuse to one commercial product |
+| SKU rollups | Size/SKU rows → commercial **line** (prodisc C Vivo / SK / Nova separate; Mobi-C, M6-C, …) |
 | openFDA ops | OPENFDA_API_KEY wired; daily warm cron; GET /api/maude/status |
 
 #### Session log (Jul 2026 - security + review)
@@ -535,6 +535,7 @@ Full agent copy: **`AGENTS.md`**. Cursor rule: `.cursor/rules/analytics-durabili
 - [x] **MAUDE Rising/Top stable colors** — Brand colors/stroke weight keyed by name so Rising ↔ Top reorder does not jump the chart.
 - [x] **Implant Directory — pre-growth hardening** — Slim list/related payloads (product thumb only); vote tallies via `groupBy`; verified-count TTL cache; browse indexes `(status,specialty,ai_rating)` + company + verified partial; anonymous `Cache-Control` on list/detail; dedicated `IMPLANT_INGEST_SECRET` only; admin `GET /api/implants/admin/drafts`.
 - [x] **Implant Directory — Score v2 (ost-dir-v2)** — Utility (listing + discussion) × velocity-first MAUDE hazard (flat/declining stay quiet; rising outliers elevated); asymmetric penalty; facets on detail; paced specialty warm for recompute; admin `POST /api/implants/admin/recompute-scores`.
+- [x] **Implant Directory — line-specific MAUDE keys** — Commercial lines only (e.g. prodisc C Vivo vs SK); no family rollup for scores; shared-PMA recalls require product text to match the brand key; MAUDE chart rollups split Vivo/SK/Nova.
 - [ ] **Implant Directory — catalog growth** — More systems via Grokbot ingest (draft → verify); refine AI assessments; more XR/diagram where rights clear; more technique PDFs; swap Solera JP chart for English catalog shot when available. **← next**
 - [ ] **Implant Directory — MCP / paid data** — Licensed API + MCP connector (Nomads-style); optional SQLite/JSON export. **Blocked until images + data quality are solid.**
 
@@ -551,6 +552,7 @@ Full agent copy: **`AGENTS.md`**. Cursor rule: `.cursor/rules/analytics-durabili
 - [x] **Latest deploy (Oct 15b)** — Remove Stats from sidebar (keep header link to `/stats`)
 - [x] **Latest deploy (Oct 15c)** — Implant Directory list polish: one-line STG+score, quieter verified check, less meta duplication, contain thumbs, hide empty comment/page chrome
 - [x] **Latest deploy (Oct 15d)** — Directory Score **ost-dir-v2**: velocity-first MAUDE peer hazard + facet breakdown on implant pages; asymmetric penalty; paced recompute; admin recompute-scores
+- [x] **Latest deploy (Oct 18)** — Line-specific MAUDE keys: prodisc C Vivo vs SK listings; shared-PMA recall filter; chart rollups split Vivo/SK/Nova; migration `20261019010000_prodisc_c_line_specific`
 - [x] **Ops rule (hard)** — After **every** `backend`/`frontend` recreate, always: `docker compose -f docker-compose.prod.yml up -d --force-recreate nginx` (cached Docker DNS → 502 Connection refused on old IPs)
 - [x] **Analytics backup cron** — `15 2 * * *` → `scripts/analytics-backup.sh` → `/mnt/HC_Volume_106016238/orthoandspinetools-backups/analytics/`
 
@@ -692,7 +694,7 @@ docker compose -f docker-compose.prod.yml exec backend npm run backfill-case-pos
 | Search + trending | Live openFDA brand autocomplete; trending by recent vs prior growth |
 | Brand synopsis | Click brand → event mix, device/patient problems, recent narrative excerpts (`GET /api/maude/synopsis`) |
 | Coverage gaps | OR Unknown-specialty classes: disc arthroplasty, spinous spacers (Superion), INFUSE/rhBMP, mobile-bearing + UKA knees; spine keywords for SI/kypho |
-| SKU rollups | Mobi-C, prodisc C/L, M6-C, Simplify, Superion, INFUSE, ATTUNE, iFuse → one commercial product |
+| SKU rollups | Size/SKU → commercial **line** (prodisc C Vivo/SK/Nova separate; Mobi-C, M6-C, …) |
 | openFDA ops | `OPENFDA_API_KEY` wired; daily warm cron (`scripts/maude-warm-cron.sh`); `GET /api/maude/status` |
 | Wiring | `/api/maude/trends`, `/search`, `/synopsis`, `/warm`; sidebar + sitemap + OG |
 

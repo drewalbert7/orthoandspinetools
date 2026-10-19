@@ -129,6 +129,22 @@ export function firmMatches(recallingFirm: string | null | undefined, tokens: Se
   return false;
 }
 
+/**
+ * Recalls must name this commercial line, not a sibling under the same PMA.
+ * e.g. "prodisc C Vivo" must not pick up a "Prodisc C SK" labeling recall via P070001.
+ */
+export function productMatchesBrandKey(
+  productDescription: string | null | undefined,
+  brandKey: string
+): boolean {
+  const product = (productDescription || '').toLowerCase();
+  const key = brandKey.toLowerCase().replace(/[®™©]/g, ' ').replace(/\s+/g, ' ').trim();
+  if (!product || !key) return false;
+  if (product.includes(key)) return true;
+  const tokens = key.split(/[^a-z0-9]+/).filter((t) => t.length > 1);
+  return tokens.length > 0 && tokens.every((t) => product.includes(t));
+}
+
 function compact(d: Date): string {
   return d.toISOString().slice(0, 10).replace(/-/g, '');
 }
@@ -289,7 +305,8 @@ export async function fetchSafetySignalInput(options: {
     const e = await get(ctx, `Recalls: FDA class for ${rn}`, 'enforcement', { search: `recall_number:"${rn}"`, limit: '1' });
     const row = e.status === 404 ? null : e.json.results?.[0];
     const r = row ? enforcementToRecall(row, e.url) : null;
-    if (r) recallRows.push(r);
+    // Shared PMA/510(k) across commercial lines: only keep recalls that name this brand key.
+    if (r && productMatchesBrandKey(r.product, brandPhrase)) recallRows.push(r);
   }
 
   const pulledAt = ctx.fetchedAt.sort()[0] || new Date().toISOString();

@@ -85,9 +85,16 @@ score but does not change it.
 Recall matching is conservative: a recall counts when the brand phrase appears in the product
 description and the recalling firm matches the implant's company, its FDA applicant, or a
 manufacturer that files MAUDE reports for the brand, or when the recall record lists the
-implant's 510(k) or PMA number. Recalls of system instruments (for example a tap or a resection
-guide sold under the brand) count; the implant page lists each recall with its openFDA record so
-the reader can judge it.
+implant's 510(k) or PMA number **and** the enforcement product description still matches that
+brand key. Shared PMAs (for example P070001 covering prodisc C Vivo / SK / Nova) must not attach
+sibling-line recalls to the wrong listing. Recalls of system instruments sold under the brand
+still count when the product text matches; the implant page lists each recall with its openFDA
+record so the reader can judge it.
+
+**Commercial line, not family.** `maude_brand_key` should be the commercial line openFDA reports
+use in `device.brand_name` (e.g. `prodisc C Vivo`, `prodisc C SK`), not an umbrella family string
+that phrase-matches every sibling. Size/SKU rows still roll up within a line on `/maude` charts;
+sibling lines stay separate.
 
 ## Confidence
 

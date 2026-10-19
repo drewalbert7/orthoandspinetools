@@ -303,7 +303,28 @@ const BRAND_ROLLUPS: Array<{ test: RegExp; filterName: string; displayName: stri
     displayName: 'Mobi-C Cervical Disc',
     company: 'Zimmer Biomet',
   },
+  // Line-specific first (Vivo / SK / Nova are distinct commercial products).
+  // Do not collapse them into a family "prodisc C" rollup for charts or scores.
   {
+    test: /^prodisc[-\s]*c\b.*\bvivo\b|\bvivo\b.*prodisc[-\s]*c\b/i,
+    filterName: 'PRODISC C VIVO',
+    displayName: 'prodisc C Vivo',
+    company: 'Centinel Spine',
+  },
+  {
+    test: /^prodisc[-\s]*c\b.*\bsk\b|\bprodisc[-\s]*c\s*sk\b/i,
+    filterName: 'PRODISC C SK',
+    displayName: 'prodisc C SK',
+    company: 'Centinel Spine',
+  },
+  {
+    test: /^prodisc[-\s]*c\b.*\bnova\b|\bprodisc[-\s]*c\s*nova\b/i,
+    filterName: 'PRODISC C NOVA',
+    displayName: 'prodisc C Nova',
+    company: 'Centinel Spine',
+  },
+  {
+    // Size/SKU rows that omit the line name still roll to unspecified prodisc C.
     test: /^prodisc[-\s]*c\b/i,
     filterName: 'PRODISC C',
     displayName: 'prodisc C',

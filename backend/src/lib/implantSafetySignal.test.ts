@@ -15,7 +15,14 @@ import {
   type SafetySignalInput,
   type SeverityCounts,
 } from './implantSafetySignal';
-import { dedupeRecallEvents, firmMatches, firmToken, monthlyTrend, severityFromEventTypes } from './implantSafetyData';
+import {
+  dedupeRecallEvents,
+  firmMatches,
+  firmToken,
+  monthlyTrend,
+  productMatchesBrandKey,
+  severityFromEventTypes,
+} from './implantSafetyData';
 import { effectiveParams, publicOpenFdaUrl, KEYLESS_MAX_COUNT_LIMIT } from './openFdaHttp';
 
 function counts(p: Partial<SeverityCounts>): SeverityCounts {
@@ -187,6 +194,15 @@ test('recalls match on the firm and count once per recall event', () => {
   const out = dedupeRecallEvents([recall('Class II', '9'), recall('Class I', '9'), recall('Class III', '8')]);
   assert.equal(out.length, 2);
   assert.equal(out.find((r) => r.id === '9')!.classification, 'Class I');
+});
+
+test('shared-PMA recalls stay on the named commercial line only', () => {
+  const sk =
+    'Prodisc C SK U.S. IMPLANT EXTRA LARGE 5MM. Model: PDSXL5 Total cervical disc replacement.';
+  assert.ok(productMatchesBrandKey(sk, 'prodisc C SK'));
+  assert.ok(!productMatchesBrandKey(sk, 'prodisc C Vivo'));
+  assert.ok(productMatchesBrandKey('PRODISC C VIVO US IMPLANT MEDIUM 5MM', 'prodisc C Vivo'));
+  assert.ok(!productMatchesBrandKey('PRODISC C VIVO US IMPLANT MEDIUM 5MM', 'prodisc C SK'));
 });
 
 test('keyless requests clamp count limits and cited URLs never carry a key', () => {
