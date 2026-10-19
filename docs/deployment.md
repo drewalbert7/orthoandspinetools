@@ -52,6 +52,24 @@ docker compose -f docker-compose.prod.yml up -d --force-recreate nginx
 - **Cloudinary** — `.env.cloudinary` for media uploads.
 - **Amazon SES** (optional) — `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, `AWS_SES_REGION`, `EMAIL_FROM` for transactional mail.
 
+### Where the backend's environment comes from (read this before editing any .env)
+
+- **The ROOT `.env` is the source of truth.** `docker-compose.prod.yml` loads it twice: `env_file: .env` (every
+  line becomes a container variable) and `${VAR}` interpolation in `environment:`. A value under `environment:`
+  wins over the same name from `env_file`.
+- **`JWT_SECRET`**: the live value is the ROOT `.env` `JWT_SECRET`, passed as `environment: JWT_SECRET: ${JWT_SECRET}`.
+  It was rotated on prod on Oct 17, 2026. `backend/.env` also has a `JWT_SECRET` line: it is stale and never used
+  (the compose value overrides it). Rotate only the ROOT `.env`, then recreate backend.
+- **`backend/.env` is not used at runtime.** `backend/.dockerignore` and `frontend/.dockerignore` exclude `.env`
+  and `.env.*`, so no env file is baked into an image (before this, `backend/.env` ended up at `/app/.env`, and
+  `dotenv` read it only for names compose had not set). CI checks this (`scripts/tests/dockerignore-env.test.sh`
+  and the "Built images carry no .env file" step).
+- `DATABASE_URL` for the app is built in compose from `OST_APP_DB_PASSWORD` (role `ost_app`); the superuser
+  `POSTGRES_PASSWORD` is blanked inside the app containers. Migrations use `MIGRATOR_DATABASE_URL` from
+  `/etc/ost-backup/migrator.env`, never `.env` (see `docs/db-safety/RUNBOOK.md`).
+- `SESSION_SECRET` and `ENCRYPTION_KEY` were never read by the code and are removed from `backend/env.example`.
+  Delete those lines from the server `.env` files only after this change is deployed.
+
 ## SSL (Let's Encrypt)
 
 Certs used by nginx: `nginx/ssl/certs/fullchain.pem` and `privkey.pem`.

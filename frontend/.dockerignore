@@ -1,0 +1,7 @@
+# Never bake env files (secrets) into images. The runtime gets its env from docker-compose
+# (env_file: the ROOT .env, plus environment:), not from a file inside the image.
+# Checked by scripts/tests/dockerignore-env.test.sh (CI).
+.env
+.env.*
+**/.env
+**/.env.*

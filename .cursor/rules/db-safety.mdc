@@ -1,0 +1,22 @@
+---
+description: Database and backup safety (fleet rule, audit item 7)
+alwaysApply: true
+---
+# Database safety (non-negotiable)
+
+- Never DROP or TRUNCATE a table/schema/database, delete a DB file or docker volume, or run
+  `docker compose down -v`, `docker volume rm|prune`, `docker system prune --volumes`,
+  `prisma migrate reset`, `prisma migrate dev` or `prisma db push` against production, or any
+  `rclone sync|delete|purge|move` / object-store delete on backups, without Drew's explicit OK relayed by CEO.
+- Before any migration or deploy: `scripts/predeploy-db-snapshot.sh` must succeed (deploy.sh and
+  scripts/db-migrate.sh do this; never skip it).
+- Production migrations run ONLY through `sudo scripts/db-migrate.sh` (role ost_migrator). The app's
+  DATABASE_URL uses ost_app, which cannot run DDL, TRUNCATE or DROP. Do not "fix" a permission error by
+  switching the app back to the postgres superuser: report it to the Security Officer.
+- Never edit, rename or delete a migration that has been applied. Write a new migration.
+- Destructive migrations need `-- DESTRUCTIVE-OK: <CEO approval ref>` plus
+  `SET LOCAL ost.allow_destructive = '<same ref>';` in the migration.sql, and the `destructive-ok` PR label
+  (Drew/CEO only). db-guard CI and the database guard both enforce this.
+- Backups leave the host only gpg-encrypted to the fleet public key, via `rclone copy --immutable`.
+- A db-guard, phi-guard or ost_guard block means STOP and report. Never bypass with --no-verify, never
+  disable the event triggers, never widen .db-guard-ignore yourself.

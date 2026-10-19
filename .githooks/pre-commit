@@ -1,9 +1,12 @@
 #!/bin/sh
-# phi-guard pre-commit hook: scans STAGED content (the index) for PHI.
-# Plain git hook. Install: copy to .githooks/pre-commit and `git config core.hooksPath .githooks`
-# (or run install.sh). Do not bypass with --no-verify: a hit means stop and report.
+# Combined pre-commit for .githooks/ (core.hooksPath=.githooks): phi-guard, then db-guard.
+# Do not bypass with --no-verify: a hit means stop and report.
 root=$(git rev-parse --show-toplevel) || exit 1
 sh "$root/scripts/phi-guard/phi-scan.sh" --staged --quiet || {
   echo "pre-commit: phi-guard blocked this commit. Report real hits to the Security Officer." >&2
+  exit 1
+}
+sh "$root/scripts/db-guard/db-guard.sh" --staged || {
+  echo "pre-commit: db-guard blocked this commit (destructive DB/volume/backup op). Needs Drew's OK via CEO." >&2
   exit 1
 }

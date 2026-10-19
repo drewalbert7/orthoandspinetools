@@ -27,7 +27,7 @@ services:
       NODE_ENV: development
       PORT: 3001
       DATABASE_URL: postgresql://postgres:${POSTGRES_PASSWORD:-password}@postgres:5432/orthoandspinetools
-      JWT_SECRET: your-super-secret-jwt-key-change-this-in-production
+      JWT_SECRET: ${JWT_SECRET:?JWT_SECRET must be set in .env}
       JWT_EXPIRES_IN: 7d
       CORS_ORIGIN: http://localhost:3000
       # Cloudinary: loaded from .env.cloudinary (do NOT override here - ${VAR} would use host env and can clear values)

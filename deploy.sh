@@ -14,18 +14,32 @@
 #   6. On success with passing health checks only: docker builder prune -f
 #      (build cache only; scripts/lib/deploy-disk-prune.sh)
 #
-# Before any build, the deploy stops with a non-zero exit when / has less than 5G free.
+# Database order (audit items 1 and 4): verified pre-deploy snapshot BEFORE the build, then
+# `prisma migrate deploy` as ost_migrator (new backend image, one-off container) AFTER the build
+# and BEFORE the container switch. If either fails, nothing is switched and the old containers keep
+# serving. Migrations therefore run while the old code is live, so they must be backward compatible
+# (expand first, contract in a later release).
+#
+# Before any build, the deploy stops with a non-zero exit when / has less than 5G free or is 90% or
+# more used (build cache and images share /; see scripts/lib/deploy-disk-prune.sh).
 #
 # Usage:
 #   ./deploy.sh              # Full deploy with checks
-#   ./deploy.sh --skip-checks # Emergency deploy (logs loudly)
+#   ./deploy.sh --skip-checks # Emergency deploy (logs loudly; snapshot and migrate still run)
+#   ./deploy.sh --no-migrate # Skip prisma migrate deploy (logs loudly; snapshot still runs)
 #   ./deploy.sh --dry-run    # Show what would happen, don't deploy
+#
+# Migrations run through `sudo -n /usr/local/sbin/ost-db-migrate`, a root-owned copy of
+# scripts/db-migrate.sh (it reads MIGRATOR_DATABASE_URL from /etc/ost-backup/migrator.env, root 600,
+# which dstrad cannot read). See docs/db-safety/RUNBOOK.md.
 #
 # Test/drill hooks (used by scripts/tests/deploy-rollback.test.sh):
 #   DEPLOY_COMPOSE_FILE  compose file (default docker-compose.prod.yml)
 #   DEPLOY_CHECK_CMD     run this instead of the Playwright checks
 #   DEPLOY_HEALTH_CMD    run this instead of the local curl health checks
 #   FORCE_CHECK_FAIL=1   treat the pre-deploy checks as failed (rollback drill)
+#   DEPLOY_DB_SNAPSHOT_CMD  run this instead of scripts/predeploy-db-snapshot.sh
+#   DEPLOY_MIGRATE_CMD      run this instead of `sudo -n /usr/local/sbin/ost-db-migrate`
 
 set -e
 
@@ -40,8 +54,13 @@ source "$SCRIPT_DIR/scripts/lib/deploy-disk-prune.sh"
 # Parse arguments
 SKIP_CHECKS=false
 DRY_RUN=false
+NO_MIGRATE=false
+DEPLOY_MIGRATE_BIN="${DEPLOY_MIGRATE_BIN:-/usr/local/sbin/ost-db-migrate}"
 for arg in "$@"; do
   case $arg in
+    --no-migrate)
+      NO_MIGRATE=true
+      ;;
     --skip-checks)
       SKIP_CHECKS=true
       ;;
@@ -176,7 +195,13 @@ fi
 if [ "$DRY_RUN" = true ]; then
     echo ""
     echo "🔍 DRY RUN: Would tag running images as <compose-name>:pre-deploy-<ts>"
+    echo "🔍 DRY RUN: Would take a verified pre-deploy DB snapshot (abort before build if it fails)"
     echo "🔍 DRY RUN: Would build new images (without taking site down)"
+    if [ "$NO_MIGRATE" = true ]; then
+        echo "🔍 DRY RUN: --no-migrate: would NOT run prisma migrate deploy"
+    else
+        echo "🔍 DRY RUN: Would run prisma migrate deploy as ost_migrator BEFORE the switch (sudo -n $DEPLOY_MIGRATE_BIN); abort with no switch if it fails"
+    fi
     echo "🔍 DRY RUN: Would bring up new stack and wait for health"
     if [ "$SKIP_CHECKS" = false ]; then
         echo "🔍 DRY RUN: Would run Playwright checks"
@@ -188,10 +213,39 @@ if [ "$DRY_RUN" = true ]; then
     exit 0
 fi
 
+# Pre-deploy DB snapshot (audit item 4). NOT skipped by --skip-checks: no snapshot, no deploy.
+# DEPLOY_DB_SNAPSHOT_CMD is a test hook (scripts/tests/deploy-rollback.test.sh sets it to `true`).
+echo ""
+echo "🗄️  Pre-deploy database snapshot..."
+if [ -n "${DEPLOY_DB_SNAPSHOT_CMD:-}" ]; then
+    bash -c "$DEPLOY_DB_SNAPSHOT_CMD" || { echo "❌ Pre-deploy DB snapshot failed. Aborting before build." >&2; exit 1; }
+else
+    "$SCRIPT_DIR/scripts/predeploy-db-snapshot.sh" deploy || { echo "❌ Pre-deploy DB snapshot failed. Aborting before build." >&2; exit 1; }
+fi
+
 # Build new images WITHOUT taking site down
 echo ""
 echo "🔨 Building new images (site stays up)..."
 docker compose -f "$COMPOSE_FILE" build --no-cache backend frontend
+
+# Migrations BEFORE the switch (old containers still serving). Not skipped by --skip-checks.
+echo ""
+if [ "$NO_MIGRATE" = true ]; then
+    echo "⚠️  --no-migrate: prisma migrate deploy SKIPPED. The new code must not need a pending migration."
+else
+    echo "🧬 prisma migrate deploy as ost_migrator (new backend image, before the switch)..."
+    if [ -n "${DEPLOY_MIGRATE_CMD:-}" ]; then
+        MIGRATE_RC=0; bash -c "$DEPLOY_MIGRATE_CMD" || MIGRATE_RC=$?
+    else
+        MIGRATE_RC=0; sudo -n "$DEPLOY_MIGRATE_BIN" || MIGRATE_RC=$?
+    fi
+    if [ "$MIGRATE_RC" -ne 0 ]; then
+        echo "❌ Migration step failed (exit $MIGRATE_RC). Nothing was switched; the old containers keep serving." >&2
+        echo "   If $DEPLOY_MIGRATE_BIN or its sudoers rule is missing, see docs/db-safety/RUNBOOK.md." >&2
+        exit 1
+    fi
+    echo "   ✅ migrations applied and status clean"
+fi
 
 # Bring up new stack with minimal downtime
 echo ""

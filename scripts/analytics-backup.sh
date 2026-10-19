@@ -9,6 +9,7 @@
 # Retention: ≥30 days. Also writes *-latest.sql.gz.
 
 set -euo pipefail
+umask 077
 
 ROOT="/home/dstrad/orthoandspinetools-main"
 CONTAINER_NAME="orthoandspinetools-postgres"
@@ -100,7 +101,8 @@ find "$BACKUP_DIR" -maxdepth 1 -type f -name 'analytics_*.sql.gz' -mtime "+$RETE
 
 # Off-site copy to Cloudflare R2 (same pattern as full DB backups)
 R2_UPLOAD_SCRIPT="$ROOT/scripts/backup-to-r2.js"
-SKIP_R2_BACKUP="${SKIP_R2_BACKUP:-0}"
+SKIP_R2_BACKUP="${SKIP_R2_BACKUP:-1}"  # analytics tables are in the encrypted full-DB offsite backup
+R2_UPLOADED=0
 if [[ "$SKIP_R2_BACKUP" != "1" && -f "$R2_UPLOAD_SCRIPT" && -f "$OUT" ]]; then
   R2_PREFIX="${R2_BACKUP_PREFIX:-backups/}"
   R2_PREFIX="${R2_PREFIX%/}/"
@@ -109,6 +111,7 @@ if [[ "$SKIP_R2_BACKUP" != "1" && -f "$R2_UPLOAD_SCRIPT" && -f "$OUT" ]]; then
     # Also refresh a stable latest key
     node "$R2_UPLOAD_SCRIPT" "$OUT" "${R2_PREFIX}analytics/analytics-latest.sql.gz" >/dev/null || true
     echo "r2=uploaded key=$ANALYTICS_KEY"
+    R2_UPLOADED=1
   else
     echo "r2=upload_failed (local backup kept)"
   fi
@@ -116,5 +119,9 @@ else
   echo "r2=skipped"
 fi
 
-echo "=== Analytics backup done ==="
+if [[ "$R2_UPLOADED" == "1" ]]; then
+  echo "=== Analytics backup completed successfully (local + R2) ==="
+else
+  echo "=== Analytics backup completed successfully (local only) ==="
+fi
 echo "$OUT"

@@ -9,6 +9,9 @@ on:
 env:
   NODE_ENV: production
   POSTGRES_PASSWORD: test_password_ci_only
+  OST_APP_DB_PASSWORD: ci_app_password_0123456789abcdef
+  OST_MIGRATOR_DB_PASSWORD: ci_migrator_password_0123456789ab
+  OST_BACKUP_DB_PASSWORD: ci_backup_password_0123456789abcd
   JWT_SECRET: test_jwt_secret_ci_only_not_for_production
 
 jobs:
@@ -66,13 +69,41 @@ jobs:
         run: docker version && docker compose version
 
       - name: Shellcheck deploy scripts
-        run: shellcheck -S warning deploy.sh scripts/lib/deploy-rollback.sh scripts/lib/deploy-disk-prune.sh scripts/tests/deploy-rollback.test.sh scripts/tests/deploy-prune-guard.test.sh
+        run: shellcheck -S warning deploy.sh scripts/lib/deploy-rollback.sh scripts/lib/deploy-disk-prune.sh scripts/tests/deploy-rollback.test.sh scripts/tests/deploy-prune-guard.test.sh scripts/tests/deploy-db-order.test.sh scripts/predeploy-db-snapshot.sh scripts/db-migrate.sh scripts/db/restore-test.sh scripts/db/ost-archive-wal.sh scripts/backup/ost-db-backup.sh scripts/backup/ost-wal-ship.sh scripts/backup/ost-basebackup.sh scripts/tests/dockerignore-env.test.sh scripts/tests/backup-umask-r2-message.test.sh scripts/database-backup-production.sh scripts/analytics-backup.sh scripts/tests/jwt-secret-fail-closed.test.sh
 
       - name: deploy.sh prune guard (no volume/system/image prune or rmi; prune only after passing health; disk check below 5G)
         run: bash scripts/tests/deploy-prune-guard.test.sh
 
       - name: deploy.sh rollback simulation (failed check -> previous image IDs; passing check -> new build)
         run: bash scripts/tests/deploy-rollback.test.sh
+
+      - name: deploy.sh DB order (snapshot -> build -> migrate as ost_migrator -> switch; fail-closed)
+        run: bash scripts/tests/deploy-db-order.test.sh
+
+      - name: No .env files in docker build contexts (planted .env files must not reach the image)
+        run: bash scripts/tests/dockerignore-env.test.sh
+
+      - name: Backup dump umask 077 and SKIP_R2 success message (static)
+        run: bash scripts/tests/backup-umask-r2-message.test.sh
+
+      - name: JWT_SECRET fail-closed (compose :? and no backend placeholders)
+        run: bash scripts/tests/jwt-secret-fail-closed.test.sh
+
+  db-guard-tests:
+    needs: phi-guard
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: db-guard approval rules (new vs edited guard files, label freshness and actor, destructive-line regression)
+        run: node --test scripts/tests/db-guard.test.mjs
 
   predeploy-checks:
     runs-on: ubuntu-latest
@@ -93,6 +124,7 @@ jobs:
           cat > .env << EOF
           NODE_ENV=production
           POSTGRES_PASSWORD=${{ env.POSTGRES_PASSWORD }}
+          OST_APP_DB_PASSWORD=${{ env.OST_APP_DB_PASSWORD }}
           JWT_SECRET=${{ env.JWT_SECRET }}
           DOMAIN=localhost
           VITE_API_URL=/api
@@ -183,7 +215,10 @@ jobs:
 
       - name: Build and start services
         run: |
-          docker compose -f docker-compose.prod.yml up -d --build
+          # postgres_data is external in prod (audit item 2); CI creates it. docker-compose.ci.yml runs
+          # scripts/db/roles.sql at initdb so the app runs as ost_app (DML only), like prod.
+          docker volume create orthoandspinetools-main_postgres_data
+          docker compose -f docker-compose.prod.yml -f docker-compose.ci.yml up -d --build
           echo "Waiting for services to be healthy..."
           sleep 45
 
@@ -205,11 +240,24 @@ jobs:
           # CI starts with an empty database. The checks now FAIL on an empty home feed or
           # implant directory, so create the schema and load minimal fixture rows.
           # (Migration history is not replayable from zero, so use db push in CI only.)
-          docker compose -f docker-compose.prod.yml exec -T backend npx prisma db push --skip-generate --accept-data-loss
+          # Schema is created as the superuser (the app role cannot run DDL). CI-only throwaway DB.
+          docker compose -f docker-compose.prod.yml exec -T \
+            -e DATABASE_URL="postgresql://postgres:${POSTGRES_PASSWORD}@postgres:5432/orthoandspinetools" \
+            backend npx prisma db push --skip-generate --accept-data-loss  # DESTRUCTIVE-OK: CI-throwaway-db
           docker compose -f docker-compose.prod.yml exec -T postgres \
             psql -v ON_ERROR_STOP=1 -U postgres -d orthoandspinetools < e2e/fixtures/ci-seed.sql
           curl -sfk "https://localhost/api/posts?limit=5" | head -c 300; echo
           curl -sfk "https://localhost/api/implants" | head -c 300; echo
+
+      - name: Built images carry no .env file (runtime env comes from compose env_file + environment)
+        run: |
+          docker compose -f docker-compose.prod.yml exec -T backend sh -c 'set -- /app/.env /app/.env.*; for f; do [ -e "$f" ] && { echo "env file baked into image: $f"; exit 1; }; done; echo "no env file in /app"'
+          docker compose -f docker-compose.prod.yml exec -T backend node -e 'if (!process.env.JWT_SECRET || !process.env.DATABASE_URL) { console.error("runtime env missing"); process.exit(1) } console.log("runtime env present from compose")'
+
+      - name: Restore test (dump the seeded CI database, restore into a throwaway postgres 15.14, compare counts)
+        run: |
+          docker compose -f docker-compose.prod.yml exec -T postgres pg_dump -U postgres -d orthoandspinetools \
+            | gzip -6 | bash scripts/db/restore-test.sh --format plain-gz --min-tables 30 --require-rows implants,posts
 
       - name: Install Playwright
         working-directory: ./e2e

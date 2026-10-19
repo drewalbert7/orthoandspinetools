@@ -5,6 +5,9 @@
 
 set -e
 
+# Plaintext dumps: owner-only (were 664 = world-readable). New files 600, dirs 700.
+umask 077
+
 # Configuration
 ROOT="/home/dstrad/orthoandspinetools-main"
 VOLUME_BACKUP_DIR="/mnt/HC_Volume_106016238/orthoandspinetools-backups"
@@ -38,6 +41,7 @@ DB_USER="postgres"
 R2_UPLOAD_SCRIPT="$ROOT/scripts/backup-to-r2.js"
 # Set SKIP_R2_BACKUP=1 to dump locally only
 SKIP_R2_BACKUP="${SKIP_R2_BACKUP:-0}"
+R2_UPLOADED=0
 
 # Colors for output
 RED='\033[0;31m'
@@ -48,6 +52,7 @@ NC='\033[0m' # No Color
 
 # Create necessary directories
 mkdir -p "$BACKUP_DIR"
+chmod 700 "$BACKUP_DIR" 2>/dev/null || true
 mkdir -p "$(dirname "$LOG_FILE")"
 
 # Logging function
@@ -78,7 +83,8 @@ check_container() {
 
 # Create full database backup; sets LAST_BACKUP_FILE to the .sql.gz path
 create_backup() {
-    local backup_file="$BACKUP_DIR/backup_$(date +%Y%m%d_%H%M%S).sql"
+    local backup_file
+    backup_file="$BACKUP_DIR/backup_$(date +%Y%m%d_%H%M%S).sql"
     LAST_BACKUP_FILE=""
     
     log "Creating database backup: $backup_file"
@@ -134,6 +140,7 @@ upload_to_r2() {
     log "Uploading off-site copy to Cloudflare R2..."
     if node "$R2_UPLOAD_SCRIPT" "$file" >>"$LOG_FILE" 2>&1; then
         success "Off-site R2 backup uploaded: $(basename "$file")"
+        R2_UPLOADED=1
         return 0
     fi
     error "R2 off-site upload failed (local backup kept at $file)"
@@ -187,7 +194,11 @@ main() {
     ls -lht "$BACKUP_DIR"/backup_*.sql.gz 2>/dev/null | head -5 || log "No backups found"
     
     echo "=========================================="
-    success "Database backup completed successfully (local + R2)"
+    if [[ "$R2_UPLOADED" == "1" ]]; then
+        success "Database backup completed successfully (local + R2)"
+    else
+        success "Database backup completed successfully (local only)"
+    fi
     echo "=========================================="
 }
 

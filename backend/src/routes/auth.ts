@@ -6,6 +6,7 @@ import { prisma } from '../lib/prisma';
 import { logger } from '../utils/logger';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
+import { getJwtSecret } from '../lib/jwtSecret';
 import { body, param, query, validationResult } from 'express-validator';
 import { enrichPostsPollData } from '../utils/postPoll';
 import { userCanCreateCommunity } from '../lib/communityPermissions';
@@ -247,7 +248,7 @@ router.post('/register', validateRegister, asyncHandler(async (req: Request, res
       const baseUrl = (process.env.PUBLIC_SITE_URL || 'https://orthoandspinetools.com').replace(/\/$/, '');
       const verifyToken = jwt.sign(
         { userId: user.id, type: 'email-verify' },
-        process.env.JWT_SECRET || 'fallback-secret',
+        getJwtSecret(),
         { expiresIn: '24h' }
       );
       const verifyUrl = `${baseUrl}/verify-email?token=${encodeURIComponent(verifyToken)}`;
@@ -348,7 +349,7 @@ router.post('/login', validateLogin, asyncHandler(async (req: Request, res: Resp
   // Generate JWT token
   const token = jwt.sign(
     { userId: user.id },
-    process.env.JWT_SECRET || 'changeme',
+    getJwtSecret(),
     { expiresIn: (process.env.JWT_EXPIRES_IN as any) || '7d' }
   );
 
@@ -1096,7 +1097,7 @@ router.post('/forgot-password', authEmailLimiter, validatePasswordReset, asyncHa
   // Generate reset token (in production, use crypto.randomBytes)
   const resetToken = jwt.sign(
     { userId: user.id, type: 'password-reset' },
-    process.env.JWT_SECRET || 'fallback-secret',
+    getJwtSecret(),
     { expiresIn: '1h' }
   );
 
@@ -1140,7 +1141,7 @@ router.post('/reset-password', validatePasswordUpdate, asyncHandler(async (req: 
 
   try {
     // Verify token
-    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'fallback-secret') as any;
+    const decoded = jwt.verify(token, getJwtSecret()) as any;
     
     if (decoded.type !== 'password-reset') {
       throw new AppError('Invalid reset token', 400);
@@ -1199,7 +1200,7 @@ router.post('/verify-email', [
   const { token } = req.body;
 
   try {
-    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'fallback-secret') as any;
+    const decoded = jwt.verify(token, getJwtSecret()) as any;
     if (decoded.type !== 'email-verify') {
       throw new AppError('Invalid verification token', 400);
     }
@@ -1262,7 +1263,7 @@ router.post('/resend-verification', authEmailLimiter, [
     const baseUrl = (process.env.PUBLIC_SITE_URL || 'https://orthoandspinetools.com').replace(/\/$/, '');
     const verifyToken = jwt.sign(
       { userId: user.id, type: 'email-verify' },
-      process.env.JWT_SECRET || 'fallback-secret',
+      getJwtSecret(),
       { expiresIn: '24h' }
     );
     const verifyUrl = `${baseUrl}/verify-email?token=${encodeURIComponent(verifyToken)}`;

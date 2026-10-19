@@ -32,6 +32,7 @@ import { securityHeaders, sanitizeInput, validateUploadSecurity } from './middle
 import { logger } from './utils/logger';
 import { prisma } from './lib/prisma';
 import { validateSesConfigurationAtStartup } from './lib/sesConfig';
+import { validateJwtSecretAtStartup } from './lib/jwtSecret';
 
 // Load environment variables
 dotenv.config();
@@ -193,6 +194,8 @@ process.on('SIGINT', async () => {
 // Verify database connection before starting server
 async function startServer() {
   try {
+    validateJwtSecretAtStartup();
+    logger.info('JWT_SECRET present and meets minimum length');
     // Test database connection
     await prisma.$queryRaw`SELECT 1`;
     logger.info('✅ Database connection verified');

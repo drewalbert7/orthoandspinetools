@@ -7,3 +7,6 @@
 #   tests/fixtures/fake-patients.json  phi-field,ssn   # synthetic SSNs in 000-xx range; reviewed J.Doe 2026-10-17
 #   public/data/cpt-codes.json         data-file:export # public CPT reference table, no patient rows; reviewed 2026-10-17
 e2e/fixtures/ci-seed.sql  data-file:database  # CI seed fixture, synthetic data only
+scripts/db/roles.sql  data-file:database  # Security Officer DB-hardening kit: role/grant/guard DDL only, no rows; reviewed andrew albert 2026-10-17
+scripts/db/verify.sql  data-file:database  # Security Officer DB-hardening kit: catalog checks only, no rows; reviewed andrew albert 2026-10-17
+scripts/db/rollback.sql  data-file:database  # Security Officer DB-hardening kit: role/grant rollback DDL only, no rows; reviewed andrew albert 2026-10-17

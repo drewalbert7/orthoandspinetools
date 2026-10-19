@@ -32,6 +32,9 @@ yarn-error.log*
 
 # Docker
 .dockerignore
+# ...except the build-context ignores that keep .env files out of images (tracked on purpose)
+!backend/.dockerignore
+!frontend/.dockerignore
 docker-compose
 
 # Backups (but keep .backup files in version control for critical files)
@@ -72,3 +75,6 @@ backend/prisma/migrations/\$\(date*/
 e2e/test-results/
 e2e/playwright-report/
 e2e/.playwright/
+
+# WAL spool for local/CI stacks (prod uses /mnt/HC_Volume_106016238/ost-wal-spool)
+.wal-spool/

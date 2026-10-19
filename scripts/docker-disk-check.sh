@@ -20,7 +20,7 @@ report() {
     || echo "WARNING: $PROD_VOLUME not found"
   docker ps --filter "name=orthoandspinetools-postgres" --format 'Container: {{.Names}}  Status: {{.Status}}' 2>/dev/null || true
   echo ""
-  echo "=== Unused volumes (docker volume prune candidates) ==="
+  echo "=== Unused volumes (report only; never pruned automatically) ==="
   docker system df -v 2>/dev/null | awk '/^VOLUME NAME/ {v=1; next} v && $2==0 {print "  "$1"  "$4}' || echo "  (run: docker system df -v)"
   echo ""
   echo "=== Dangling images ==="
@@ -47,9 +47,8 @@ safe_cleanup() {
   docker builder prune -af
 
   echo ""
-  echo "3. Unused volumes (skips volumes still referenced by any container)..."
-  echo "   Protected named volume: $PROD_VOLUME"
-  docker volume prune -f
+  echo "3. Volumes: NOT pruned (Security Officer, 2026-10). Volume pruning is never automatic on this host;"
+  echo "   list candidates with 'status' and get Drew's OK via CEO before removing anything."
 
   echo ""
   echo "4. Nginx access log rotation (truncate if >50MB)..."
