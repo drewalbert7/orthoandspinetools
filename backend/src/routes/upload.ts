@@ -1,5 +1,7 @@
 import { Router, Request, Response, NextFunction } from 'express';
-import { uploadSingle, uploadMultiple, uploadMultipleMemoryImages, uploadMultipleMemoryVideos, uploadSingleMemory, uploadSingleAvatarMemory, uploadMixed, getFileUrl, deleteFile, anonymizeXray } from '../middleware/upload';
+import { uploadSingle, uploadMultiple, uploadMultipleMemoryImages, uploadMultipleMemoryVideos, uploadSingleMemory, uploadSingleAvatarMemory, uploadMixed, getFileUrl, deleteFile, anonymizeXray, uploadsDir } from '../middleware/upload';
+import path from 'path';
+import { decideMediaDelete, isAllowedUploadType, resolveSafeUploadPath } from '../lib/uploadSecurity';
 import { authenticate, AuthRequest } from '../middleware/auth';
 import { asyncHandler, AppError } from '../middleware/errorHandler';
 import { uploadRateLimit, checkStorageLimits, validateFileSecurity, logUploadAttempt } from '../middleware/uploadSecurity';
@@ -220,8 +222,14 @@ router.delete('/:filename', authenticate, asyncHandler(async (req: AuthRequest, 
   if (!filename || !type) {
     throw new AppError('Filename and type are required', 400);
   }
+  if (!isAllowedUploadType(type)) {
+    throw new AppError('Invalid upload type', 400);
+  }
+  const filePath = resolveSafeUploadPath(path.join(uploadsDir, type), filename);
+  if (!filePath) {
+    throw new AppError('Invalid filename', 400);
+  }
 
-  const filePath = `uploads/${type}/${filename}`;
   const deleted = deleteFile(filePath);
 
   if (!deleted) {
@@ -258,14 +266,18 @@ router.get('/:filename', asyncHandler(async (req: Request, res: Response) => {
   if (!filename || !type) {
     throw new AppError('Filename and type are required', 400);
   }
-
-  const filePath = `uploads/${type}/${filename}`;
+  if (!isAllowedUploadType(type)) {
+    throw new AppError('Invalid upload type', 400);
+  }
+  const filePath = resolveSafeUploadPath(path.join(uploadsDir, type), filename);
+  if (!filePath) {
+    throw new AppError('Invalid filename', 400);
+  }
   const fs = require('fs');
-  const path = require('path');
 
   try {
     const stats = fs.statSync(filePath);
-    const fileUrl = getFileUrl(req, filename, type as 'images' | 'xrays');
+    const fileUrl = getFileUrl(req, filename, type);
 
     res.json({
       success: true,
@@ -717,6 +729,28 @@ router.delete('/cloudinary/:publicId', authenticate, asyncHandler(async (req: Au
 
   if (!publicId) {
     throw new AppError('Public ID is required', 400);
+  }
+
+  // Ownership: post attachments (via post author) and the uploader recorded in the audit log.
+  const [attachments, uploadLogs] = await Promise.all([
+    prisma.postAttachment.findMany({
+      where: { cloudinaryPublicId: publicId },
+      select: { post: { select: { authorId: true } } },
+    }),
+    prisma.auditLog.findMany({
+      where: { resourceId: publicId, action: { startsWith: 'UPLOAD_' } },
+      select: { userId: true },
+    }),
+  ]);
+  const decision = decideMediaDelete(
+    { id: req.user!.id, isAdmin: req.user!.isAdmin },
+    [...attachments.map((a) => a.post?.authorId), ...uploadLogs.map((l) => l.userId)]
+  );
+  if (decision === 'not_found') {
+    throw new AppError('File not found', 404);
+  }
+  if (decision === 'forbidden') {
+    throw new AppError('You do not have permission to delete this file', 403);
   }
   if (!isMediaStorageReady()) {
     throw new AppError('No media storage configured', 500);
