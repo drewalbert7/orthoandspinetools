@@ -1,7 +1,7 @@
 import { Router, Request, Response, NextFunction } from 'express';
 import { uploadSingle, uploadMultiple, uploadMultipleMemoryImages, uploadMultipleMemoryVideos, uploadSingleMemory, uploadSingleAvatarMemory, uploadMixed, getFileUrl, deleteFile, anonymizeXray, uploadsDir } from '../middleware/upload';
 import path from 'path';
-import { decideMediaDelete, isAllowedUploadType, resolveSafeUploadPath } from '../lib/uploadSecurity';
+import { decideMediaDelete, isAllowedUploadType, ownerIdsFromUploadLogs, resolveSafeUploadPath } from '../lib/uploadSecurity';
 import { authenticate, AuthRequest } from '../middleware/auth';
 import { asyncHandler, AppError } from '../middleware/errorHandler';
 import { uploadRateLimit, checkStorageLimits, validateFileSecurity, logUploadAttempt } from '../middleware/uploadSecurity';
@@ -108,6 +108,18 @@ router.post('/tool-images', authenticate, uploadMultiple('toolImages', 5), async
     }
   });
 
+  // One ownership record per stored file so DELETE /:filename can check the uploader.
+  await prisma.auditLog.createMany({
+    data: files.map((f) => ({
+      userId: req.user!.id,
+      action: 'UPLOAD_LOCAL_FILE',
+      resource: 'local_file',
+      resourceId: f.filename,
+      ipAddress: req.ip,
+      userAgent: req.get('User-Agent'),
+    })),
+  });
+
   res.json({
     success: true,
     data: uploadedFiles
@@ -208,6 +220,18 @@ router.post('/mixed', authenticate, uploadMixed, asyncHandler(async (req: AuthRe
     }
   });
 
+  // One ownership record per stored file so DELETE /:filename can check the uploader.
+  await prisma.auditLog.createMany({
+    data: Object.values(files).flat().map((f) => ({
+      userId: req.user!.id,
+      action: 'UPLOAD_LOCAL_FILE',
+      resource: 'local_file',
+      resourceId: f.filename,
+      ipAddress: req.ip,
+      userAgent: req.get('User-Agent'),
+    })),
+  });
+
   res.json({
     success: true,
     data: result
@@ -228,6 +252,22 @@ router.delete('/:filename', authenticate, asyncHandler(async (req: AuthRequest, 
   const filePath = resolveSafeUploadPath(path.join(uploadsDir, type), filename);
   if (!filePath) {
     throw new AppError('Invalid filename', 400);
+  }
+
+  // Ownership comes only from server written UPLOAD_* audit rows (never client supplied data).
+  const uploadLogs = await prisma.auditLog.findMany({
+    where: { action: { startsWith: 'UPLOAD_' }, resourceId: { contains: filename } },
+    select: { userId: true, resourceId: true },
+  });
+  const decision = decideMediaDelete(
+    { id: req.user!.id, isAdmin: req.user!.isAdmin },
+    ownerIdsFromUploadLogs(filename, uploadLogs)
+  );
+  if (decision === 'not_found') {
+    throw new AppError('File not found or could not be deleted', 404);
+  }
+  if (decision === 'forbidden') {
+    throw new AppError('You do not have permission to delete this file', 403);
   }
 
   const deleted = deleteFile(filePath);
@@ -731,20 +771,15 @@ router.delete('/cloudinary/:publicId', authenticate, asyncHandler(async (req: Au
     throw new AppError('Public ID is required', 400);
   }
 
-  // Ownership: post attachments (via post author) and the uploader recorded in the audit log.
-  const [attachments, uploadLogs] = await Promise.all([
-    prisma.postAttachment.findMany({
-      where: { cloudinaryPublicId: publicId },
-      select: { post: { select: { authorId: true } } },
-    }),
-    prisma.auditLog.findMany({
-      where: { resourceId: publicId, action: { startsWith: 'UPLOAD_' } },
-      select: { userId: true },
-    }),
-  ]);
+  // Ownership: the uploader recorded in the server written UPLOAD_* audit log. PostAttachment ids are
+  // client supplied when a post is created, so they are not trusted for ownership.
+  const uploadLogs = await prisma.auditLog.findMany({
+    where: { resourceId: publicId, action: { startsWith: 'UPLOAD_' } },
+    select: { userId: true },
+  });
   const decision = decideMediaDelete(
     { id: req.user!.id, isAdmin: req.user!.isAdmin },
-    [...attachments.map((a) => a.post?.authorId), ...uploadLogs.map((l) => l.userId)]
+    uploadLogs.map((l) => l.userId)
   );
   if (decision === 'not_found') {
     throw new AppError('File not found', 404);
