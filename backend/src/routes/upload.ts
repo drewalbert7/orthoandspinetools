@@ -1,5 +1,7 @@
 import { Router, Request, Response, NextFunction } from 'express';
-import { uploadSingle, uploadMultiple, uploadMultipleMemoryImages, uploadMultipleMemoryVideos, uploadSingleMemory, uploadSingleAvatarMemory, uploadMixed, getFileUrl, deleteFile, anonymizeXray } from '../middleware/upload';
+import { uploadSingle, uploadMultiple, uploadMultipleMemoryImages, uploadMultipleMemoryVideos, uploadSingleMemory, uploadSingleAvatarMemory, uploadMixed, getFileUrl, deleteFile, anonymizeXray, uploadsDir } from '../middleware/upload';
+import path from 'path';
+import { decideMediaDelete, isAllowedUploadType, ownerIdsFromUploadLogs, resolveSafeUploadPath } from '../lib/uploadSecurity';
 import { authenticate, AuthRequest } from '../middleware/auth';
 import { asyncHandler, AppError } from '../middleware/errorHandler';
 import { uploadRateLimit, checkStorageLimits, validateFileSecurity, logUploadAttempt } from '../middleware/uploadSecurity';
@@ -106,6 +108,18 @@ router.post('/tool-images', authenticate, uploadMultiple('toolImages', 5), async
     }
   });
 
+  // One ownership record per stored file so DELETE /:filename can check the uploader.
+  await prisma.auditLog.createMany({
+    data: files.map((f) => ({
+      userId: req.user!.id,
+      action: 'UPLOAD_LOCAL_FILE',
+      resource: 'local_file',
+      resourceId: f.filename,
+      ipAddress: req.ip,
+      userAgent: req.get('User-Agent'),
+    })),
+  });
+
   res.json({
     success: true,
     data: uploadedFiles
@@ -206,6 +220,18 @@ router.post('/mixed', authenticate, uploadMixed, asyncHandler(async (req: AuthRe
     }
   });
 
+  // One ownership record per stored file so DELETE /:filename can check the uploader.
+  await prisma.auditLog.createMany({
+    data: Object.values(files).flat().map((f) => ({
+      userId: req.user!.id,
+      action: 'UPLOAD_LOCAL_FILE',
+      resource: 'local_file',
+      resourceId: f.filename,
+      ipAddress: req.ip,
+      userAgent: req.get('User-Agent'),
+    })),
+  });
+
   res.json({
     success: true,
     data: result
@@ -220,8 +246,30 @@ router.delete('/:filename', authenticate, asyncHandler(async (req: AuthRequest, 
   if (!filename || !type) {
     throw new AppError('Filename and type are required', 400);
   }
+  if (!isAllowedUploadType(type)) {
+    throw new AppError('Invalid upload type', 400);
+  }
+  const filePath = resolveSafeUploadPath(path.join(uploadsDir, type), filename);
+  if (!filePath) {
+    throw new AppError('Invalid filename', 400);
+  }
 
-  const filePath = `uploads/${type}/${filename}`;
+  // Ownership comes only from server written UPLOAD_* audit rows (never client supplied data).
+  const uploadLogs = await prisma.auditLog.findMany({
+    where: { action: { startsWith: 'UPLOAD_' }, resourceId: { contains: filename } },
+    select: { userId: true, resourceId: true },
+  });
+  const decision = decideMediaDelete(
+    { id: req.user!.id, isAdmin: req.user!.isAdmin },
+    ownerIdsFromUploadLogs(filename, uploadLogs)
+  );
+  if (decision === 'not_found') {
+    throw new AppError('File not found or could not be deleted', 404);
+  }
+  if (decision === 'forbidden') {
+    throw new AppError('You do not have permission to delete this file', 403);
+  }
+
   const deleted = deleteFile(filePath);
 
   if (!deleted) {
@@ -258,14 +306,18 @@ router.get('/:filename', asyncHandler(async (req: Request, res: Response) => {
   if (!filename || !type) {
     throw new AppError('Filename and type are required', 400);
   }
-
-  const filePath = `uploads/${type}/${filename}`;
+  if (!isAllowedUploadType(type)) {
+    throw new AppError('Invalid upload type', 400);
+  }
+  const filePath = resolveSafeUploadPath(path.join(uploadsDir, type), filename);
+  if (!filePath) {
+    throw new AppError('Invalid filename', 400);
+  }
   const fs = require('fs');
-  const path = require('path');
 
   try {
     const stats = fs.statSync(filePath);
-    const fileUrl = getFileUrl(req, filename, type as 'images' | 'xrays');
+    const fileUrl = getFileUrl(req, filename, type);
 
     res.json({
       success: true,
@@ -717,6 +769,23 @@ router.delete('/cloudinary/:publicId', authenticate, asyncHandler(async (req: Au
 
   if (!publicId) {
     throw new AppError('Public ID is required', 400);
+  }
+
+  // Ownership: the uploader recorded in the server written UPLOAD_* audit log. PostAttachment ids are
+  // client supplied when a post is created, so they are not trusted for ownership.
+  const uploadLogs = await prisma.auditLog.findMany({
+    where: { resourceId: publicId, action: { startsWith: 'UPLOAD_' } },
+    select: { userId: true },
+  });
+  const decision = decideMediaDelete(
+    { id: req.user!.id, isAdmin: req.user!.isAdmin },
+    uploadLogs.map((l) => l.userId)
+  );
+  if (decision === 'not_found') {
+    throw new AppError('File not found', 404);
+  }
+  if (decision === 'forbidden') {
+    throw new AppError('You do not have permission to delete this file', 403);
   }
   if (!isMediaStorageReady()) {
     throw new AppError('No media storage configured', 500);

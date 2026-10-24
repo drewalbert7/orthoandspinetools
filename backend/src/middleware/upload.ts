@@ -3,9 +3,10 @@ import path from 'path';
 import fs from 'fs';
 import { Request } from 'express';
 import { AppError } from './errorHandler';
+import { isPathInside } from '../lib/uploadSecurity';
 
 // Create uploads directory if it doesn't exist
-const uploadsDir = path.join(process.cwd(), 'uploads');
+export const uploadsDir = path.join(process.cwd(), 'uploads');
 const imagesDir = path.join(uploadsDir, 'images');
 const xraysDir = path.join(uploadsDir, 'xrays');
 
@@ -214,6 +215,10 @@ export const uploadMixed = upload.fields([
 // Utility function to delete uploaded files
 export const deleteFile = (filePath: string) => {
   try {
+    // Never unlink anything outside the uploads directory (backend runs as root).
+    if (!isPathInside(uploadsDir, filePath)) {
+      return false;
+    }
     if (fs.existsSync(filePath)) {
       fs.unlinkSync(filePath);
       return true;
