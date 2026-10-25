@@ -6,7 +6,7 @@
 set -e
 
 # Configuration
-ROOT="/home/dstrad/orthoandspinetools-main"
+ROOT="${OST_ROOT:-/home/dstrad/orthoandspinetools-main}"
 VOLUME_BACKUP_DIR="/mnt/HC_Volume_106016238/orthoandspinetools-backups"
 REPO_BACKUP_DIR="$ROOT/backups"
 
@@ -204,15 +204,22 @@ main() {
         exit 1
     fi
 
-    # Roles for the same run. The data dump is already kept; fail the job so cron surfaces it.
+    # Roles for the same run. A roles failure must not cost the day's off-site copy:
+    # record it, upload the data dump first, then fail the job so cron surfaces it.
+    local roles_failed=0
     if ! create_roles_backup; then
         error "Roles backup failed (data dump kept at $LAST_BACKUP_FILE)"
-        exit 1
+        roles_failed=1
     fi
 
     # Off-site copy (R2). Fail the job if upload fails so cron/logs surface it;
     # local dump remains on the volume either way.
     if ! upload_to_r2 "$LAST_BACKUP_FILE"; then
+        exit 1
+    fi
+
+    if [[ $roles_failed -ne 0 ]]; then
+        error "Exiting nonzero: data dump saved and uploaded, roles file missing for this run"
         exit 1
     fi
     
