@@ -78,7 +78,8 @@ check_container() {
 
 # Create full database backup; sets LAST_BACKUP_FILE to the .sql.gz path
 create_backup() {
-    local backup_file="$BACKUP_DIR/backup_$(date +%Y%m%d_%H%M%S).sql"
+    BACKUP_STAMP="$(date +%Y%m%d_%H%M%S)"
+    local backup_file="$BACKUP_DIR/backup_${BACKUP_STAMP}.sql"
     LAST_BACKUP_FILE=""
     
     log "Creating database backup: $backup_file"
@@ -110,6 +111,35 @@ create_backup() {
         error "Failed to create database backup"
         return 1
     fi
+}
+
+# Passwordless roles file for the same run. pg_dump never includes roles, and since roles.sql the
+# tables are owned by ost_migrator and granted to ost_app/ost_backup, so a restore into a fresh
+# cluster needs these roles first (scripts/db/restore-scratch.sh). Kept in a roles/ subdir so it
+# never matches the backup_*.sql.gz glob used by restore tests and retention.
+create_roles_backup() {
+    local roles_dir="$BACKUP_DIR/roles"
+    local roles_file="$roles_dir/roles_${BACKUP_STAMP}.sql"
+    mkdir -p "$roles_dir" && chmod 700 "$roles_dir"
+    if ! docker exec "$CONTAINER_NAME" pg_dumpall -U "$DB_USER" --roles-only --no-role-passwords > "$roles_file" 2>>"$LOG_FILE"; then
+        error "Failed to dump roles (pg_dumpall --roles-only --no-role-passwords)"
+        rm -f "$roles_file"
+        return 1
+    fi
+    chmod 600 "$roles_file"
+    if [[ ! -s "$roles_file" ]] || ! grep -q '^CREATE ROLE ' "$roles_file"; then
+        error "Roles file is empty: $roles_file"
+        rm -f "$roles_file"
+        return 1
+    fi
+    if grep -qiE 'PASSWORD|SCRAM-SHA-256\$|md5[0-9a-f]{32}' "$roles_file"; then
+        error "Roles file contains password material; removing it"
+        rm -f "$roles_file"
+        return 1
+    fi
+    gzip -f "$roles_file" && chmod 600 "${roles_file}.gz"
+    success "Roles (no passwords) saved: ${roles_file}.gz"
+    return 0
 }
 
 upload_to_r2() {
@@ -146,6 +176,7 @@ clean_old_backups() {
     
     local deleted_count
     deleted_count=$(find "$BACKUP_DIR" -name "backup_*.sql.gz" -type f -mtime +$RETENTION_DAYS -delete -print 2>/dev/null | wc -l)
+    find "$BACKUP_DIR/roles" -name "roles_*.sql.gz" -type f -mtime +$RETENTION_DAYS -delete 2>/dev/null || true
     
     if [[ $deleted_count -gt 0 ]]; then
         success "Cleaned $deleted_count old local backups"
@@ -170,6 +201,12 @@ main() {
     # Create backup
     if ! create_backup; then
         error "Backup creation failed"
+        exit 1
+    fi
+
+    # Roles for the same run. The data dump is already kept; fail the job so cron surfaces it.
+    if ! create_roles_backup; then
+        error "Roles backup failed (data dump kept at $LAST_BACKUP_FILE)"
         exit 1
     fi
 
