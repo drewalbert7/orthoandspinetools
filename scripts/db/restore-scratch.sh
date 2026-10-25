@@ -167,6 +167,13 @@ if is_custom "$DUMP"; then
 	((toc_data >= MIN_TABLES)) || die "custom dump lists $toc_data TABLE DATA entries, expected at least $MIN_TABLES"
 	pgrestore -d "$DB" --exit-on-error <"$DUMP" 2>"$WORK/restore.err" || die "pg_restore failed: $(errline "$WORK/restore.err")"
 	pgrestore_file -f - <"$DUMP" >"$WORK/plain.sql" 2>"$WORK/conv.err" || die "could not convert dump to text for counting: $(errline "$WORK/conv.err")"
+	# Defense in depth: pg_restore -f - can stop at a cut without an error, so require a terminated
+	# COPY block for every TABLE DATA entry in the TOC. (pg_dump 16 also writes a second TOC copy
+	# after the data; a file missing only that copy still restores every row and passes.)
+	awk '$4 == "TABLE" && $5 == "DATA" { print $6 "." $7 }' "$WORK/toc.txt" | sort -u >"$WORK/toc_tables.txt"
+	awk '/^COPY /{t=$2; gsub(/"/,"",t); inb=1; next} inb && /^\\\.$/{print t; inb=0}' "$WORK/plain.sql" | sort -u >"$WORK/copy_done.txt"
+	missing="$(comm -23 "$WORK/toc_tables.txt" "$WORK/copy_done.txt" | wc -l)"
+	((missing == 0)) || die "custom dump is truncated: $missing table data block(s) missing or cut short"
 else
 	psqlx -q -d "$DB" -v ON_ERROR_STOP=1 <"$WORK/plain.sql" >/dev/null 2>"$WORK/restore.err" || die "psql restore failed: $(errline "$WORK/restore.err")"
 fi

@@ -155,10 +155,34 @@ zcat "$T/full.sql.gz" | awk '/^COPY public.implants /{exit} {print}' | gzip >"$T
 must_fail "plain dump cut before a table's data (M1)" --roles "$T/roles.sql" --dump "$T/cut.sql.gz"
 head -c "$(($(stat -c %s "$T/full.sql.gz") / 2))" "$T/full.sql.gz" >"$T/cutgz.sql.gz"
 must_fail "plain dump with a cut gzip stream (M1)" --roles "$T/roles.sql" --dump "$T/cutgz.sql.gz"
-head -c "$(($(stat -c %s "$T/full.dump") * 2 / 3))" "$T/full.dump" >"$T/cut.dump"
-must_fail "custom dump cut short (M1)" --roles "$T/roles.sql" --dump "$T/cut.dump"
-head -c "$(($(stat -c %s "$T/full.dump") - 200))" "$T/full.dump" >"$T/cut2.dump"
-must_fail "custom dump missing its last 200 bytes (M1)" --roles "$T/roles.sql" --dump "$T/cut2.dump"
+# Data-heavy custom dump so fixed cuts land inside the data section (pg_dump 16 also writes a second,
+# redundant TOC copy after the data; losing only that copy loses no rows).
+q -d postgres -c "CREATE DATABASE fxbig" >/dev/null
+q -d fxbig <<'SQL'
+CREATE TABLE public.bulk (id int primary key, v text);
+INSERT INTO public.bulk SELECT g, md5(g::text) || md5((g * 7)::text) FROM generate_series(1, 20000) g;
+ALTER TABLE public.bulk OWNER TO ost_migrator;
+SQL
+"$PG_BIN/pg_dump" -h "$T" -p 55438 -U postgres -d fxbig -Fc >"$T/big.dump"
+bsz="$(stat -c %s "$T/big.dump")"
+bash "$R" --min-tables 1 --roles "$T/roles.sql" --dump "$T/big.dump" >/dev/null || fail "full data-heavy custom dump should pass"
+head -c "$((bsz * 2 / 3))" "$T/big.dump" >"$T/cut.dump"
+if bash "$R" --min-tables 1 --roles "$T/roles.sql" --dump "$T/cut.dump" >"$T/out" 2>&1; then fail "custom dump cut to 2/3 should FAIL"; fi
+pass "custom dump cut to 2/3 (M1) fails: $(grep -o 'FAILED: .*' "$T/out")"
+head -c "$((bsz * 9 / 10))" "$T/big.dump" >"$T/cut2.dump"
+if bash "$R" --min-tables 1 --roles "$T/roles.sql" --dump "$T/cut2.dump" >"$T/out" 2>&1; then fail "custom dump missing its last 10% should FAIL"; fi
+pass "custom dump missing its last 10% (M1) fails: $(grep -o 'FAILED: .*' "$T/out")"
+# Cut a custom dump at many points: each run must FAIL, or (cut only after all data) restore every row.
+run --roles "$T/roles.sql" --dump "$T/full.dump" --counts-out "$T/full.counts" >/dev/null || fail "full custom dump should pass"
+fsz="$(stat -c %s "$T/full.dump")"
+for pct in 50 55 60 65 70 75 80 85 90 93 96 98 99; do
+	head -c "$((fsz * pct / 100))" "$T/full.dump" >"$T/cutp.dump"
+	rm -f "$T/cutp.counts"
+	if run --roles "$T/roles.sql" --dump "$T/cutp.dump" --counts-out "$T/cutp.counts" >/dev/null 2>&1; then
+		cmp -s "$T/full.counts" "$T/cutp.counts" || fail "custom dump cut at ${pct}% passed with missing rows"
+	fi
+done
+pass "custom dump cut at 50-99%: every cut fails or has every row (M1)"
 if bash "$R" --roles "$T/roles.sql" --dump "$T/full.sql.gz" >"$T/out" 2>&1; then fail "default --min-tables 39 should fail a 2-table dump"; fi
 pass "default --min-tables 39 fails a 2-table dump: $(grep -o 'FAILED: .*' "$T/out")"
 must_fail "--expect-counts mismatch (M1)" --roles "$T/roles.sql" --dump "$T/full.sql.gz" --expect-counts "$T/expect.bad"
@@ -189,6 +213,10 @@ must_fail "roles file with password material" --roles "$T/pw.sql" --dump "$T/ful
 pass "no temp dir left after any failure (L3)"
 
 if [[ "${RESTORE_TEST_DOCKER:-0}" == 1 ]]; then
+	# Fixtures come from PG_BIN's pg_dump; a newer major writes archives the 15 image cannot read.
+	img_major="$(${DOCKER:-docker} run --rm --pull never --network none "${PG_IMAGE:-postgres:15-alpine}" postgres --version | grep -oE '[0-9]+' | head -1)"
+	bin_major="$("$PG_BIN/pg_dump" --version | grep -oE '[0-9]+' | head -1)"
+	[[ "$img_major" == "$bin_major" ]] || fail "docker mode needs PG_BIN of the image's major ($img_major), got $bin_major"
 	# Same fixtures through the container path (the script never pulls; CI pre-pulls the image).
 	env -u PG_BIN bash "$R" --min-tables 2 --roles "$T/roles.sql" --dump "$T/full.dump" --analytics "$T/an.sql.gz" --expect-counts "$T/expect.ok" >"$T/out" ||
 		{ cat "$T/out"; fail "docker-mode restore with roles failed"; }
