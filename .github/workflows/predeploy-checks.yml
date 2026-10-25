@@ -90,6 +90,7 @@ jobs:
 
       - name: Install PostgreSQL 15 client/server binaries (same major as prod and the scratch image)
         run: |
+          sudo mkdir -p /etc/postgresql-common/createcluster.d
           echo 'create_main_cluster = false' | sudo tee /etc/postgresql-common/createcluster.d/no-main.conf >/dev/null
           sudo apt-get update -q
           sudo apt-get install -y -q postgresql-15 || { sudo /usr/share/postgresql-common/pgdg/apt.postgresql.org.sh -y && sudo apt-get install -y -q postgresql-15; }
