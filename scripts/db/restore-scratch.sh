@@ -27,8 +27,14 @@
 #   DOCKER    container CLI (default docker; "sudo docker" or podman also work)
 #   PG_IMAGE  image already present locally (default postgres:15-alpine; never pulled)
 #   PG_BIN    if set (e.g. /usr/lib/postgresql/15/bin), use a local throwaway cluster instead of a
-#             container. For CI and fixtures only: psql runs on this host, so any psql meta-command
-#             line in the inputs (other than \restrict / \unrestrict) is refused in this mode.
+#             container. For CI and fixtures only: psql runs on this host, so two layers stop psql
+#             meta-commands in the inputs: a line pre-filter (refuses any "\" line outside COPY data
+#             other than \restrict / \unrestrict), and the real guard: the input's own header
+#             \restrict and final \unrestrict are stripped and the whole stream is wrapped in
+#             \restrict <random key> ... \unrestrict <key>, so psql itself refuses every other
+#             backslash command, however the file is crafted (SEC note N1).
+#             Docker mode does not pre-filter plain dumps: psql runs inside the throwaway container
+#             (--network none, tmpfs, --rm), so a meta-command can only reach that container (N2).
 # Output: table names, row counts and the first "ERROR: ..." phrase only, never row contents.
 # Full stderr stays in the private temp dir, which is deleted on exit.
 set -euo pipefail
@@ -69,6 +75,7 @@ errline() {
 	local e
 	e="$(grep -oE 'ERROR: +[^:]{0,80}' "$1" | head -1 || true)"
 	[[ -n "$e" ]] || e="$(grep -oE 'error: +[^:]{0,80}' "$1" | head -1 || true)"
+	[[ -n "$e" ]] || e="$(grep -oE '^(backslash commands are restricted|\\unrestrict: wrong key)' "$1" | head -1 || true)"
 	printf '%s' "${e:-no ERROR line (see exit code)}"
 }
 [[ -r "$ROLES" ]] || die "--roles file required (pg_dumpall --roles-only --no-role-passwords)"
@@ -109,6 +116,31 @@ has_meta() {
 }
 
 # Roles file: no password material, complete, and no meta-commands (checked in both modes).
+# Strip the file's own header "\restrict KEY" (first such line before any SQL) and its final
+# "\unrestrict KEY" (followed only by comments or blank lines). Nothing else is changed.
+strip_own_fence() {
+	awk '
+		NR == FNR { if ($0 ~ /^\\unrestrict [A-Za-z0-9]+$/) last = FNR; else if (!($0 == "" || $0 ~ /^--/)) last = 0; next }
+		hdr && $0 ~ /^\\restrict [A-Za-z0-9]+$/ { hdr = 0; next }
+		hdr && !($0 == "" || $0 ~ /^--/) { hdr = 0 }
+		FNR == last { next }
+		{ print }
+	' hdr=1 "$1" "$1"
+}
+# Feed FILE to psql. PG_BIN mode: inside a random-key restrict fence, so psql refuses every
+# backslash command except \unrestrict with our key (COPY data and its "\." end marker still work).
+fenced() {
+	if [[ -n "$PG_BIN" ]]; then
+		local key
+		key="$(head -c 24 /dev/urandom | od -An -tx1 | tr -d ' \n')"
+		printf '\\restrict %s\n' "$key"
+		strip_own_fence "$1"
+		printf '\\unrestrict %s\n' "$key"
+	else
+		cat -- "$1"
+	fi
+}
+
 if grep -qiE 'PASSWORD|SCRAM-SHA-256\$|md5[0-9a-f]{32}' "$WORK/roles.sql"; then
 	die "roles file contains password material; regenerate with --no-role-passwords"
 fi
@@ -155,7 +187,8 @@ else
 fi
 
 # 1) roles first. The bootstrap superuser already exists in a fresh cluster; skip only that line.
-grep -vx 'CREATE ROLE postgres;' "$WORK/roles.sql" | psqlx -q -d postgres -v ON_ERROR_STOP=1 >/dev/null 2>"$WORK/roles.err" ||
+grep -vx 'CREATE ROLE postgres;' "$WORK/roles.sql" >"$WORK/roles.apply.sql" || true
+fenced "$WORK/roles.apply.sql" | psqlx -q -d postgres -v ON_ERROR_STOP=1 >/dev/null 2>"$WORK/roles.err" ||
 	die "applying roles failed: $(errline "$WORK/roles.err")"
 say "roles applied: $(psqlx -qAt -d postgres -c "select string_agg(rolname, ',' order by rolname) from pg_roles where rolname !~ '^pg_'")"
 psqlx -q -d postgres -c "CREATE DATABASE $DB" >/dev/null 2>"$WORK/createdb.err" || die "create scratch db failed: $(errline "$WORK/createdb.err")"
@@ -175,7 +208,7 @@ if is_custom "$DUMP"; then
 	missing="$(comm -23 "$WORK/toc_tables.txt" "$WORK/copy_done.txt" | wc -l)"
 	((missing == 0)) || die "custom dump is truncated: $missing table data block(s) missing or cut short"
 else
-	psqlx -q -d "$DB" -v ON_ERROR_STOP=1 <"$WORK/plain.sql" >/dev/null 2>"$WORK/restore.err" || die "psql restore failed: $(errline "$WORK/restore.err")"
+	fenced "$WORK/plain.sql" | psqlx -q -d "$DB" -v ON_ERROR_STOP=1 >/dev/null 2>"$WORK/restore.err" || die "psql restore failed: $(errline "$WORK/restore.err")"
 fi
 if grep -q 'ERROR' "$WORK/restore.err"; then die "restore printed errors: $(errline "$WORK/restore.err")"; fi
 say "full restore: 0 errors"
@@ -227,7 +260,8 @@ if [[ -n "$ANALYTICS" ]]; then
 		psqlx -q -d "$DB" -v ON_ERROR_STOP=1 -c "ALTER EVENT TRIGGER $e DISABLE" >/dev/null 2>"$WORK/evt.err" ||
 			die "could not disable scratch event trigger: $(errline "$WORK/evt.err")"
 	done
-	{ for t in "${TABS[@]}"; do printf 'DROP TABLE IF EXISTS public."%s" CASCADE;\n' "$t"; done; cat "$WORK/an.sql"; } |
+	{ for t in "${TABS[@]}"; do printf 'DROP TABLE IF EXISTS public."%s" CASCADE;\n' "$t"; done; strip_own_fence "$WORK/an.sql"; } >"$WORK/an.apply.sql"
+	fenced "$WORK/an.apply.sql" |
 		psqlx -q -d "$DB" -v ON_ERROR_STOP=1 >/dev/null 2>"$WORK/an.err" || die "analytics restore failed: $(errline "$WORK/an.err")"
 	for e in $EVT; do psqlx -q -d "$DB" -c "ALTER EVENT TRIGGER $e ENABLE" >/dev/null 2>&1 || true; done
 	copy_counts "$WORK/an.sql" >"$WORK/an_expect.txt"

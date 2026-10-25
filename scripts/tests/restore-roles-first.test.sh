@@ -203,6 +203,26 @@ must_fail "dump with a \\! line in PG_BIN mode (L2)" --roles "$T/roles.sql" --du
 [[ ! -e "$T/pwned" ]] || fail "a meta-command ran on the host (L2)"
 zcat "$T/full.sql.gz" | grep -qP '^6\t\\N$' || fail "fixture should have a COPY row starting a NULL column"
 pass "meta-command lines refused; nothing ran on the host (L2)"
+# N1 (SEC repro): a "COPY ... FROM stdin;" line inside a dollar-quoted string fools the line pre-filter
+# into treating the next lines as COPY data; the random-key \restrict fence must still stop the \!.
+# It also lifts the dump's own pg_dump restrict key first, as a crafted file could.
+ownkey="$(zcat "$T/full.sql.gz" | awk '/^\\restrict /{print $2; exit}')"
+[[ -n "$ownkey" ]] || fail "fixture: pg_dump should write a restrict header"
+# shellcheck disable=SC2016
+zcat "$T/full.sql.gz" | awk -v m="$T/pwned2" -v k="$ownkey" '{print} /^SET client_encoding/ && !d {print "SELECT $x$"; print "COPY a FROM stdin;"; print "$x$;"; print "\\unrestrict " k; print "\\! touch " m; d=1}' | gzip >"$T/bypass.sql.gz"
+zcat "$T/bypass.sql.gz" | grep -q '^\\! touch' || fail "fixture: bypass line missing"
+must_fail "dump with \\! hidden behind a dollar-quoted COPY line (N1)" --roles "$T/roles.sql" --dump "$T/bypass.sql.gz"
+grep -qE 'restricted|wrong key' "$T/out" || fail "N1 bypass should be stopped by the psql restrict fence, got: $(grep -o 'FAILED: .*' "$T/out")"
+[[ ! -e "$T/pwned2" ]] || fail "N1 bypass ran a command on the host"
+pass "N1 bypass stopped by the restrict fence; nothing ran on the host"
+# Control: with the fence removed the same file gets past the pre-filter and runs the command
+# (it only touches a marker in this test's temp dir), so the test above really exercises the fence.
+sed 's/^\tif \[\[ -n "\$PG_BIN" \]\]; then$/\tif false; then/' "$R" >"$T/nofence.sh"
+grep -q '^	if false; then' "$T/nofence.sh" || fail "could not build the no-fence control script"
+bash "$T/nofence.sh" --min-tables 2 --roles "$T/roles.sql" --dump "$T/bypass.sql.gz" >/dev/null 2>&1 || true
+[[ -e "$T/pwned2" ]] || fail "control: without the fence the N1 repro should get past the pre-filter"
+rm -f "$T/pwned2"
+pass "control: without the fence the N1 repro runs (pre-filter alone is not enough)"
 
 # password material refused
 printf "CREATE ROLE x;\nALTER ROLE x WITH PASSWORD 'SCRAM-SHA-256\$4096:abc';\n-- PostgreSQL database cluster dump complete\n" >"$T/pw.sql"
