@@ -74,6 +74,30 @@ jobs:
       - name: deploy.sh rollback simulation (failed check -> previous image IDs; passing check -> new build)
         run: bash scripts/tests/deploy-rollback.test.sh
 
+  restore-roles-test:
+    needs: phi-guard
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Shellcheck restore scripts
+        run: shellcheck -S warning scripts/db/restore-scratch.sh scripts/database-backup-production.sh scripts/tests/restore-roles-first.test.sh
+
+      - name: Pre-pull scratch image (the restore script itself never pulls)
+        run: docker pull postgres:15-alpine
+
+      - name: Install PostgreSQL 15 client/server binaries (same major as prod and the scratch image)
+        run: |
+          sudo mkdir -p /etc/postgresql-common/createcluster.d
+          echo 'create_main_cluster = false' | sudo tee /etc/postgresql-common/createcluster.d/no-main.conf >/dev/null
+          sudo apt-get update -q
+          sudo apt-get install -y -q postgresql-15 || { sudo /usr/share/postgresql-common/pgdg/apt.postgresql.org.sh -y && sudo apt-get install -y -q postgresql-15; }
+
+      - name: Roles-first restore (fixture owned by non-default roles; plain, custom, analytics, docker path)
+        run: PG_BIN=/usr/lib/postgresql/15/bin RESTORE_TEST_DOCKER=1 bash scripts/tests/restore-roles-first.test.sh
+
   predeploy-checks:
     runs-on: ubuntu-latest
     timeout-minutes: 15
