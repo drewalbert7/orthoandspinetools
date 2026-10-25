@@ -40,8 +40,28 @@ fleetmon `restore` (Sun 04:30 ET, on the OST host) loads the newest
    read-only `SELECT count(*)` on prod at dump time. The script itself never connects to prod.
 
 `scripts/db/restore-scratch.sh` does all of this (docker `--network none`, tmpfs, `--pull never`, no
-ports, no volumes; or `PG_BIN=` for a local socket-only cluster, where any psql meta-command line
-other than `\restrict`/`\unrestrict` in the dump or roles file is refused). On failure it prints only
+ports, no volumes; or `PG_BIN=` for a local socket-only cluster).
+
+### psql meta-commands in the inputs
+- Host-binary mode (`PG_BIN=`, CI and dev only): psql runs on this host, so a crafted dump with a
+  `\!` line must never run. Two layers: a line pre-filter refuses `\` lines outside COPY data
+  (except `\restrict`/`\unrestrict`), and the real guard: the file's own header `\restrict` and final
+  `\unrestrict` are stripped and the whole input is fed inside `\restrict <random key>` ...
+  `\unrestrict <key>`. psql then refuses every other backslash command ("backslash commands are
+  restricted", or "wrong key" for a forged `\unrestrict`), however the file is crafted. The pre-filter
+  alone can be fooled (for example a `COPY a FROM stdin;` line inside a `$x$` string); the test
+  suite has that repro and a no-fence control. Needs psql 15.14 / 16.10 or newer.
+- Docker mode (fleetmon and prod-host tests): plain dumps are not scanned for meta-commands. psql runs
+  inside the throwaway container (`--network none`, tmpfs, `--rm`), so a meta-command can only reach
+  that container, which is removed after the run. The roles file is still scanned in both modes.
+
+### What the checks prove
+- The trailer proves pg_dump finished writing, not that the file is intact: a cut file with a forged
+  trailer can pass the trailer and self-consistency checks. Natural truncation never has a trailer,
+  and `--min-tables` (default 39) plus `--expect-counts` catch the rest.
+- fleetmon (and any scheduled restore test) should always pass `--expect-counts`, with counts taken
+  separately at dump time (for example a read-only `SELECT count(*)` per table on prod, or the
+  `ost-db-backup.sh` manifest), and should never lower `--min-tables` below the real table count. On failure it prints only
 the `ERROR:` phrase, never raw psql output or row data. `scripts/database-backup-production.sh`
 now also writes `roles/roles_<stamp>.sql.gz` (chmod 600, no passwords) next to each daily dump. It is in
 a `roles/` subdir so it never matches the `backup_*.sql.gz` glob. If the roles dump fails, the data dump
