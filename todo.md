@@ -75,6 +75,7 @@ See `AGENTS.md` and `.cursor/rules/analytics-durability.mdc` for full details. K
 | [#9](https://github.com/drewalbert7/orthoandspinetools/pull/9) | Restructure todo.md + check-gated deploy with rollback | In progress |
 | [#14](https://github.com/drewalbert7/orthoandspinetools/pull/14) | Implant detail FDA record panel (openFDA-verified only), MAUDE score fix (Insufficient data instead of 10.0; same brand key and 12-month window as the snapshot), case-insensitive name sort, title and 390px sort label fixes. Data migration `20261017210000_implant_fda_verified_and_title_fixes` must be applied by hand, then recompute scores. Also: Reported safety signal (FDA MAUDE) redesign `ost-safety-v1` / `ost-dir-v3` (severity-weighted, product-code baseline, Bayesian shrinkage, recalls by class, confidence label, cited openFDA URLs; docs/implant-safety-signal.md), openFDA keyless fallback, and deploy.sh disk check (stop below 5G free) plus `docker builder prune -f` after a passing deploy | Open, not merged or deployed |
 | [#14](https://github.com/drewalbert7/orthoandspinetools/pull/14) (cont.) | Em dash cleanup approved by Drew 2026-10-17: every U+2014 (and prose U+2013) removed from frontend/src, frontend/public, index.html titles and meta, backend strings (MAUDE snapshot text, OG and llms text, emails, API messages) and seeded content. Data migration `20261018020000_remove_em_dashes_from_seeded_text` rewrites the seeded implant rows; apply it with the other two. New CI check `scripts/check-no-em-dash.py` runs in the phi-guard job; its only allowlist is the four migrations already applied on prod (their checksums must not change) | Open, not merged or deployed |
+| [#18](https://github.com/drewalbert7/orthoandspinetools/pull/18) | Restore roles first: `scripts/db/restore-scratch.sh` (scratch-only full restore, passwordless roles applied before the dump, exact row counts, analytics partial test), daily backup also writes `roles/roles_<stamp>.sql.gz`, test + CI job. Fixes the 2026-10-25 Sunday restore test failure (`role "ost_migrator" does not exist`) | Open, needs SEC review; not installed on server |
 
 ---
 
@@ -136,6 +137,7 @@ See `AGENTS.md` and `.cursor/rules/analytics-durability.mdc` for full details. K
 
 | Pitfall | Detail |
 |---------|--------|
+| **Restore needs roles first** | Since roles.sql (10-18) tables are owned by ost_migrator and granted to ost_app/ost_backup. pg_dump has no roles, so a restore into a fresh cluster fails unless a passwordless roles file (`pg_dumpall --roles-only --no-role-passwords`) is applied first. In scratch, ost_guard event triggers also block DROP and auto-add truncate triggers; disable them in scratch only for partial restores. See docs/ops/restore-with-roles.md |
 | **Disk filled to 100%** | Earlier deploy; now have alert cron at 85% (`scripts/ops/disk-alert.sh`), monthly cleanup cron |
 | **docker-compose.prod.yml deleted mid-deploy** | Happened once; always verify file exists before deploy |
 | **nginx /methodology location** | Used to exist only as uncommitted server edit; now committed (PR #4) |
