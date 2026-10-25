@@ -6,6 +6,10 @@ on:
   pull_request:
     branches: [main]
 
+# Least privilege for every job's GITHUB_TOKEN (SEC I4): read the repo, nothing else.
+permissions:
+  contents: read
+
 env:
   NODE_ENV: production
   POSTGRES_PASSWORD: test_password_ci_only
@@ -78,6 +82,8 @@ jobs:
     needs: phi-guard
     runs-on: ubuntu-latest
     timeout-minutes: 10
+    env:
+      PG15_MINOR: '15.19'
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -86,17 +92,23 @@ jobs:
         run: shellcheck -S warning scripts/db/restore-scratch.sh scripts/database-backup-production.sh scripts/tests/restore-roles-first.test.sh
 
       - name: Pre-pull scratch image (the restore script itself never pulls)
-        run: docker pull postgres:15-alpine
+        run: docker pull "postgres:${PG15_MINOR}-alpine"
 
       - name: Install PostgreSQL 15 client/server binaries (same major as prod and the scratch image)
         run: |
           sudo mkdir -p /etc/postgresql-common/createcluster.d
           echo 'create_main_cluster = false' | sudo tee /etc/postgresql-common/createcluster.d/no-main.conf >/dev/null
           sudo apt-get update -q
-          sudo apt-get install -y -q postgresql-15 || { sudo /usr/share/postgresql-common/pgdg/apt.postgresql.org.sh -y && sudo apt-get install -y -q postgresql-15; }
+          sudo apt-get install -y -q postgresql-common
+          sudo /usr/share/postgresql-common/pgdg/apt.postgresql.org.sh -y
+          # Pinned (SEC I4). Must stay >= 15.14 (prod's minor, first with \restrict). PGDG keeps
+          # only the last few minors, so bump PG15_MINOR when this one drops out.
+          sudo apt-get install -y -q "postgresql-15=${PG15_MINOR}-*"
+          /usr/lib/postgresql/15/bin/pg_dump --version | grep -qx "pg_dump (PostgreSQL) ${PG15_MINOR}.*" ||
+            { echo "pg_dump is not ${PG15_MINOR}"; exit 1; }
 
       - name: Roles-first restore (fixture owned by non-default roles; plain, custom, analytics, docker path)
-        run: PG_BIN=/usr/lib/postgresql/15/bin RESTORE_TEST_DOCKER=1 bash scripts/tests/restore-roles-first.test.sh
+        run: PG_BIN=/usr/lib/postgresql/15/bin PG_IMAGE="postgres:${PG15_MINOR}-alpine" RESTORE_TEST_DOCKER=1 bash scripts/tests/restore-roles-first.test.sh
 
   predeploy-checks:
     runs-on: ubuntu-latest

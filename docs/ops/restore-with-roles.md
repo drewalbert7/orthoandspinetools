@@ -42,20 +42,33 @@ fleetmon `restore` (Sun 04:30 ET, on the OST host) loads the newest
 `scripts/db/restore-scratch.sh` does all of this (docker `--network none`, tmpfs, `--pull never`, no
 ports, no volumes; or `PG_BIN=` for a local socket-only cluster).
 
-### psql meta-commands in the inputs
-- Host-binary mode (`PG_BIN=`, CI and dev only): psql runs on this host, so a crafted dump with a
-  `\!` line must never run. Two layers: a line pre-filter refuses `\` lines outside COPY data
-  (except `\restrict`/`\unrestrict`), and the real guard: the file's own header `\restrict` and final
-  `\unrestrict` are stripped and the whole input is fed inside `\restrict <random key>` ...
-  `\unrestrict <key>`. psql then refuses every other backslash command ("backslash commands are
-  restricted", or "wrong key" for a forged `\unrestrict`), however the file is crafted. The pre-filter
-  alone can be fooled (for example a `COPY a FROM stdin;` line inside a `$x$` string); the test
-  suite has that repro and a no-fence control. Needs psql 15.14 / 16.10 or newer.
-- Docker mode (fleetmon and prod-host tests): plain dumps are not scanned for meta-commands. psql runs
-  inside the throwaway container (`--network none`, tmpfs, `--rm`), so a meta-command can only reach
-  that container, which is removed after the run. The roles file is still scanned in both modes.
+### Trust boundary: host-binary mode is for self-generated dumps only (SEC N5)
+- `PG_BIN=` mode restores as a superuser on a cluster owned by the invoking host user. Server-side SQL
+  in a crafted dump (`COPY ... TO PROGRAM`, untrusted-language functions) runs host commands as that
+  user, and no client-side filter or fence can stop it. Use it only for dumps you generated yourself
+  (CI and test fixtures). The script refuses `PG_BIN=` mode unless `CI=true` or `--trusted-dump` is
+  given. Every real backup (fleetmon, prod-host tests) uses docker mode.
+
+### psql meta-commands in the inputs (both modes)
+- The file's own header `\restrict` and final `\unrestrict` are stripped and the whole input is fed
+  inside `\restrict <random key>` ... `\unrestrict <key>`, in docker mode too (SEC I5). psql then
+  refuses every other backslash command ("backslash commands are restricted", or "wrong key" for a
+  forged `\unrestrict`), however the file is crafted. Needs psql 15.14 / 16.10 or newer (an older
+  image fails closed: `\restrict` is an invalid command under ON_ERROR_STOP).
+- Host-binary mode also runs a line pre-filter that refuses `\` lines outside COPY data. It alone can
+  be fooled (for example a `COPY a FROM stdin;` line inside a `$x$` string); the test suite has that
+  repro, a no-fence control, and the same repro against docker mode.
+- N2 is closed: docker mode no longer relies on container isolation alone for meta-commands. The roles
+  file is still scanned in both modes.
 
 ### What the checks prove
+- COPY blocks are parsed only when not already inside one (a data row starting with `COPY ` is data),
+  and quoted names (spaces, `""`) are read whole (SEC I1). The custom-dump completeness check compares
+  the number of TOC TABLE DATA entries with the number of terminated COPY blocks, so it also works with
+  `--load-via-partition-root`.
+- Row counts cover leaf tables only; partitioned parents hold no rows and are excluded (SEC I2). The
+  self-check sums both sides per partition root, so dumps made with or without
+  `--load-via-partition-root` compare exactly. `--expect-counts` and `--counts-out` use leaf tables.
 - The trailer proves pg_dump finished writing, not that the file is intact: a cut file with a forged
   trailer can pass the trailer and self-consistency checks. Natural truncation never has a trailer,
   and `--min-tables` (default 39) plus `--expect-counts` catch the rest.
