@@ -127,7 +127,7 @@ printf 'public.implants|6\npublic.analytics_page_views|3\n' >"$T/expect.ok"
 printf '# manifest\npublic.implants\t7\npublic.analytics_page_views\t3\n' >"$T/expect.bad"
 
 export PG_BIN TMPDIR="$T"
-run() { bash "$R" --min-tables 2 "$@"; }
+run() { bash "$R" --trusted-dump --min-tables 2 "$@"; }
 must_fail() { # label args...
 	local label="$1"; shift
 	if run "$@" >"$T/out" 2>&1; then cat "$T/out" >&2; fail "$label should FAIL"; fi
@@ -143,7 +143,7 @@ run --roles "$T/roles.sql" --dump "$T/full.dump" --expect-counts "$T/expect.ok" 
 pass "custom-format restore with roles first: 0 errors, counts match"
 # L7: without the disable step the analytics load must fail (proves the path is really exercised).
 sed 's/ALTER EVENT TRIGGER \$e DISABLE/SELECT 1/' "$R" >"$T/nodisable.sh"
-if bash "$T/nodisable.sh" --min-tables 2 --roles "$T/roles.sql" --dump "$T/full.sql.gz" --analytics "$T/an.sql.gz" >/dev/null 2>&1; then
+if bash "$T/nodisable.sh" --trusted-dump --min-tables 2 --roles "$T/roles.sql" --dump "$T/full.sql.gz" --analytics "$T/an.sql.gz" >/dev/null 2>&1; then
 	fail "analytics load should fail when the guard triggers stay enabled"
 fi
 pass "with guard triggers left enabled the analytics load fails (disable path is needed and tested)"
@@ -165,12 +165,12 @@ ALTER TABLE public.bulk OWNER TO ost_migrator;
 SQL
 "$PG_BIN/pg_dump" -h "$T" -p 55438 -U postgres -d fxbig -Fc >"$T/big.dump"
 bsz="$(stat -c %s "$T/big.dump")"
-bash "$R" --min-tables 1 --roles "$T/roles.sql" --dump "$T/big.dump" >/dev/null || fail "full data-heavy custom dump should pass"
+bash "$R" --trusted-dump --min-tables 1 --roles "$T/roles.sql" --dump "$T/big.dump" >/dev/null || fail "full data-heavy custom dump should pass"
 head -c "$((bsz * 2 / 3))" "$T/big.dump" >"$T/cut.dump"
-if bash "$R" --min-tables 1 --roles "$T/roles.sql" --dump "$T/cut.dump" >"$T/out" 2>&1; then fail "custom dump cut to 2/3 should FAIL"; fi
+if bash "$R" --trusted-dump --min-tables 1 --roles "$T/roles.sql" --dump "$T/cut.dump" >"$T/out" 2>&1; then fail "custom dump cut to 2/3 should FAIL"; fi
 pass "custom dump cut to 2/3 (M1) fails: $(grep -o 'FAILED: .*' "$T/out")"
 head -c "$((bsz * 9 / 10))" "$T/big.dump" >"$T/cut2.dump"
-if bash "$R" --min-tables 1 --roles "$T/roles.sql" --dump "$T/cut2.dump" >"$T/out" 2>&1; then fail "custom dump missing its last 10% should FAIL"; fi
+if bash "$R" --trusted-dump --min-tables 1 --roles "$T/roles.sql" --dump "$T/cut2.dump" >"$T/out" 2>&1; then fail "custom dump missing its last 10% should FAIL"; fi
 pass "custom dump missing its last 10% (M1) fails: $(grep -o 'FAILED: .*' "$T/out")"
 # Cut a custom dump at many points: each run must FAIL, or (cut only after all data) restore every row.
 run --roles "$T/roles.sql" --dump "$T/full.dump" --counts-out "$T/full.counts" >/dev/null || fail "full custom dump should pass"
@@ -183,7 +183,7 @@ for pct in 50 55 60 65 70 75 80 85 90 93 96 98 99; do
 	fi
 done
 pass "custom dump cut at 50-99%: every cut fails or has every row (M1)"
-if bash "$R" --roles "$T/roles.sql" --dump "$T/full.sql.gz" >"$T/out" 2>&1; then fail "default --min-tables 39 should fail a 2-table dump"; fi
+if bash "$R" --trusted-dump --roles "$T/roles.sql" --dump "$T/full.sql.gz" >"$T/out" 2>&1; then fail "default --min-tables 39 should fail a 2-table dump"; fi
 pass "default --min-tables 39 fails a 2-table dump: $(grep -o 'FAILED: .*' "$T/out")"
 must_fail "--expect-counts mismatch (M1)" --roles "$T/roles.sql" --dump "$T/full.sql.gz" --expect-counts "$T/expect.bad"
 grep -q 'count mismatch public.implants: restored 6 expected 7' "$T/out" || fail "mismatch line should name table and counts only"
@@ -203,6 +203,26 @@ must_fail "dump with a \\! line in PG_BIN mode (L2)" --roles "$T/roles.sql" --du
 [[ ! -e "$T/pwned" ]] || fail "a meta-command ran on the host (L2)"
 zcat "$T/full.sql.gz" | grep -qP '^6\t\\N$' || fail "fixture should have a COPY row starting a NULL column"
 pass "meta-command lines refused; nothing ran on the host (L2)"
+# N1 (SEC repro): a "COPY ... FROM stdin;" line inside a dollar-quoted string fools the line pre-filter
+# into treating the next lines as COPY data; the random-key \restrict fence must still stop the \!.
+# It also lifts the dump's own pg_dump restrict key first, as a crafted file could.
+ownkey="$(zcat "$T/full.sql.gz" | awk '/^\\restrict /{print $2; exit}')"
+[[ -n "$ownkey" ]] || fail "fixture: pg_dump should write a restrict header"
+# shellcheck disable=SC2016
+zcat "$T/full.sql.gz" | awk -v m="$T/pwned2" -v k="$ownkey" '{print} /^SET client_encoding/ && !d {print "SELECT $x$"; print "COPY a FROM stdin;"; print "$x$;"; print "\\unrestrict " k; print "\\! touch " m; d=1}' | gzip >"$T/bypass.sql.gz"
+zcat "$T/bypass.sql.gz" | grep -q '^\\! touch' || fail "fixture: bypass line missing"
+must_fail "dump with \\! hidden behind a dollar-quoted COPY line (N1)" --roles "$T/roles.sql" --dump "$T/bypass.sql.gz"
+grep -qE 'restricted|wrong key' "$T/out" || fail "N1 bypass should be stopped by the psql restrict fence, got: $(grep -o 'FAILED: .*' "$T/out")"
+[[ ! -e "$T/pwned2" ]] || fail "N1 bypass ran a command on the host"
+pass "N1 bypass stopped by the restrict fence; nothing ran on the host"
+# Control: with the fence removed the same file gets past the pre-filter and runs the command
+# (it only touches a marker in this test's temp dir), so the test above really exercises the fence.
+sed -e '/# fence-open$/d' -e '/# fence-close$/d' -e 's/strip_own_fence "\$1" # fence-body$/cat -- "$1"/' "$R" >"$T/nofence.sh"
+grep -q 'fence-' "$T/nofence.sh" && fail "could not build the no-fence control script"
+bash "$T/nofence.sh" --trusted-dump --min-tables 2 --roles "$T/roles.sql" --dump "$T/bypass.sql.gz" >/dev/null 2>&1 || true
+[[ -e "$T/pwned2" ]] || fail "control: without the fence the N1 repro should get past the pre-filter"
+rm -f "$T/pwned2"
+pass "control: without the fence the N1 repro runs (pre-filter alone is not enough)"
 
 # password material refused
 printf "CREATE ROLE x;\nALTER ROLE x WITH PASSWORD 'SCRAM-SHA-256\$4096:abc';\n-- PostgreSQL database cluster dump complete\n" >"$T/pw.sql"
@@ -211,6 +231,38 @@ must_fail "roles file with password material" --roles "$T/pw.sql" --dump "$T/ful
 # L3: early failures leave no temp dir behind
 [[ "$(leftovers)" == 0 ]] || fail "temp dirs left behind after failures (L3)"
 pass "no temp dir left after any failure (L3)"
+
+# N5: host-binary mode is refused for untrusted input unless CI=true or --trusted-dump.
+if env -u CI bash "$R" --min-tables 2 --roles "$T/roles.sql" --dump "$T/full.sql.gz" >"$T/out" 2>&1; then fail "PG_BIN mode without --trusted-dump outside CI should be refused"; fi
+grep -q 'only for dumps you generated yourself' "$T/out" || fail "N5 refusal message missing"
+CI=true bash "$R" --min-tables 2 --roles "$T/roles.sql" --dump "$T/full.sql.gz" >/dev/null || fail "CI=true should allow PG_BIN mode"
+pass "PG_BIN mode refused without --trusted-dump outside CI; allowed with CI=true (N5)"
+
+# I1/I2: COPY parsing edge cases. A text first column whose row starts with "COPY ", a schema and
+# table with spaces, and a partitioned table (dumped normally and with --load-via-partition-root).
+q -d postgres -c "CREATE DATABASE fxedge" >/dev/null
+q -d fxedge <<'SQL'
+CREATE TABLE public.notes (body text, id int);
+INSERT INTO public.notes VALUES ('COPY public.x (a) FROM stdin;', 1), ('COPY y', 2), ('plain', 3);
+CREATE SCHEMA "my schema";
+CREATE TABLE "my schema"."t x" (id int);
+INSERT INTO "my schema"."t x" SELECT generate_series(1, 4);
+CREATE TABLE public.parted (id int, k int) PARTITION BY RANGE (k);
+CREATE TABLE public.parted_a PARTITION OF public.parted FOR VALUES FROM (0) TO (10);
+CREATE TABLE public.parted_b PARTITION OF public.parted FOR VALUES FROM (10) TO (20);
+INSERT INTO public.parted SELECT g, g FROM generate_series(1, 15) g;
+SQL
+printf 'public.notes|3\nmy schema.t x|4\npublic.parted_a|9\npublic.parted_b|6\n' >"$T/edge.expect"
+"$PG_BIN/pg_dump" -h "$T" -p 55438 -U postgres -d fxedge | gzip >"$T/edge.sql.gz"
+"$PG_BIN/pg_dump" -h "$T" -p 55438 -U postgres -d fxedge -Fc >"$T/edge.dump"
+"$PG_BIN/pg_dump" -h "$T" -p 55438 -U postgres -d fxedge --load-via-partition-root | gzip >"$T/edge_root.sql.gz"
+"$PG_BIN/pg_dump" -h "$T" -p 55438 -U postgres -d fxedge --load-via-partition-root -Fc >"$T/edge_root.dump"
+zcat "$T/edge.sql.gz" | grep -q $'^COPY y\t2$' || fail "fixture: expected a data row starting with COPY"
+for f in edge.sql.gz edge.dump edge_root.sql.gz edge_root.dump; do
+	bash "$R" --trusted-dump --min-tables 4 --roles "$T/roles.sql" --dump "$T/$f" --expect-counts "$T/edge.expect" >"$T/out" 2>&1 ||
+		{ cat "$T/out" >&2; fail "edge-case dump $f should restore and match"; }
+done
+pass "COPY-like data rows, names with spaces, partitions and --load-via-partition-root: plain and custom pass with exact counts (I1, I2)"
 
 if [[ "${RESTORE_TEST_DOCKER:-0}" == 1 ]]; then
 	# Fixtures come from PG_BIN's pg_dump; a newer major writes archives the 15 image cannot read.
@@ -224,6 +276,15 @@ if [[ "${RESTORE_TEST_DOCKER:-0}" == 1 ]]; then
 	pass "docker-mode custom dump + analytics + expect-counts: 0 errors, counts match"
 	if env -u PG_BIN bash "$R" --min-tables 2 --roles "$T/roles.sql" --dump "$T/cut.sql.gz" >/dev/null 2>&1; then fail "docker mode must fail a truncated dump"; fi
 	pass "docker-mode truncated dump fails"
+	# I5: the restrict fence also wraps psql input in docker mode (no pre-filter there).
+	if env -u PG_BIN bash "$R" --min-tables 2 --roles "$T/roles.sql" --dump "$T/meta.sql.gz" >"$T/out" 2>&1; then fail "docker mode should refuse a \\! line"; fi
+	grep -q 'backslash commands are restricted' "$T/out" || fail "docker mode: expected the restrict fence to refuse, got: $(grep -o 'FAILED: .*' "$T/out")"
+	if env -u PG_BIN bash "$R" --min-tables 2 --roles "$T/roles.sql" --dump "$T/bypass.sql.gz" >"$T/out" 2>&1; then fail "docker mode should refuse the N1 bypass"; fi
+	grep -qE 'restricted|wrong key' "$T/out" || fail "docker mode: N1 bypass not stopped by the fence"
+	pass "docker mode: \\! lines and the N1 bypass are refused by the restrict fence (I5)"
+	env -u PG_BIN bash "$R" --min-tables 4 --roles "$T/roles.sql" --dump "$T/edge_root.dump" --expect-counts "$T/edge.expect" >/dev/null ||
+		fail "docker mode: --load-via-partition-root edge dump should pass"
+	pass "docker mode: edge-case dump passes with exact counts"
 	[[ "$(leftovers)" == 0 ]] || fail "docker mode left temp dirs"
 fi
 echo "all restore-roles-first tests passed"

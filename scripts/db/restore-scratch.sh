@@ -19,7 +19,8 @@
 #                         "schema.table|count" or "schema.table<TAB>count"; lines starting with # are
 #                         skipped (the ost-db-backup.sh manifest format works once decrypted)
 #   --analytics FILE      also run the partial analytics test (fleetmon ost_analytics)
-#   --counts-out FILE     write the restored per-table counts ("schema.table|count")
+#   --counts-out FILE     write the restored per-table counts ("schema.table|count", leaf tables)
+#   --trusted-dump        allow PG_BIN (host-binary) mode outside CI; see PG_BIN below
 # Integrity: a plain dump (and the roles file and analytics dump) must end with pg_dump's
 # "dump complete" trailer, so an empty or cut-short file fails. A custom dump must have a readable
 # TOC with at least --min-tables TABLE DATA entries, and pg_restore --exit-on-error fails on a cut file.
@@ -27,8 +28,15 @@
 #   DOCKER    container CLI (default docker; "sudo docker" or podman also work)
 #   PG_IMAGE  image already present locally (default postgres:15-alpine; never pulled)
 #   PG_BIN    if set (e.g. /usr/lib/postgresql/15/bin), use a local throwaway cluster instead of a
-#             container. For CI and fixtures only: psql runs on this host, so any psql meta-command
-#             line in the inputs (other than \restrict / \unrestrict) is refused in this mode.
+#             container. TRUST BOUNDARY (SEC N5): this mode is ONLY for dumps you generated yourself
+#             (CI and test fixtures). The restore runs as a superuser on a cluster owned by the
+#             invoking host user, so a crafted dump can run host commands through server-side SQL
+#             (COPY ... TO PROGRAM, untrusted functions), which no client-side filter can stop. Use
+#             docker mode for every real backup. It is refused unless CI=true or --trusted-dump.
+# psql input (both modes): the input's own header \restrict and final \unrestrict are stripped and
+# the whole stream is wrapped in \restrict <random key> ... \unrestrict <key>, so psql itself refuses
+# every other backslash command, however the file is crafted (SEC N1, I5; needs psql 15.14+).
+# PG_BIN mode also runs a line pre-filter that refuses "\" lines outside COPY data.
 # Output: table names, row counts and the first "ERROR: ..." phrase only, never row contents.
 # Full stderr stays in the private temp dir, which is deleted on exit.
 set -euo pipefail
@@ -50,7 +58,7 @@ trap 'exit 129' HUP
 trap 'exit 130' INT
 trap 'exit 143' TERM
 
-ROLES="" DUMP="" ANALYTICS="" COUNTS_OUT="" EXPECT="" MIN_TABLES=39
+ROLES="" DUMP="" ANALYTICS="" COUNTS_OUT="" EXPECT="" MIN_TABLES=39 TRUSTED=0
 while [[ $# -gt 0 ]]; do
 	case "$1" in
 	--roles) ROLES="$2"; shift 2 ;;
@@ -59,6 +67,7 @@ while [[ $# -gt 0 ]]; do
 	--counts-out) COUNTS_OUT="$2"; shift 2 ;;
 	--expect-counts) EXPECT="$2"; shift 2 ;;
 	--min-tables) MIN_TABLES="$2"; shift 2 ;;
+	--trusted-dump) TRUSTED=1; shift ;;
 	*) echo "restore-scratch: unknown option $1" >&2; exit 2 ;;
 	esac
 done
@@ -69,6 +78,7 @@ errline() {
 	local e
 	e="$(grep -oE 'ERROR: +[^:]{0,80}' "$1" | head -1 || true)"
 	[[ -n "$e" ]] || e="$(grep -oE 'error: +[^:]{0,80}' "$1" | head -1 || true)"
+	[[ -n "$e" ]] || e="$(grep -oE '^(backslash commands are restricted|\\unrestrict: wrong key)' "$1" | head -1 || true)"
 	printf '%s' "${e:-no ERROR line (see exit code)}"
 }
 [[ -r "$ROLES" ]] || die "--roles file required (pg_dumpall --roles-only --no-role-passwords)"
@@ -76,6 +86,9 @@ errline() {
 [[ -z "$ANALYTICS" || -r "$ANALYTICS" ]] || die "cannot read $ANALYTICS"
 [[ -z "$EXPECT" || -r "$EXPECT" ]] || die "cannot read $EXPECT"
 [[ "$MIN_TABLES" =~ ^[0-9]+$ ]] || die "--min-tables must be a number"
+if [[ -n "$PG_BIN" && "$TRUSTED" != 1 && "${CI:-}" != true ]]; then
+	die "PG_BIN (host-binary) mode is only for dumps you generated yourself: a crafted dump can run host commands via server-side SQL. Use docker mode, or pass --trusted-dump"
+fi
 
 WORK="$(mktemp -d "${TMPDIR:-/tmp}/ost-restore-scratch.XXXXXX")"
 DB=restoretest
@@ -109,6 +122,47 @@ has_meta() {
 }
 
 # Roles file: no password material, complete, and no meta-commands (checked in both modes).
+# Strip the file's own header "\restrict KEY" (first such line before any SQL) and its final
+# "\unrestrict KEY" (followed only by comments or blank lines). Nothing else is changed.
+strip_own_fence() {
+	awk '
+		NR == FNR { if ($0 ~ /^\\unrestrict [A-Za-z0-9]+$/) last = FNR; else if (!($0 == "" || $0 ~ /^--/)) last = 0; next }
+		hdr && $0 ~ /^\\restrict [A-Za-z0-9]+$/ { hdr = 0; next }
+		hdr && !($0 == "" || $0 ~ /^--/) { hdr = 0 }
+		FNR == last { next }
+		{ print }
+	' hdr=1 "$1" "$1"
+}
+# Feed FILE to psql (both modes) inside a random-key restrict fence, so psql refuses every
+# backslash command except \unrestrict with our key (COPY data and its "\." end marker still work).
+fenced() {
+	local key
+	key="$(head -c 24 /dev/urandom | od -An -tx1 | tr -d ' \n')"
+	printf '\\restrict %s\n' "$key" # fence-open
+	strip_own_fence "$1" # fence-body
+	printf '\\unrestrict %s\n' "$key" # fence-close
+}
+
+# COPY block parser shared by every count (SEC I1). A COPY header only starts a block when not
+# already inside one, and the target may be quoted ("my schema"."t x", "" escapes).
+# shellcheck disable=SC2016
+COPY_AWK='
+function ident(x) { if (substr(x, 1, 1) == "\"") { x = substr(x, 2, length(x) - 2); gsub(/""/, "\"", x) } return x }
+function target(line,   r, a, b) {
+	r = substr(line, 6)
+	if (!match(r, /^("([^"]|"")*"|[^ ."]+)/)) return ""
+	a = substr(r, 1, RLENGTH); r = substr(r, RLENGTH + 1)
+	if (substr(r, 1, 1) != ".") return ident(a)
+	r = substr(r, 2)
+	if (!match(r, /^("([^"]|"")*"|[^ ."]+)/)) return ""
+	b = substr(r, 1, RLENGTH)
+	return ident(a) "." ident(b)
+}
+!inb && /^COPY .* FROM stdin;$/ { t = target($0); n = 0; inb = 1; next }
+inb && $0 == "\\." { done(t, n); inb = 0; next }
+inb { n++ }
+'
+
 if grep -qiE 'PASSWORD|SCRAM-SHA-256\$|md5[0-9a-f]{32}' "$WORK/roles.sql"; then
 	die "roles file contains password material; regenerate with --no-role-passwords"
 fi
@@ -155,7 +209,8 @@ else
 fi
 
 # 1) roles first. The bootstrap superuser already exists in a fresh cluster; skip only that line.
-grep -vx 'CREATE ROLE postgres;' "$WORK/roles.sql" | psqlx -q -d postgres -v ON_ERROR_STOP=1 >/dev/null 2>"$WORK/roles.err" ||
+grep -vx 'CREATE ROLE postgres;' "$WORK/roles.sql" >"$WORK/roles.apply.sql" || true
+fenced "$WORK/roles.apply.sql" | psqlx -q -d postgres -v ON_ERROR_STOP=1 >/dev/null 2>"$WORK/roles.err" ||
 	die "applying roles failed: $(errline "$WORK/roles.err")"
 say "roles applied: $(psqlx -qAt -d postgres -c "select string_agg(rolname, ',' order by rolname) from pg_roles where rolname !~ '^pg_'")"
 psqlx -q -d postgres -c "CREATE DATABASE $DB" >/dev/null 2>"$WORK/createdb.err" || die "create scratch db failed: $(errline "$WORK/createdb.err")"
@@ -170,19 +225,24 @@ if is_custom "$DUMP"; then
 	# Defense in depth: pg_restore -f - can stop at a cut without an error, so require a terminated
 	# COPY block for every TABLE DATA entry in the TOC. (pg_dump 16 also writes a second TOC copy
 	# after the data; a file missing only that copy still restores every row and passes.)
-	awk '$4 == "TABLE" && $5 == "DATA" { print $6 "." $7 }' "$WORK/toc.txt" | sort -u >"$WORK/toc_tables.txt"
-	awk '/^COPY /{t=$2; gsub(/"/,"",t); inb=1; next} inb && /^\\\.$/{print t; inb=0}' "$WORK/plain.sql" | sort -u >"$WORK/copy_done.txt"
-	missing="$(comm -23 "$WORK/toc_tables.txt" "$WORK/copy_done.txt" | wc -l)"
-	((missing == 0)) || die "custom dump is truncated: $missing table data block(s) missing or cut short"
+	# Counted, not matched by name, so names with spaces and --load-via-partition-root work (I1).
+	copy_done="$(awk 'function done(t, n) { c++ } '"$COPY_AWK"' END { print c + 0 }' "$WORK/plain.sql")"
+	((copy_done >= toc_data)) || die "custom dump is truncated: $((toc_data - copy_done)) table data block(s) missing or cut short"
 else
-	psqlx -q -d "$DB" -v ON_ERROR_STOP=1 <"$WORK/plain.sql" >/dev/null 2>"$WORK/restore.err" || die "psql restore failed: $(errline "$WORK/restore.err")"
+	fenced "$WORK/plain.sql" | psqlx -q -d "$DB" -v ON_ERROR_STOP=1 >/dev/null 2>"$WORK/restore.err" || die "psql restore failed: $(errline "$WORK/restore.err")"
 fi
 if grep -q 'ERROR' "$WORK/restore.err"; then die "restore printed errors: $(errline "$WORK/restore.err")"; fi
 say "full restore: 0 errors"
 
-copy_counts() { awk '/^COPY /{t=$2; gsub(/"/,"",t); n=0; inb=1; next} inb && /^\\\.$/{print t"|"n; inb=0; next} inb{n++}' "$1" | sort; }
+copy_counts() { awk 'function done(t, n) { print t "|" n } '"$COPY_AWK" "$1" | sort; }
 # shellcheck disable=SC2016
-COUNT_SQL='SELECT string_agg(format($q$SELECT %L, count(*) FROM %I.%I$q$, n.nspname||$q$.$q$||c.relname, n.nspname, c.relname), $q$ UNION ALL $q$) FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace WHERE c.relkind IN ($q$r$q$,$q$p$q$) AND n.nspname NOT IN ($q$pg_catalog$q$,$q$information_schema$q$) AND n.nspname NOT LIKE $q$pg_toast%$q$'
+COUNT_SQL='SELECT string_agg(format($q$SELECT %L, count(*) FROM %I.%I$q$, n.nspname||$q$.$q$||c.relname, n.nspname, c.relname), $q$ UNION ALL $q$) FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace WHERE c.relkind = $q$r$q$ AND n.nspname NOT IN ($q$pg_catalog$q$,$q$information_schema$q$) AND n.nspname NOT LIKE $q$pg_toast%$q$'
+# Leaf table -> partition root (itself when not partitioned), to compare with COPY targets that
+# name a parent (--load-via-partition-root). Partitioned parents hold no rows themselves (I2).
+# shellcheck disable=SC2016
+ROOT_SQL='SELECT n.nspname||$q$.$q$||c.relname, rn.nspname||$q$.$q$||r.relname FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace JOIN pg_class r ON r.oid=coalesce(pg_partition_root(c.oid), c.oid) JOIN pg_namespace rn ON rn.oid=r.relnamespace WHERE c.relkind IN ($q$r$q$,$q$p$q$) AND n.nspname NOT IN ($q$pg_catalog$q$,$q$information_schema$q$) AND n.nspname NOT LIKE $q$pg_toast%$q$'
+# Sum "name|count" lines per partition root, drop zero totals.
+by_root() { awk -F'|' 'NR == FNR { root[$1] = $2; next } { r = ($1 in root) ? root[$1] : $1; s[r] += $2 } END { for (r in s) if (s[r] > 0) print r "|" s[r] }' "$WORK/roots.txt" "$1" | LC_ALL=C sort; }
 db_counts() {
 	local q
 	q="$(psqlx -qAt -d "$DB" -c "$COUNT_SQL")"
@@ -193,9 +253,10 @@ db_counts() {
 db_counts >"$WORK/got.txt"
 got_tables="$(grep -c . "$WORK/got.txt" || true)"
 ((got_tables >= MIN_TABLES)) || die "restored $got_tables tables, expected at least $MIN_TABLES (empty or truncated dump?)"
-# Self-consistency: rows restored == rows in the dump's COPY data (non-empty tables).
+# Self-consistency: rows restored == rows in the dump's COPY data, per partition root (non-empty).
 copy_counts "$WORK/plain.sql" >"$WORK/expect.txt"
-if ! diff <(grep -v '|0$' "$WORK/got.txt") <(grep -v '|0$' "$WORK/expect.txt") >"$WORK/diff.txt"; then
+psqlx -qAt -F '|' -d "$DB" -c "$ROOT_SQL" >"$WORK/roots.txt"
+if ! diff <(by_root "$WORK/got.txt") <(by_root "$WORK/expect.txt") >"$WORK/diff.txt"; then
 	die "restored row counts differ from the dump's COPY data ($(grep -c '^[<>]' "$WORK/diff.txt") lines differ)"
 fi
 say "tables restored: $got_tables (min $MIN_TABLES), rows match the dump's COPY data"
@@ -227,12 +288,13 @@ if [[ -n "$ANALYTICS" ]]; then
 		psqlx -q -d "$DB" -v ON_ERROR_STOP=1 -c "ALTER EVENT TRIGGER $e DISABLE" >/dev/null 2>"$WORK/evt.err" ||
 			die "could not disable scratch event trigger: $(errline "$WORK/evt.err")"
 	done
-	{ for t in "${TABS[@]}"; do printf 'DROP TABLE IF EXISTS public."%s" CASCADE;\n' "$t"; done; cat "$WORK/an.sql"; } |
+	{ for t in "${TABS[@]}"; do printf 'DROP TABLE IF EXISTS public."%s" CASCADE;\n' "$t"; done; strip_own_fence "$WORK/an.sql"; } >"$WORK/an.apply.sql"
+	fenced "$WORK/an.apply.sql" |
 		psqlx -q -d "$DB" -v ON_ERROR_STOP=1 >/dev/null 2>"$WORK/an.err" || die "analytics restore failed: $(errline "$WORK/an.err")"
 	for e in $EVT; do psqlx -q -d "$DB" -c "ALTER EVENT TRIGGER $e ENABLE" >/dev/null 2>&1 || true; done
 	copy_counts "$WORK/an.sql" >"$WORK/an_expect.txt"
 	db_counts | grep -F -f <(printf 'public.%s|\n' "${TABS[@]}") >"$WORK/an_got.txt" || true
-	diff <(grep -v '|0$' "$WORK/an_got.txt") <(grep -v '|0$' "$WORK/an_expect.txt") >/dev/null ||
+	diff <(by_root "$WORK/an_got.txt") <(by_root "$WORK/an_expect.txt") >/dev/null ||
 		die "analytics row counts differ from the dump"
 	say "analytics partial restore: ${#TABS[@]} tables, 0 errors, rows match the dump (event triggers disabled: ${EVT:-none})"
 fi
