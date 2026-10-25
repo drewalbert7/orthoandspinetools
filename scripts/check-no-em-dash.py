@@ -33,6 +33,8 @@ ALLOWLIST = {
     "backend/prisma/migrations/20261014030000_implant_all_specialties_seed/migration.sql",
     "backend/prisma/migrations/20261014050000_implant_ai_rating/migration.sql",
     "backend/prisma/migrations/20261014093000_technique_guide_stg_only/migration.sql",
+    # Applied on prod 2026-10-19 (in _prisma_migrations); Prisma checksums it, so its bytes must not change.
+    "backend/prisma/migrations/20261019010000_prodisc_c_line_specific/migration.sql",
 }
 
 
