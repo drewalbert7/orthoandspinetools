@@ -55,6 +55,20 @@ export const errorHandler = (
     error = { message, statusCode: 400 } as AppErrorLike;
   }
 
+  // Multer upload size limit (fires before our own validators)
+  if (err.name === 'MulterError' && (err as any).code === 'LIMIT_FILE_SIZE') {
+    const field = String((err as any).field || '');
+    let message = 'File too large.';
+    if (field === 'videos' || field === 'video') {
+      message = 'File too large. Maximum 100MB for videos.';
+    } else if (field === 'avatar') {
+      message = 'File too large. Maximum 500KB for avatars.';
+    } else {
+      message = 'File too large. Maximum 20MB for images, 100MB for videos.';
+    }
+    error = { message, statusCode: 413 } as AppErrorLike;
+  }
+
   // JWT errors
   if (err.name === 'JsonWebTokenError') {
     const message = 'Invalid token';

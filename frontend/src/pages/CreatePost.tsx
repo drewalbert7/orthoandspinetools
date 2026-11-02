@@ -26,6 +26,10 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { apiService, apiErrorMessage, Community, CommunityTag } from '../services/apiService';
 import { useAuth } from '../contexts/AuthContext';
 import toast from 'react-hot-toast';
+
+// Cloudflare caps request bodies at 100MB; keep in sync with backend upload limits.
+const MAX_VIDEO_MB = 100;
+const MAX_VIDEO_BYTES = MAX_VIDEO_MB * 1024 * 1024;
 import MarkdownEditor, { MarkdownEditorHandle } from '../components/MarkdownEditor';
 import PostEditorToolbar from '../components/PostEditorToolbar';
 import { CASE_TOPIC_DISPLAY_NAME } from '../lib/topicTags';
@@ -349,7 +353,14 @@ const CreatePost: React.FC = () => {
     setIsUploading(true);
     try {
       const imageFiles = files.filter((file) => file.type.startsWith('image/'));
-      const videoFiles = files.filter((file) => file.type.startsWith('video/'));
+      const allVideoFiles = files.filter((file) => file.type.startsWith('video/'));
+      const tooBig = allVideoFiles.filter((file) => file.size > MAX_VIDEO_BYTES);
+      if (tooBig.length > 0) {
+        toast.error(
+          `File too large. Maximum ${MAX_VIDEO_MB}MB for videos (${tooBig.map((f) => f.name).join(', ')}).`
+        );
+      }
+      const videoFiles = allVideoFiles.filter((file) => file.size <= MAX_VIDEO_BYTES);
 
       const uploadedFiles: UploadedPostMedia[] = [];
 
@@ -393,7 +404,7 @@ const CreatePost: React.FC = () => {
       }
 
       if (uploadedFiles.length === 0) {
-        toast.error('No supported image or video files in that selection.');
+        if (tooBig.length === 0) toast.error('No supported image or video files in that selection.');
         return;
       }
 
@@ -473,7 +484,7 @@ const CreatePost: React.FC = () => {
         <p className="mt-2 text-xs sm:text-sm text-gray-600">Drag and drop or click to upload</p>
         <p className="mt-1 text-xs text-gray-500">
           Select or drop <span className="font-medium text-gray-700">multiple</span> images or videos at once · JPEG,
-          PNG, GIF, WebP, HEIC · MP4, WebM, MOV · up to {uploadStatus?.limits.imageMb ?? 20} MB per image (server limit)
+          PNG, GIF, WebP, HEIC · MP4, WebM, MOV · up to {uploadStatus?.limits.imageMb ?? 20} MB per image, {MAX_VIDEO_MB} MB per video
         </p>
         <input
           type="file"

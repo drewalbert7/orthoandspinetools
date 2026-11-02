@@ -12,7 +12,7 @@ const UPLOAD_LIMITS = {
   
   // Per file limits (Reddit standards)
   MAX_FILE_SIZE_IMAGES: 20 * 1024 * 1024, // 20MB (Reddit standard)
-  MAX_FILE_SIZE_VIDEOS: 1024 * 1024 * 1024, // 1GB (Reddit standard)
+  MAX_FILE_SIZE_VIDEOS: 100 * 1024 * 1024, // 100MB (Cloudflare request body limit)
   MAX_FILE_SIZE_AVATARS: 500 * 1024, // 500KB for profile avatars
   
   // Video duration limits
@@ -133,7 +133,7 @@ export const validateFileSecurity = (req: Request, res: Response, next: NextFunc
     
     if (isVideo && file.size > UPLOAD_LIMITS.MAX_FILE_SIZE_VIDEOS) {
       return next(new AppError(
-        `File too large. Maximum ${UPLOAD_LIMITS.MAX_FILE_SIZE_VIDEOS / (1024 * 1024 * 1024)}GB for videos.`, 
+        `File too large. Maximum ${UPLOAD_LIMITS.MAX_FILE_SIZE_VIDEOS / (1024 * 1024)}MB for videos.`, 
         413
       ));
     }

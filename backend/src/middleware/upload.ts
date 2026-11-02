@@ -68,7 +68,7 @@ const ALLOWED_EXTENSIONS = {
 // File size limits (in bytes) - Reddit-compatible
 const FILE_SIZE_LIMITS = {
   images: 20 * 1024 * 1024, // 20MB (Reddit standard)
-  videos: 1024 * 1024 * 1024, // 1GB (Reddit standard)
+  videos: 100 * 1024 * 1024, // 100MB (Cloudflare request body limit)
   avatars: 500 * 1024 // 500KB for profile avatars
 };
 
@@ -121,7 +121,7 @@ const videoFileFilter = createFileFilter('videos');
 export const upload = multer({
   storage: storage,
   limits: {
-    fileSize: FILE_SIZE_LIMITS.images, // 10MB for images
+    fileSize: FILE_SIZE_LIMITS.images, // 20MB for images
     files: 5, // Max 5 files per request
     fieldSize: 1024 * 1024, // 1MB field size limit
   },
@@ -139,7 +139,7 @@ export const uploadMultiple = (fieldName: string, maxCount: number = 5) =>
 const uploadMemoryImages = multer({
   storage: memoryStorage,
   limits: {
-    fileSize: FILE_SIZE_LIMITS.images, // 10MB for images
+    fileSize: FILE_SIZE_LIMITS.images, // 20MB for images
     files: 10, // Max 10 images per request
     fieldSize: 1024 * 1024, // 1MB field size limit
   },
@@ -149,7 +149,7 @@ const uploadMemoryImages = multer({
 const uploadMemoryVideos = multer({
   storage: memoryStorage,
   limits: {
-    fileSize: FILE_SIZE_LIMITS.videos, // 500MB for videos
+    fileSize: FILE_SIZE_LIMITS.videos, // 100MB for videos (Cloudflare limit)
     files: 5, // Max 5 videos per request
     fieldSize: 1024 * 1024, // 1MB field size limit
   },

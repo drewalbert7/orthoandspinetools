@@ -35,7 +35,7 @@ router.get('/status', asyncHandler(async (_req: Request, res: Response) => {
       cloudinaryConfigured: media.mediaConfigured, // UI gate: any ready provider
       limits: {
         imageMb: 20,
-        videoMb: 1024,
+        videoMb: 100,
       },
     },
   });

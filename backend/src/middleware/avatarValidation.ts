@@ -48,13 +48,13 @@ export const validateVideoDuration = async (req: Request, res: Response, next: N
   // For now, we'll use file size as a proxy for duration
   // In production, you'd use ffprobe to get actual duration
   const maxDuration = 15 * 60; // 15 minutes in seconds
-  const maxSize = 1024 * 1024 * 1024; // 1GB
+  const maxSize = 100 * 1024 * 1024; // 100MB (Cloudflare request body limit)
   
   for (const file of files) {
     if (file.mimetype.startsWith('video/')) {
-      // Rough estimation: 1GB file ≈ 15 minutes at reasonable quality
+      // Hard cap matches the 100MB Cloudflare request body limit
       if (file.size > maxSize) {
-        return next(new AppError('Video too large. Maximum 1GB or 15 minutes duration.', 413));
+        return next(new AppError('File too large. Maximum 100MB for videos.', 413));
       }
       
       logger.info(`Video upload validated: ${file.originalname}, ${file.size} bytes`);
