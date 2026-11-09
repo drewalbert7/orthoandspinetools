@@ -1,4 +1,4 @@
-import sharp from 'sharp';
+import sharp, { type FitEnum } from 'sharp';
 
 export type OptimizedImageKind = 'feed' | 'avatar' | 'banner';
 
@@ -14,7 +14,7 @@ export interface OptimizedImage {
 
 const LIMITS: Record<
   OptimizedImageKind,
-  { maxWidth: number; maxHeight: number; fit: keyof sharp.FitEnum; quality: number }
+  { maxWidth: number; maxHeight: number; fit: keyof FitEnum; quality: number }
 > = {
   // Reddit-ish feed: long edge capped, aspect preserved
   feed: { maxWidth: 1920, maxHeight: 1920, fit: 'inside', quality: 82 },
@@ -23,7 +23,7 @@ const LIMITS: Record<
 };
 
 /** Soft cap when Cloudflare Images/Stream will apply variants on delivery. */
-const CF_SOFT: Record<OptimizedImageKind, { maxWidth: number; maxHeight: number; fit: keyof sharp.FitEnum }> = {
+const CF_SOFT: Record<OptimizedImageKind, { maxWidth: number; maxHeight: number; fit: keyof FitEnum }> = {
   feed: { maxWidth: 4096, maxHeight: 4096, fit: 'inside' },
   avatar: { maxWidth: 1024, maxHeight: 1024, fit: 'inside' },
   banner: { maxWidth: 4096, maxHeight: 2160, fit: 'inside' },

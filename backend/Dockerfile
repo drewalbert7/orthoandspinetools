@@ -1,5 +1,6 @@
 # Backend Dockerfile
-FROM node:18-alpine
+# sharp >= 0.35 requires Node.js >= 20.9.0 (Node-API v9). node:18-alpine cannot load it.
+FROM node:20-alpine
 
 # OpenSSL/curl for Prisma + healthchecks; vips for sharp (Reddit-like image resize)
 RUN apk add --no-cache openssl openssl-dev curl vips
