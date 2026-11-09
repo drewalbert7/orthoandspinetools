@@ -804,3 +804,81 @@ model ImplantCommentVote {
   @@map("implant_comment_votes")
 }
 
+/// Staging table for FDA-sourced implant data before human review and promotion to live.
+/// Every populated field carries a citation via field_citations JSONB and the related citations table.
+model ImplantCatalogStaging {
+  id                String    @id @default(cuid())
+  /// Source identifier: openfda-510k | openfda-pma | accessgudid
+  source            String
+  /// The K-number, P-number, or GUDID DI
+  sourceRecordId    String    @map("source_record_id")
+  /// FDA product code (e.g. MAX, NKB, ODP)
+  productCode       String?   @map("product_code")
+  /// FDA 510(k) or PMA number (e.g. K123456, P110009)
+  fdaNumber         String?   @map("fda_number")
+  /// FDA decision/clearance date
+  fdaDecisionDate   DateTime? @map("fda_decision_date") @db.Date
+  /// FDA applicant/manufacturer name at time of submission
+  fdaApplicant      String?   @map("fda_applicant")
+  /// Device name from FDA
+  deviceName        String?   @map("device_name")
+  /// FDA device class (1, 2, 3)
+  deviceClass       String?   @map("device_class")
+  /// Device materials (from GUDID or summary PDF — null if unknown)
+  material          String?
+  /// Device components (from GUDID — null if unknown)
+  components        String?
+  /// FDA advisory committee code (e.g. OR for Orthopedic)
+  advisoryCommittee String?   @map("advisory_committee")
+  /// Full raw JSON response from the API for debugging/audit
+  rawJson           Json      @map("raw_json")
+  /// JSONB map of field_name → { sourceUrl, sourceType, retrievedAt }
+  fieldCitations    Json      @default("{}") @map("field_citations")
+  /// When this record was retrieved from the source API
+  retrievedAt       DateTime  @default(now()) @map("retrieved_at")
+  /// Review status: pending | reviewed | approved | rejected
+  reviewStatus      String    @default("pending") @map("review_status")
+  /// Optional notes from human reviewer
+  reviewNotes       String?   @map("review_notes")
+  /// When the record was reviewed
+  reviewedAt        DateTime? @map("reviewed_at")
+  /// Who reviewed (user id or admin identifier)
+  reviewedBy        String?   @map("reviewed_by")
+  createdAt         DateTime  @default(now()) @map("created_at")
+  updatedAt         DateTime  @updatedAt @map("updated_at")
+
+  citations ImplantCatalogStagingCitation[]
+
+  @@unique([source, sourceRecordId])
+  @@index([reviewStatus])
+  @@index([productCode])
+  @@index([fdaNumber])
+  @@index([fdaApplicant])
+  @@index([deviceName])
+  @@index([createdAt])
+  @@map("implant_catalog_staging")
+}
+
+/// Per-field source/citation tracking for staging records.
+model ImplantCatalogStagingCitation {
+  id          String   @id @default(cuid())
+  stagingId   String   @map("staging_id")
+  /// Field name this citation applies to (e.g. fdaApplicant, deviceName)
+  fieldName   String   @map("field_name")
+  /// Source URL where this value was obtained
+  sourceUrl   String   @map("source_url")
+  /// Source type: openfda-510k | openfda-pma | accessgudid | summary-pdf
+  sourceType  String   @map("source_type")
+  /// When this value was retrieved
+  retrievedAt DateTime @map("retrieved_at")
+  /// The raw value as retrieved (before normalization)
+  rawValue    String?  @map("raw_value")
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  staging ImplantCatalogStaging @relation(fields: [stagingId], references: [id], onDelete: Cascade)
+
+  @@unique([stagingId, fieldName])
+  @@index([stagingId])
+  @@map("implant_catalog_staging_citation")
+}
+
