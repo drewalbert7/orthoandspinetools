@@ -103,9 +103,15 @@ jobs:
           sudo /usr/share/postgresql-common/pgdg/apt.postgresql.org.sh -y
           # Pinned (SEC I4). Must stay >= 15.14 (prod's minor, first with \restrict). PGDG keeps
           # only the last few minors, so bump PG15_MINOR when this one drops out.
-          sudo apt-get install -y -q "postgresql-15=${PG15_MINOR}-*"
+          # Pin the client too. postgresql-15 depends on postgresql-client-15 with no version,
+          # so an unpinned client can be a newer minor and pg_dump will not match the pin.
+          sudo apt-get install -y -q \
+            "postgresql-15=${PG15_MINOR}-*" \
+            "postgresql-client-15=${PG15_MINOR}-*"
           /usr/lib/postgresql/15/bin/pg_dump --version | grep -qx "pg_dump (PostgreSQL) ${PG15_MINOR}.*" ||
             { echo "pg_dump is not ${PG15_MINOR}"; exit 1; }
+          /usr/lib/postgresql/15/bin/postgres --version | grep -qx "postgres (PostgreSQL) ${PG15_MINOR}.*" ||
+            { echo "postgres server is not ${PG15_MINOR}"; exit 1; }
 
       - name: Roles-first restore (fixture owned by non-default roles; plain, custom, analytics, docker path)
         run: PG_BIN=/usr/lib/postgresql/15/bin PG_IMAGE="postgres:${PG15_MINOR}-alpine" RESTORE_TEST_DOCKER=1 bash scripts/tests/restore-roles-first.test.sh
